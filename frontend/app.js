@@ -1,3 +1,5 @@
+window.APP_BUILD_VERSION = "2026.09.08.v17";
+console.log("--> DALOR SIGO-P INITIALIZED v17");
 
 // ==============================================================================
 // 🔐 CONTROLADOR CORPORATIVO DE AUTENTICACIÓN & SESIONES (PRODUCCIÓN)
@@ -2302,9 +2304,12 @@ async function submitManualExpense(event) {
             switchView('dashboard', 'proyectos');
         } else {
             const err = await res.json();
-            alert("Error: " + (err.detail || JSON.stringify(err)));
         }
-// ==============================================================================
+    } catch (err) {
+        alert("Error de conexión: " + err.message);
+    }
+}
+
 // 📥 BANDEJA DE APROBACIÓN & VALIDACIÓN DE COMPROBANTES DE CAMPO
 // ==============================================================================
 let allPendingExpenses = [];

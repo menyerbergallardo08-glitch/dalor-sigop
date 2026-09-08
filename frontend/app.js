@@ -1,7 +1,213 @@
+
+// ==============================================================================
+// 🔐 CONTROLADOR CORPORATIVO DE AUTENTICACIÓN & SESIONES (PRODUCCIÓN)
+// ==============================================================================
+
+window.togglePasswordVisibility = function(inputId, btn) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    if (el.type === 'password') {
+        el.type = 'text';
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+    } else {
+        el.type = 'password';
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+    }
+};
+
+window.toggleDemoProfiles = function() {
+    const grid = document.getElementById('demoProfilesGrid');
+    if (grid) {
+        grid.style.display = (grid.style.display === 'none' || !grid.style.display) ? 'grid' : 'none';
+    }
+};
+
+window.quickFillAndLogin = async function(u, p) {
+    const uIn = document.getElementById('portal_username');
+    const pIn = document.getElementById('portal_password');
+    if (uIn) uIn.value = u;
+    if (pIn) pIn.value = p;
+    await performLogin(u, p);
+};
+
+window.handlePortalLogin = async function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const uIn = document.getElementById('portal_username');
+    const pIn = document.getElementById('portal_password');
+    const u = uIn ? uIn.value.trim() : '';
+    const p = pIn ? pIn.value : '';
+    await performLogin(u, p);
+};
+
+window.performLogin = async function(username, password) {
+    if (!username || !password) {
+        showLoginError('Por favor ingresa usuario y contraseña');
+        return;
+    }
+
+    const errBox = document.getElementById('loginErrorMessage');
+    const errTxt = document.getElementById('loginErrorText');
+    const btnSubmit = document.getElementById('btnSubmitPortalLogin');
+
+    if (errBox) errBox.style.display = 'none';
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verificando credenciales...';
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.access_token) {
+            const msg = data.detail || 'Usuario o contraseña incorrectos';
+            showLoginError(msg);
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión';
+            }
+            return;
+        }
+
+        // Credenciales válidas: Guardar sesión
+        currentUser = data.user;
+        authToken = data.access_token;
+        localStorage.setItem('dalor_user', JSON.stringify(currentUser));
+        localStorage.setItem('dalor_token', authToken);
+
+        // Desbloquear Shell de Aplicación
+        const loginScreen = document.getElementById('app-login-screen');
+        const authShell = document.getElementById('app-authenticated-shell');
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (authShell) authShell.style.display = 'block';
+
+        renderUserBadge();
+        applyPermissionMap(currentUser);
+        configureMobileNav(currentUser);
+        redirectUserByRole(currentUser);
+
+        // Cargar datos del ERP
+        loadInitialMasterData();
+
+        showToast(`Bienvenido, ${currentUser.full_name || currentUser.username}`, 'success');
+
+    } catch (err) {
+        showLoginError('Error de conexión con el servidor. Verifica tu conexión a internet.');
+    } finally {
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión';
+        }
+    }
+};
+
+function showLoginError(msg) {
+    const errBox = document.getElementById('loginErrorMessage');
+    const errTxt = document.getElementById('loginErrorText');
+    if (errTxt) errTxt.textContent = msg;
+    if (errBox) errBox.style.display = 'block';
+}
+
+window.configureMobileNav = function(user) {
+    const nav = document.querySelector('.mobile-bottom-nav');
+    if (!nav) return;
+    if (!user) {
+        nav.style.display = 'none';
+        return;
+    }
+    nav.style.display = 'flex';
+    const role = (user.role_name || user.username || '').toLowerCase();
+    
+    let buttonsHtml = '';
+    if (role.includes('supervisor') || role.includes('campo')) {
+        buttonsHtml = `
+            <button class="mobile-nav-btn active" onclick="switchView('pwa', 'gastos')">
+                <i class="fa-solid fa-camera"></i>
+                <span>Cargar Gasto</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchView('projects', 'proyectos')">
+                <i class="fa-solid fa-folder-tree"></i>
+                <span>Obras</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="handleLogout()" style="color: #ef4444;">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Salir</span>
+            </button>
+        `;
+    } else if (role.includes('admin') || role.includes('finanzas')) {
+        buttonsHtml = `
+            <button class="mobile-nav-btn active" onclick="switchView('financial', 'finanzas')">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+                <span>Finanzas</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchView('inbox', 'gastos')">
+                <i class="fa-solid fa-inbox"></i>
+                <span>Aprobación</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchView('projects', 'proyectos')">
+                <i class="fa-solid fa-folder-tree"></i>
+                <span>Obras</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="handleLogout()" style="color: #ef4444;">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Salir</span>
+            </button>
+        `;
+    } else if (role.includes('ingeniero') || role.includes('obra')) {
+        buttonsHtml = `
+            <button class="mobile-nav-btn active" onclick="switchView('projects', 'proyectos')">
+                <i class="fa-solid fa-folder-tree"></i>
+                <span>Obras</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="openResourceSubtab('machinery')">
+                <i class="fa-solid fa-tractor"></i>
+                <span>Maquinaria</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchView('pwa', 'gastos')">
+                <i class="fa-solid fa-camera"></i>
+                <span>OCR</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="handleLogout()" style="color: #ef4444;">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Salir</span>
+            </button>
+        `;
+    } else { // Director General
+        buttonsHtml = `
+            <button class="mobile-nav-btn active" onclick="switchView('executive', 'gerencia')">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>PowerBI</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchView('projects', 'proyectos')">
+                <i class="fa-solid fa-folder-tree"></i>
+                <span>Obras</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchView('financial', 'finanzas')">
+                <i class="fa-solid fa-coins"></i>
+                <span>Finanzas</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="handleLogout()" style="color: #ef4444;">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Salir</span>
+            </button>
+        `;
+    }
+    nav.innerHTML = buttonsHtml;
+};
+
+// Aliases para compatibilidad
+window.loginDirectlyAs = window.quickFillAndLogin;
+window.fillAndSubmitQuickLogin = window.quickFillAndLogin;
+window.fillQuickLogin = window.quickFillAndLogin;
+
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v11";
+const APP_BUILD_VERSION = "2026.09.08.v12";
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
     localStorage.clear();
@@ -43,13 +249,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     const isAuth = await checkAuthStatus();
-    await loadInitialMasterData();
     
+    const loginScreen = document.getElementById('app-login-screen');
+    const authShell = document.getElementById('app-authenticated-shell');
+    const nav = document.querySelector('.mobile-bottom-nav');
+
     if (isAuth && currentUser) {
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (authShell) authShell.style.display = 'block';
+        
+        renderUserBadge();
+        applyPermissionMap(currentUser);
+        configureMobileNav(currentUser);
         redirectUserByRole(currentUser);
+        loadInitialMasterData();
     } else {
-        const modal = document.getElementById('modalLogin');
-        if (modal) modal.classList.remove('hidden');
+        if (loginScreen) loginScreen.style.display = 'flex';
+        if (authShell) authShell.style.display = 'none';
+        if (nav) nav.style.display = 'none';
     }
 });
 
@@ -2926,25 +3143,24 @@ function handleLogout() {
     localStorage.removeItem('dalor_token');
     currentUser = null;
     authToken = null;
-    
-    // Ocultar todas las vistas
-    const allViews = [
-        'executive', 'financial', 'maintenance',
-        'quotations', 'clients', 'services', 
-        'projects', 'dashboard', 
-        'resources', 
-        'pwa', 'manual', 'tree', 'inbox'
-    ];
-    allViews.forEach(v => {
-        const el = document.getElementById(`view-${v}`);
-        if (el) el.classList.add('hidden');
-    });
 
-    const modal = document.getElementById('modalLogin');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
-    }
+    const loginScreen = document.getElementById('app-login-screen');
+    const authShell = document.getElementById('app-authenticated-shell');
+    const nav = document.querySelector('.mobile-bottom-nav');
+
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (authShell) authShell.style.display = 'none';
+    if (nav) nav.style.display = 'none';
+
+    // Limpiar campos del portal de login
+    const uIn = document.getElementById('portal_username');
+    const pIn = document.getElementById('portal_password');
+    if (uIn) uIn.value = '';
+    if (pIn) pIn.value = '';
+    const errBox = document.getElementById('loginErrorMessage');
+    if (errBox) errBox.style.display = 'none';
+
+    showToast('Sesión cerrada correctamente', 'info');
 }
 
 // ==============================================================================

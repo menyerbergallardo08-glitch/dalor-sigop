@@ -217,7 +217,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v15";
+const APP_BUILD_VERSION = "2026.09.08.v16";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();
@@ -4446,11 +4446,11 @@ function openNewAssetModal(presetType = 'herramienta_mayor') {
     openModal("modalNewAsset");
 }
 
-function openNewToolModal() {
+function openNewToolModal_v2() {
     openNewAssetModal('herramienta_mayor');
 }
 
-function openNewVehicleModal() {
+function openNewVehicleModal_v2() {
     openNewAssetModal('vehiculo');
 }
 
@@ -4626,13 +4626,13 @@ async function loadUsersManagementTable() {
     }
 }
 
-function openNewUserModal() {
+function openNewUserModal_v2() {
     const form = document.getElementById("newUserForm");
     if (form) form.reset();
     openModal("modalNewUser");
 }
 
-async function submitCreateUser(e) {
+async function submitCreateUser_v2(e) {
     e.preventDefault();
     const username = document.getElementById("nusr_username").value.trim();
     const password = document.getElementById("nusr_password").value.trim();
@@ -4670,7 +4670,7 @@ async function submitCreateUser(e) {
     }
 }
 
-function openMaintenanceSubtab(subtab) {
+function openMaintenanceSubtab_v2(subtab) {
     if (subtab === 'users') {
         openUserManagementModal();
     } else {

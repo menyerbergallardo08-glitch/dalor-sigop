@@ -1,0 +1,11 @@
+﻿__pycache__/
+*.pyc
+.env
+backend/uploads/
+backend/app/backups/
+ticket_*.jpg
+ticket_*.pdf
+temp_ocr_preprocessed.png
+*.aac
+*.mp3
+*.wav

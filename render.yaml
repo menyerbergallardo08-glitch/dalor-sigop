@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: dalor-sigop-erp
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 8005
+      - key: ENVIRONMENT
+        value: production
+    disk:
+      name: dalor-data
+      mountPath: /app/backend/uploads
+      sizeGB: 10

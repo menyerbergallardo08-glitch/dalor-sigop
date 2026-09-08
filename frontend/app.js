@@ -1,16 +1,16 @@
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v7";
+const APP_BUILD_VERSION = "2026.09.08.v8";
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
     localStorage.clear();
     localStorage.setItem("dalor_build_version", APP_BUILD_VERSION);
-    localStorage.setItem("dalor_exchange_rate", "800.0");
+    localStorage.setItem("dalor_exchange_rate", "850.0");
 }
 
 const API_BASE = window.location.origin + "/api/v1";
-let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 800.0;
+let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 850.0;
 
 let allClients = [];
 let allServices = [];
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (rateInput) rateInput.value = EXCHANGE_RATE.toFixed(2);
 
     document.addEventListener("click", (e) => {
-        if (!e.target.closest(".nav-dropdown")) {
+        if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu")) {
             closeAllDropdowns();
         }
     });
@@ -71,10 +71,13 @@ function updateGlobalExchangeRate(newRate) {
     }
 }
 
-// Desplegables Tipo ERP (Profit Plus Style)
+// Desplegables Tipo ERP (Profit Plus Style) con Soporte Móvil Táctil
 function toggleDropdown(event, dropdownId) {
-    event.stopPropagation();
+    if (event) {
+        event.stopPropagation();
+    }
     const targetDropdown = document.getElementById(dropdownId);
+    if (!targetDropdown) return;
     const isOpen = targetDropdown.classList.contains("open");
 
     closeAllDropdowns();
@@ -99,7 +102,7 @@ function switchView(viewName, moduleCategory) {
         'quotations', 'clients', 'services', 
         'projects', 'dashboard', 
         'resources', 
-        'pwa', 'manual', 'tree'
+        'pwa', 'manual', 'tree', 'inbox'
     ];
 
     allViews.forEach(v => {
@@ -2755,36 +2758,56 @@ function renderUserBadge() {
 }
 
 function applyPermissionMap(user) {
-    if (!user || !user.permissions) return;
-    const p = user.permissions;
+    if (!user) return;
+    const role = (user.role_name || '').toLowerCase();
+    const p = user.permissions || {};
+    const isDirectorOrAdmin = role.includes('director') || role.includes('admin') || user.is_superuser || user.username === 'director' || user.username === 'admin';
 
     // Dropdown Comercial
     const dCom = document.getElementById('dropdown-comercial');
-    if (dCom) dCom.style.display = (p.comercial_view || p.comercial_edit) ? 'inline-block' : 'none';
+    if (dCom) {
+        const canViewCom = isDirectorOrAdmin || p.comercial_view || p.comercial_edit || p.comercial || p.project_costing || role.includes('ingeniero');
+        dCom.style.display = canViewCom ? 'inline-block' : 'none';
+    }
 
     // Dropdown Proyectos
     const dProj = document.getElementById('dropdown-proyectos');
-    if (dProj) dProj.style.display = (p.proyectos_view || p.proyectos_edit) ? 'inline-block' : 'none';
+    if (dProj) {
+        const canViewProj = isDirectorOrAdmin || p.proyectos_view || p.proyectos_edit || p.project_costing || role.includes('ingeniero') || role.includes('supervisor');
+        dProj.style.display = canViewProj ? 'inline-block' : 'none';
+    }
 
     // Dropdown Finanzas
     const dFin = document.getElementById('dropdown-finanzas');
-    if (dFin) dFin.style.display = (p.finanzas_view || p.finanzas_edit) ? 'inline-block' : 'none';
+    if (dFin) {
+        const canViewFin = isDirectorOrAdmin || p.finanzas_view || p.finanzas_edit || p.financials;
+        dFin.style.display = canViewFin ? 'inline-block' : 'none';
+    }
 
     // Dropdown Recursos
     const dRec = document.getElementById('dropdown-recursos');
-    if (dRec) dRec.style.display = (p.recursos_view || p.recursos_edit) ? 'inline-block' : 'none';
+    if (dRec) {
+        const canViewRec = isDirectorOrAdmin || p.recursos_view || p.recursos_edit || p.resources || role.includes('ingeniero') || role.includes('supervisor');
+        dRec.style.display = canViewRec ? 'inline-block' : 'none';
+    }
 
-    // Dropdown Gastos
+    // Dropdown Gastos (Accesible para todos los usuarios)
     const dGas = document.getElementById('dropdown-gastos');
-    if (dGas) dGas.style.display = (p.gastos_view || p.gastos_edit) ? 'inline-block' : 'none';
+    if (dGas) dGas.style.display = 'inline-block';
 
-    // Dropdown Mantenimiento (Solo Administradores de Seguridad)
+    // Dropdown Mantenimiento (Solo Administradores y Directores)
     const dMaint = document.getElementById('dropdown-mantenimiento');
-    if (dMaint) dMaint.style.display = p.mantenimiento_admin ? 'inline-block' : 'none';
+    if (dMaint) {
+        const canViewMaint = isDirectorOrAdmin || p.mantenimiento_admin || p.system_settings || p.maintenance;
+        dMaint.style.display = canViewMaint ? 'inline-block' : 'none';
+    }
 
     // Botón PowerBI Directivo
     const dGer = document.getElementById('dropdown-gerencia');
-    if (dGer) dGer.style.display = p.executive_dashboard ? 'inline-block' : 'none';
+    if (dGer) {
+        const canViewBI = isDirectorOrAdmin || p.executive_dashboard;
+        dGer.style.display = canViewBI ? 'inline-block' : 'none';
+    }
 }
 
 function fillQuickLogin(username, password) {

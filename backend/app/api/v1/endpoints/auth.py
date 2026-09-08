@@ -47,6 +47,53 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         except Exception:
             perms = {}
 
+    if not perms:
+        # Assign comprehensive default permissions based on role
+        if user.role_name in ["director", "director_general"] or user.is_superuser:
+            perms = {
+                "comercial_view": True, "comercial_edit": True,
+                "proyectos_view": True, "proyectos_edit": True,
+                "finanzas_view": True, "finanzas_edit": True,
+                "recursos_view": True, "recursos_edit": True,
+                "gastos_view": True, "gastos_edit": True,
+                "executive_dashboard": True,
+                "mantenimiento_admin": True,
+                "project_costing": True, "maintenance": True, "resources": True, "capture": True, "financials": True
+            }
+        elif user.role_name in ["administrador_financiero", "admin_finanzas"]:
+            perms = {
+                "comercial_view": True, "comercial_edit": True,
+                "proyectos_view": True, "proyectos_edit": True,
+                "finanzas_view": True, "finanzas_edit": True,
+                "recursos_view": True, "recursos_edit": True,
+                "gastos_view": True, "gastos_edit": True,
+                "executive_dashboard": True,
+                "mantenimiento_admin": False,
+                "project_costing": True, "maintenance": True, "resources": True, "capture": True, "financials": True
+            }
+        elif user.role_name == "ingeniero_obra":
+            perms = {
+                "comercial_view": True, "comercial_edit": False,
+                "proyectos_view": True, "proyectos_edit": True,
+                "finanzas_view": False, "finanzas_edit": False,
+                "recursos_view": True, "recursos_edit": True,
+                "gastos_view": True, "gastos_edit": True,
+                "executive_dashboard": False,
+                "mantenimiento_admin": False,
+                "project_costing": True, "maintenance": False, "resources": True, "capture": True, "financials": False
+            }
+        else: # supervisor_campo and others
+            perms = {
+                "comercial_view": False, "comercial_edit": False,
+                "proyectos_view": True, "proyectos_edit": False,
+                "finanzas_view": False, "finanzas_edit": False,
+                "recursos_view": True, "recursos_edit": False,
+                "gastos_view": True, "gastos_edit": True,
+                "executive_dashboard": False,
+                "mantenimiento_admin": False,
+                "project_costing": False, "maintenance": False, "resources": True, "capture": True, "financials": False
+            }
+
     token = create_access_token({"sub": user.username, "id": user.id, "role": user.role_name})
 
     # Log login action

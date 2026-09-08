@@ -1,7 +1,7 @@
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v9";
+const APP_BUILD_VERSION = "2026.09.08.v10";
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
     localStorage.clear();
@@ -42,14 +42,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    await checkAuthStatus();
+    const isAuth = await checkAuthStatus();
     await loadInitialMasterData();
     
-    // Si tiene permiso de gerencia abre BI Executive, sino abre proyectos
-    if (currentUser && currentUser.permissions && currentUser.permissions.executive_dashboard) {
-        switchView('executive', 'gerencia');
+    if (isAuth && currentUser) {
+        redirectUserByRole(currentUser);
     } else {
-        switchView('projects', 'proyectos');
+        const modal = document.getElementById('modalLogin');
+        if (modal) modal.classList.remove('hidden');
     }
 });
 
@@ -580,30 +580,66 @@ async function viewProjectDetails(projectId) {
 
         document.getElementById("detail_proj_scope").innerText = data.scope_of_work || "No se ha definido descripción técnica del alcance para este proyecto.";
 
-        // Etapas
+        // Cálculo de Avance Físico Global
+        const totalPhases = data.phases ? data.phases.length : 0;
+        const completedPhases = data.phases ? data.phases.filter(p => p.status === 'completado').length : 0;
+        const inProgressPhases = data.phases ? data.phases.filter(p => p.status === 'en_progreso').length : 0;
+        const physicalProgressPct = totalPhases > 0 ? Math.round(((completedPhases + inProgressPhases * 0.5) / totalPhases) * 100) : 0;
+
+        // Etapas con Checklist y Barra de Progreso
         const phasesList = document.getElementById("detail_proj_phases_list");
         if (data.phases && data.phases.length > 0) {
-            phasesList.innerHTML = data.phases.map(ph => {
-                let statusBadge = `<span style="background: #fef3c7; color: #92400e; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800;">PENDIENTE</span>`;
-                if (ph.status === 'en_progreso') statusBadge = `<span style="background: #e0f2fe; color: #0369a1; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800;">EN PROGRESO</span>`;
-                if (ph.status === 'completado') statusBadge = `<span style="background: #dcfce7; color: #166534; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800;">COMPLETADA</span>`;
+            let html = `
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 800; margin-bottom: 6px;">
+                    <span style="color: var(--dalor-navy);">
+                        <i class="fa-solid fa-bars-progress" style="color: var(--dalor-blue);"></i> Avance Físico Global de la Obra:
+                    </span>
+                    <span style="color: ${physicalProgressPct === 100 ? '#059669' : 'var(--dalor-blue)'}; font-size: 13px;">
+                        ${physicalProgressPct}% (${completedPhases} de ${totalPhases} Etapas Culminadas)
+                    </span>
+                </div>
+                <div style="height: 12px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
+                    <div style="width: ${physicalProgressPct}%; height: 100%; background: linear-gradient(90deg, #0284c7 0%, #059669 100%); transition: width 0.4s ease;"></div>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+            `;
+
+            html += data.phases.map((ph, idx) => {
+                const isDone = ph.status === 'completado';
+                const isInProg = ph.status === 'en_progreso';
 
                 return `
-                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-                    <div>
-                        <b>${ph.name}</b> (${ph.duration_days} días - Ppto: $${ph.estimated_cost_usd.toLocaleString()})
-                        <p style="font-size: 11px; color: #64748b; margin-top: 1px;">${ph.description || ''}</p>
+                <div style="background: ${isDone ? '#f0fdf4' : '#ffffff'}; border: 1px solid ${isDone ? '#86efac' : '#cbd5e1'}; border-radius: 8px; padding: 10px 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: ${isDone ? '#059669' : '#002B49'}; color: white; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 2px 6px;">
+                                Etapa ${idx + 1}
+                            </span>
+                            <div>
+                                <b style="font-size: 13px; color: var(--dalor-navy); ${isDone ? 'text-decoration: line-through; color: #166534;' : ''}">${ph.name}</b>
+                                <span style="font-size: 11px; color: #64748b; margin-left: 6px;">(${ph.duration_days} días &bull; Ppto: $${ph.estimated_cost_usd.toLocaleString()})</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            ${isDone 
+                                ? `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'pendiente')" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #64748b;" title="Reabrir Etapa"><i class="fa-solid fa-rotate-left"></i> Reabrir</button>`
+                                : `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'completado')" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669; font-weight: 800;"><i class="fa-solid fa-check"></i> Culminar Etapa</button>`
+                            }
+                            <select onchange="updatePhaseStatus(${data.id}, ${ph.id}, this.value)" style="font-size: 11px; padding: 3px 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700;">
+                                <option value="pendiente" ${ph.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                                <option value="en_progreso" ${ph.status === 'en_progreso' ? 'selected' : ''}>🔄 En Progreso</option>
+                                <option value="completado" ${ph.status === 'completado' ? 'selected' : ''}>✅ Culminada</option>
+                            </select>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        ${statusBadge}
-                        <select onchange="updatePhaseStatus(${data.id}, ${ph.id}, this.value)" style="font-size: 10px; padding: 2px 4px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="pendiente" ${ph.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
-                            <option value="en_progreso" ${ph.status === 'en_progreso' ? 'selected' : ''}>En Progreso</option>
-                            <option value="completado" ${ph.status === 'completado' ? 'selected' : ''}>Completada</option>
-                        </select>
-                    </div>
+                    ${ph.description ? `<p style="font-size: 11px; color: #475569; margin-top: 4px; padding-left: 2px;">${ph.description}</p>` : ''}
                 </div>`;
             }).join('');
+
+            html += `</div>`;
+            phasesList.innerHTML = html;
         } else {
             phasesList.innerHTML = `<span style="font-size: 11px; color: #94a3b8;">No se registraron etapas para este proyecto.</span>`;
         }
@@ -2705,35 +2741,25 @@ async function loadTreasurySummary() {
 // ==============================================================================
 async function checkAuthStatus() {
     const savedUser = localStorage.getItem('dalor_user');
-    if (savedUser) {
+    const savedToken = localStorage.getItem('dalor_token');
+    
+    if (savedUser && savedToken) {
         try {
             currentUser = JSON.parse(savedUser);
+            authToken = savedToken;
             renderUserBadge();
             applyPermissionMap(currentUser);
-            return;
+            return true;
         } catch (e) {
             console.error('Error parsing stored user:', e);
+            localStorage.removeItem('dalor_user');
+            localStorage.removeItem('dalor_token');
         }
     }
     
-    // Si no hay usuario guardado, iniciar con admin por defecto para comodidad
-    currentUser = {
-        id: 1,
-        username: 'admin',
-        full_name: 'Director General / Socio',
-        role_name: 'director',
-        permissions: {
-            comercial_view: true, comercial_edit: true,
-            proyectos_view: true, proyectos_edit: true,
-            finanzas_view: true, finanzas_edit: true,
-            recursos_view: true, recursos_edit: true,
-            gastos_view: true, gastos_edit: true,
-            executive_dashboard: true,
-            mantenimiento_admin: true
-        }
-    };
-    renderUserBadge();
-    applyPermissionMap(currentUser);
+    currentUser = null;
+    authToken = null;
+    return false;
 }
 
 function renderUserBadge() {
@@ -2746,8 +2772,14 @@ function renderUserBadge() {
     if (roleEl) {
         const roleNames = {
             'director': '👑 Director General',
+            'director_general': '👑 Director General',
+            'admin': '👑 Director General',
+            'administracion': '💼 Administración & Finanzas',
+            'administrador_financiero': '💼 Administración & Finanzas',
             'admin_finanzas': '💼 Administración & Finanzas',
-            'ingeniero_obra': '👷 Ing. Residente / Obras',
+            'ingeniero': '👷 Ing. Residente de Obra',
+            'ingeniero_obra': '👷 Ing. Residente de Obra',
+            'campo': '📱 Supervisor de Campo',
             'supervisor_campo': '📱 Supervisor de Campo'
         };
         roleEl.textContent = roleNames[currentUser.role_name] || currentUser.role_name;
@@ -2773,7 +2805,7 @@ function applyPermissionMap(user) {
     // Dropdown Proyectos
     const dProj = document.getElementById('dropdown-proyectos');
     if (dProj) {
-        const canViewProj = isDirectorOrAdmin || p.proyectos_view || p.proyectos_edit || p.project_costing || role.includes('ingeniero') || role.includes('supervisor');
+        const canViewProj = isDirectorOrAdmin || p.proyectos_view || p.proyectos_edit || p.project_costing || role.includes('ingeniero') || role.includes('supervisor') || role.includes('campo');
         dProj.style.display = canViewProj ? 'inline-block' : 'none';
     }
 
@@ -2787,7 +2819,7 @@ function applyPermissionMap(user) {
     // Dropdown Recursos
     const dRec = document.getElementById('dropdown-recursos');
     if (dRec) {
-        const canViewRec = isDirectorOrAdmin || p.recursos_view || p.recursos_edit || p.resources || role.includes('ingeniero') || role.includes('supervisor');
+        const canViewRec = isDirectorOrAdmin || p.recursos_view || p.recursos_edit || p.resources || role.includes('ingeniero') || role.includes('supervisor') || role.includes('campo');
         dRec.style.display = canViewRec ? 'inline-block' : 'none';
     }
 
@@ -2817,8 +2849,31 @@ function fillQuickLogin(username, password) {
     if (pIn) pIn.value = password;
 }
 
+function fillAndSubmitQuickLogin(username, password) {
+    fillQuickLogin(username, password);
+    const form = document.getElementById('loginForm');
+    if (form) {
+        submitLogin(new Event('submit'));
+    }
+}
+
+function redirectUserByRole(user) {
+    if (!user) return;
+    const role = (user.role_name || user.username || '').toLowerCase();
+    
+    if (role.includes('supervisor') || role.includes('campo')) {
+        switchView('pwa', 'gastos');
+    } else if (role.includes('admin') || role.includes('finanzas') || role.includes('administrador')) {
+        switchView('financial', 'finanzas');
+    } else if (role.includes('ingeniero') || role.includes('obra')) {
+        switchView('projects', 'proyectos');
+    } else {
+        switchView('executive', 'gerencia');
+    }
+}
+
 async function submitLogin(event) {
-    event.preventDefault();
+    if (event && event.preventDefault) event.preventDefault();
     const username = document.getElementById('login_username').value.trim();
     const password = document.getElementById('login_password').value;
     const errEl = document.getElementById('loginErrorMessage');
@@ -2850,14 +2905,7 @@ async function submitLogin(event) {
         applyPermissionMap(currentUser);
         closeModal('modalLogin');
 
-        // Redirigir según rol
-        if (currentUser.permissions.executive_dashboard) {
-            switchView('executive', 'gerencia');
-        } else if (currentUser.permissions.finanzas_view) {
-            switchView('financial', 'finanzas');
-        } else {
-            switchView('projects', 'proyectos');
-        }
+        redirectUserByRole(currentUser);
 
     } catch (e) {
         if (errEl) {
@@ -2868,6 +2916,24 @@ async function submitLogin(event) {
 }
 
 function handleLogout() {
+    localStorage.removeItem('dalor_user');
+    localStorage.removeItem('dalor_token');
+    currentUser = null;
+    authToken = null;
+    
+    // Ocultar todas las vistas
+    const allViews = [
+        'executive', 'financial', 'maintenance',
+        'quotations', 'clients', 'services', 
+        'projects', 'dashboard', 
+        'resources', 
+        'pwa', 'manual', 'tree', 'inbox'
+    ];
+    allViews.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.add('hidden');
+    });
+
     const modal = document.getElementById('modalLogin');
     if (modal) modal.classList.remove('hidden');
 }

@@ -1,7 +1,7 @@
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v10";
+const APP_BUILD_VERSION = "2026.09.08.v11";
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
     localStorage.clear();
@@ -2842,42 +2842,13 @@ function applyPermissionMap(user) {
     }
 }
 
-function fillQuickLogin(username, password) {
+async function loginDirectlyAs(username, password) {
     const uIn = document.getElementById('login_username');
     const pIn = document.getElementById('login_password');
     if (uIn) uIn.value = username;
     if (pIn) pIn.value = password;
-}
 
-function fillAndSubmitQuickLogin(username, password) {
-    fillQuickLogin(username, password);
-    const form = document.getElementById('loginForm');
-    if (form) {
-        submitLogin(new Event('submit'));
-    }
-}
-
-function redirectUserByRole(user) {
-    if (!user) return;
-    const role = (user.role_name || user.username || '').toLowerCase();
-    
-    if (role.includes('supervisor') || role.includes('campo')) {
-        switchView('pwa', 'gastos');
-    } else if (role.includes('admin') || role.includes('finanzas') || role.includes('administrador')) {
-        switchView('financial', 'finanzas');
-    } else if (role.includes('ingeniero') || role.includes('obra')) {
-        switchView('projects', 'proyectos');
-    } else {
-        switchView('executive', 'gerencia');
-    }
-}
-
-async function submitLogin(event) {
-    if (event && event.preventDefault) event.preventDefault();
-    const username = document.getElementById('login_username').value.trim();
-    const password = document.getElementById('login_password').value;
     const errEl = document.getElementById('loginErrorMessage');
-
     if (errEl) errEl.classList.add('hidden');
 
     try {
@@ -2903,16 +2874,51 @@ async function submitLogin(event) {
 
         renderUserBadge();
         applyPermissionMap(currentUser);
-        closeModal('modalLogin');
+        
+        const modal = document.getElementById('modalLogin');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
 
         redirectUserByRole(currentUser);
 
     } catch (e) {
         if (errEl) {
-            errEl.textContent = 'Error de conexión con el servidor.';
+            errEl.textContent = 'Error de conexión: ' + e.message;
             errEl.classList.remove('hidden');
         }
     }
+}
+
+function fillQuickLogin(username, password) {
+    loginDirectlyAs(username, password);
+}
+
+function fillAndSubmitQuickLogin(username, password) {
+    loginDirectlyAs(username, password);
+}
+
+function redirectUserByRole(user) {
+    if (!user) return;
+    const role = (user.role_name || user.username || '').toLowerCase();
+    
+    if (role.includes('supervisor') || role.includes('campo')) {
+        switchView('pwa', 'gastos');
+    } else if (role.includes('admin') || role.includes('finanzas') || role.includes('administrador')) {
+        switchView('financial', 'finanzas');
+    } else if (role.includes('ingeniero') || role.includes('obra')) {
+        switchView('projects', 'proyectos');
+    } else {
+        switchView('executive', 'gerencia');
+    }
+}
+
+async function submitLogin(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    const username = document.getElementById('login_username').value.trim();
+    const password = document.getElementById('login_password').value;
+    await loginDirectlyAs(username, password);
 }
 
 function handleLogout() {
@@ -2935,7 +2941,10 @@ function handleLogout() {
     });
 
     const modal = document.getElementById('modalLogin');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+    }
 }
 
 // ==============================================================================

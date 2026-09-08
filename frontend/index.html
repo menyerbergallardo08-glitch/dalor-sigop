@@ -2683,17 +2683,6 @@
         </div>
     </div>
 
-    
-
-            <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" onclick="closeModal('modalUserPermissions')" class="btn-secondary">Cancelar</button>
-                <button type="button" onclick="submitSaveUserPermissions()" class="btn-primary" style="background: #0284c7;">
-                    <i class="fa-solid fa-check"></i> Aplicar y Guardar Permisos
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- RESTO DE MODALES: NUEVA CUENTA POR COBRAR (CxC) -->
     <div id="modalReceivable" class="modal-overlay hidden">
         <div class="modal-content">
@@ -3877,33 +3866,9 @@
         </div>
     </div>
 
-    <!-- Barra Inferior Fija para Móviles (Mobile Bottom Navigation) -->
-    <nav class="mobile-bottom-nav">
-        <button class="mobile-nav-btn" onclick="switchView('pwa', 'gastos')">
-            <i class="fa-solid fa-camera"></i>
-            <span>Captura OCR</span>
-        </button>
-        <button class="mobile-nav-btn" onclick="switchView('inbox', 'gastos')">
-            <i class="fa-solid fa-inbox"></i>
-            <span>Aprobación</span>
-        </button>
-        <button class="mobile-nav-btn" onclick="switchView('projects', 'proyectos')">
-            <i class="fa-solid fa-folder-tree"></i>
-            <span>Obras</span>
-        </button>
-        <button class="mobile-nav-btn" onclick="openResourceSubtab('machinery')">
-            <i class="fa-solid fa-tractor"></i>
-            <span>Maquinaria</span>
-        </button>
-        <button class="mobile-nav-btn" onclick="handleLogout()">
-            <i class="fa-solid fa-user-gear"></i>
-            <span>Cambiar Rol</span>
-        </button>
-    </nav>
     </div><!-- /app-authenticated-shell -->
 
-
     <!-- App Logic -->
-    <script src="app.js?v=20260908v18"></script>
+    <script src="app.js?v=20260908v19"></script>
 </body>
 </html>

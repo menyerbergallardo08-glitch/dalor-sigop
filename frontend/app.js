@@ -1,5 +1,5 @@
-window.APP_BUILD_VERSION = "2026.09.08.v17";
-console.log("--> DALOR SIGO-P INITIALIZED v17");
+window.APP_BUILD_VERSION = "2026.09.08.v18";
+console.log("--> DALOR SIGO-P INITIALIZED v18");
 
 // ==============================================================================
 // 🔐 CONTROLADOR CORPORATIVO DE AUTENTICACIÓN & SESIONES (PRODUCCIÓN)
@@ -219,7 +219,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v16";
+const APP_BUILD_VERSION = "2026.09.08.v18";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();
@@ -373,14 +373,20 @@ async function loadInitialMasterData() {
             fetch(`${API_BASE}/materials/`)
         ]);
 
-        allClients = await resCli.json();
-        allServices = await resSrv.json();
-        allProjects = await resProj.json();
-        allCategories = await resCat.json();
-        allAssets = await resAss.json();
-        allPersonnel = await resPers.json();
+        const cliData = await resCli.json();
+        allClients = Array.isArray(cliData) ? cliData : [];
+        const srvData = await resSrv.json();
+        allServices = Array.isArray(srvData) ? srvData : [];
+        const projData = await resProj.json();
+        allProjects = Array.isArray(projData) ? projData : [];
+        const catData = await resCat.json();
+        allCategories = Array.isArray(catData) ? catData : [];
+        const assData = await resAss.json();
+        allAssets = Array.isArray(assData) ? assData : [];
+        const persData = await resPers.json();
+        allPersonnel = Array.isArray(persData) ? persData : [];
         const matData = await resMat.json();
-        allMaterials = matData.materials || [];
+        allMaterials = Array.isArray(matData.materials) ? matData.materials : (Array.isArray(matData) ? matData : []);
 
         populateSelectDropdowns();
         populatePlanDropdownSelectors();
@@ -390,9 +396,16 @@ async function loadInitialMasterData() {
 }
 
 function populateSelectDropdowns() {
+    const safeClients = Array.isArray(allClients) ? allClients : [];
+    const safeProjects = Array.isArray(allProjects) ? allProjects : [];
+    const safeCategories = Array.isArray(allCategories) ? allCategories : [];
+    const safeAssets = Array.isArray(allAssets) ? allAssets : [];
+    const safeMaterials = Array.isArray(allMaterials) ? allMaterials : [];
+    const safePersonnel = Array.isArray(allPersonnel) ? allPersonnel : [];
+
     // Clientes Selects
     const cliOptions = `<option value="">-- Seleccione Cliente --</option>` + 
-        allClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
+        safeClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
     
     if (document.getElementById("quote_client_id")) document.getElementById("quote_client_id").innerHTML = cliOptions;
     if (document.getElementById("new_proj_client_id")) document.getElementById("new_proj_client_id").innerHTML = cliOptions;
@@ -401,7 +414,7 @@ function populateSelectDropdowns() {
 
     // Proyectos Selects
     const projOptions = `<option value="">-- Gasto General Sede (Sin Proyecto) --</option>` + 
-        allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
+        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
     
     if (document.getElementById("field_project_id")) document.getElementById("field_project_id").innerHTML = projOptions;
     if (document.getElementById("manual_project_id")) document.getElementById("manual_project_id").innerHTML = projOptions;
@@ -410,22 +423,22 @@ function populateSelectDropdowns() {
     if (document.getElementById("rcp_project_id")) document.getElementById("rcp_project_id").innerHTML = projOptions;
     if (document.getElementById("mc_project_id")) document.getElementById("mc_project_id").innerHTML = 
         `<option value="">-- Consumo Interno Taller Central (Gasto Sede) --</option>` + 
-        allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
+        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
 
     if (document.getElementById("modal_target_project_id")) document.getElementById("modal_target_project_id").innerHTML = 
-        allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name} (${p.location})</option>`).join('');
+        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name} (${p.location})</option>`).join('');
     if (document.getElementById("tg_project_id")) document.getElementById("tg_project_id").innerHTML = 
         `<option value="">-- Seleccione Proyecto Aprobado --</option>` +
-        allProjects.map(p => `<option value="${p.id}" data-location="${p.location}">${p.code} - ${p.name} (${p.location})</option>`).join('');
+        safeProjects.map(p => `<option value="${p.id}" data-location="${p.location}">${p.code} - ${p.name} (${p.location})</option>`).join('');
 
     // Categorías Selects
-    const catOptions = allCategories.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
+    const catOptions = safeCategories.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
     if (document.getElementById("field_category_id")) document.getElementById("field_category_id").innerHTML = catOptions;
     if (document.getElementById("manual_category_id")) document.getElementById("manual_category_id").innerHTML = catOptions;
 
     // Activos / Flota
     const assOptions = `<option value="">-- No Aplica --</option>` + 
-        allAssets.map(a => `<option value="${a.id}">${a.asset_code} - ${a.name}</option>`).join('');
+        safeAssets.map(a => `<option value="${a.id}">${a.asset_code} - ${a.name}</option>`).join('');
     if (document.getElementById("field_asset_id")) document.getElementById("field_asset_id").innerHTML = assOptions;
 
     // Vehículos para Guías

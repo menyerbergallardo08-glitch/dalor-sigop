@@ -48,6 +48,21 @@ def get_expenses(
     
     return query.order_by(Expense.expense_date.desc()).all()
 
+@router.get("/categories")
+def get_expense_categories(db: Session = Depends(get_db)):
+    cats = db.query(ExpenseCategory).order_by(ExpenseCategory.code.asc()).all()
+    return [
+        {
+            "id": c.id,
+            "code": c.code,
+            "name": c.name,
+            "parent_id": c.parent_id,
+            "group_type": c.group_type,
+            "monthly_budget_usd": c.monthly_budget_usd
+        }
+        for c in cats
+    ]
+
 # ------------------------------------------------------------------------------
 # 📥 BUZÓN DE COMPROBANTES DE CAMPO PENDIENTES DE VALIDACIÓN
 # ------------------------------------------------------------------------------

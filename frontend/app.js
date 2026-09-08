@@ -3828,3 +3828,251 @@ async function submitGenerateTransferGuide(event) {
         loadToolsList();
     }
 }
+
+// ==============================================================================
+// 🚜 CREACIÓN DE NUEVOS ACTIVOS, VEHÍCULOS, HERRAMIENTAS & MAQUINARIA
+// ==============================================================================
+function openNewAssetModal(presetType = 'herramienta_mayor') {
+    const form = document.getElementById("newAssetForm");
+    if (form) form.reset();
+    
+    const typeSelect = document.getElementById("nass_type");
+    if (typeSelect) {
+        typeSelect.value = presetType;
+    }
+    onAssetTypeChanged();
+    openModal("modalNewAsset");
+}
+
+function openNewToolModal() {
+    openNewAssetModal('herramienta_mayor');
+}
+
+function openNewVehicleModal() {
+    openNewAssetModal('vehiculo');
+}
+
+function onAssetTypeChanged() {
+    const type = document.getElementById("nass_type").value;
+    const title = document.getElementById("newAssetModalTitle");
+    const serialLabel = document.getElementById("nass_serial_label");
+    const odometerLabel = document.getElementById("nass_odometer_label");
+
+    if (type === 'vehiculo') {
+        if (title) title.innerHTML = '<i class="fa-solid fa-truck" style="color: #6366f1;"></i> Registrar Nuevo Vehículo de Flota / Carga';
+        if (serialLabel) serialLabel.textContent = "Placa del Vehículo *";
+        if (odometerLabel) odometerLabel.textContent = "Kilometraje Inicial (Km)";
+    } else if (type === 'maquinaria') {
+        if (title) title.innerHTML = '<i class="fa-solid fa-gears" style="color: #d97706;"></i> Registrar Nueva Maquinaria Pesada / Planta / Compresor';
+        if (serialLabel) serialLabel.textContent = "Serial del Fabricante";
+        if (odometerLabel) odometerLabel.textContent = "Horómetro Inicial (Horas)";
+    } else if (type === 'equipo_medicion') {
+        if (title) title.innerHTML = '<i class="fa-solid fa-scale-unbalanced" style="color: #8b5cf6;"></i> Registrar Nuevo Equipo de Medición / Calibración';
+        if (serialLabel) serialLabel.textContent = "Serial / Certificado Calibración";
+        if (odometerLabel) odometerLabel.textContent = "Usos / Horómetro";
+    } else {
+        if (title) title.innerHTML = '<i class="fa-solid fa-toolbox" style="color: var(--dalor-blue);"></i> Registrar Nueva Herramienta / Equipo';
+        if (serialLabel) serialLabel.textContent = "Serial / Identificador";
+        if (odometerLabel) odometerLabel.textContent = "Horómetro / Contador";
+    }
+}
+
+async function submitCreateAsset(e) {
+    e.preventDefault();
+    const type = document.getElementById("nass_type").value;
+    const code = document.getElementById("nass_code").value.trim();
+    const name = document.getElementById("nass_name").value.trim();
+    const brand = document.getElementById("nass_brand").value.trim();
+    const model = document.getElementById("nass_model").value.trim();
+    const serial = document.getElementById("nass_serial").value.trim();
+    const odometer = parseFloat(document.getElementById("nass_odometer").value) || 0.0;
+    const location = document.getElementById("nass_location").value.trim() || "Sede Central";
+    const custodian = document.getElementById("nass_custodian").value.trim() || "Disponible en Base";
+
+    const payload = {
+        asset_code: code,
+        name: name,
+        asset_type: type,
+        brand: brand,
+        model: model,
+        serial_number: type !== 'vehiculo' ? serial : null,
+        license_plate: type === 'vehiculo' ? serial : null,
+        current_odometer: odometer,
+        service_interval_km: type === 'vehiculo' ? 5000 : 250,
+        current_location: location,
+        current_custodian_name: custodian,
+        is_exclusive: true
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/assets/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al crear activo");
+        }
+
+        closeModal("modalNewAsset");
+        alert(`✅ Activo ${code} (${name}) registrado exitosamente.`);
+        await loadInitialMasterData();
+        loadFleetList();
+        loadToolsList();
+    } catch (err) {
+        alert(`❌ Error: ${err.message}`);
+    }
+}
+
+// ==============================================================================
+// 👷 CREACIÓN DE NUEVOS EMPLEADOS / PERSONAL
+// ==============================================================================
+function openNewPersonnelModal() {
+    const form = document.getElementById("newPersonnelForm");
+    if (form) form.reset();
+    openModal("modalNewPersonnel");
+}
+
+async function submitCreatePersonnel(e) {
+    e.preventDefault();
+    const code = document.getElementById("npers_code").value.trim();
+    const fullName = document.getElementById("npers_name").value.trim();
+    const idNum = document.getElementById("npers_id").value.trim();
+    const role = document.getElementById("npers_role").value;
+    const phone = document.getElementById("npers_phone").value.trim();
+    const roster = document.getElementById("npers_roster").value;
+    const salary = parseFloat(document.getElementById("npers_salary").value) || 0.0;
+    const location = document.getElementById("npers_location").value.trim() || "Sede Central";
+
+    const payload = {
+        code: code,
+        full_name: fullName,
+        identification_id: idNum,
+        role_title: role,
+        phone: phone,
+        roster_type: roster,
+        monthly_salary_usd: salary,
+        current_location: location,
+        status: "disponible_base"
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/personnel/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al registrar empleado");
+        }
+
+        closeModal("modalNewPersonnel");
+        alert(`✅ Empleado ${fullName} (${role}) registrado exitosamente.`);
+        await loadInitialMasterData();
+        loadPersonnelTableList();
+    } catch (err) {
+        alert(`❌ Error: ${err.message}`);
+    }
+}
+
+// ==============================================================================
+// 👤 GESTIÓN Y CREACIÓN DE USUARIOS DE SISTEMA
+// ==============================================================================
+async function openUserManagementModal() {
+    openModal("modalUserManagement");
+    await loadUsersManagementTable();
+}
+
+async function loadUsersManagementTable() {
+    const tbody = document.getElementById("userManagementTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando usuarios...</td></tr>`;
+
+    try {
+        const res = await fetch(`${API_BASE}/auth/users`);
+        if (!res.ok) throw new Error("Error al obtener usuarios");
+        const users = await res.json();
+
+        if (!users || users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">No hay usuarios registrados.</td></tr>`;
+            return;
+        }
+
+        const roleNamesMap = {
+            "director_general": "Director General / Socio",
+            "administrador_financiero": "Administración & Finanzas",
+            "ingeniero_obra": "Ingeniero Residente de Obra",
+            "supervisor_campo": "Supervisor de Campo / Faena"
+        };
+
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td><b style="color: var(--dalor-navy); font-family: monospace;">@${u.username}</b></td>
+                <td><b>${u.full_name}</b></td>
+                <td><span style="color: #64748b; font-size: 11px;">${u.email || '-'}</span></td>
+                <td><span class="badge-tag" style="background: #e0f2fe; color: #0369a1; font-size: 10px;">${roleNamesMap[u.role_name] || u.role_name}</span></td>
+                <td><span style="color: ${u.is_active ? '#059669' : '#ef4444'}; font-weight: 700; font-size: 11px;">${u.is_active ? '● Activo' : '○ Inactivo'}</span></td>
+                <td><span style="color: #64748b; font-size: 11px;">${u.last_login}</span></td>
+            </tr>
+        `).join("");
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 20px;">Error al cargar usuarios: ${err.message}</td></tr>`;
+    }
+}
+
+function openNewUserModal() {
+    const form = document.getElementById("newUserForm");
+    if (form) form.reset();
+    openModal("modalNewUser");
+}
+
+async function submitCreateUser(e) {
+    e.preventDefault();
+    const username = document.getElementById("nusr_username").value.trim();
+    const password = document.getElementById("nusr_password").value.trim();
+    const fullname = document.getElementById("nusr_fullname").value.trim();
+    const email = document.getElementById("nusr_email").value.trim();
+    const role = document.getElementById("nusr_role").value;
+
+    const payload = {
+        username: username,
+        password: password,
+        full_name: fullname,
+        email: email || null,
+        role_name: role,
+        is_active: true,
+        is_superuser: role === "director_general"
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/auth/users`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al crear usuario");
+        }
+
+        closeModal("modalNewUser");
+        alert(`✅ Usuario @${username} (${fullname}) creado exitosamente.`);
+        await loadUsersManagementTable();
+    } catch (err) {
+        alert(`❌ Error: ${err.message}`);
+    }
+}
+
+function openMaintenanceSubtab(subtab) {
+    if (subtab === 'users') {
+        openUserManagementModal();
+    } else {
+        alert(`Módulo de ${subtab} activo.`);
+    }
+}
+

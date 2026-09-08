@@ -1659,16 +1659,22 @@
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button onclick="openTransferGuideModal()" class="btn-primary" style="background-color: #0284c7; color: #ffffff; font-size: 12px; font-weight: 800;">
-                        <i class="fa-solid fa-file-export"></i> 📋 Emitir Guía de Traslado a Obra
+                        <i class="fa-solid fa-file-export"></i> 📋 Emitir Guía de Traslado
                     </button>
                     <button onclick="openMaterialEntryModal()" class="btn-primary" style="background-color: #059669; color: #ffffff; font-size: 12px;">
                         <i class="fa-solid fa-cart-plus"></i> + Entrada Material
                     </button>
-                    <button onclick="openNewToolModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px;">
-                        <i class="fa-solid fa-plus"></i> Nueva Herramienta
+                    <button onclick="openNewMaterialModal()" class="btn-primary" style="background-color: #d97706; color: #ffffff; font-size: 12px;">
+                        <i class="fa-solid fa-boxes-stacked"></i> + Nuevo Material
                     </button>
-                    <button onclick="openNewVehicleModal()" class="btn-primary" style="background-color: #ffffff; color: var(--dalor-navy); font-size: 12px;">
-                        <i class="fa-solid fa-plus"></i> Nuevo Vehículo
+                    <button onclick="openNewAssetModal('herramienta_mayor')" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px; font-weight: 800;">
+                        <i class="fa-solid fa-toolbox"></i> + Nueva Herramienta / Equipo
+                    </button>
+                    <button onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background-color: #ffffff; color: var(--dalor-navy); font-size: 12px; font-weight: 800;">
+                        <i class="fa-solid fa-truck"></i> + Nuevo Vehículo
+                    </button>
+                    <button onclick="openNewPersonnelModal()" class="btn-primary" style="background-color: #10b981; color: #ffffff; font-size: 12px; font-weight: 800;">
+                        <i class="fa-solid fa-user-plus"></i> + Nuevo Empleado
                     </button>
                 </div>
             </div>
@@ -1716,11 +1722,16 @@
             <!-- SUB-TAB 2: CONTROL DE FLOTA & VEHÍCULOS -->
             <div id="subtab-res-fleet" class="hidden">
                 <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-                            <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota de Vehículos & Camionetas
+                            <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota de Vehículos, Camiones & Maquinaria Pesada
                         </h3>
-                        <button onclick="loadFleetList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background: #6366f1; font-size: 12px;">
+                                <i class="fa-solid fa-plus"></i> + Nuevo Vehículo / Maquinaria
+                            </button>
+                            <button onclick="loadFleetList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        </div>
                     </div>
                     <div class="table-wrapper">
                         <table>
@@ -1747,11 +1758,19 @@
             <!-- SUB-TAB 3: CONTROL DE HERRAMIENTAS & EQUIPOS -->
             <div id="subtab-res-tools" class="hidden">
                 <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-                            <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i> Inventario de Herramientas, Maquinaria & Equipos de Medición (908 Ítems)
+                            <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i> Inventario de Herramientas, Soldadoras, Equipos & Maquinaria
                         </h3>
-                        <button onclick="loadToolsList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="openNewAssetModal('herramienta_mayor')" class="btn-primary" style="background: var(--dalor-blue); font-size: 12px;">
+                                <i class="fa-solid fa-plus"></i> + Nueva Herramienta / Equipo
+                            </button>
+                            <button onclick="openNewAssetModal('maquinaria')" class="btn-primary" style="background: #d97706; font-size: 12px;">
+                                <i class="fa-solid fa-plus"></i> + Nueva Máquina Pesada
+                            </button>
+                            <button onclick="loadToolsList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        </div>
                     </div>
                     <div class="table-wrapper">
                         <table>
@@ -1841,11 +1860,16 @@
             <!-- SUB-TAB 4: CONTROL DE PERSONAL & CUADRILLA -->
             <div id="subtab-res-personnel" class="hidden">
                 <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-                            <i class="fa-solid fa-users" style="color: #10b981;"></i> Nómina de Personal & Cuadrillas de Obra
+                            <i class="fa-solid fa-users" style="color: #10b981;"></i> Nómina de Personal, Especialistas & Cuadrillas de Obra
                         </h3>
-                        <button onclick="loadPersonnelTableList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="openNewPersonnelModal()" class="btn-primary" style="background: #10b981; font-size: 12px;">
+                                <i class="fa-solid fa-user-plus"></i> + Nuevo Empleado / Personal
+                            </button>
+                            <button onclick="loadPersonnelTableList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        </div>
                     </div>
                     <div class="table-wrapper">
                         <table>
@@ -3396,6 +3420,246 @@
             </form>
         </div>
     </div>
+
+    <!-- MODAL: NUEVO ACTIVO / EQUIPO / VEHÍCULO / HERRAMIENTA / MAQUINARIA -->
+    <div id="modalNewAsset" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 580px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 id="newAssetModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                    <i class="fa-solid fa-plus-circle" style="color: var(--dalor-blue);"></i> Registrar Nuevo Activo / Equipo / Vehículo
+                </h3>
+                <button onclick="closeModal('modalNewAsset')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="newAssetForm" onsubmit="submitCreateAsset(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Tipo de Activo / Recurso *</label>
+                        <select id="nass_type" class="form-select" required onchange="onAssetTypeChanged()">
+                            <option value="herramienta_mayor">Herramienta Mayor / Industrial</option>
+                            <option value="herramienta_menor">Herramienta Menor</option>
+                            <option value="maquinaria">Maquinaria Pesada / Planta / Compresor</option>
+                            <option value="vehiculo">Vehículo / Camión de Carga</option>
+                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Código de Activo *</label>
+                        <input type="text" id="nass_code" placeholder="Ej: EQ-SOL-05 / VEH-10" class="form-input" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Nombre / Denominación del Equipo *</label>
+                    <input type="text" id="nass_name" placeholder="Ej: Máquina de Soldar Miller Big Blue 500X..." class="form-input" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Marca</label>
+                        <input type="text" id="nass_brand" placeholder="Miller / Lincoln / Bosch / Ford..." class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Modelo / Especificación</label>
+                        <input type="text" id="nass_model" placeholder="Ej: 500X Diésel / GWS 22-230..." class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label" id="nass_serial_label">Serial / Placa</label>
+                        <input type="text" id="nass_serial" placeholder="Serial o Nº de Placa" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label" id="nass_odometer_label">Lectura Inicial (Km / Horas)</label>
+                        <input type="number" step="0.1" id="nass_odometer" value="0" class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Ubicación Inicial *</label>
+                        <input type="text" id="nass_location" value="Sede Central" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Custodio / Responsable</label>
+                        <input type="text" id="nass_custodian" value="Disponible en Base" class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalNewAsset')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: var(--dalor-navy);">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Activo en Sistema
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: NUEVO EMPLEADO / PERSONAL -->
+    <div id="modalNewPersonnel" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 540px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #065f46;">
+                    <i class="fa-solid fa-user-plus" style="color: #10b981;"></i> Registrar Nuevo Empleado / Ficha de Personal
+                </h3>
+                <button onclick="closeModal('modalNewPersonnel')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="newPersonnelForm" onsubmit="submitCreatePersonnel(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Código de Ficha *</label>
+                        <input type="text" id="npers_code" placeholder="PER-005" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Nombre Completo *</label>
+                        <input type="text" id="npers_name" placeholder="Nombres y Apellidos" class="form-input" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cédula / Identificación *</label>
+                        <input type="text" id="npers_id" placeholder="V-18.450.123" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Teléfono de Contacto</label>
+                        <input type="text" id="npers_phone" placeholder="+58 414 0000000" class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cargo / Especialidad *</label>
+                        <select id="npers_role" class="form-select" required>
+                            <option value="Ingeniero Residente">Ingeniero Residente de Obra</option>
+                            <option value="Supervisor de Soldadura y Montaje">Supervisor de Soldadura y Montaje (CWI)</option>
+                            <option value="Soldador Especialista 6G / TIG">Soldador Especialista 6G / TIG</option>
+                            <option value="Armador / Pailero Estructural">Armador / Pailero Estructural</option>
+                            <option value="Operador de Sandblasting & Pintura">Operador de Sandblasting & Pintura</option>
+                            <option value="Chofer / Conductor de Carga">Chofer / Conductor de Carga Pesada</option>
+                            <option value="Custodio de Almacén">Custodio de Almacén Central</option>
+                            <option value="Mecánico de Mantenimiento">Mecánico de Mantenimiento</option>
+                            <option value="Ayudante General de Obra">Ayudante General de Obra</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Tipo de Nómina *</label>
+                        <select id="npers_roster" class="form-select" required>
+                            <option value="guacara_fijo">Nómina Fija Sede Central</option>
+                            <option value="proyecto_obra">Nómina por Obra / Destajo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Salario Mensual ($ USD)</label>
+                        <input type="number" step="0.01" id="npers_salary" value="0.00" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Ubicación Inicial</label>
+                        <input type="text" id="npers_location" value="Sede Central" class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalNewPersonnel')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #059669;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Ficha de Empleado
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: GESTIÓN DE USUARIOS DE SISTEMA -->
+    <div id="modalUserManagement" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 780px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-users-gear" style="color: #0284c7;"></i> Gestión de Usuarios & Cuentas de Acceso
+                    </h3>
+                    <p style="font-size: 11px; color: #64748b;">Administración de cuentas con contraseñas cifradas y roles corporativos.</p>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button onclick="openNewUserModal()" class="btn-primary" style="background: #0284c7; font-size: 12px; font-weight: 800;">
+                        <i class="fa-solid fa-user-plus"></i> + Nuevo Usuario
+                    </button>
+                    <button onclick="closeModal('modalUserManagement')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuario (Login)</th>
+                            <th>Nombre Completo</th>
+                            <th>Correo</th>
+                            <th>Rol Corporativo</th>
+                            <th>Estado</th>
+                            <th>Último Acceso</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userManagementTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CREAR NUEVO USUARIO DE SISTEMA -->
+    <div id="modalNewUser" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                    <i class="fa-solid fa-user-shield" style="color: #0284c7;"></i> Crear Cuenta de Usuario de Sistema
+                </h3>
+                <button onclick="closeModal('modalNewUser')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="newUserForm" onsubmit="submitCreateUser(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Nombre de Usuario (Login) *</label>
+                        <input type="text" id="nusr_username" placeholder="ej: javier.obra" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Contraseña Inicial *</label>
+                        <input type="password" id="nusr_password" placeholder="Contraseña segura" class="form-input" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Nombre Completo y Cargo *</label>
+                    <input type="text" id="nusr_fullname" placeholder="Ej: Ing. Javier Mendoza" class="form-input" required>
+                </div>
+
+                <div>
+                    <label class="form-label">Correo Electrónico Corporativo</label>
+                    <input type="email" id="nusr_email" placeholder="javier@dalor.com.ve" class="form-input">
+                </div>
+
+                <div>
+                    <label class="form-label">Rol y Permisos de Acceso *</label>
+                    <select id="nusr_role" class="form-select" required>
+                        <option value="director_general">Director General / Socio (Acceso Total & BI)</option>
+                        <option value="administrador_financiero">Administración & Finanzas (CxC, CxP, Bancos, Facturas)</option>
+                        <option value="ingeniero_obra">Ingeniero Residente de Obra (Proyectos, APU, Materiales)</option>
+                        <option value="supervisor_campo">Supervisor de Campo / Faena (Captura Móvil, Recursos)</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalNewUser')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: var(--dalor-navy);">
+                        <i class="fa-solid fa-floppy-disk"></i> Crear Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <!-- Footer -->
     <footer style="background: white; border-top: 1px solid #e2e8f0; padding: 12px 0; text-align: center; font-size: 11px; color: #94a3b8; margin-top: auto;">

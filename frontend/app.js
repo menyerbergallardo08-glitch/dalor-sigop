@@ -41,7 +41,7 @@ window.handlePortalLogin = async function(e) {
 
 window.performLogin = async function(username, password) {
     if (!username || !password) {
-        showLoginError('Por favor ingresa usuario y contraseña');
+        showLoginError('Por favor ingresa tu usuario y contraseña');
         return;
     }
 
@@ -52,7 +52,7 @@ window.performLogin = async function(username, password) {
     if (errBox) errBox.style.display = 'none';
     if (btnSubmit) {
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verificando credenciales...';
+        btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Accediendo...';
     }
 
     try {
@@ -76,10 +76,13 @@ window.performLogin = async function(username, password) {
         // Credenciales válidas: Guardar sesión
         currentUser = data.user;
         authToken = data.access_token;
+        sessionStorage.setItem('dalor_user', JSON.stringify(currentUser));
+        sessionStorage.setItem('dalor_token', authToken);
         localStorage.setItem('dalor_user', JSON.stringify(currentUser));
         localStorage.setItem('dalor_token', authToken);
 
         // Desbloquear Shell de Aplicación
+        document.body.classList.add('authenticated');
         const loginScreen = document.getElementById('app-login-screen');
         const authShell = document.getElementById('app-authenticated-shell');
         if (loginScreen) loginScreen.style.display = 'none';
@@ -90,13 +93,13 @@ window.performLogin = async function(username, password) {
         configureMobileNav(currentUser);
         redirectUserByRole(currentUser);
 
-        // Cargar datos del ERP
+        // Cargar datos del ERP en background
         loadInitialMasterData();
 
         showToast(`Bienvenido, ${currentUser.full_name || currentUser.username}`, 'success');
 
     } catch (err) {
-        showLoginError('Error de conexión con el servidor. Verifica tu conexión a internet.');
+        showLoginError('Error de conexión con el servidor. Revisa tu internet.');
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;
@@ -207,10 +210,11 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v12";
+const APP_BUILD_VERSION = "2026.09.08.v13";
+// Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
-    console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
     localStorage.clear();
+    sessionStorage.clear();
     localStorage.setItem("dalor_build_version", APP_BUILD_VERSION);
     localStorage.setItem("dalor_exchange_rate", "850.0");
 }
@@ -3139,11 +3143,13 @@ async function submitLogin(event) {
 }
 
 function handleLogout() {
+    sessionStorage.clear();
     localStorage.removeItem('dalor_user');
     localStorage.removeItem('dalor_token');
     currentUser = null;
     authToken = null;
 
+    document.body.classList.remove('authenticated');
     const loginScreen = document.getElementById('app-login-screen');
     const authShell = document.getElementById('app-authenticated-shell');
     const nav = document.querySelector('.mobile-bottom-nav');
@@ -3152,7 +3158,6 @@ function handleLogout() {
     if (authShell) authShell.style.display = 'none';
     if (nav) nav.style.display = 'none';
 
-    // Limpiar campos del portal de login
     const uIn = document.getElementById('portal_username');
     const pIn = document.getElementById('portal_password');
     if (uIn) uIn.value = '';
@@ -3160,7 +3165,7 @@ function handleLogout() {
     const errBox = document.getElementById('loginErrorMessage');
     if (errBox) errBox.style.display = 'none';
 
-    showToast('Sesión cerrada correctamente', 'info');
+    showToast('Sesión finalizada. Inicia sesión con tus credenciales.', 'info');
 }
 
 // ==============================================================================

@@ -198,6 +198,33 @@ def validate_and_impute_expense(
         "id": exp.id
     }
 
+@router.put("/inbox/{expense_id}/reject")
+def reject_pending_expense(
+    expense_id: int,
+    reason: Optional[str] = Query("Rechazado por Administración"),
+    db: Session = Depends(get_db)
+):
+    exp = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not exp:
+        raise HTTPException(status_code=404, detail="Comprobante no encontrado.")
+    
+    exp.status = "rechazado"
+    exp.alert_flag = True
+    exp.alert_notes = f"RECHAZADO: {reason}"
+    db.commit()
+
+    audit = AuditLog(
+        username="administracion",
+        module="gastos",
+        action="rechazar_gasto",
+        details=f"Comprobante #{exp.id} rechazado. Motivo: {reason}"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {"success": True, "message": f"Comprobante #{exp.id} rechazado correctamente."}
+
+
 # ------------------------------------------------------------------------------
 # 📊 IMPORTADOR MASIVO DE GASTOS DESDE EXCEL / CSV
 # ------------------------------------------------------------------------------

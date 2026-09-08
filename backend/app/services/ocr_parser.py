@@ -16,10 +16,111 @@ try:
 except ImportError:
     WINSDK_AVAILABLE = False
 
+# Intentar importar pytesseract para OCR en Linux / Docker
+try:
+    import pytesseract
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    PYTESSERACT_AVAILABLE = False
+
+# Intentar importar Google Generative AI para Gemini Vision
+try:
+    import google.generativeai as genai
+    GENAI_AVAILABLE = True
+except ImportError:
+    GENAI_AVAILABLE = False
+
 class OCRReceiptParser:
     """
-    Motor de extracción inteligente para facturas en PDF, fotos de tickets y comprobantes
+    Motor de extracción inteligente con Gemini 1.5 Flash Vision e Inteligencia Artificial Multimodal,
+    con respaldo automático en Tesseract OCR (Linux) y Windows OCR (Windows).
     """
+
+    @staticmethod
+    def extract_with_gemini(file_path: str, default_rate: float = 800.0) -> Optional[Dict[str, Any]]:
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or getattr(settings, "GEMINI_API_KEY", "")
+        if not api_key or not GENAI_AVAILABLE:
+            return None
+
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            
+            with Image.open(file_path) as img:
+                img = ImageOps.exif_transpose(img)
+                img = img.convert("RGB")
+                
+                prompt = f"""
+Actúa como un auditor contable experto en facturación venezolana (SENIAT, comprobantes de pago, tickets de máquinas fiscales, notas de entrega y facturas de servicios/combustible).
+Analiza esta imagen y extrae los datos contables en formato JSON válido.
+Tasa de cambio de referencia del sistema: {default_rate} Bs/USD.
+
+Estructura de respuesta JSON esperada:
+{{
+  "detected_vendor": "Nombre comercial o razón social del proveedor",
+  "detected_rif": "RIF o NIF (ej: J-12345678-0 o V-12345678)",
+  "detected_amount_bs": 0.0,
+  "detected_amount_usd": 0.0,
+  "detected_base_usd": 0.0,
+  "detected_tax_usd": 0.0,
+  "suggested_category_code": "1.1",
+  "fuel_liters": null,
+  "raw_summary": "Resumen de los productos o servicios adquiridos"
+}}
+Categorías de partidas Dalor disponibles:
+- 1.1: Materiales (Perfiles, planchas, vigas, tuberías)
+- 1.2: Consumibles de Taller (Discos, electrodos, pintura)
+- 2.1: Equipos & Herramientas
+- 3.1 / 19.0: Combustible (Gasolina, Diésel)
+- 4.1: Mantenimiento de Equipos / Vehículos
+- 5.1: Transporte y Fletes
+- 10.0: Gastos Generales / Honorarios
+- 15.0: Hospedaje / Hoteles
+- 16.0: Alimentos / Viáticos de Cuadrilla
+- 17.0: Suministros Técnicos / Ferretería
+- 20.0: Peajes / Vialidad
+
+Si el monto viene en Bolívares (Bs.), calcula el equivalente en USD dividiendo entre {default_rate}.
+Si el monto viene en USD, calcula el equivalente en Bs multiplicando por {default_rate}.
+Responde ÚNICAMENTE con el bloque JSON sin explicaciones ni markdown adicional.
+"""
+                response = model.generate_content([prompt, img])
+                text_resp = response.text.strip()
+                
+                # Limpiar posibles bloques markdown de código
+                if "```json" in text_resp:
+                    text_resp = text_resp.split("```json")[1].split("```")[0].strip()
+                elif "```" in text_resp:
+                    text_resp = text_resp.split("```")[1].split("```")[0].strip()
+                
+                import json
+                parsed_json = json.loads(text_resp)
+                
+                amt_usd = float(parsed_json.get("detected_amount_usd") or 0.0)
+                amt_bs = float(parsed_json.get("detected_amount_bs") or 0.0)
+                
+                if amt_usd > 0 and amt_bs == 0:
+                    amt_bs = round(amt_usd * default_rate, 2)
+                elif amt_bs > 0 and amt_usd == 0:
+                    amt_usd = round(amt_bs / default_rate, 2)
+                
+                base_usd = float(parsed_json.get("detected_base_usd") or (amt_usd * 0.862 if amt_usd > 0 else 0.0))
+                tax_usd = float(parsed_json.get("detected_tax_usd") or (amt_usd - base_usd if amt_usd > base_usd else 0.0))
+                
+                return {
+                    "detected_vendor": parsed_json.get("detected_vendor") or "Comercio / Proveedor General",
+                    "detected_amount_bs": round(amt_bs, 2),
+                    "detected_amount_usd": round(amt_usd, 2),
+                    "detected_base_usd": round(base_usd, 2),
+                    "detected_tax_usd": round(tax_usd, 2),
+                    "suggested_category_code": str(parsed_json.get("suggested_category_code") or "10.0"),
+                    "suggested_category_id": None,
+                    "fuel_liters": float(parsed_json.get("fuel_liters")) if parsed_json.get("fuel_liters") is not None else None,
+                    "raw_text": f"GEMINI VISION IA: {parsed_json.get('raw_summary', '')}\nProveedor: {parsed_json.get('detected_vendor', '')}\nTotal: ${amt_usd:.2f} USD ({amt_bs:,.2f} Bs)"
+                }
+        except Exception as e:
+            print("Error ejecutando Gemini Vision:", e)
+            return None
 
     @staticmethod
     def extract_text_from_pdf(pdf_path: str) -> str:
@@ -43,17 +144,13 @@ class OCRReceiptParser:
             return OCRReceiptParser.extract_text_from_pdf(file_path)
 
         # 2. Si es una imagen (JPG, PNG, WebP, HEIC)
-        if not WINSDK_AVAILABLE:
-            return ""
-            
         try:
-            # Preprocesamiento con PIL para garantizar compatibilidad con fotos de celular
             clean_temp_path = file_path + "_preprocessed.png"
             with Image.open(file_path) as img:
                 img = ImageOps.exif_transpose(img)
                 img = img.convert("RGB")
                 
-                # Redimensionar si la resolución es muy alta para el motor OCR
+                # Redimensionar si la resolución es muy alta
                 max_dim = max(img.width, img.height)
                 if max_dim > 2000:
                     scale = 2000 / max_dim
@@ -61,27 +158,51 @@ class OCRReceiptParser:
                 
                 img.save(clean_temp_path, "PNG")
 
-            abs_path = os.path.abspath(clean_temp_path)
-            storage_file = await storage.StorageFile.get_file_from_path_async(abs_path)
-            stream = await storage_file.open_async(storage.FileAccessMode.READ)
-            decoder = await imaging.BitmapDecoder.create_async(stream)
-            bitmap = await decoder.get_software_bitmap_async()
-            
-            engine = win_ocr.OcrEngine.try_create_from_user_profile_languages()
-            if engine:
-                result = await engine.recognize_async(bitmap)
-                extracted = result.text or ""
-                
+            # Intento A: PyTesseract (Linux / Docker en Render)
+            if PYTESSERACT_AVAILABLE:
                 try:
-                    if os.path.exists(clean_temp_path):
-                        os.remove(clean_temp_path)
-                except Exception:
-                    pass
+                    with Image.open(clean_temp_path) as pre_img:
+                        extracted = pytesseract.image_to_string(pre_img, lang='spa+eng')
+                        if extracted and len(extracted.strip()) > 5:
+                            try:
+                                if os.path.exists(clean_temp_path):
+                                    os.remove(clean_temp_path)
+                            except Exception:
+                                pass
+                            return extracted
+                except Exception as t_err:
+                    print("PyTesseract OCR error:", t_err)
+
+            # Intento B: Windows WinSDK (Windows local)
+            if WINSDK_AVAILABLE:
+                try:
+                    abs_path = os.path.abspath(clean_temp_path)
+                    storage_file = await storage.StorageFile.get_file_from_path_async(abs_path)
+                    stream = await storage_file.open_async(storage.FileAccessMode.READ)
+                    decoder = await imaging.BitmapDecoder.create_async(stream)
+                    bitmap = await decoder.get_software_bitmap_async()
                     
-                return extracted
+                    engine = win_ocr.OcrEngine.try_create_from_user_profile_languages()
+                    if engine:
+                        result = await engine.recognize_async(bitmap)
+                        extracted = result.text or ""
+                        try:
+                            if os.path.exists(clean_temp_path):
+                                os.remove(clean_temp_path)
+                        except Exception:
+                            pass
+                        return extracted
+                except Exception as w_err:
+                    print("WinSDK OCR error:", w_err)
+
+            try:
+                if os.path.exists(clean_temp_path):
+                    os.remove(clean_temp_path)
+            except Exception:
+                pass
 
         except Exception as e:
-            print("Error en OCR de imagen:", e)
+            print("Error en preprocesamiento de imagen OCR:", e)
             
         return ""
 

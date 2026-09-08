@@ -29,13 +29,16 @@ async def scan_ticket(
     with open(file_path, "wb") as f:
         f.write(contents)
 
+    # 1. Intentar primero con Gemini 1.5 Flash Vision Multimodal
+    gemini_result = OCRReceiptParser.extract_with_gemini(file_path, default_rate=exchange_rate)
+    if gemini_result:
+        return gemini_result
+
+    # 2. Fallback: OCR de texto (Tesseract en Linux / WinSDK en Windows)
     raw_text = simulated_ocr_text
-    
-    # Si no se pasó texto simulado, ejecutar OCR real sobre la imagen guardada
     if not raw_text:
         raw_text = await OCRReceiptParser.extract_text_from_file(file_path)
 
-    # Si aún viene vacío por baja resolución o formato
     if not raw_text:
         raw_text = "TICKET RECIBO DE COMPRA"
 
@@ -45,3 +48,4 @@ async def scan_ticket(
     )
 
     return parsed
+

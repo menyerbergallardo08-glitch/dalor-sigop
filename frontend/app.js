@@ -1,7 +1,7 @@
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v6";
+const APP_BUILD_VERSION = "2026.09.08.v7";
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
     localStorage.clear();
@@ -123,6 +123,7 @@ function switchView(viewName, moduleCategory) {
     if (viewName === 'projects') initProjectPlanningView();
     if (viewName === 'dashboard') loadComparisonDashboard();
     if (viewName === 'resources') switchResourceSubtab('dashboard');
+    if (viewName === 'inbox') loadPendingExpensesInbox();
     if (viewName === 'tree') loadCategoriesTree();
 }
 
@@ -2036,8 +2037,197 @@ async function submitManualExpense(event) {
             const err = await res.json();
             alert("Error: " + (err.detail || JSON.stringify(err)));
         }
+// ==============================================================================
+// 📥 BANDEJA DE APROBACIÓN & VALIDACIÓN DE COMPROBANTES DE CAMPO
+// ==============================================================================
+let allPendingExpenses = [];
+
+async function loadPendingExpensesInbox() {
+    const tbody = document.getElementById("inboxPendingTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando comprobantes pendientes...</td></tr>`;
+
+    try {
+        const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
+        allPendingExpenses = await res.json();
+
+        const badge = document.getElementById("badgeInboxCount");
+        if (badge) {
+            badge.innerText = allPendingExpenses.length;
+            badge.style.display = allPendingExpenses.length > 0 ? "inline-block" : "none";
+        }
+
+        if (allPendingExpenses.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 24px; color: #059669; font-weight: 700;"><i class="fa-solid fa-circle-check" style="font-size: 24px; display: block; margin-bottom: 6px;"></i> ¡Al día! No hay comprobantes pendientes por auditar o aprobar.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = allPendingExpenses.map(exp => {
+            const hasImg = !!exp.receipt_image_path;
+            const imgThumb = hasImg ? `<img src="${exp.receipt_image_path}" style="height: 38px; width: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;" onclick="openValidateExpenseModal(${exp.id})">` : `<span style="font-size: 10px; color: #94a3b8;">Sin foto</span>`;
+
+            return `
+            <tr>
+                <td style="font-size: 11px; white-space: nowrap; color: #64748b;">${exp.date}</td>
+                <td style="text-align: center;">${imgThumb}</td>
+                <td style="font-weight: 700; color: var(--dalor-navy);">${exp.reported_by || 'Campo'}</td>
+                <td><span style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 800;">${exp.project_code || 'SEDE'}</span> ${exp.project_name}</td>
+                <td style="font-weight: 700;">${exp.supplier_vendor || 'Comercio General'}</td>
+                <td style="font-size: 12px; color: #475569;">${exp.description}</td>
+                <td style="font-weight: 900; color: var(--dalor-blue); font-size: 13px;">$${(exp.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td style="font-size: 11px; color: #64748b;">Bs. ${(exp.amount_bs || 0).toLocaleString()}</td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button onclick="openValidateExpenseModal(${exp.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #059669; font-weight: 800;">
+                        <i class="fa-solid fa-magnifying-glass"></i> Auditar & Aprobar
+                    </button>
+                    <button onclick="rejectExpense(${exp.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #e11d48; margin-left: 4px;" title="Rechazar Comprobante">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            `;
+        }).join('');
     } catch (e) {
-        alert("Error al registrar gasto de oficina.");
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar comprobantes pendientes.</td></tr>`;
+    }
+}
+
+function openValidateExpenseModal(expenseId) {
+    const exp = allPendingExpenses.find(e => e.id === expenseId);
+    if (!exp) return;
+
+    document.getElementById("val_expense_id").value = exp.id;
+    document.getElementById("val_supplier_vendor").value = exp.supplier_vendor || "";
+    document.getElementById("val_amount_usd").value = exp.amount_usd || "";
+    document.getElementById("val_amount_bs").value = exp.amount_bs || "";
+    document.getElementById("val_description").value = exp.description || "";
+    document.getElementById("val_expense_type").value = exp.project_id ? "costo_obra" : "gasto_sede";
+
+    // Foto
+    const imgEl = document.getElementById("val_receipt_image");
+    const linkEl = document.getElementById("val_receipt_link");
+    if (imgEl && exp.receipt_image_path) {
+        imgEl.src = exp.receipt_image_path;
+        linkEl.href = exp.receipt_image_path;
+        linkEl.style.display = "inline-block";
+    } else if (imgEl) {
+        imgEl.src = "";
+        linkEl.style.display = "none";
+    }
+
+    // Proyectos Select
+    const projSelect = document.getElementById("val_project_id");
+    if (projSelect) {
+        projSelect.innerHTML = `<option value="">-- Seleccione Proyecto --</option>` + 
+            allProjects.map(p => `<option value="${p.id}" ${p.id === exp.project_id ? 'selected' : ''}>[${p.code}] ${p.name}</option>`).join('');
+    }
+
+    // Categorías Select
+    const catSelect = document.getElementById("val_category_id");
+    if (catSelect) {
+        catSelect.innerHTML = `<option value="">-- Seleccione Partida Dalor --</option>` + 
+            allCategories.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
+    }
+
+    onValExpenseTypeChanged();
+    openModal("modalValidateExpense");
+}
+
+function onValExpenseTypeChanged() {
+    const type = document.getElementById("val_expense_type").value;
+    const projContainer = document.getElementById("val_proj_container");
+    const partnerContainer = document.getElementById("val_partner_container");
+
+    if (type === "costo_obra") {
+        if (projContainer) projContainer.classList.remove("hidden");
+        if (partnerContainer) partnerContainer.classList.add("hidden");
+    } else if (type === "retiro_socio") {
+        if (projContainer) projContainer.classList.add("hidden");
+        if (partnerContainer) partnerContainer.classList.remove("hidden");
+    } else {
+        if (projContainer) projContainer.classList.add("hidden");
+        if (partnerContainer) partnerContainer.classList.add("hidden");
+    }
+}
+
+function calcValBs() {
+    const usd = parseFloat(document.getElementById("val_amount_usd").value) || 0;
+    const bsInput = document.getElementById("val_amount_bs");
+    if (bsInput) bsInput.value = (usd * EXCHANGE_RATE).toFixed(2);
+}
+
+function calcValUsd() {
+    const bs = parseFloat(document.getElementById("val_amount_bs").value) || 0;
+    const usdInput = document.getElementById("val_amount_usd");
+    if (usdInput && EXCHANGE_RATE > 0) usdInput.value = (bs / EXCHANGE_RATE).toFixed(2);
+}
+
+async function submitValidateExpense(event) {
+    event.preventDefault();
+    const expId = document.getElementById("val_expense_id").value;
+    const usd = parseFloat(document.getElementById("val_amount_usd").value) || 0;
+
+    if (usd <= 0) {
+        alert("Por favor ingresa un monto válido en USD.");
+        return;
+    }
+
+    const payload = {
+        expense_type: document.getElementById("val_expense_type").value,
+        category_id: parseInt(document.getElementById("val_category_id").value) || (allCategories[0]?.id || 1),
+        project_id: document.getElementById("val_project_id").value ? parseInt(document.getElementById("val_project_id").value) : null,
+        partner_name: document.getElementById("val_partner_name").value || null,
+        supplier_vendor: document.getElementById("val_supplier_vendor").value,
+        description: document.getElementById("val_description").value,
+        amount_usd: usd,
+        exchange_rate: EXCHANGE_RATE,
+        payment_method: "caja_chica",
+        has_fiscal_invoice: true
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/expenses/inbox/${expId}/validate-impute`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            alert("¡Comprobante auditado, imputado y aprobado exitosamente!");
+            closeModal("modalValidateExpense");
+            loadPendingExpensesInbox();
+            if (typeof loadComparisonDashboard === 'function') loadComparisonDashboard();
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        alert("Error de conexión al aprobar comprobante.");
+    }
+}
+
+async function rejectCurrentExpense() {
+    const expId = document.getElementById("val_expense_id").value;
+    rejectExpense(expId);
+}
+
+async function rejectExpense(expenseId) {
+    const reason = prompt("Indica el motivo del rechazo del comprobante (ej: Foto ilegible, Monto no coincide, etc.):", "Comprobante rechazado por administración");
+    if (!reason) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/expenses/inbox/${expenseId}/reject?reason=${encodeURIComponent(reason)}`, {
+            method: "PUT"
+        });
+        if (res.ok) {
+            alert("Comprobante rechazado.");
+            closeModal("modalValidateExpense");
+            loadPendingExpensesInbox();
+        } else {
+            alert("Error al rechazar comprobante.");
+        }
+    } catch (e) {
+        alert("Error de conexión con el servidor.");
     }
 }
 

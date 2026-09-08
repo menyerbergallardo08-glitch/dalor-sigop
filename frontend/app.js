@@ -1,5 +1,5 @@
-window.APP_BUILD_VERSION = "2026.09.08.v18";
-console.log("--> DALOR SIGO-P INITIALIZED v18");
+window.APP_BUILD_VERSION = "2026.09.08.v19";
+console.log("--> DALOR SIGO-P INITIALIZED v19");
 
 // ==============================================================================
 // 🔐 CONTROLADOR CORPORATIVO DE AUTENTICACIÓN & SESIONES (PRODUCCIÓN)
@@ -126,89 +126,7 @@ function showLoginError(msg) {
 
 window.configureMobileNav = function(user) {
     const nav = document.querySelector('.mobile-bottom-nav');
-    if (!nav) return;
-    if (!user) {
-        nav.style.display = 'none';
-        return;
-    }
-    nav.style.display = 'flex';
-    const role = (user.role_name || user.username || '').toLowerCase();
-    
-    let buttonsHtml = '';
-    if (role.includes('supervisor') || role.includes('campo')) {
-        buttonsHtml = `
-            <button class="mobile-nav-btn active" onclick="switchView('pwa', 'gastos')">
-                <i class="fa-solid fa-camera"></i>
-                <span>Cargar Gasto</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="switchView('projects', 'proyectos')">
-                <i class="fa-solid fa-folder-tree"></i>
-                <span>Obras</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="handleLogout()" style="color: #ef4444;">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Salir</span>
-            </button>
-        `;
-    } else if (role.includes('admin') || role.includes('finanzas')) {
-        buttonsHtml = `
-            <button class="mobile-nav-btn active" onclick="switchView('financial', 'finanzas')">
-                <i class="fa-solid fa-file-invoice-dollar"></i>
-                <span>Finanzas</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="switchView('inbox', 'gastos')">
-                <i class="fa-solid fa-inbox"></i>
-                <span>Aprobación</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="switchView('projects', 'proyectos')">
-                <i class="fa-solid fa-folder-tree"></i>
-                <span>Obras</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="handleLogout()" style="color: #ef4444;">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Salir</span>
-            </button>
-        `;
-    } else if (role.includes('ingeniero') || role.includes('obra')) {
-        buttonsHtml = `
-            <button class="mobile-nav-btn active" onclick="switchView('projects', 'proyectos')">
-                <i class="fa-solid fa-folder-tree"></i>
-                <span>Obras</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="openResourceSubtab('machinery')">
-                <i class="fa-solid fa-tractor"></i>
-                <span>Maquinaria</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="switchView('pwa', 'gastos')">
-                <i class="fa-solid fa-camera"></i>
-                <span>OCR</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="handleLogout()" style="color: #ef4444;">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Salir</span>
-            </button>
-        `;
-    } else { // Director General
-        buttonsHtml = `
-            <button class="mobile-nav-btn active" onclick="switchView('executive', 'gerencia')">
-                <i class="fa-solid fa-chart-pie"></i>
-                <span>PowerBI</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="switchView('projects', 'proyectos')">
-                <i class="fa-solid fa-folder-tree"></i>
-                <span>Obras</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="switchView('financial', 'finanzas')">
-                <i class="fa-solid fa-coins"></i>
-                <span>Finanzas</span>
-            </button>
-            <button class="mobile-nav-btn" onclick="handleLogout()" style="color: #ef4444;">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Salir</span>
-            </button>
-        `;
-    }
-    nav.innerHTML = buttonsHtml;
+    if (nav) nav.remove();
 };
 
 // Aliases para compatibilidad
@@ -219,7 +137,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v18";
+const APP_BUILD_VERSION = "2026.09.08.v19";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();
@@ -2052,10 +1970,15 @@ function handleFileSelected(event) {
 
 async function processOCRFile(file) {
     const badge = document.getElementById("ocrStatusBadge");
+    const btnSubmit = document.getElementById("btnSubmitExpense");
     if (badge) {
         badge.style.background = "#fef3c7";
         badge.style.color = "#92400e";
-        badge.innerText = "Analizando con OCR...";
+        badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analizando con IA de Gemini...';
+    }
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analizando factura con IA de Gemini...';
     }
 
     const formData = new FormData();
@@ -2119,14 +2042,22 @@ async function processOCRFile(file) {
         if (badge) {
             badge.style.background = "#dcfce7";
             badge.style.color = "#166534";
-            badge.innerHTML = `<i class="fa-solid fa-check"></i> Datos Extraídos`;
+            badge.innerHTML = `<i class="fa-solid fa-check"></i> Datos Extraídos con Gemini IA`;
+        }
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Comprobante para Aprobación';
         }
     } catch (e) {
         console.error("Error en lectura OCR:", e);
         if (badge) {
             badge.style.background = "#fee2e2";
             badge.style.color = "#991b1b";
-            badge.innerText = "Lectura Manual";
+            badge.innerText = "Lectura Manual (Ingresa Monto)";
+        }
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Comprobante (Verificar Monto)';
         }
     }
 }
@@ -3038,53 +2969,52 @@ function renderUserBadge() {
 function applyPermissionMap(user) {
     if (!user) return;
     const role = (user.role_name || '').toLowerCase();
-    const p = user.permissions || {};
-    const isDirectorOrAdmin = role.includes('director') || role.includes('admin') || user.is_superuser || user.username === 'director' || user.username === 'admin';
+    const uname = (user.username || '').toLowerCase();
+    const isDirector = uname === 'director' || role.includes('director') || user.is_superuser;
+    const isFinanzas = uname === 'administracion' || role.includes('admin') || role.includes('finanzas') || role.includes('contador');
+    const isIngeniero = uname === 'ingeniero' || role.includes('ingeniero');
+    const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
 
-    // Dropdown Comercial
+    // Dropdown Comercial (Solo Director e Ingeniero)
     const dCom = document.getElementById('dropdown-comercial');
     if (dCom) {
-        const canViewCom = isDirectorOrAdmin || p.comercial_view || p.comercial_edit || p.comercial || p.project_costing || role.includes('ingeniero');
-        dCom.style.display = canViewCom ? 'inline-block' : 'none';
+        dCom.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
     }
 
-    // Dropdown Proyectos
+    // Dropdown Proyectos (Solo Director e Ingeniero)
     const dProj = document.getElementById('dropdown-proyectos');
     if (dProj) {
-        const canViewProj = isDirectorOrAdmin || p.proyectos_view || p.proyectos_edit || p.project_costing || role.includes('ingeniero') || role.includes('supervisor') || role.includes('campo');
-        dProj.style.display = canViewProj ? 'inline-block' : 'none';
+        dProj.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
     }
 
-    // Dropdown Finanzas
+    // Dropdown Finanzas (Director y Administración/Finanzas)
     const dFin = document.getElementById('dropdown-finanzas');
     if (dFin) {
-        const canViewFin = isDirectorOrAdmin || p.finanzas_view || p.finanzas_edit || p.financials;
-        dFin.style.display = canViewFin ? 'inline-block' : 'none';
+        dFin.style.display = (isDirector || isFinanzas) ? 'inline-block' : 'none';
     }
 
-    // Dropdown Recursos
+    // Dropdown Recursos (Director e Ingeniero)
     const dRec = document.getElementById('dropdown-recursos');
     if (dRec) {
-        const canViewRec = isDirectorOrAdmin || p.recursos_view || p.recursos_edit || p.resources || role.includes('ingeniero') || role.includes('supervisor') || role.includes('campo');
-        dRec.style.display = canViewRec ? 'inline-block' : 'none';
+        dRec.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
     }
 
     // Dropdown Gastos (Accesible para todos los usuarios)
     const dGas = document.getElementById('dropdown-gastos');
-    if (dGas) dGas.style.display = 'inline-block';
-
-    // Dropdown Mantenimiento (Solo Administradores y Directores)
-    const dMaint = document.getElementById('dropdown-mantenimiento');
-    if (dMaint) {
-        const canViewMaint = isDirectorOrAdmin || p.mantenimiento_admin || p.system_settings || p.maintenance;
-        dMaint.style.display = canViewMaint ? 'inline-block' : 'none';
+    if (dGas) {
+        dGas.style.display = 'inline-block';
     }
 
-    // Botón PowerBI Directivo
+    // Dropdown Mantenimiento (SOLO Director General / Superuser)
+    const dMaint = document.getElementById('dropdown-mantenimiento');
+    if (dMaint) {
+        dMaint.style.display = isDirector ? 'inline-block' : 'none';
+    }
+
+    // Botón PowerBI Directivo (SOLO Director General)
     const dGer = document.getElementById('dropdown-gerencia');
     if (dGer) {
-        const canViewBI = isDirectorOrAdmin || p.executive_dashboard;
-        dGer.style.display = canViewBI ? 'inline-block' : 'none';
+        dGer.style.display = isDirector ? 'inline-block' : 'none';
     }
 }
 

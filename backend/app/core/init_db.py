@@ -2,7 +2,7 @@ from datetime import datetime
 from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.models.models import (
-    User, Client, Project, Asset, Personnel, Material,
+    User, Client, Project, ProjectPhase, Asset, Personnel, Material,
     ExpenseCategory, CostCenter
 )
 
@@ -228,6 +228,55 @@ def init_db():
                 budget_limit_usd=105500.0
             )
             db.add(project)
+            db.commit()
+
+        # 7. Etapas & Tareas de Obras (Asegurar que el proyecto DAL-2026-001 tenga sus fases operativas)
+        active_proj = db.query(Project).filter(Project.code == "DAL-2026-001").first()
+        if active_proj and db.query(ProjectPhase).filter(ProjectPhase.project_id == active_proj.id).count() == 0:
+            print("--> Seeding 4 industrial phases and task scopes for DAL-2026-001...")
+            phases = [
+                ProjectPhase(
+                    project_id=active_proj.id,
+                    phase_number=1,
+                    name="Fase 1: Movilización, Permisos & Seguridad SHA",
+                    description="Gestión de pases de planta PDVSA/Corpoelec, charla SHA, inspección de EPP, movilización de maquinaria y tolvas al sitio.",
+                    duration_days=10,
+                    estimated_cost_usd=15000.0,
+                    status="completado",
+                    responsible_person="Supervisor de Obra"
+                ),
+                ProjectPhase(
+                    project_id=active_proj.id,
+                    phase_number=2,
+                    name="Fase 2: Desmontaje Mecánico & Corte con Oxicorte",
+                    description="Corte de tolvas deterioradas, retiro de vigas secundarias y ductos de gases de alta temperatura con apoyo de camión grúa.",
+                    duration_days=15,
+                    estimated_cost_usd=25000.0,
+                    status="en_progreso",
+                    responsible_person="Supervisor de Soldadura"
+                ),
+                ProjectPhase(
+                    project_id=active_proj.id,
+                    phase_number=3,
+                    name="Fase 3: Fabricación & Montaje de Estructuras Nuevas",
+                    description="Armado, calderería y soldadura bajo norma ASME/AWS de nuevas tolvas en acero A36 e instalación de vigas de soporte HEA.",
+                    duration_days=25,
+                    estimated_cost_usd=45000.0,
+                    status="pendiente",
+                    responsible_person="Ingeniero Residente"
+                ),
+                ProjectPhase(
+                    project_id=active_proj.id,
+                    phase_number=4,
+                    name="Fase 4: Ensayos No Destructivos (END), Pintura & Entrega",
+                    description="Inspección de soldaduras por líquidos penetrantes y ultrasonido, recubrimiento epóxico anticorrosivo y firma de acta de aceptación.",
+                    duration_days=10,
+                    estimated_cost_usd=20500.0,
+                    status="pendiente",
+                    responsible_person="Gerencia de Calidad"
+                ),
+            ]
+            db.add_all(phases)
             db.commit()
 
         print("--> Dalor SIGO-P Database successfully verified & synced!")

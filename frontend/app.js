@@ -41,7 +41,7 @@ window.handlePortalLogin = async function(e) {
 
 window.performLogin = async function(username, password) {
     if (!username || !password) {
-        showLoginError('Por favor ingresa tu usuario y contraseña');
+        showLoginError('Por favor ingresa usuario y contraseña');
         return;
     }
 
@@ -73,7 +73,7 @@ window.performLogin = async function(username, password) {
             return;
         }
 
-        // Credenciales válidas: Guardar sesión
+        // 1. Guardar sesión
         currentUser = data.user;
         authToken = data.access_token;
         sessionStorage.setItem('dalor_user', JSON.stringify(currentUser));
@@ -81,25 +81,32 @@ window.performLogin = async function(username, password) {
         localStorage.setItem('dalor_user', JSON.stringify(currentUser));
         localStorage.setItem('dalor_token', authToken);
 
-        // Desbloquear Shell de Aplicación
+        // 2. Desbloquear visualmente el ERP de forma garantizada
         document.body.classList.add('authenticated');
         const loginScreen = document.getElementById('app-login-screen');
         const authShell = document.getElementById('app-authenticated-shell');
-        if (loginScreen) loginScreen.style.display = 'none';
-        if (authShell) authShell.style.display = 'block';
+        if (loginScreen) {
+            loginScreen.style.setProperty('display', 'none', 'important');
+        }
+        if (authShell) {
+            authShell.style.setProperty('display', 'block', 'important');
+        }
 
-        renderUserBadge();
-        applyPermissionMap(currentUser);
-        configureMobileNav(currentUser);
-        redirectUserByRole(currentUser);
+        // 3. Configurar interfaz para el usuario
+        try { renderUserBadge(); } catch(e) { console.warn(e); }
+        try { applyPermissionMap(currentUser); } catch(e) { console.warn(e); }
+        try { configureMobileNav(currentUser); } catch(e) { console.warn(e); }
+        try { redirectUserByRole(currentUser); } catch(e) { console.warn(e); }
 
-        // Cargar datos del ERP en background
-        loadInitialMasterData();
+        // 4. Cargar datos maestros sin bloquear la interfaz
+        setTimeout(() => {
+            try { loadInitialMasterData(); } catch(e) { console.warn(e); }
+        }, 50);
 
         showToast(`Bienvenido, ${currentUser.full_name || currentUser.username}`, 'success');
 
     } catch (err) {
-        showLoginError('Error de conexión con el servidor. Revisa tu internet.');
+        showLoginError('Error al conectar con el servidor: ' + err.message);
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;
@@ -210,7 +217,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v13";
+const APP_BUILD_VERSION = "2026.09.08.v14";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();

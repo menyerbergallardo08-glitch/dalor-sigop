@@ -1,8 +1,12 @@
 import hashlib
 import os
 import secrets
-import jwt
+try:
+    from jose import jwt
+except ImportError:
+    import jwt
 from datetime import datetime, timedelta
+
 
 SECRET_KEY = "DALOR_SIGOP_SUPER_SECRET_KEY_2026"
 ALGORITHM = "HS256"

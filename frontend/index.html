@@ -726,14 +726,36 @@
             }
         }
 
-    </style>
+    
+        /* REGLA DE ORO DE SEGURIDAD VISUAL: Si no está autenticado, OCULTAR TODO LO DEMÁS */
+        body:not(.authenticated) .header-top,
+        body:not(.authenticated) .module-bar,
+        body:not(.authenticated) .main-content,
+        body:not(.authenticated) .mobile-bottom-nav,
+        body:not(.authenticated) .modal-overlay:not(#modalLogin) {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        body.authenticated #app-login-screen {
+            display: none !important;
+        }
+
+        /* Inputs móviles de 16px para evitar auto-zoom molesto en iPhone */
+        #portal_username, #portal_password {
+            font-size: 16px !important;
+            touch-action: manipulation;
+        }
+
+</style>
 </head>
 <body>
 
     <!-- ====================================================================
          PORTAL DE ACCESO CORPORATIVO DALOR SIGO-P (ESTÁNDAR DE PRODUCCIÓN)
          ==================================================================== -->
-    <div id="app-login-screen" style="display: flex; min-height: 100vh; width: 100%; background: linear-gradient(135deg, #001a2e 0%, #002b49 50%, #0a3d62 100%); align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
+    <div id="app-login-screen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 100000; background: linear-gradient(135deg, #001a2e 0%, #002b49 60%, #0a3d62 100%); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; overflow-y: auto;">
         <div style="background: #ffffff; width: 100%; max-width: 420px; border-radius: 20px; padding: 32px 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); border: 2px solid #f5b800; box-sizing: border-box;">
             <!-- Logo Corporativo -->
             <div style="text-align: center; margin-bottom: 22px;">
@@ -3867,6 +3889,6 @@
 
 
     <!-- App Logic -->
-    <script src="app.js?v=20260908v12"></script>
+    <script src="app.js?v=20260908v13"></script>
 </body>
 </html>

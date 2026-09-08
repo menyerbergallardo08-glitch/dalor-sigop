@@ -772,13 +772,14 @@
             </div>
 
             <!-- Formulario de Acceso Oficial -->
-            <form id="portalLoginForm" onsubmit="handlePortalLogin(event)" style="display: flex; flex-direction: column; gap: 16px;">
+            <form id="portalLoginForm" onsubmit="handlePortalLogin(event); return false;" action="javascript:void(0);" style="display: flex; flex-direction: column; gap: 16px;">
                 <div>
                     <label style="display: block; font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fa-solid fa-user" style="color: #0072b8; margin-right: 4px;"></i> Usuario / Login *
                     </label>
-                    <input type="text" id="portal_username" placeholder="Ingresa tu usuario (ej. director, campo...)" required autocomplete="username"
-                        style="width: 100%; padding: 14px 16px; font-size: 15px; border: 2px solid #cbd5e1; border-radius: 12px; outline: none; transition: border-color 0.2s; font-weight: 600; color: #0f172a; box-sizing: border-box;"
+                    <input type="text" id="portal_username" placeholder="director / administracion / ingeniero / campo" required autocomplete="username"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
+                        style="width: 100%; padding: 14px 16px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 12px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
                         onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
                 </div>
 
@@ -788,7 +789,8 @@
                     </label>
                     <div style="position: relative; width: 100%;">
                         <input type="password" id="portal_password" placeholder="••••••••" required autocomplete="current-password"
-                            style="width: 100%; padding: 14px 44px 14px 16px; font-size: 15px; border: 2px solid #cbd5e1; border-radius: 12px; outline: none; transition: border-color 0.2s; font-weight: 600; color: #0f172a; box-sizing: border-box;"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
+                            style="width: 100%; padding: 14px 44px 14px 16px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 12px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
                             onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
                         <button type="button" onclick="togglePasswordVisibility('portal_password', this)" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; font-size: 16px; padding: 4px;">
                             <i class="fa-solid fa-eye"></i>
@@ -796,9 +798,8 @@
                     </div>
                 </div>
 
-                <button type="submit" id="btnSubmitPortalLogin"
-                    style="width: 100%; background: #002b49; color: #ffffff; padding: 15px; font-size: 16px; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35); transition: background 0.15s;"
-                    onpointerdown="this.style.transform='scale(0.98)'" onpointerup="this.style.transform='scale(1)'">
+                <button type="button" id="btnSubmitPortalLogin" onclick="handlePortalLogin(event)"
+                    style="width: 100%; background: #002b49; color: #ffffff; padding: 16px; font-size: 16px; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35);">
                     <i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión
                 </button>
             </form>
@@ -808,7 +809,7 @@
                 <button type="button" onclick="toggleDemoProfiles()" style="background: none; border: none; color: #64748b; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: underline;">
                     <i class="fa-solid fa-bolt" style="color: #f5b800;"></i> Atajos Rápidos para Pruebas
                 </button>
-                <div id="demoProfilesGrid" style="display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+                <div id="demoProfilesGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
                     <button type="button" onclick="quickFillAndLogin('director', 'dalor2026')" style="background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left;">
                         👑 Director
                     </button>
@@ -3889,6 +3890,6 @@
 
 
     <!-- App Logic -->
-    <script src="app.js?v=20260908v13"></script>
+    <script src="app.js?v=20260908v14"></script>
 </body>
 </html>

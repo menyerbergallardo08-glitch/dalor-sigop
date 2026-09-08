@@ -1,7 +1,7 @@
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v8";
+const APP_BUILD_VERSION = "2026.09.08.v9";
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
     localStorage.clear();

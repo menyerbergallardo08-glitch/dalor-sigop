@@ -29,10 +29,28 @@ def init_db():
                     is_superuser=True
                 ),
                 User(
+                    username="admin",
+                    full_name="Director General / Socio",
+                    email="admin@dalor.com.ve",
+                    hashed_password=get_password_hash("admin123"),
+                    role_name="director_general",
+                    is_active=True,
+                    is_superuser=True
+                ),
+                User(
                     username="administracion",
                     full_name="Administración & Finanzas",
                     email="admin@dalor.com.ve",
                     hashed_password=get_password_hash("admin2026"),
+                    role_name="administrador_financiero",
+                    is_active=True,
+                    is_superuser=False
+                ),
+                User(
+                    username="finanzas",
+                    full_name="Administración & Finanzas",
+                    email="finanzas@dalor.com.ve",
+                    hashed_password=get_password_hash("finanzas123"),
                     role_name="administrador_financiero",
                     is_active=True,
                     is_superuser=False
@@ -51,6 +69,15 @@ def init_db():
                     full_name="Supervisor de Campo / Faena",
                     email="campo@dalor.com.ve",
                     hashed_password=get_password_hash("campo2026"),
+                    role_name="supervisor_campo",
+                    is_active=True,
+                    is_superuser=False
+                ),
+                User(
+                    username="supervisor",
+                    full_name="Supervisor de Campo / Faena",
+                    email="supervisor@dalor.com.ve",
+                    hashed_password=get_password_hash("campo123"),
                     role_name="supervisor_campo",
                     is_active=True,
                     is_superuser=False

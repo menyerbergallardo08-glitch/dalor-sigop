@@ -254,6 +254,48 @@
                 font-size: 13px;
                 border-bottom: 1px solid #f1f5f9;
             }
+            body {
+                padding-bottom: 65px;
+            }
+            .mobile-bottom-nav {
+                display: flex !important;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #002B49;
+                border-top: 3px solid var(--dalor-gold);
+                z-index: 9999;
+                justify-content: space-around;
+                align-items: center;
+                padding: 6px 4px;
+                box-shadow: 0 -4px 15px rgba(0,0,0,0.3);
+            }
+            .mobile-nav-btn {
+                background: transparent;
+                border: none;
+                color: #94a3b8;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+                font-size: 10px;
+                font-weight: 700;
+                cursor: pointer;
+                padding: 4px 6px;
+                transition: all 0.15s;
+            }
+            .mobile-nav-btn i {
+                font-size: 18px;
+                color: var(--dalor-gold);
+            }
+            .mobile-nav-btn:active, .mobile-nav-btn.active {
+                color: #ffffff;
+            }
+        }
+
+        .mobile-bottom-nav {
+            display: none;
         }
 
         /* Contenido Principal */
@@ -3904,12 +3946,31 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer style="background: white; border-top: 1px solid #e2e8f0; padding: 12px 0; text-align: center; font-size: 11px; color: #94a3b8; margin-top: auto;">
-        DALOR SIGO-P &bull; ERP Modular de Gestión, Finanzas, BI & Mantenimiento
-    </footer>
+    <!-- Barra Inferior Fija para Móviles (Mobile Bottom Navigation) -->
+    <nav class="mobile-bottom-nav">
+        <button class="mobile-nav-btn" onclick="switchView('pwa', 'gastos')">
+            <i class="fa-solid fa-camera"></i>
+            <span>Captura OCR</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="switchView('inbox', 'gastos')">
+            <i class="fa-solid fa-inbox"></i>
+            <span>Aprobación</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="switchView('projects', 'proyectos')">
+            <i class="fa-solid fa-folder-tree"></i>
+            <span>Obras</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="openResourceSubtab('machinery')">
+            <i class="fa-solid fa-tractor"></i>
+            <span>Maquinaria</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="handleLogout()">
+            <i class="fa-solid fa-user-gear"></i>
+            <span>Cambiar Rol</span>
+        </button>
+    </nav>
 
     <!-- App Logic -->
-    <script src="app.js?v=20260908v8"></script>
+    <script src="app.js?v=20260908v9"></script>
 </body>
 </html>

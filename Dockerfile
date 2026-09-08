@@ -20,8 +20,9 @@ COPY frontend/ ./frontend/
 
 WORKDIR /app/backend
 
-# Exponer el puerto por defecto
-EXPOSE 8005
+# Exponer puertos comunes
+EXPOSE 8000 8005 10000
 
-# Iniciar servidor Uvicorn
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8005"]
+# Iniciar servidor Uvicorn usando el puerto dinámico asignado por Render ($PORT) o 8000 por defecto
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+

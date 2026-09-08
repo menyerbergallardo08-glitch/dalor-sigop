@@ -1,28 +1,11 @@
 services:
   - type: web
-    name: dalor-sigop-erp
+    name: dalor-sigop
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: starter
-    region: oregon
+    plan: free
     envVars:
-      - key: PORT
-        value: 8005
       - key: ENVIRONMENT
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: dalor-postgres-db
-          property: connectionString
-    disk:
-      name: dalor-data
-      mountPath: /app/backend/uploads
-      sizeGB: 10
 
-databases:
-  - name: dalor-postgres-db
-    databaseName: dalor_sigop
-    user: dalor_admin
-    region: oregon
-    plan: free
 

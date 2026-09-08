@@ -1,7 +1,7 @@
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v5";
+const APP_BUILD_VERSION = "2026.09.08.v6";
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
     localStorage.clear();
@@ -697,7 +697,7 @@ function openResourceSubtab(subtabName) {
 }
 
 function switchResourceSubtab(subtabName) {
-    const allSubtabs = ['dashboard', 'fleet', 'tools', 'materials', 'personnel'];
+    const allSubtabs = ['dashboard', 'fleet', 'machinery', 'tools', 'materials', 'personnel'];
     allSubtabs.forEach(tab => {
         const el = document.getElementById(`subtab-res-${tab}`);
         const btn = document.getElementById(`tabbtn-res-${tab}`);
@@ -712,6 +712,7 @@ function switchResourceSubtab(subtabName) {
 
     if (subtabName === 'dashboard') loadResourceDashboard();
     if (subtabName === 'fleet') loadFleetList();
+    if (subtabName === 'machinery') loadMachineryList();
     if (subtabName === 'tools') loadToolsList();
     if (subtabName === 'materials') loadMaterialsList();
     if (subtabName === 'personnel') loadPersonnelTableList();
@@ -895,16 +896,82 @@ async function submitCreateVehicle(event) {
 }
 
 // ----------------------------------------------------
-// 4. CONTROL DE HERRAMIENTAS & EQUIPOS (PESTAÑA EXCLUSIVA)
+// 4. CONTROL DE MAQUINARIA PESADA & PLANTAS (PESTAÑA EXCLUSIVA)
+// ----------------------------------------------------
+async function loadMachineryList() {
+    const tbody = document.getElementById("machineryTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando maquinaria pesada y plantas...</td></tr>`;
+
+    try {
+        const res = await fetch(`${API_BASE}/assets/`);
+        const assets = await res.json();
+        const machinery = assets.filter(a => ['maquinaria', 'planta', 'generador', 'compresor'].includes(a.asset_type));
+
+        if (machinery.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No hay maquinaria pesada o plantas registradas.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = machinery.map(m => {
+            const inBase = m.status === 'disponible_base' || !m.current_project_id;
+            const isMaint = m.maintenance_status === 'en_mantenimiento';
+            return `
+            <tr>
+                <td style="font-weight: 800; color: #ea580c; font-family: monospace;">${m.asset_code}</td>
+                <td style="font-weight: 700; color: var(--dalor-navy);">${m.name}</td>
+                <td>${m.brand || ''} ${m.model ? `(${m.model})` : ''}</td>
+                <td style="font-family: monospace; font-size: 11px;">${m.serial_number || '-'}</td>
+                <td style="font-weight: 800; color: #0284c7;">${(m.current_odometer || 0).toLocaleString()} Hrs/Km</td>
+                <td>
+                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${isMaint ? 'background: #fee2e2; color: #991b1b;' : 'background: #dcfce7; color: #166534;'}">
+                        ${isMaint ? 'EN TALLER / MTTO' : 'OPERATIVO'}
+                    </span>
+                </td>
+                <td>
+                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
+                        ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA / FAENA'}
+                    </span>
+                </td>
+                <td>${m.current_location || 'Sede Central'}</td>
+                <td>${m.current_custodian_name || 'Disponible'}</td>
+                <td style="text-align: center; white-space: nowrap;">
+                    ${inBase ? `
+                        <button onclick="openAssignModal('asset', ${m.id}, '${m.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; background: #ea580c;">
+                            Asignar a Faena
+                        </button>
+                    ` : `
+                        <button onclick="openAssignModal('asset', ${m.id}, '${m.name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
+                            <i class="fa-solid fa-arrows-split-up-and-left"></i>
+                        </button>
+                        <button onclick="returnResourceToBase('asset', ${m.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
+                            <i class="fa-solid fa-warehouse"></i>
+                        </button>
+                    `}
+                    <button onclick="deleteAssetItem(${m.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Maquinaria">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar maquinaria pesada.</td></tr>`;
+    }
+}
+
+// ----------------------------------------------------
+// 5. CONTROL DE HERRAMIENTAS & EQUIPOS (PESTAÑA EXCLUSIVA)
 // ----------------------------------------------------
 async function loadToolsList() {
     const tbody = document.getElementById("toolsTableBody");
+    if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de herramientas...</td></tr>`;
 
     try {
         const res = await fetch(`${API_BASE}/assets/`);
         const assets = await res.json();
-        const tools = assets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
+        const nonTools = ['vehiculo', 'camioneta', 'camion', 'remolque', 'maquinaria', 'planta', 'generador', 'compresor'];
+        const tools = assets.filter(a => !nonTools.includes(a.asset_type));
 
         if (tools.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;">No hay herramientas registradas.</td></tr>`;
@@ -917,7 +984,7 @@ async function loadToolsList() {
             <tr>
                 <td style="font-weight: 800; color: var(--dalor-blue);">${t.asset_code}</td>
                 <td style="font-weight: 700; color: var(--dalor-navy);">${t.name}</td>
-                <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${t.asset_type.toUpperCase()}</span></td>
+                <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${(t.asset_type || 'HERRAMIENTA').toUpperCase().replace('_', ' ')}</span></td>
                 <td>${t.brand || ''} ${t.model ? `(${t.model})` : ''}</td>
                 <td style="font-family: monospace; font-size: 11px;">${t.serial_number || '-'}</td>
                 <td>
@@ -3417,17 +3484,25 @@ async function loadMaterialsList() {
     try {
         const res = await fetch(`${API_BASE}/materials/`);
         const data = await res.json();
-        allMaterials = data.materials || [];
+        allMaterials = data.materials || (Array.isArray(data) ? data : []);
 
         const totalItemsEl = document.getElementById("matTotalItemsCount");
         const totalValEl = document.getElementById("matTotalValuationUsd");
-        if (totalItemsEl) totalItemsEl.innerText = data.total_items || allMaterials.length;
-        if (totalValEl) totalValEl.innerText = `$${(data.total_inventory_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`;
+        if (totalItemsEl) totalItemsEl.innerText = data.total_items !== undefined ? data.total_items : allMaterials.length;
+        if (totalValEl) {
+            const val = data.total_inventory_usd !== undefined ? data.total_inventory_usd : allMaterials.reduce((acc, m) => acc + (m.stock_quantity * m.unit_cost_usd || 0), 0);
+            totalValEl.innerText = `$${val.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`;
+        }
 
         renderMaterialsTable(allMaterials);
-        populateSelectDropdowns();
+        try {
+            if (typeof populateSelectDropdowns === 'function') populateSelectDropdowns();
+        } catch (errPop) {
+            console.warn("Dropdown populator warning:", errPop);
+        }
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar inventario de materiales.</td></tr>`;
+        console.error("Error loading materials:", e);
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar inventario de materiales: ${e.message}</td></tr>`;
     }
 }
 

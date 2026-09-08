@@ -1667,13 +1667,19 @@
                     <button onclick="openMaterialEntryModal()" class="btn-primary" style="background-color: #059669; color: #ffffff; font-size: 12px;">
                         <i class="fa-solid fa-cart-plus"></i> + Entrada Material
                     </button>
-                    <button onclick="openNewMaterialModal()" class="btn-primary" style="background-color: #d97706; color: #ffffff; font-size: 12px;">
+                    <button onclick="openGuiaTrasladoModal()" class="btn-primary" style="background-color: #0284c7; color: #ffffff; font-size: 12px; font-weight: 800;">
+                        <i class="fa-solid fa-file-signature"></i> Emitir Guía de Traslado
+                    </button>
+                    <button onclick="openNewMaterialModal()" class="btn-primary" style="background-color: #d97706; color: #ffffff; font-size: 12px; font-weight: 800;">
                         <i class="fa-solid fa-boxes-stacked"></i> + Nuevo Material
                     </button>
                     <button onclick="openNewAssetModal('herramienta_mayor')" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px; font-weight: 800;">
-                        <i class="fa-solid fa-toolbox"></i> + Nueva Herramienta / Equipo
+                        <i class="fa-solid fa-toolbox"></i> + Nueva Herramienta
                     </button>
-                    <button onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background-color: #ffffff; color: var(--dalor-navy); font-size: 12px; font-weight: 800;">
+                    <button onclick="openNewAssetModal('maquinaria')" class="btn-primary" style="background-color: #ea580c; color: #ffffff; font-size: 12px; font-weight: 800;">
+                        <i class="fa-solid fa-tractor"></i> + Nueva Maquinaria
+                    </button>
+                    <button onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background-color: #6366f1; color: #ffffff; font-size: 12px; font-weight: 800;">
                         <i class="fa-solid fa-truck"></i> + Nuevo Vehículo
                     </button>
                     <button onclick="openNewPersonnelModal()" class="btn-primary" style="background-color: #10b981; color: #ffffff; font-size: 12px; font-weight: 800;">
@@ -1685,19 +1691,22 @@
             <!-- Pestañas de Submódulo (Tabs) -->
             <div class="subtabs-nav">
                 <button class="subtab-btn active" id="tabbtn-res-dashboard" onclick="switchResourceSubtab('dashboard')">
-                    <i class="fa-solid fa-chart-pie" style="color: #f59e0b;"></i> Dashboard de Ubicación & Resumen
+                    <i class="fa-solid fa-chart-pie" style="color: #f59e0b;"></i> Dashboard & Resumen
                 </button>
                 <button class="subtab-btn" id="tabbtn-res-fleet" onclick="switchResourceSubtab('fleet')">
-                    <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Control de Flota & Vehículos
+                    <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota & Vehículos
+                </button>
+                <button class="subtab-btn" id="tabbtn-res-machinery" onclick="switchResourceSubtab('machinery')">
+                    <i class="fa-solid fa-tractor" style="color: #ea580c;"></i> Maquinaria Pesada & Plantas
                 </button>
                 <button class="subtab-btn" id="tabbtn-res-tools" onclick="switchResourceSubtab('tools')">
-                    <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i> Control de Herramientas & Equipos
+                    <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i> Herramientas & Equipos
                 </button>
                 <button class="subtab-btn" id="tabbtn-res-materials" onclick="switchResourceSubtab('materials')">
-                    <i class="fa-solid fa-boxes-stacked" style="color: #d97706;"></i> Inventario de Materiales & Consumibles
+                    <i class="fa-solid fa-boxes-stacked" style="color: #d97706;"></i> Inventario de Materiales
                 </button>
                 <button class="subtab-btn" id="tabbtn-res-personnel" onclick="switchResourceSubtab('personnel')">
-                    <i class="fa-solid fa-users" style="color: #10b981;"></i> Control de Personal & Cuadrilla
+                    <i class="fa-solid fa-users" style="color: #10b981;"></i> Personal & Cuadrillas
                 </button>
             </div>
 
@@ -1727,11 +1736,11 @@
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-                            <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota de Vehículos, Camiones & Maquinaria Pesada
+                            <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota de Vehículos, Camionetas & Camiones
                         </h3>
                         <div style="display: flex; gap: 8px;">
                             <button onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background: #6366f1; font-size: 12px;">
-                                <i class="fa-solid fa-plus"></i> + Nuevo Vehículo / Maquinaria
+                                <i class="fa-solid fa-plus"></i> + Nuevo Vehículo
                             </button>
                             <button onclick="loadFleetList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
                         </div>
@@ -1758,19 +1767,55 @@
                 </div>
             </div>
 
+            <!-- SUB-TAB: MAQUINARIA PESADA & PLANTAS -->
+            <div id="subtab-res-machinery" class="hidden">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+                                <i class="fa-solid fa-tractor" style="color: #ea580c;"></i> Maquinaria Pesada, Compresores, Plantas & Soldadoras Diésel
+                            </h3>
+                            <p style="font-size: 11px; color: #64748b;">Control de equipos industriales mayores, horómetros, ubicación y custodia.</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="openNewAssetModal('maquinaria')" class="btn-primary" style="background: #ea580c; font-size: 12px;">
+                                <i class="fa-solid fa-plus"></i> + Nueva Maquinaria / Planta
+                            </button>
+                            <button onclick="loadMachineryList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Maquinaria / Equipo Mayor</th>
+                                    <th>Marca / Modelo</th>
+                                    <th>Serial / Chasis</th>
+                                    <th>Horómetro / Odómetro</th>
+                                    <th>Estado Mantenimiento</th>
+                                    <th>Estado Obra</th>
+                                    <th>Ubicación Actual</th>
+                                    <th>Custodio / Operador</th>
+                                    <th style="text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="machineryTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- SUB-TAB 3: CONTROL DE HERRAMIENTAS & EQUIPOS -->
             <div id="subtab-res-tools" class="hidden">
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-                            <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i> Inventario de Herramientas, Soldadoras, Equipos & Maquinaria
+                            <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i> Inventario de Herramientas & Equipos Operativos
                         </h3>
                         <div style="display: flex; gap: 8px;">
                             <button onclick="openNewAssetModal('herramienta_mayor')" class="btn-primary" style="background: var(--dalor-blue); font-size: 12px;">
                                 <i class="fa-solid fa-plus"></i> + Nueva Herramienta / Equipo
-                            </button>
-                            <button onclick="openNewAssetModal('maquinaria')" class="btn-primary" style="background: #d97706; font-size: 12px;">
-                                <i class="fa-solid fa-plus"></i> + Nueva Máquina Pesada
                             </button>
                             <button onclick="loadToolsList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
                         </div>
@@ -3670,6 +3715,6 @@
     </footer>
 
     <!-- App Logic -->
-    <script src="app.js?v=20260908v5"></script>
+    <script src="app.js?v=20260908v6"></script>
 </body>
 </html>

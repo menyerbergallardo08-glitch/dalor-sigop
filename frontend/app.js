@@ -1,3 +1,14 @@
+// ==============================================================================
+// 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
+// ==============================================================================
+const APP_BUILD_VERSION = "2026.09.08.v5";
+if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
+    console.warn("--> Nueva versión detectada: purgando caché y variables locales obsoletas...");
+    localStorage.clear();
+    localStorage.setItem("dalor_build_version", APP_BUILD_VERSION);
+    localStorage.setItem("dalor_exchange_rate", "800.0");
+}
+
 const API_BASE = window.location.origin + "/api/v1";
 let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 800.0;
 

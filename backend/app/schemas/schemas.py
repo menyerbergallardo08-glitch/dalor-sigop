@@ -201,6 +201,8 @@ class OCRExtractResult(BaseModel):
     suggested_category_id: Optional[int] = None
     fuel_liters: Optional[float] = None
     raw_text: Optional[str] = None
+    image_url: Optional[str] = None
+    is_tax_exempt: Optional[bool] = False
 
 class SplitExpenseItem(BaseModel):
     category_id: int
@@ -219,6 +221,9 @@ class ExpenseCreate(BaseModel):
     amount_bs: float
     exchange_rate: float = 800.0
     amount_usd: float
+    base_amount_usd: Optional[float] = 0.0
+    tax_amount_usd: Optional[float] = 0.0
+    is_tax_exempt: Optional[bool] = False
     fuel_liters: Optional[float] = None
     odometer_at_fueling: Optional[float] = None
     payment_method: str = "caja_chica"
@@ -239,6 +244,9 @@ class ExpenseOut(BaseModel):
     amount_bs: float
     exchange_rate: float
     amount_usd: float
+    base_amount_usd: Optional[float] = 0.0
+    tax_amount_usd: Optional[float] = 0.0
+    is_tax_exempt: Optional[bool] = False
     fuel_liters: Optional[float]
     price_per_liter_usd: Optional[float]
     odometer_at_fueling: Optional[float]

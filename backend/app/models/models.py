@@ -308,6 +308,9 @@ class Expense(Base):
     amount_bs = Column(Float, nullable=False)
     exchange_rate = Column(Float, nullable=False)
     amount_usd = Column(Float, nullable=False)
+    base_amount_usd = Column(Float, default=0.0)
+    tax_amount_usd = Column(Float, default=0.0)
+    is_tax_exempt = Column(Boolean, default=False)
     
     fuel_liters = Column(Float, nullable=True)
     price_per_liter_usd = Column(Float, nullable=True)

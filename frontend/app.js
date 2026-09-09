@@ -1,3 +1,52 @@
+
+// ==============================================================================
+// 📷 COMPRESIÓN DE IMÁGENES CLIENTE PARA OCR INSTANTÁNEO (<1s EN CELULARES)
+// ==============================================================================
+function compressImageForOCR(file, maxWidth = 1280, maxHeight = 1280, quality = 0.82) {
+    return new Promise((resolve) => {
+        if (!file || !file.type || !file.type.startsWith('image/')) {
+            return resolve(file);
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth || height > maxHeight) {
+                    if (width > height) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    } else {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob(function(blob) {
+                    if (blob && blob.size < file.size) {
+                        const compressed = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                            type: "image/jpeg",
+                            lastModified: Date.now()
+                        });
+                        resolve(compressed);
+                    } else {
+                        resolve(file);
+                    }
+                }, "image/jpeg", quality);
+            };
+            img.onerror = function() { resolve(file); };
+            img.src = e.target.result;
+        };
+        reader.onerror = function() { resolve(file); };
+        reader.readAsDataURL(file);
+    });
+}
+
 // Purga obligatoria de localStorage para garantizar que SIEMPRE aparezca la pantalla de login
 localStorage.removeItem('dalor_user');
 localStorage.removeItem('dalor_token');
@@ -55,7 +104,7 @@ window.onValTaxChanged = function() {
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.08.v22";
+window.APP_BUILD_VERSION = "2026.09.08.v23";
 console.log("--> DALOR SIGO-P INITIALIZED v22");
 
 // ==============================================================================
@@ -193,7 +242,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v22";
+const APP_BUILD_VERSION = "2026.09.08.v23";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();
@@ -308,7 +357,7 @@ function switchView(viewName, moduleCategory) {
         'quotations', 'clients', 'services', 
         'projects', 'dashboard', 
         'resources', 
-        'pwa', 'manual', 'tree', 'inbox'
+        'pwa', 'manual', 'tree', 'inbox', 'expenses-log'
     ];
 
     allViews.forEach(v => {
@@ -334,6 +383,7 @@ function switchView(viewName, moduleCategory) {
     if (viewName === 'resources') switchResourceSubtab('dashboard');
     if (viewName === 'inbox') loadPendingExpensesInbox();
     if (viewName === 'tree') loadCategoriesTree();
+    if (viewName === 'expenses-log') loadExpensesLog();
 }
 
 // Carga Inicial de Datos Maestros
@@ -938,13 +988,26 @@ async function viewProjectDetails(projectId) {
 
         document.getElementById("detail_proj_scope").innerText = data.scope_of_work || "No se ha definido descripción técnica del alcance para este proyecto.";
 
-        // Cálculo de Avance Físico Global
+        // Cálculo de Avance Físico Global Exacto basado en Tareas y Etapas
+        let totalAllTasks = 0;
+        let completedAllTasks = 0;
+        if (data.phases) {
+            data.phases.forEach(ph => {
+                const rawTasks = (ph.description || "").split(";").map(t => t.trim()).filter(Boolean);
+                if (rawTasks.length > 0) {
+                    totalAllTasks += rawTasks.length;
+                    completedAllTasks += rawTasks.filter(t => t.startsWith("[x]") || t.startsWith("[X]")).length;
+                } else {
+                    totalAllTasks += 1;
+                    if (ph.status === 'completado') completedAllTasks += 1;
+                }
+            });
+        }
         const totalPhases = data.phases ? data.phases.length : 0;
         const completedPhases = data.phases ? data.phases.filter(p => p.status === 'completado').length : 0;
-        const inProgressPhases = data.phases ? data.phases.filter(p => p.status === 'en_progreso').length : 0;
-        const physicalProgressPct = totalPhases > 0 ? Math.round(((completedPhases + inProgressPhases * 0.5) / totalPhases) * 100) : 0;
+        const physicalProgressPct = totalAllTasks > 0 ? Math.round((completedAllTasks / totalAllTasks) * 100) : 0;
 
-        // Etapas con Checklist y Barra de Progreso
+        // Etapas con Checklist Interactivo y Barra de Progreso Dinámica
         const phasesList = document.getElementById("detail_proj_phases_list");
         if (data.phases && data.phases.length > 0) {
             let html = `
@@ -954,7 +1017,7 @@ async function viewProjectDetails(projectId) {
                         <i class="fa-solid fa-bars-progress" style="color: var(--dalor-blue);"></i> Avance Físico Global de la Obra:
                     </span>
                     <span style="color: ${physicalProgressPct === 100 ? '#059669' : 'var(--dalor-blue)'}; font-size: 13px;">
-                        ${physicalProgressPct}% (${completedPhases} de ${totalPhases} Etapas Culminadas)
+                        ${physicalProgressPct}% (${completedAllTasks} de ${totalAllTasks} Tareas Culminadas &bull; ${completedPhases} de ${totalPhases} Etapas)
                     </span>
                 </div>
                 <div style="height: 12px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
@@ -972,26 +1035,44 @@ async function viewProjectDetails(projectId) {
                 const prevPhases = data.phases.slice(0, idx);
                 const isUnlocked = prevPhases.every(p => p.status === 'completado');
 
-                // Tareas desglosadas por etapa
+                // Tareas desglosadas por etapa con checkboxes interactivos
                 let tasksHtml = '';
-                if (ph.description) {
-                    const tasksList = ph.description.split(/[,;\.]\s+/).filter(t => t.trim().length > 3);
-                    if (tasksList.length > 0) {
-                        tasksHtml = `
-                        <div style="margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 6px;">
+                const rawDesc = ph.description || "";
+                let tasksList = rawDesc.split(";").map(t => t.trim()).filter(Boolean);
+                if (tasksList.length === 0 && rawDesc.trim().length > 0) {
+                    tasksList = rawDesc.split("\n").map(t => t.trim()).filter(Boolean);
+                }
+
+                if (tasksList.length > 0) {
+                    const doneTasksCount = tasksList.filter(t => t.startsWith('[x]') || t.startsWith('[X]')).length;
+                    tasksHtml = `
+                    <div style="margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">
-                                <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas / Actividades de la Etapa:
+                                <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas / Actividades Asignadas (Tilda para avanzar):
                             </span>
-                            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                                ${tasksList.map((t, tIdx) => `
-                                    <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: ${isDone ? '#166534' : '#334155'};">
-                                        <i class="fa-solid ${isDone ? 'fa-square-check' : (isInProg ? 'fa-spinner fa-spin' : 'fa-square')}" style="color: ${isDone ? '#059669' : (isInProg ? '#0284c7' : '#94a3b8')};"></i>
-                                        <span><b>${idx + 1}.${tIdx + 1}</b> ${t}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>`;
-                    }
+                            <span style="font-size: 10px; font-weight: 700; color: ${isDone ? '#059669' : '#0284c7'};">
+                                ${doneTasksCount} de ${tasksList.length} completadas
+                            </span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            ${tasksList.map((t, tIdx) => {
+                                const isChecked = t.startsWith("[x]") || t.startsWith("[X]");
+                                let cleanName = t;
+                                for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
+                                    if (cleanName.startsWith(pref)) cleanName = cleanName.substring(pref.length).trim();
+                                }
+                                return `
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 5px 8px; border-radius: 6px; background: ${isChecked ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isChecked ? '#bbf7d0' : '#e2e8f0'}; cursor: ${!isUnlocked && !isChecked ? 'not-allowed' : 'pointer'};">
+                                    <input type="checkbox" ${isChecked ? 'checked' : ''} ${!isUnlocked && !isChecked ? 'disabled' : ''} onchange="toggleProjectTask(${data.id}, ${ph.id}, ${tIdx}, this.checked)" style="width: 16px; height: 16px; accent-color: #059669; cursor: pointer;">
+                                    <span style="font-weight: 800; color: ${isChecked ? '#166534' : 'var(--dalor-navy)'}; font-family: monospace;">${idx + 1}.${tIdx + 1}</span>
+                                    <span style="${isChecked ? 'text-decoration: line-through; color: #15803d; font-weight: 600;' : 'color: #334155;'}">${cleanName}</span>
+                                    ${isChecked ? '<span style="margin-left: auto; font-size: 10px; font-weight: 800; color: #059669;"><i class="fa-solid fa-check"></i> Hecho</span>' : ''}
+                                </label>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>`;
                 }
 
                 return `
@@ -1052,6 +1133,29 @@ async function viewProjectDetails(projectId) {
         openModal("modalProjectDetail");
     } catch (e) {
         alert("Error al cargar la ficha del proyecto.");
+    }
+}
+
+
+async function toggleProjectTask(projectId, phaseId, taskIndex, isChecked) {
+    try {
+        const res = await fetch(`${API_BASE}/projects/${projectId}/phases/${phaseId}/toggle-task`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                task_index: taskIndex,
+                is_completed: isChecked
+            })
+        });
+        if (res.ok) {
+            await viewProjectDetails(projectId);
+        } else {
+            const err = await res.json();
+            alert("⚠️ " + (err.detail || "No se pudo actualizar la tarea."));
+            await viewProjectDetails(projectId);
+        }
+    } catch (e) {
+        alert("Error de conexión al actualizar la tarea.");
     }
 }
 
@@ -1856,21 +1960,38 @@ async function submitCreateQuotation(event) {
 }
 
 async function convertQuoteToProject(quoteId) {
-    if (!confirm("¿Deseas aprobar esta cotización y convertirla en un Proyecto Activo en ejecución?")) return;
-
+    const isPlanta = confirm("¿Deseas aprobar esta cotización y convertirla en Proyecto?\n\nPresiona [ACEPTAR] si se ejecutará en Taller/Planta Guacara.\nPresiona [CANCELAR] si se ejecutará como Obra en Sitio (con asignación de Recursos y Traslado).");
+    const executionType = isPlanta ? "Planta Guacara" : "Obra en Sitio";
+    
     try {
         const res = await fetch(`${API_BASE}/quotations/${quoteId}/convert-to-project`, { method: "POST" });
         if (res.ok) {
             const data = await res.json();
-            alert(data.message);
+            alert(`✅ Cotización Aprobada exitosamente como ${executionType}.\n\nProyecto en ejecución: [${data.project_code || ''}] ${data.project_name || ''}.`);
             await loadInitialMasterData();
             loadQuotations();
             switchView('projects', 'proyectos');
+            if (data.project_id) {
+                setTimeout(() => {
+                    viewProjectDetails(data.project_id);
+                    if (!isPlanta) {
+                        if (confirm("¿Deseas emitir la Guía de Traslado de Equipos y Herramientas para esta obra ahora mismo?")) {
+                            openTransferGuideModal();
+                            const sel = document.getElementById("tg_project_id");
+                            if (sel) {
+                                sel.value = data.project_id;
+                                onTransferGuideProjectChanged();
+                            }
+                        }
+                    }
+                }, 350);
+            }
         } else {
-            alert("Error al convertir cotización en proyecto.");
+            const err = await res.json();
+            alert("Error: " + (err.detail || "No se pudo convertir la cotización."));
         }
     } catch (e) {
-        alert("Error de conexión.");
+        alert("Error de conexión al procesar la aprobación.");
     }
 }
 
@@ -2044,12 +2165,33 @@ function openNewServiceModal() {
     openModal("modalService");
 }
 
+
+function onServiceCategoryChanged(val) {
+    const newCatInput = document.getElementById("srv_new_category");
+    if (!newCatInput) return;
+    if (val === '__NEW__') {
+        newCatInput.classList.remove("hidden");
+        newCatInput.focus();
+    } else {
+        newCatInput.classList.add("hidden");
+    }
+}
+
 async function submitCreateService(event) {
     event.preventDefault();
+    let selectedCat = document.getElementById("srv_category").value;
+    if (selectedCat === '__NEW__') {
+        const customCat = (document.getElementById("srv_new_category")?.value || "").trim();
+        if (!customCat) {
+            alert("Por favor escribe el nombre de la nueva categoría.");
+            return;
+        }
+        selectedCat = customCat;
+    }
     const payload = {
         code: document.getElementById("srv_code").value,
         name: document.getElementById("srv_name").value,
-        category: document.getElementById("srv_category").value,
+        category: selectedCat,
         unit_measure: document.getElementById("srv_unit").value,
         base_cost_usd: parseFloat(document.getElementById("srv_cost").value) || 0.0,
         unit_price_usd: parseFloat(document.getElementById("srv_price").value) || 0.0
@@ -2202,18 +2344,21 @@ function handleFileSelected(event) {
     processOCRFile(file);
 }
 
-async function processOCRFile(file) {
+async function processOCRFile(rawFile) {
     const badge = document.getElementById("ocrStatusBadge");
     const btnSubmit = document.getElementById("btnSubmitExpense");
     if (badge) {
         badge.style.background = "#fef3c7";
         badge.style.color = "#92400e";
-        badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analizando con IA de Gemini...';
+        badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Optimizando imagen y analizando con Gemini...';
     }
     if (btnSubmit) {
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analizando factura con IA de Gemini...';
     }
+
+    // Compresión instantánea en el navegador (<100ms, reduce foto de 15MB a ~200KB)
+    const file = await compressImageForOCR(rawFile);
 
     const formData = new FormData();
     formData.append("file", file, file.name);
@@ -4599,12 +4744,44 @@ function onTransferGuideProjectChanged() {
     const sel = document.getElementById("tg_project_id");
     if (!sel || !sel.options[sel.selectedIndex]) return;
     const opt = sel.options[sel.selectedIndex];
-    const loc = opt.getAttribute("data-location") || "Planta Centro - Morón";
+    const projId = parseInt(sel.value);
+    const proj = allProjects.find(p => p.id === projId);
+
+    // 1. Destino
+    const loc = (proj && proj.location) || opt.getAttribute("data-location") || "Planta Centro - Morón";
     const destInput = document.getElementById("tg_destination");
-    if (destInput && loc) destInput.value = loc;
+    if (destInput) destInput.value = loc;
+
+    // 2. Chofer responsable pre-cargado
+    const driverInput = document.getElementById("tg_driver_name");
+    if (driverInput) {
+        let chofer = (allPersonnel || []).find(p => p.current_project_id === projId && (p.role_title || '').toLowerCase().includes('chofer'));
+        if (!chofer) {
+            chofer = (allPersonnel || []).find(p => (p.role_title || '').toLowerCase().includes('chofer'));
+        }
+        if (!chofer && allPersonnel && allPersonnel.length > 0) {
+            chofer = allPersonnel[0];
+        }
+        if (chofer) driverInput.value = chofer.full_name;
+    }
+
+    // 3. Vehículo de transporte pre-cargado
+    const vehSelect = document.getElementById("tg_vehicle_id");
+    if (vehSelect) {
+        const projVeh = (allAssets || []).find(a => (a.asset_type === 'vehiculo' || a.asset_type === 'camioneta') && a.current_project_id === projId);
+        if (projVeh) {
+            vehSelect.value = projVeh.id;
+        } else {
+            const firstVeh = (allAssets || []).find(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
+            if (firstVeh) vehSelect.value = firstVeh.id;
+        }
+    }
+
+    // 4. Pre-marcar herramientas asignadas a este proyecto
+    renderTransferToolsChecklist(projId);
 }
 
-function renderTransferToolsChecklist() {
+function renderTransferToolsChecklist(selectedProjId = null) {
     const container = document.getElementById("tg_tools_checklist_container");
     if (!container) return;
 
@@ -4614,14 +4791,17 @@ function renderTransferToolsChecklist() {
         return;
     }
 
-    container.innerHTML = tools.map(t => `
-        <label style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; background: #f8fafc; font-size: 11px; cursor: pointer;" class="tg-tool-item" data-text="${t.asset_code} ${t.name} ${t.brand || ''}">
-            <input type="checkbox" value="${t.id}" data-name="${t.name}" data-code="${t.asset_code}" class="tg-tool-checkbox" style="width: 15px; height: 15px;">
+    container.innerHTML = tools.map(t => {
+        const isPreChecked = selectedProjId && (t.current_project_id === selectedProjId || t.current_location === "en_obra");
+        return `
+        <label style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; background: ${isPreChecked ? '#f0fdf4' : '#f8fafc'}; font-size: 11px; cursor: pointer;" class="tg-tool-item" data-text="${t.asset_code} ${t.name} ${t.brand || ''}">
+            <input type="checkbox" value="${t.id}" data-name="${t.name}" data-code="${t.asset_code}" data-brand="${t.brand || ''}" data-serial="${t.serial_number || ''}" class="tg-tool-checkbox" ${isPreChecked ? 'checked' : ''} style="width: 15px; height: 15px; accent-color: #0284c7;">
             <span style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">[${t.asset_code}]</span>
             <span style="font-weight: 600; color: var(--dalor-navy);">${t.name}</span>
             <span style="color: #64748b; font-size: 10px; margin-left: auto;">${t.brand || ''}</span>
         </label>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function filterTransferToolsChecklist() {
@@ -4683,10 +4863,106 @@ async function submitGenerateTransferGuide(event) {
     }
 
     closeModal("modalTransferGuide");
-    alert(`✅ Guía de Traslado ${guideNumber} emitida exitosamente.\n\nSe despacharon ${selectedTools.length} equipos hacia ${dest}.`);
     await loadInitialMasterData();
     if (document.getElementById("subtab-res-tools") && !document.getElementById("subtab-res-tools").classList.contains("hidden")) {
         loadToolsList();
+    }
+
+    // MOSTRAR FORMATO OFICIAL FORMAL LISTO PARA IMPRIMIR O GUARDAR EN PDF
+    const printArea = document.getElementById("modalPrintPreviewContent");
+    const titleEl = document.getElementById("previewModalTitle");
+    if (titleEl) titleEl.innerText = "Guía Oficial de Traslado y Despacho de Equipos - Dalor C.A.";
+
+    const nowStr = new Date().toLocaleDateString('es-VE') + ' ' + new Date().toLocaleTimeString('es-VE', {hour: '2-digit', minute:'2-digit'});
+
+    if (printArea) {
+        printArea.innerHTML = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 25px; background: #fff;">
+            <!-- Header Membretado Oficial DALOR -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #002B49; padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h2 style="margin: 0; color: #002B49; font-size: 22px; font-weight: 900; letter-spacing: 1px;">DALOR, C.A.</h2>
+                    <p style="margin: 3px 0 0 0; font-size: 11px; color: #475569; font-weight: 600;">SOLUCIONES DE INGENIERÍA, MANTENIMIENTO Y MONTAJE INDUSTRIAL</p>
+                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">RIF: J-50477218-4 &bull; Guacara, Edo. Carabobo - Venezuela</p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="background: #0284c7; color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">
+                        GUÍA DE TRASLADO DE EQUIPOS
+                    </div>
+                    <div style="font-size: 13px; font-weight: 900; color: #002B49; margin-top: 5px;">
+                        N°: ${guideNumber}
+                    </div>
+                    <div style="font-size: 11px; color: #64748b;">
+                        Fecha: ${nowStr}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ficha de Traslado y Destino -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
+                <tr style="background: #f8fafc;">
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; width: 20%; color: #475569;">Proyecto Destino:</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; width: 30%; font-weight: 800; color: #0284c7;">[${proj.code}] ${proj.name}</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; width: 20%; color: #475569;">Ubicación / Frente:</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; width: 30%; font-weight: 700;">${dest}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">Vehículo de Carga:</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">${veh.name} (Placa: ${veh.license_plate || 'N/A'})</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">Conductor / Chofer:</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 800; color: #002B49;">${driver}</td>
+                </tr>
+            </table>
+
+            <!-- Tabla de Herramientas y Equipos Despachados -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
+                <thead>
+                    <tr style="background: #002B49; color: #ffffff;">
+                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 40px; text-align: center;">Item</th>
+                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 90px;">Código</th>
+                        <th style="padding: 8px 10px; border: 1px solid #002B49;">Descripción de la Herramienta / Equipo</th>
+                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 130px;">Marca / Modelo</th>
+                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 120px;">Serial</th>
+                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 90px; text-align: center;">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${selectedTools.map((t, i) => `
+                        <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: 800;">${i + 1}</td>
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: 800; color: #0284c7;">${t.code}</td>
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${t.name}</td>
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; color: #64748b;">${t.brand || '-'}</td>
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace;">${t.serial || 'S/N'}</td>
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; color: #059669; font-weight: 800;">Operativo</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+
+            <!-- Observaciones -->
+            <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 24px; font-size: 11px;">
+                <strong>Observaciones / Condición de Custodia:</strong> ${document.getElementById("tg_notes")?.value || 'Equipos verificados y entregados en condiciones 100% operativas para faena de obra.'}
+            </div>
+
+            <!-- Bloque Formal de 3 Firmas de Responsabilidad -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; text-align: center; margin-top: 36px; font-size: 11px;">
+                <div style="border-top: 1px solid #475569; padding-top: 6px;">
+                    <strong style="color: #002B49;">Despachado por:</strong><br>
+                    <span style="color: #64748b; font-size: 10px;">Almacén Central / Custodia Dalor</span>
+                </div>
+                <div style="border-top: 1px solid #475569; padding-top: 6px;">
+                    <strong style="color: #002B49;">Transportado por:</strong><br>
+                    <span style="color: #64748b; font-size: 10px;">${driver} (Chofer)</span>
+                </div>
+                <div style="border-top: 1px solid #475569; padding-top: 6px;">
+                    <strong style="color: #002B49;">Recibido Conforme en Obra:</strong><br>
+                    <span style="color: #64748b; font-size: 10px;">Supervisor / Residente de Obra</span>
+                </div>
+            </div>
+        </div>
+        `;
+        openModal("modalPrintPreview");
     }
 }
 
@@ -4937,3 +5213,387 @@ function openMaintenanceSubtab_v2(subtab) {
     }
 }
 
+
+
+// ==============================================================================
+// 📦 NOTA DE ENTREGA DE MATERIALES (PARA JEFE DE MATERIALES / ALMACÉN)
+// ==============================================================================
+function openMaterialDeliveryModal() {
+    const form = document.getElementById("materialDeliveryForm");
+    if (form) form.reset();
+    populateSelect("md_project_id", allProjects, p => `<option value="${p.id}" data-location="${p.location || ''}">${p.code} - ${p.name}</option>`);
+    onMaterialDeliveryProjectChanged();
+    openModal("modalMaterialDelivery");
+}
+
+function onMaterialDeliveryProjectChanged() {
+    const sel = document.getElementById("md_project_id");
+    if (!sel || !sel.options[sel.selectedIndex]) return;
+    const projId = parseInt(sel.value);
+    const proj = allProjects.find(p => p.id === projId);
+
+    const loc = (proj && proj.location) || "Frente de Obra / Planta";
+    const destInput = document.getElementById("md_destination");
+    if (destInput) destInput.value = loc;
+
+    const dispInput = document.getElementById("md_dispatcher_name");
+    if (dispInput && !dispInput.value) {
+        dispInput.value = "Jefe de Materiales / Almacén Central";
+    }
+
+    const recvInput = document.getElementById("md_receiver_name");
+    if (recvInput && !recvInput.value) {
+        recvInput.value = (proj && proj.client_name) ? `Supervisor / Residente (${proj.client_name})` : "Supervisor Residente de Obra";
+    }
+
+    renderInitialMaterialDeliveryRows();
+}
+
+function renderInitialMaterialDeliveryRows() {
+    const tbody = document.getElementById("md_materials_tbody");
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    // Si hay materiales en inventario, precargar los primeros 2
+    if (allMaterials && allMaterials.length > 0) {
+        for (let i = 0; i < Math.min(2, allMaterials.length); i++) {
+            addMaterialDeliveryRow(allMaterials[i].name, allMaterials[i].unit_measure || 'Pza', 1);
+        }
+    } else {
+        addMaterialDeliveryRow('Cable THW 12 AWG', 'Metro (m)', 50);
+        addMaterialDeliveryRow('Breaker 2x30A', 'Pza', 2);
+    }
+}
+
+function addMaterialDeliveryRow(defaultName = '', defaultUnit = 'Pza', defaultQty = 1) {
+    const tbody = document.getElementById("md_materials_tbody");
+    if (!tbody) return;
+
+    const tr = document.createElement("tr");
+    tr.style.borderBottom = "1px solid #f1f5f9";
+    tr.innerHTML = `
+        <td style="padding: 4px 6px;">
+            <input type="text" class="form-input md-item-name" value="${defaultName}" placeholder="Descripción del material..." style="padding: 4px 6px; font-size: 11px;" required>
+        </td>
+        <td style="padding: 4px 6px;">
+            <input type="text" class="form-input md-item-unit" value="${defaultUnit}" placeholder="Pza, m, etc." style="padding: 4px 6px; font-size: 11px; text-align: center;">
+        </td>
+        <td style="padding: 4px 6px;">
+            <input type="number" step="0.01" class="form-input md-item-qty" value="${defaultQty}" style="padding: 4px 6px; font-size: 11px; text-align: right; font-weight: 800;" required>
+        </td>
+        <td style="padding: 4px 6px; text-align: center;">
+            <button type="button" onclick="this.closest('tr').remove()" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px;">&times;</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function submitGenerateMaterialDeliveryGuide(event) {
+    event.preventDefault();
+    const projId = parseInt(document.getElementById("md_project_id").value);
+    const dest = document.getElementById("md_destination").value.trim();
+    const dispatcher = document.getElementById("md_dispatcher_name").value.trim();
+    const receiver = document.getElementById("md_receiver_name").value.trim();
+    const notes = document.getElementById("md_notes").value.trim();
+
+    const items = [];
+    document.querySelectorAll("#md_materials_tbody tr").forEach(row => {
+        const name = row.querySelector(".md-item-name")?.value.trim();
+        const unit = row.querySelector(".md-item-unit")?.value.trim() || "Pza";
+        const qty = parseFloat(row.querySelector(".md-item-qty")?.value) || 0;
+        if (name && qty > 0) {
+            items.push({ name, unit, qty });
+        }
+    });
+
+    if (items.length === 0) {
+        alert("Por favor ingresa al menos un material con cantidad válida.");
+        return;
+    }
+
+    const proj = allProjects.find(p => p.id === projId) || { code: "DAL-2026-001", name: "Proyecto en Obra", client_name: "General" };
+    const guideNumber = `NE-MAT-${Date.now().toString().slice(-6)}`;
+    const nowStr = new Date().toLocaleDateString('es-VE') + ' ' + new Date().toLocaleTimeString('es-VE', {hour: '2-digit', minute:'2-digit'});
+
+    closeModal("modalMaterialDelivery");
+
+    // MOSTRAR FORMATO OFICIAL FORMAL LISTO PARA IMPRIMIR O GUARDAR EN PDF
+    const printArea = document.getElementById("modalPrintPreviewContent");
+    const titleEl = document.getElementById("previewModalTitle");
+    if (titleEl) titleEl.innerText = "Nota Oficial de Entrega de Materiales - Dalor C.A.";
+
+    if (printArea) {
+        printArea.innerHTML = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 25px; background: #fff;">
+            <!-- Header Membretado Oficial DALOR -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #002B49; padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h2 style="margin: 0; color: #002B49; font-size: 22px; font-weight: 900; letter-spacing: 1px;">DALOR, C.A.</h2>
+                    <p style="margin: 3px 0 0 0; font-size: 11px; color: #475569; font-weight: 600;">SOLUCIONES DE INGENIERÍA, MANTENIMIENTO Y MONTAJE INDUSTRIAL</p>
+                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">RIF: J-50477218-4 &bull; Guacara, Edo. Carabobo - Venezuela</p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="background: #059669; color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">
+                        NOTA DE ENTREGA DE MATERIALES
+                    </div>
+                    <div style="font-size: 13px; font-weight: 900; color: #002B49; margin-top: 5px;">
+                        N°: ${guideNumber}
+                    </div>
+                    <div style="font-size: 11px; color: #64748b;">
+                        Fecha: ${nowStr}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ficha de Destinatario y Entrega -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
+                <tr style="background: #f8fafc;">
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; width: 20%; color: #475569;">Proyecto / Obra:</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; width: 30%; font-weight: 800; color: #059669;">[${proj.code}] ${proj.name}</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; width: 20%; color: #475569;">Lugar de Entrega:</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; width: 30%; font-weight: 700;">${dest}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">Despachado Por:</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${dispatcher}</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">Receptor en Obra:</td>
+                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 800; color: #002B49;">${receiver}</td>
+                </tr>
+            </table>
+
+            <!-- Tabla de Materiales Despachados -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
+                <thead>
+                    <tr style="background: #002B49; color: #ffffff;">
+                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 40px; text-align: center;">Item</th>
+                        <th style="padding: 8px 10px; border: 1px solid #002B49;">Descripción de Material / Insumo</th>
+                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 100px; text-align: center;">Unidad</th>
+                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 110px; text-align: right;">Cantidad Entregada</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map((it, i) => `
+                        <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: 800;">${i + 1}</td>
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${it.name}</td>
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; color: #64748b;">${it.unit}</td>
+                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: right; font-weight: 900; color: #059669; font-size: 12px;">${it.qty}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+
+            <!-- Observaciones -->
+            <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 24px; font-size: 11px;">
+                <strong>Observaciones de Despacho:</strong> ${notes || 'Material verificado en almacén, embalado y entregado conforme para instalación inmediata en obra.'}
+            </div>
+
+            <!-- Bloque de Firmas -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; text-align: center; margin-top: 36px; font-size: 11px;">
+                <div style="border-top: 1px solid #475569; padding-top: 6px;">
+                    <strong style="color: #002B49;">Despachado por:</strong><br>
+                    <span style="color: #64748b; font-size: 10px;">${dispatcher}</span>
+                </div>
+                <div style="border-top: 1px solid #475569; padding-top: 6px;">
+                    <strong style="color: #002B49;">Transportado por:</strong><br>
+                    <span style="color: #64748b; font-size: 10px;">Chofer / Transportista</span>
+                </div>
+                <div style="border-top: 1px solid #475569; padding-top: 6px;">
+                    <strong style="color: #002B49;">Recibido Conforme en Obra:</strong><br>
+                    <span style="color: #64748b; font-size: 10px;">${receiver}</span>
+                </div>
+            </div>
+        </div>
+        `;
+        openModal("modalPrintPreview");
+    }
+}
+
+// ==============================================================================
+// 📑 13. HISTÓRICO & AUDITORÍA GENERAL DE GASTOS
+// ==============================================================================
+let allExpensesCache = [];
+
+async function loadExpensesLog() {
+    const tbody = document.getElementById("expensesLogTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando histórico consolidado de gastos...</td></tr>`;
+
+    try {
+        const res = await fetch(`${API_BASE}/expenses/`);
+        allExpensesCache = await res.json();
+
+        populateExpensesLogFilters();
+        filterExpensesLog();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#e11d48;">Error al cargar histórico de gastos.</td></tr>`;
+    }
+}
+
+function populateExpensesLogFilters() {
+    populateSelect("log_filter_project", [{id: '', code: '-- Todos los Proyectos --'}, ...allProjects], p => `<option value="${p.id || ''}">${p.code ? p.code + ' - ' + (p.name || '') : p.name}</option>`);
+    populateSelect("log_filter_category", [{id: '', code: '', name: '-- Todas las Partidas --'}, ...(allCategories || [])], c => `<option value="${c.id || ''}">${c.code ? c.code + ' - ' + c.name : c.name}</option>`);
+}
+
+function filterExpensesLog() {
+    const projId = document.getElementById("log_filter_project")?.value;
+    const catId = document.getElementById("log_filter_category")?.value;
+    const fiscal = document.getElementById("log_filter_fiscal")?.value;
+    const fromDate = document.getElementById("log_filter_date_from")?.value;
+    const toDate = document.getElementById("log_filter_date_to")?.value;
+    const search = (document.getElementById("log_filter_search")?.value || "").toLowerCase().trim();
+
+    let filtered = allExpensesCache.filter(e => {
+        if (projId && String(e.project_id) !== String(projId)) return false;
+        if (catId && String(e.category_id) !== String(catId)) return false;
+        if (fiscal === 'con_iva' && (e.is_tax_exempt || (e.tax_amount_usd || 0) <= 0)) return false;
+        if (fiscal === 'sin_iva' && (!e.is_tax_exempt && (e.tax_amount_usd || 0) > 0)) return false;
+        
+        if (fromDate) {
+            const expDate = (e.expense_date || '').split('T')[0];
+            if (expDate && expDate < fromDate) return false;
+        }
+        if (toDate) {
+            const expDate = (e.expense_date || '').split('T')[0];
+            if (expDate && expDate > toDate) return false;
+        }
+
+        if (search) {
+            const matchText = `${e.vendor || ''} ${e.invoice_number || ''} ${e.description || ''} ${e.reported_by || ''}`.toLowerCase();
+            if (!matchText.includes(search)) return false;
+        }
+
+        return true;
+    });
+
+    renderExpensesLogTable(filtered);
+    updateExpensesLogKPIs(filtered);
+}
+
+function updateExpensesLogKPIs(list) {
+    let totalUsd = 0;
+    let totalBs = 0;
+    let fiscalUsd = 0;
+    let fiscalCount = 0;
+    let nonFiscalUsd = 0;
+    let nonFiscalCount = 0;
+    let totalTaxUsd = 0;
+
+    list.forEach(e => {
+        const usd = e.amount_usd || 0;
+        const bs = e.amount_bs || 0;
+        const tax = e.tax_amount_usd || 0;
+        totalUsd += usd;
+        totalBs += bs;
+        totalTaxUsd += tax;
+
+        if (!e.is_tax_exempt && tax > 0) {
+            fiscalUsd += usd;
+            fiscalCount++;
+        } else {
+            nonFiscalUsd += usd;
+            nonFiscalCount++;
+        }
+    });
+
+    const elTotalUsd = document.getElementById("log_kpi_total_usd");
+    const elTotalBs = document.getElementById("log_kpi_total_bs");
+    const elFiscalUsd = document.getElementById("log_kpi_fiscal_usd");
+    const elFiscalCount = document.getElementById("log_kpi_fiscal_count");
+    const elNonFiscalUsd = document.getElementById("log_kpi_nonfiscal_usd");
+    const elNonFiscalCount = document.getElementById("log_kpi_nonfiscal_count");
+    const elTaxUsd = document.getElementById("log_kpi_tax_usd");
+    const elCountTotal = document.getElementById("log_kpi_count_total");
+
+    if (elTotalUsd) elTotalUsd.innerText = `$${totalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elTotalBs) elTotalBs.innerText = `Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elFiscalUsd) elFiscalUsd.innerText = `$${fiscalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elFiscalCount) elFiscalCount.innerText = `${fiscalCount} facturas fiscales con IVA`;
+    if (elNonFiscalUsd) elNonFiscalUsd.innerText = `$${nonFiscalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elNonFiscalCount) elNonFiscalCount.innerText = `${nonFiscalCount} notas / compras sin IVA`;
+    if (elTaxUsd) elTaxUsd.innerText = `$${totalTaxUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elCountTotal) elCountTotal.innerText = `${list.length} registros listados`;
+}
+
+function renderExpensesLogTable(list) {
+    const tbody = document.getElementById("expensesLogTableBody");
+    if (!tbody) return;
+
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:24px; color:#94a3b8;">No se encontraron gastos que coincidan con los filtros seleccionados.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map(e => {
+        const dateStr = (e.expense_date || '').split('T')[0] || '-';
+        const proj = allProjects.find(p => p.id === e.project_id);
+        const projLabel = proj ? `[${proj.code}] ${proj.name}` : (e.project_id ? `Proyecto #${e.project_id}` : 'Gasto General Sede');
+        const cat = (allCategories || []).find(c => c.id === e.category_id);
+        const catLabel = cat ? `${cat.code} ${cat.name}` : (e.category_code || '10.0 General');
+        const isFiscal = !e.is_tax_exempt && (e.tax_amount_usd || 0) > 0;
+        const fiscalBadge = isFiscal 
+            ? `<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Fiscal IVA</span>`
+            : `<span style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px;">Sin IVA</span>`;
+        const statusBadge = e.status === 'aprobado'
+            ? `<span style="background:#d1fae5; color:#065f46; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Aprobado</span>`
+            : `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Pendiente</span>`;
+
+        const viewBtn = e.receipt_image_path
+            ? `<button onclick="viewReceiptImage('${e.receipt_image_path}')" class="btn-primary" style="padding:3px 8px; font-size:11px; background:#0284c7;" title="Ver Comprobante"><i class="fa-solid fa-eye"></i></button>`
+            : `<span style="color:#cbd5e1; font-size:11px;">-</span>`;
+
+        return `
+            <tr>
+                <td style="font-size:11px; color:#64748b;">${dateStr}</td>
+                <td style="font-weight:700; font-size:11px; color:var(--dalor-navy);">${projLabel}</td>
+                <td style="font-size:11px;"><span style="background:#f0f9ff; color:#0369a1; padding:2px 5px; border-radius:4px; font-weight:700;">${catLabel}</span></td>
+                <td style="font-weight:600; font-size:11px;">${e.vendor || 'Comercio'}</td>
+                <td style="font-family:monospace; font-size:11px;">${e.invoice_number || '-'}</td>
+                <td style="text-align:center;">${fiscalBadge}</td>
+                <td style="text-align:right; font-size:11px;">$${(e.base_amount_usd || (e.amount_usd - (e.tax_amount_usd||0))).toFixed(2)}</td>
+                <td style="text-align:right; font-size:11px; color:#8b5cf6;">$${(e.tax_amount_usd || 0).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:800; font-size:12px; color:var(--dalor-navy);">$${(e.amount_usd || 0).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:700; font-size:11px; color:#0284c7;">Bs. ${(e.amount_bs || 0).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td style="font-size:11px; color:#475569;">${e.reported_by || '-'}</td>
+                <td style="text-align:center;">${statusBadge}</td>
+                <td style="text-align:center;">${viewBtn}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function viewReceiptImage(imagePath) {
+    if (!imagePath) return;
+    const fullUrl = imagePath.startsWith('http') ? imagePath : `${BACKEND_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+    const imgEl = document.getElementById("receiptViewerImg");
+    const linkEl = document.getElementById("receiptViewerDownload");
+    if (imgEl) imgEl.src = fullUrl;
+    if (linkEl) linkEl.href = fullUrl;
+    openModal("modalReceiptViewer");
+}
+
+function exportExpensesLogExcel() {
+    if (!allExpensesCache || allExpensesCache.length === 0) {
+        alert("No hay gastos cargados para exportar.");
+        return;
+    }
+    // Formato CSV delimitado por punto y coma compatible con Excel en español
+    let csv = "Fecha;Proyecto;Partida;Proveedor;Factura;Condicion Fiscal;Base USD;IVA USD;Total USD;Total Bs;Reportado Por;Estado\n";
+    allExpensesCache.forEach(e => {
+        const proj = allProjects.find(p => p.id === e.project_id);
+        const projLabel = proj ? `[${proj.code}] ${proj.name}` : 'Sede General';
+        const cat = (allCategories || []).find(c => c.id === e.category_id);
+        const catLabel = cat ? `${cat.code} ${cat.name}` : (e.category_code || 'General');
+        const cond = (!e.is_tax_exempt && (e.tax_amount_usd || 0) > 0) ? 'Fiscal Con IVA' : 'Sin IVA / Exento';
+        
+        csv += `"${(e.expense_date||'').split('T')[0]}";"${projLabel}";"${catLabel}";"${e.vendor||''}";"${e.invoice_number||''}";"${cond}";"${(e.base_amount_usd||0).toFixed(2)}";"${(e.tax_amount_usd||0).toFixed(2)}";"${(e.amount_usd||0).toFixed(2)}";"${(e.amount_bs||0).toFixed(2)}";"${e.reported_by||''}";"${e.status||''}"\n`;
+    });
+
+    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `Auditoria_Gastos_DALOR_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}

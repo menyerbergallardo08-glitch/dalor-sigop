@@ -1,3 +1,6 @@
+// Purga obligatoria de localStorage para garantizar que SIEMPRE aparezca la pantalla de login
+localStorage.removeItem('dalor_user');
+localStorage.removeItem('dalor_token');
 
 // ==============================================================================
 // 💵 CÁLCULOS DE MONTO & CONDICIÓN FISCAL EN FORMULARIO DE CAMPO
@@ -52,8 +55,8 @@ window.onValTaxChanged = function() {
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.08.v20";
-console.log("--> DALOR SIGO-P INITIALIZED v20");
+window.APP_BUILD_VERSION = "2026.09.08.v21";
+console.log("--> DALOR SIGO-P INITIALIZED v21");
 
 // ==============================================================================
 // 🔐 CONTROLADOR CORPORATIVO DE AUTENTICACIÓN & SESIONES (PRODUCCIÓN)
@@ -132,10 +135,9 @@ window.performLogin = async function(username, password) {
         // 1. Guardar sesión
         currentUser = data.user;
         authToken = data.access_token;
+        sessionStorage.setItem('dalor_session_active', 'true');
         sessionStorage.setItem('dalor_user', JSON.stringify(currentUser));
         sessionStorage.setItem('dalor_token', authToken);
-        localStorage.setItem('dalor_user', JSON.stringify(currentUser));
-        localStorage.setItem('dalor_token', authToken);
 
         // 2. Desbloquear visualmente el ERP de forma garantizada
         document.body.classList.add('authenticated');
@@ -191,7 +193,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v19";
+const APP_BUILD_VERSION = "2026.09.08.v21";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();
@@ -240,8 +242,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const nav = document.querySelector('.mobile-bottom-nav');
 
     if (isAuth && currentUser) {
-        if (loginScreen) loginScreen.style.display = 'none';
-        if (authShell) authShell.style.display = 'block';
+        document.body.classList.add('authenticated');
+        if (loginScreen) loginScreen.style.setProperty('display', 'none', 'important');
+        if (authShell) authShell.style.setProperty('display', 'block', 'important');
         
         renderUserBadge();
         applyPermissionMap(currentUser);
@@ -249,9 +252,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         redirectUserByRole(currentUser);
         loadInitialMasterData();
     } else {
-        if (loginScreen) loginScreen.style.display = 'flex';
-        if (authShell) authShell.style.display = 'none';
-        if (nav) nav.style.display = 'none';
+        document.body.classList.remove('authenticated');
+        if (loginScreen) loginScreen.style.setProperty('display', 'flex', 'important');
+        if (authShell) authShell.style.setProperty('display', 'none', 'important');
+        if (nav) nav.style.setProperty('display', 'none', 'important');
     }
 });
 
@@ -3041,10 +3045,13 @@ async function loadTreasurySummary() {
 // 🔐 14. AUTENTICACIÓN, ROLES & CAPAS DE USO (TIPO PROFIT PLUS)
 // ==============================================================================
 async function checkAuthStatus() {
-    const savedUser = localStorage.getItem('dalor_user');
-    const savedToken = localStorage.getItem('dalor_token');
+    // Para garantizar que el usuario SIEMPRE pueda elegir su perfil en el login al abrir el teléfono:
+    // Solo se mantiene autenticado si la sesión fue iniciada explícitamente en la pestaña actual (sessionStorage).
+    const sessionActive = sessionStorage.getItem('dalor_session_active');
+    const savedUser = sessionStorage.getItem('dalor_user');
+    const savedToken = sessionStorage.getItem('dalor_token');
     
-    if (savedUser && savedToken) {
+    if (sessionActive === 'true' && savedUser && savedToken) {
         try {
             currentUser = JSON.parse(savedUser);
             authToken = savedToken;
@@ -3052,14 +3059,15 @@ async function checkAuthStatus() {
             applyPermissionMap(currentUser);
             return true;
         } catch (e) {
-            console.error('Error parsing stored user:', e);
-            localStorage.removeItem('dalor_user');
-            localStorage.removeItem('dalor_token');
+            sessionStorage.clear();
         }
     }
     
     currentUser = null;
     authToken = null;
+    sessionStorage.clear();
+    localStorage.removeItem('dalor_user');
+    localStorage.removeItem('dalor_token');
     return false;
 }
 

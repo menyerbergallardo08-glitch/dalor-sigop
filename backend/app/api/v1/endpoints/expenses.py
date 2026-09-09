@@ -68,12 +68,20 @@ def get_expense_categories(db: Session = Depends(get_db)):
 
 @router.get("/categories-tree")
 def get_categories_tree(db: Session = Depends(get_db)):
-    cats = db.query(ExpenseCategory).order_by(ExpenseCategory.code.asc()).all()
-    expenses = db.query(Expense).filter(Expense.status == "aprobado").all()
-    
+    try:
+        cats = db.query(ExpenseCategory).order_by(ExpenseCategory.code.asc()).all()
+    except Exception:
+        cats = []
+
     spent_by_cat = {}
-    for exp in expenses:
-        spent_by_cat[exp.category_id] = spent_by_cat.get(exp.category_id, 0.0) + (exp.amount_usd or 0.0)
+    try:
+        from sqlalchemy import text
+        rows = db.execute(text("SELECT category_id, SUM(amount_usd) FROM expenses WHERE status = 'aprobado' GROUP BY category_id")).fetchall()
+        for r in rows:
+            if r[0]:
+                spent_by_cat[r[0]] = float(r[1] or 0.0)
+    except Exception:
+        pass
 
     parents = [c for c in cats if not c.parent_id or "." not in c.code or c.code.endswith(".0")]
     if not parents:

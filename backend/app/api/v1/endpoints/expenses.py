@@ -69,9 +69,17 @@ def get_expense_categories(db: Session = Depends(get_db)):
 @router.get("/categories-tree")
 def get_categories_tree(db: Session = Depends(get_db)):
     try:
-        cats = db.query(ExpenseCategory).order_by(ExpenseCategory.code.asc()).all()
+        cats = db.query(ExpenseCategory).all()
     except Exception:
         cats = []
+
+    def cat_sort_key(c):
+        try:
+            return [int(p) for p in c.code.split('.')]
+        except Exception:
+            return [999]
+
+    cats.sort(key=cat_sort_key)
 
     spent_by_cat = {}
     try:
@@ -84,25 +92,27 @@ def get_categories_tree(db: Session = Depends(get_db)):
         pass
 
     parents = [c for c in cats if not c.parent_id or "." not in c.code or c.code.endswith(".0")]
-    if not parents:
-        parents = cats[:8]
+    parents.sort(key=cat_sort_key)
 
     tree = []
     for p in parents:
         prefix = p.code.split('.')[0] if '.' in p.code else p.code
-        subcats = [c for c in cats if c.parent_id == p.id or (c.code.startswith(prefix + '.') and c.id != p.id)]
+        subcats = [c for c in cats if (c.parent_id == p.id or c.code.startswith(prefix + '.')) and c.id != p.id]
+        subcats.sort(key=cat_sort_key)
         p_spent = spent_by_cat.get(p.id, 0.0) + sum(spent_by_cat.get(s.id, 0.0) for s in subcats)
         
         tree.append({
             "id": p.id,
             "code": p.code,
             "name": p.name,
+            "monthly_budget_usd": float(getattr(p, "monthly_budget_usd", 0.0) or 0.0),
             "total_spent_usd": round(p_spent, 2),
             "subcategories": [
                 {
                     "id": s.id,
                     "code": s.code,
                     "name": s.name,
+                    "monthly_budget_usd": float(getattr(s, "monthly_budget_usd", 0.0) or 0.0),
                     "spent_usd": round(spent_by_cat.get(s.id, 0.0), 2)
                 } for s in subcats
             ]

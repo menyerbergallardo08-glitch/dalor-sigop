@@ -232,6 +232,65 @@ def update_phase_status(project_id: int, phase_id: int, update_in: PhaseStatusUp
     db.commit()
     return {"success": True, "message": f"Etapa '{phase.name}' actualizada a {phase.status}."}
 
+class TaskToggleInput(BaseModel):
+    task_index: int
+    is_completed: bool
+
+@router.put("/{project_id}/phases/{phase_id}/toggle-task")
+def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, db: Session = Depends(get_db)):
+    phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    # Verificar si etapa anterior fue completada si se intenta avanzar
+    if task_in.is_completed and phase.phase_number > 1:
+        prev_phases = db.query(ProjectPhase).filter(
+            ProjectPhase.project_id == project_id,
+            ProjectPhase.phase_number < phase.phase_number
+        ).order_by(ProjectPhase.phase_number.asc()).all()
+        for p in prev_phases:
+            if p.status != "completado":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Acción Bloqueada: No puedes marcar tareas de la Etapa {phase.phase_number} porque la Etapa {p.phase_number} ('{p.name}') no ha sido culminada."
+                )
+
+    raw_desc = phase.description or ""
+    tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
+    if not tasks:
+        tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
+
+    if 0 <= task_in.task_index < len(tasks):
+        current_t = tasks[task_in.task_index]
+        clean_t = current_t
+        for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
+            if clean_t.startswith(pref):
+                clean_t = clean_t[len(pref):].strip()
+
+        if task_in.is_completed:
+            tasks[task_in.task_index] = f"[x] {clean_t}"
+        else:
+            tasks[task_in.task_index] = f"[ ] {clean_t}"
+
+        phase.description = "; ".join(tasks)
+        
+        all_done = all(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
+        any_done = any(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
+        if all_done:
+            phase.status = "completado"
+        elif any_done:
+            phase.status = "en_progreso"
+        elif phase.status == "completado":
+            phase.status = "en_progreso"
+
+        db.commit()
+        return {
+            "success": True,
+            "phase_status": phase.status,
+            "tasks": tasks
+        }
+    raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
+
 @router.get("/excel-template")
 def download_excel_template():
     excel_stream = ExcelProjectService.generate_project_template()

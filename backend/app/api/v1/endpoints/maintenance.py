@@ -230,3 +230,66 @@ def restore_backup(filename: str, db: Session = Depends(get_db)):
         "success": True,
         "message": f"Base de datos restaurada con éxito a partir de '{filename}'."
     }
+
+# ------------------------------------------------------------------------------
+# 4. 🧹 PUESTA A CERO / PURGAR REGISTROS DE PRUEBA (SOLO DIRECTOR GENERAL)
+# ------------------------------------------------------------------------------
+class ResetCleanSlateInput(BaseModel):
+    director_password: str
+
+@router.post("/reset-to-clean-slate")
+def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends(get_db)):
+    director = db.query(User).filter(User.username == "director").first()
+    authorized = False
+    if director and verify_password(input_data.director_password, director.hashed_password):
+        authorized = True
+    else:
+        admin = db.query(User).filter(User.username == "admin").first()
+        if admin and verify_password(input_data.director_password, admin.hashed_password):
+            authorized = True
+
+    if not authorized:
+        raise HTTPException(status_code=403, detail="Contraseña de Director General incorrecta. Acción cancelada por seguridad.")
+
+    from app.models.models import (
+        Expense, Quotation, QuotationItem, Project, ProjectPhase,
+        AccountReceivable, AccountPayable, ResourceAssignmentHistory,
+        PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset
+    )
+
+    # 1. Purgar tablas operacionales
+    db.query(Expense).delete()
+    db.query(QuotationItem).delete()
+    db.query(Quotation).delete()
+    db.query(AccountReceivable).delete()
+    db.query(AccountPayable).delete()
+    db.query(ResourceAssignmentHistory).delete()
+    db.query(PartnerWithdrawal).delete()
+    db.query(FinancialPayment).delete()
+    db.query(MaterialMovement).delete()
+    db.query(ProjectPhase).delete()
+    db.query(Project).delete()
+
+    # 2. Resetear activos a su estado base disponible en Sede
+    db.query(Asset).update({
+        "status": "disponible_base",
+        "current_location": "Sede Central",
+        "current_project_id": None,
+        "current_custodian_name": None
+    })
+
+    # 3. Registrar auditoría
+    audit = AuditLog(
+        username="director",
+        module="seguridad",
+        action="reset_puesta_a_cero",
+        details="Puesta a Cero ejecutada por Director General: Todos los registros de prueba fueron purgados para iniciar operación real en limpio."
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Puesta a Cero completada con éxito. Todos los registros de prueba han sido purgados y la base de datos está en cero para la operación real."
+    }
+

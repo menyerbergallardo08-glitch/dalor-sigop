@@ -104,7 +104,7 @@ window.onValTaxChanged = function() {
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.08.v23";
+window.APP_BUILD_VERSION = "2026.09.09.v24";
 console.log("--> DALOR SIGO-P INITIALIZED v22");
 
 // ==============================================================================
@@ -198,6 +198,8 @@ window.performLogin = async function(username, password) {
         if (authShell) {
             authShell.style.setProperty('display', 'block', 'important');
         }
+        const flLogout = document.getElementById('btnFloatingLogout');
+        if (flLogout) flLogout.style.display = 'inline-flex';
 
         // 3. Configurar interfaz para el usuario
         try { renderUserBadge(); } catch(e) { console.warn(e); }
@@ -242,7 +244,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v23";
+const APP_BUILD_VERSION = "2026.09.09.v24";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();
@@ -2576,12 +2578,46 @@ async function submitFieldExpense(event) {
         payload.odometer_at_fueling = document.getElementById("field_odometer").value ? parseFloat(document.getElementById("field_odometer").value) : null;
     }
 
+    // Asociación automática de usuario que reporta
+    const repName = currentUser ? (currentUser.full_name || currentUser.username) : "Personal de Campo";
+    payload.reported_by_name = repName;
+
     try {
         const res = await fetch(`${API_BASE}/expenses/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
+
+        // 🛡️ Filtro Anti-Duplicados
+        if (res.status === 409) {
+            const err = await res.json();
+            const msg = typeof err.detail === 'object' ? err.detail.message : err.detail;
+            const confirmDup = confirm(`⚠️ ALERTA DE COMPROBANTE DUPLICADO:\n\n${msg}\n\n¿Deseas registrar este comprobante de todas formas?`);
+            if (confirmDup) {
+                payload.allow_duplicate = true;
+                const res2 = await fetch(`${API_BASE}/expenses/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (res2.ok) {
+                    alert("¡Gasto registrado con éxito (confirmado por el usuario)!");
+                    document.getElementById("expenseForm").reset();
+                    document.getElementById("imagePreviewContainer").classList.add("hidden");
+                    document.getElementById("dropzoneContent").classList.remove("hidden");
+                    const isCampo = (currentUser?.role_name || currentUser?.username || '').toLowerCase().includes('campo');
+                    if (isCampo) {
+                        switchView('pwa', 'gastos');
+                    } else {
+                        switchView('dashboard', 'proyectos');
+                    }
+                    return;
+                }
+            }
+            return;
+        }
+
         if (res.ok) {
             alert("¡Gasto registrado e imputado exitosamente!");
             document.getElementById("expenseForm").reset();
@@ -2589,7 +2625,12 @@ async function submitFieldExpense(event) {
             document.getElementById("dropzoneContent").classList.remove("hidden");
             document.getElementById("chkEnableSplit").checked = false;
             toggleSplitMode();
-            switchView('dashboard', 'proyectos');
+            const isCampo = (currentUser?.role_name || currentUser?.username || '').toLowerCase().includes('campo');
+            if (isCampo) {
+                switchView('pwa', 'gastos');
+            } else {
+                switchView('dashboard', 'proyectos');
+            }
         } else {
             const err = await res.json();
             alert("Error: " + (err.detail || JSON.stringify(err)));
@@ -3434,6 +3475,29 @@ function applyPermissionMap(user) {
     const itmDashboard = document.getElementById('item-gasto-dashboard');
     const itmTree = document.getElementById('item-gasto-tree');
 
+    // 🛡️ V24: Restricciones y Adaptaciones de Rol para Campo vs Administración
+    const btnQF = document.getElementById('btnQuickFlow');
+    if (btnQF) btnQF.style.display = isCampo ? 'none' : 'inline-flex';
+
+    const fiscalBox = document.getElementById('field_fiscal_tax_box');
+    if (fiscalBox) fiscalBox.style.display = isCampo ? 'none' : 'grid';
+
+    const splitBox = document.getElementById('field_split_expense_box');
+    if (splitBox) splitBox.style.display = isCampo ? 'none' : 'block';
+
+    const repContainer = document.getElementById('field_reported_by_container');
+    if (repContainer) repContainer.style.display = isCampo ? 'none' : 'block';
+
+    const repBadge = document.getElementById('field_reported_by_badge');
+    const repText = document.getElementById('field_reported_by_text');
+    if (repBadge) {
+        repBadge.style.display = isCampo ? 'flex' : 'none';
+        if (repText) repText.innerHTML = `Reportando como: <b>${user.full_name || user.username}</b> (Supervisor de Campo)`;
+    }
+
+    const flLogout = document.getElementById('btnFloatingLogout');
+    if (flLogout) flLogout.style.display = 'inline-flex';
+
     if (isCampo) {
         // ROL DE CAMPO: SOLO RENDICIÓN DE GASTO / CAPTURA OCR
         if (itmInbox) itmInbox.style.display = 'none';
@@ -3852,6 +3916,11 @@ async function loadMaintenanceAuditLogs() {
 // ⚡ 17. CARGA RÁPIDA EN 3 TOQUES & CONTROL DE RETIROS DE SOCIOS
 // ==============================================================================
 function openQuickFlowModal() {
+    const role = (currentUser?.role_name || currentUser?.username || '').toLowerCase();
+    if (role.includes('campo') || role.includes('supervisor')) {
+        alert('Acceso restringido: El atajo de 3 toques es exclusivo para Dirección y Finanzas. Por favor utiliza el formulario formal de campo.');
+        return;
+    }
     const pSelect = document.getElementById('qf_project_id');
     if (pSelect && allProjects.length > 0) {
         pSelect.innerHTML = allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name.substring(0, 30)}</option>`).join('');

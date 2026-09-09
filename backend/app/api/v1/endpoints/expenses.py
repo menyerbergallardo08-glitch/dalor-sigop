@@ -129,7 +129,7 @@ def get_pending_inbox(db: Session = Depends(get_db)):
     for exp in pending:
         proj_name = exp.project.name if exp.project else "Sin Proyecto / Sede"
         proj_code = exp.project.code if exp.project else "SEDE"
-        reporter_name = exp.reported_by.full_name if exp.reported_by else "Personal de Campo"
+        reporter_name = exp.partner_name if (exp.partner_name and "Reportado por" in exp.partner_name) else (exp.reported_by.full_name if exp.reported_by else "Personal de Campo")
         asset_name = exp.asset.name if exp.asset else None
 
         results.append({
@@ -158,12 +158,29 @@ async def quick_upload_receipt(
     reported_by_name: Optional[str] = Form("Supervisor Campo"),
     quick_note: Optional[str] = Form("Comprobante enviado desde móvil"),
     amount_usd_est: Optional[float] = Form(0.0),
+    allow_duplicate: Optional[bool] = Form(False),
     db: Session = Depends(get_db)
 ):
     """
     Subida rápida en 1 Toque desde el móvil de campo.
     No requiere llenar campos contables; guarda la foto en cola de validación.
     """
+    # Filtro Anti-Duplicados preventivo
+    if not allow_duplicate and amount_usd_est and amount_usd_est > 0:
+        from datetime import timedelta
+        cutoff_date = datetime.utcnow() - timedelta(days=7)
+        existing_quick_dup = db.query(Expense).filter(
+            Expense.status != "rechazado",
+            Expense.expense_date >= cutoff_date,
+            func.abs(Expense.amount_usd - amount_usd_est) < 0.03
+        ).first()
+        if existing_quick_dup:
+            date_str = existing_quick_dup.expense_date.strftime("%d/%m/%Y") if existing_quick_dup.expense_date else "reciente"
+            raise HTTPException(
+                status_code=409,
+                detail=f"⚠️ Posible comprobante duplicado: Ya existe un gasto registrado por ${existing_quick_dup.amount_usd:.2f} el {date_str} (ID #{existing_quick_dup.id}). Si es un gasto distinto, confirma el envío."
+            )
+
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
     unique_name = f"campo_{uuid.uuid4().hex[:8]}.{ext}"
@@ -181,13 +198,16 @@ async def quick_upload_receipt(
     reporter = db.query(Personnel).first()
     reporter_id = reporter.id if reporter else None
 
+    rep_name_clean = reported_by_name or "Supervisor Campo"
+
     new_pending = Expense(
         category_id=cat_id,
         project_id=project_id,
         asset_id=asset_id,
         reported_by_id=reporter_id,
+        partner_name=f"Reportado por: {rep_name_clean}",
         expense_type="costo_obra" if project_id else "gasto_sede",
-        description=quick_note or "Comprobante de Campo",
+        description=f"{quick_note or 'Comprobante de Campo'}",
         supplier_vendor="Por validar en oficina",
         amount_bs=round(amount_usd_est * 800.0, 2),
         exchange_rate=800.0,
@@ -202,10 +222,10 @@ async def quick_upload_receipt(
 
     # Auditoría
     audit = AuditLog(
-        username="campo",
+        username=rep_name_clean,
         module="gastos_campo",
         action="subida_comprobante",
-        details=f"Comprobante recibido desde campo: {unique_name} para proyecto ID {project_id}"
+        details=f"Comprobante recibido desde campo por {rep_name_clean}: {unique_name} para proyecto ID {project_id}"
     )
     db.add(audit)
     db.commit()
@@ -376,6 +396,26 @@ def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
     if not cat:
         raise HTTPException(status_code=404, detail="Categoría de gasto no encontrada.")
 
+    # 🛡️ FILTRO ANTI-DUPLICADOS DALOR: Detección preventiva de comprobantes ya registrados
+    if not expense_in.allow_duplicate and expense_in.amount_usd > 0 and expense_in.supplier_vendor:
+        from datetime import timedelta
+        cutoff_date = datetime.utcnow() - timedelta(days=20)
+        clean_v = expense_in.supplier_vendor.strip().lower()
+        existing_dup = db.query(Expense).filter(
+            Expense.status != "rechazado",
+            Expense.expense_date >= cutoff_date,
+            func.lower(Expense.supplier_vendor) == clean_v,
+            func.abs(Expense.amount_usd - expense_in.amount_usd) < 0.03
+        ).first()
+
+        if existing_dup:
+            rep_user = existing_dup.partner_name or "Usuario previo"
+            date_str = existing_dup.expense_date.strftime("%d/%m/%Y") if existing_dup.expense_date else "reciente"
+            raise HTTPException(
+                status_code=409,
+                detail=f"⚠️ Posible duplicado detectado: Ya existe un gasto para '{existing_dup.supplier_vendor}' por ${existing_dup.amount_usd:.2f} registrado el {date_str} ({rep_user}, ID #{existing_dup.id}). Si estás seguro de que es otro gasto idéntico, confirma el envío."
+            )
+
     # Reglas de Alerta
     alert_flag = False
     alert_notes = None
@@ -388,12 +428,15 @@ def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
 
     price_l = round(expense_in.amount_usd / expense_in.fuel_liters, 3) if (expense_in.fuel_liters and expense_in.fuel_liters > 0) else None
     
+    rep_tag = f"Reportado por: {expense_in.reported_by_name}" if expense_in.reported_by_name else None
+
     db_exp = Expense(
         category_id=expense_in.category_id,
         project_id=expense_in.project_id,
         cost_center_id=expense_in.cost_center_id,
         asset_id=expense_in.asset_id,
         reported_by_id=expense_in.reported_by_id,
+        partner_name=rep_tag,
         expense_type="costo_obra" if expense_in.project_id else "gasto_sede",
         description=expense_in.description,
         supplier_vendor=expense_in.supplier_vendor,
@@ -417,5 +460,16 @@ def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
     db.add(db_exp)
     db.commit()
     db.refresh(db_exp)
+
+    # Auditoría
+    audit_user = expense_in.reported_by_name or "sistema"
+    audit = AuditLog(
+        username=audit_user,
+        module="gastos",
+        action="registro_gasto",
+        details=f"Gasto #{db_exp.id} registrado por ${expense_in.amount_usd:.2f} para '{expense_in.supplier_vendor}' por {audit_user}"
+    )
+    db.add(audit)
+    db.commit()
 
     return [db_exp]

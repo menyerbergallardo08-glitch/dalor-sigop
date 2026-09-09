@@ -139,12 +139,18 @@ def get_pending_inbox(db: Session = Depends(get_db)):
             "project_id": exp.project_id,
             "project_name": proj_name,
             "project_code": proj_code,
+            "category_id": exp.category_id,
+            "category_code": exp.category.code if exp.category else None,
+            "category_name": exp.category.name if exp.category else None,
             "asset_id": exp.asset_id,
             "asset_name": asset_name,
             "description": exp.description,
             "supplier_vendor": exp.supplier_vendor,
             "amount_usd": exp.amount_usd,
             "amount_bs": exp.amount_bs,
+            "base_amount_usd": exp.base_amount_usd,
+            "tax_amount_usd": exp.tax_amount_usd,
+            "is_tax_exempt": exp.is_tax_exempt,
             "receipt_image_path": exp.receipt_image_path,
             "status": exp.status
         })

@@ -229,6 +229,8 @@ class ExpenseCreate(BaseModel):
     payment_method: str = "caja_chica"
     has_receipt: bool = True
     receipt_image_path: Optional[str] = None
+    reported_by_name: Optional[str] = None
+    allow_duplicate: Optional[bool] = False
     split_items: Optional[List[SplitExpenseItem]] = None
 
 class ExpenseOut(BaseModel):

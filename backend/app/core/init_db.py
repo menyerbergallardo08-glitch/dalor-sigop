@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import text
 from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.models.models import (
@@ -8,6 +9,20 @@ from app.models.models import (
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    
+    # Safe SQLite auto-migration for newly added columns
+    with engine.connect() as conn:
+        for col, col_type in [
+            ("base_amount_usd", "FLOAT DEFAULT 0.0"),
+            ("tax_amount_usd", "FLOAT DEFAULT 0.0"),
+            ("is_tax_exempt", "BOOLEAN DEFAULT 0")
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE expenses ADD COLUMN {col} {col_type};"))
+                conn.commit()
+            except Exception:
+                pass
+
     db = SessionLocal()
     try:
         print("--> Verifying and synchronizing Dalor SIGO-P Database...")

@@ -29,9 +29,14 @@ async def scan_ticket(
     with open(file_path, "wb") as f:
         f.write(contents)
 
-    # 1. Intentar primero con Gemini 1.5 Flash Vision Multimodal
+    image_url = f"/uploads/{unique_filename}"
+
+    # 1. Intentar primero con Gemini 3.6 Flash Vision Multimodal
     gemini_result = OCRReceiptParser.extract_with_gemini(file_path, default_rate=exchange_rate)
     if gemini_result:
+        gemini_result["image_url"] = image_url
+        tax_val = gemini_result.get("detected_tax_usd") or 0.0
+        gemini_result["is_tax_exempt"] = (tax_val <= 0.001)
         return gemini_result
 
     # 2. Fallback: OCR de texto (Tesseract en Linux / WinSDK en Windows)
@@ -46,6 +51,14 @@ async def scan_ticket(
         raw_text=raw_text,
         default_rate=exchange_rate
     )
+    if isinstance(parsed, dict):
+        parsed["image_url"] = image_url
+        tax_val = parsed.get("detected_tax_usd") or 0.0
+        parsed["is_tax_exempt"] = (tax_val <= 0.001)
+    elif hasattr(parsed, "image_url"):
+        parsed.image_url = image_url
+        tax_val = getattr(parsed, "detected_tax_usd", 0.0) or 0.0
+        parsed.is_tax_exempt = (tax_val <= 0.001)
 
     return parsed
 

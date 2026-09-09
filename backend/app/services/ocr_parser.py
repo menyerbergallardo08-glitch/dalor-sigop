@@ -62,29 +62,33 @@ class OCRReceiptParser:
                 img.save(buffer, format="JPEG", quality=85)
                 b64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-            prompt = f"""Actúa como auditor contable experto en facturación venezolana (SENIAT, máquinas fiscales, tickets, notas de entrega, facturas de combustible o insumos).
-Analiza esta imagen de factura o recibo y extrae con precisión los datos contables en formato JSON válido.
+            prompt = f"""Actúa como auditor contable experto en facturación venezolana (SENIAT, máquinas fiscales térmicas, tickets, notas de entrega, facturas de combustible o insumos de taller).
+Analiza con máxima agudeza esta imagen de factura o recibo y extrae con precisión los datos contables en formato JSON válido.
 Tasa de cambio de referencia del sistema: {default_rate} Bs/USD.
+
+INSTRUCCIONES CLAVE PARA MONTOS Y PROVEEDOR:
+- En recibos térmicos o con tinta clara o sombras, busca renglones que digan: 'TOTAL', 'TOTAL A PAGAR', 'SUB-TOTAL', 'MONTO', 'BS', 'Bs.', '$', 'USD', 'TOTAL GENERAL'.
+- NUNCA devuelvas detected_amount_usd: 0 o detected_amount_bs: 0 si hay un importe de pago visible.
+- Si el monto está expresado en Bolívares (Bs.), asígnalo a detected_amount_bs y calcula detected_amount_usd = detected_amount_bs / {default_rate}.
+- Si el monto está expresado en Dólares ($), asígnalo a detected_amount_usd y calcula detected_amount_bs = detected_amount_usd * {default_rate}.
+- Si hay IVA o base imponible desglosada, extráelos. Si no está desglosado pero es factura fiscal, estima la base y el 16% IVA. Si es nota de entrega o exento, detected_tax_usd = 0.
 
 Estructura de respuesta JSON esperada:
 {{
-  "detected_vendor": "Nombre comercial o razón social del proveedor",
-  "detected_rif": "RIF o NIF (ej: J-12345678-0)",
+  "detected_vendor": "Nombre comercial o razón social del proveedor o comercio",
+  "detected_rif": "RIF o NIF (ej: J-12345678-0 o V-12345678)",
   "detected_amount_bs": 0.0,
   "detected_amount_usd": 0.0,
   "detected_base_usd": 0.0,
   "detected_tax_usd": 0.0,
+  "is_tax_exempt": false,
   "suggested_category_code": "10.0",
   "fuel_liters": null,
   "raw_summary": "Resumen de lo adquirido"
 }}
 Partidas Dalor: 1.1 Materiales, 1.2 Consumibles, 2.1 Equipos, 3.1 Combustible, 4.1 Mantenimiento, 5.1 Fletes, 10.0 Honorarios/General, 15.0 Hospedaje, 16.0 Viáticos/Alimentos, 17.0 Ferretería, 19.0 Combustible, 20.0 Peajes.
-Si el monto viene en Bs., calcula el equivalente en USD dividiendo entre {default_rate}.
-Si el monto viene en USD, calcula el equivalente en Bs multiplicando por {default_rate}.
 Responde ÚNICAMENTE con el bloque JSON válido."""
 
-            model_name = "models/gemini-3.6-flash"
-            url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
             payload = {
                 "contents": [{
                     "parts": [
@@ -103,15 +107,36 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
                 }
             }
 
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=30) as res:
-                resp_data = json.loads(res.read().decode("utf-8"))
+            candidate_models = [
+                "models/gemini-2.5-flash",
+                "models/gemini-flash-latest",
+                "models/gemini-2.5-flash-lite",
+                "models/gemini-1.5-flash"
+            ]
+            text_resp = None
+            for model_name in candidate_models:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    with urllib.request.urlopen(req, timeout=20) as res:
+                        resp_data = json.loads(res.read().decode("utf-8"))
+                        candidates = resp_data.get("candidates", [])
+                        if candidates and "content" in candidates[0]:
+                            parts = candidates[0]["content"].get("parts", [])
+                            if parts and "text" in parts[0]:
+                                text_resp = parts[0]["text"].strip()
+                                if text_resp:
+                                    break
+                except Exception:
+                    continue
 
-            text_resp = resp_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            if not text_resp:
+                return None
+
             if "```json" in text_resp:
                 text_resp = text_resp.split("```json")[1].split("```")[0].strip()
             elif "```" in text_resp:

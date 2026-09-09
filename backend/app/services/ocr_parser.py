@@ -62,21 +62,24 @@ class OCRReceiptParser:
                 img.save(buffer, format="JPEG", quality=85)
                 b64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-            prompt = f"""Actúa como auditor contable experto en facturación venezolana (SENIAT, máquinas fiscales térmicas, tickets, notas de entrega, facturas de combustible o insumos de taller).
-Analiza con máxima agudeza esta imagen de factura o recibo y extrae con precisión los datos contables en formato JSON válido.
+            prompt = f"""Actúa como auditor contable experto en comprobantes de gasto y facturación venezolana (facturas SENIAT, máquinas fiscales térmicas, tickets de venta, notas de entrega y talonarios manuscritos a bolígrafo/lápiz).
+Analiza detenidamente esta imagen y extrae con precisión los datos contables en formato JSON válido.
 Tasa de cambio de referencia del sistema: {default_rate} Bs/USD.
 
-INSTRUCCIONES CLAVE PARA MONTOS Y PROVEEDOR:
-- En recibos térmicos o con tinta clara o sombras, busca renglones que digan: 'TOTAL', 'TOTAL A PAGAR', 'SUB-TOTAL', 'MONTO', 'BS', 'Bs.', '$', 'USD', 'TOTAL GENERAL'.
-- NUNCA devuelvas detected_amount_usd: 0 o detected_amount_bs: 0 si hay un importe de pago visible.
+REGLAS CRÍTICAS DE LECTURA E INTERPRETACIÓN:
+1. DETECCIÓN DE ORIENTACIÓN Y AUTO-ROTACIÓN: La fotografía puede haber sido tomada de lado (rotada 90° a la izquierda o derecha, o invertida 180°). Rota mentalmente la imagen según la orientación natural del texto y cifras para interpretarlo todo correctamente.
+2. COMPROBANTES Y TALONARIOS MANUSCRITOS (A MANO): En notas de entrega o vales de caja manuales escritos con bolígrafo o lápiz, lee los renglones (cantidades y conceptos como 'Cable', 'Cinta', 'Tornillos', etc.) y busca el TOTAL al final de la columna o casillero inferior (ej: 6000). Si no tiene membrete formal con RIF, asigna 'Nota de Entrega / Comprobante Manual' a detected_vendor y marca is_tax_exempt: true con detected_tax_usd: 0.0.
+3. TICKETS TÉRMICOS Y ARRUGADOS: NUNCA confundas el nombre de un artículo o producto alimenticio/repuesto (ej: 'Cheddar', 'Hamburguesa', 'Aceite', 'Filtro', 'Tornillos') con el nombre del proveedor. El proveedor siempre está en el membrete superior. Si el membrete está arrugado o ilegible, coloca 'Ticket de Venta / Comercio Local' y jamás el nombre de un artículo.
+4. IDENTIFICACIÓN DE MONTOS TOTALES:
+- Busca la línea de 'TOTAL', 'TOTAL A PAGAR', 'TOTAL BS', 'TOTAL GENERAL', 'TOTAL USD' o el valor neto al pie del comprobante. NUNCA devuelvas detected_amount_usd: 0 o detected_amount_bs: 0 si hay un monto visible.
 - Si el monto está expresado en Bolívares (Bs.), asígnalo a detected_amount_bs y calcula detected_amount_usd = detected_amount_bs / {default_rate}.
 - Si el monto está expresado en Dólares ($), asígnalo a detected_amount_usd y calcula detected_amount_bs = detected_amount_usd * {default_rate}.
-- Si hay IVA o base imponible desglosada, extráelos. Si no está desglosado pero es factura fiscal, estima la base y el 16% IVA. Si es nota de entrega o exento, detected_tax_usd = 0.
+- Si hay IVA del 16% desglosado formalmente, extráelo. Si es nota manual, vale o ticket exento, detected_tax_usd = 0.0 e is_tax_exempt = true.
 
 Estructura de respuesta JSON esperada:
 {{
-  "detected_vendor": "Nombre comercial o razón social del proveedor o comercio",
-  "detected_rif": "RIF o NIF (ej: J-12345678-0 o V-12345678)",
+  "detected_vendor": "Nombre del proveedor o tipo de comprobante",
+  "detected_rif": "RIF si está visible o null",
   "detected_amount_bs": 0.0,
   "detected_amount_usd": 0.0,
   "detected_base_usd": 0.0,
@@ -84,7 +87,7 @@ Estructura de respuesta JSON esperada:
   "is_tax_exempt": false,
   "suggested_category_code": "10.0",
   "fuel_liters": null,
-  "raw_summary": "Resumen de lo adquirido"
+  "raw_summary": "Resumen de los artículos o conceptos leídos"
 }}
 Partidas Dalor: 1.1 Materiales, 1.2 Consumibles, 2.1 Equipos, 3.1 Combustible, 4.1 Mantenimiento, 5.1 Fletes, 10.0 Honorarios/General, 15.0 Hospedaje, 16.0 Viáticos/Alimentos, 17.0 Ferretería, 19.0 Combustible, 20.0 Peajes.
 Responde ÚNICAMENTE con el bloque JSON válido."""
@@ -108,9 +111,10 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
             }
 
             candidate_models = [
-                "models/gemini-2.5-flash",
+                "models/gemini-3.6-flash",
                 "models/gemini-flash-latest",
                 "models/gemini-2.5-flash-lite",
+                "models/gemini-2.5-pro",
                 "models/gemini-1.5-flash"
             ]
             text_resp = None

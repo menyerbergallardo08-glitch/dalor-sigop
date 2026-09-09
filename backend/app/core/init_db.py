@@ -181,32 +181,88 @@ def init_db():
             db.add_all(materials)
             db.commit()
 
-        # 5. Categories and Cost Centers
-        if db.query(ExpenseCategory).count() == 0:
-            categories = [
-                ExpenseCategory(code="1.0", name="Nómina Base Sede Central", group_type="nomina_guacara", monthly_budget_usd=4500.0),
-                ExpenseCategory(code="2.0", name="Impuestos Municipales", group_type="impuestos", monthly_budget_usd=500.0),
-                ExpenseCategory(code="3.0", name="Consumibles Oficina & Papelería", group_type="corporativo", monthly_budget_usd=250.0),
-                ExpenseCategory(code="4.0", name="Consumibles & Dotación Taller Central", group_type="corporativo", monthly_budget_usd=500.0),
-                ExpenseCategory(code="5.0", name="Tributos SENIAT (IVA)", group_type="impuestos", monthly_budget_usd=500.0),
-                ExpenseCategory(code="6.0", name="Tributos SENIAT (ISLR)", group_type="impuestos", monthly_budget_usd=300.0),
-                ExpenseCategory(code="7.0", name="Aportes Parafiscales (IVSS / BANAVIH / INCES)", group_type="impuestos", monthly_budget_usd=250.0),
-                ExpenseCategory(code="8.0", name="Honorarios Profesionales & Asesorías", group_type="corporativo", monthly_budget_usd=800.0),
-                ExpenseCategory(code="9.0", name="Inversión / Reposición de Bienes de Capital", group_type="corporativo", monthly_budget_usd=1000.0),
-                ExpenseCategory(code="10.0", name="Servicios Básicos & Conectividad", group_type="servicios", monthly_budget_usd=2500.0),
-                ExpenseCategory(code="11.0", name="Combustible y Peajes de Flota", group_type="operativo_campo", monthly_budget_usd=1200.0),
-                ExpenseCategory(code="12.0", name="Mantenimiento Preventivo y Correctivo de Flota", group_type="operativo_campo", monthly_budget_usd=800.0),
-                ExpenseCategory(code="13.0", name="Nómina Operativa de Proyecto (Campo)", group_type="nomina_proyecto", monthly_budget_usd=3500.0),
-                ExpenseCategory(code="14.0", name="Viáticos, Hospedaje y Logística de Campo", group_type="operativo_campo", monthly_budget_usd=1500.0),
-                ExpenseCategory(code="15.0", name="Materiales e Insumos Metalmecánicos Directos", group_type="operativo_campo", monthly_budget_usd=5000.0),
-                ExpenseCategory(code="16.0", name="Subcontratos y Servicios Especializados Externos", group_type="operativo_campo", monthly_budget_usd=3000.0),
-                ExpenseCategory(code="17.0", name="Alquiler de Maquinaria y Equipos Pesados", group_type="operativo_campo", monthly_budget_usd=2000.0),
-                ExpenseCategory(code="18.0", name="Seguridad Industrial, EPP y Certificaciones", group_type="operativo_campo", monthly_budget_usd=600.0),
-                ExpenseCategory(code="19.0", name="Fletes, Transporte y Logística de Carga Pesada", group_type="operativo_campo", monthly_budget_usd=1000.0),
-                ExpenseCategory(code="20.0", name="Gastos Varios No Deducibles / Imprevistos", group_type="otros", monthly_budget_usd=500.0),
-            ]
-            db.add_all(categories)
-            db.commit()
+        # 5. Categories and Cost Centers (Estructura Original Dalor 20 Categorías + Subcuentas)
+        dalor_cats_data = [
+            # 1. Nómina Dalor Guacara
+            {"code": "1.0", "name": "Nomina Dalor Guacara", "parent_code": None, "group_type": "nomina_guacara", "monthly_budget_usd": 4500.0},
+            {"code": "1.1", "name": "Paola Garay", "parent_code": "1.0", "group_type": "nomina_guacara", "monthly_budget_usd": 800.0},
+            {"code": "1.2", "name": "Robert Rodriguez", "parent_code": "1.0", "group_type": "nomina_guacara", "monthly_budget_usd": 1000.0},
+            {"code": "1.3", "name": "Julio Saavedra", "parent_code": "1.0", "group_type": "nomina_guacara", "monthly_budget_usd": 650.0},
+            {"code": "1.4", "name": "Vicente Rodriguez", "parent_code": "1.0", "group_type": "nomina_guacara", "monthly_budget_usd": 600.0},
+            {"code": "1.5", "name": "Carlos Hurtado", "parent_code": "1.0", "group_type": "nomina_guacara", "monthly_budget_usd": 1200.0},
+            {"code": "1.6", "name": "Geraldine Paez", "parent_code": "1.0", "group_type": "nomina_guacara", "monthly_budget_usd": 600.0},
+            {"code": "1.7", "name": "Eleonora Galetti", "parent_code": "1.0", "group_type": "nomina_guacara", "monthly_budget_usd": 600.0},
+            # 2. Impuestos Municipales
+            {"code": "2.0", "name": "Impuestos Municipales", "parent_code": None, "group_type": "impuestos", "monthly_budget_usd": 500.0},
+            {"code": "2.1", "name": "Fisco Guacara", "parent_code": "2.0", "group_type": "impuestos", "monthly_budget_usd": 150.0},
+            {"code": "2.2", "name": "Direccion de Ambiente", "parent_code": "2.0", "group_type": "impuestos", "monthly_budget_usd": 100.0},
+            {"code": "2.3", "name": "Uso Conforme", "parent_code": "2.0", "group_type": "impuestos", "monthly_budget_usd": 50.0},
+            {"code": "2.4", "name": "Bomberos", "parent_code": "2.0", "group_type": "impuestos", "monthly_budget_usd": 100.0},
+            {"code": "2.5", "name": "Ret. Municipales", "parent_code": "2.0", "group_type": "impuestos", "monthly_budget_usd": 100.0},
+            # 3. Oficina & 4. Taller
+            {"code": "3.0", "name": "Consumibles Oficina", "parent_code": None, "group_type": "corporativo", "monthly_budget_usd": 250.0},
+            {"code": "4.0", "name": "Consumibles Taller", "parent_code": None, "group_type": "corporativo", "monthly_budget_usd": 500.0},
+            # 5 - 9 Tributario SENIAT y Parafiscales
+            {"code": "5.0", "name": "Seniat Iva", "parent_code": None, "group_type": "impuestos", "monthly_budget_usd": 500.0},
+            {"code": "6.0", "name": "Seniat ISLR", "parent_code": None, "group_type": "impuestos", "monthly_budget_usd": 300.0},
+            {"code": "7.0", "name": "Seniat Pensiones", "parent_code": None, "group_type": "impuestos", "monthly_budget_usd": 100.0},
+            {"code": "8.0", "name": "Fonacit", "parent_code": None, "group_type": "impuestos", "monthly_budget_usd": 100.0},
+            {"code": "9.0", "name": "Parafiscales", "parent_code": None, "group_type": "impuestos", "monthly_budget_usd": 150.0},
+            # 10 - 11
+            {"code": "10.0", "name": "Honorarios Profesionales", "parent_code": None, "group_type": "corporativo", "monthly_budget_usd": 800.0},
+            {"code": "11.0", "name": "Compra de bienes", "parent_code": None, "group_type": "corporativo", "monthly_budget_usd": 1000.0},
+            # 12. Servicios
+            {"code": "12.0", "name": "Servicios", "parent_code": None, "group_type": "servicios", "monthly_budget_usd": 2500.0},
+            {"code": "12.1", "name": "Neptunia", "parent_code": "12.0", "group_type": "servicios", "monthly_budget_usd": 800.0},
+            {"code": "12.2", "name": "Gandalf", "parent_code": "12.0", "group_type": "servicios", "monthly_budget_usd": 400.0},
+            {"code": "12.3", "name": "Starlink", "parent_code": "12.0", "group_type": "servicios", "monthly_budget_usd": 300.0},
+            {"code": "12.4", "name": "Aseo", "parent_code": "12.0", "group_type": "servicios", "monthly_budget_usd": 200.0},
+            {"code": "12.5", "name": "Vigilancia", "parent_code": "12.0", "group_type": "servicios", "monthly_budget_usd": 800.0},
+            # 13. Gastos de Flota
+            {"code": "13.0", "name": "Gastos de Flota", "parent_code": None, "group_type": "operativo_campo", "monthly_budget_usd": 1200.0},
+            # 14. Nómina Proyecto (Campo)
+            {"code": "14.0", "name": "Nomina Proyecto", "parent_code": None, "group_type": "nomina_proyecto", "monthly_budget_usd": 3500.0},
+            {"code": "14.1", "name": "Hender Rodriguez", "parent_code": "14.0", "group_type": "nomina_proyecto", "monthly_budget_usd": 800.0},
+            {"code": "14.2", "name": "Herby Rodriguez", "parent_code": "14.0", "group_type": "nomina_proyecto", "monthly_budget_usd": 700.0},
+            {"code": "14.3", "name": "Eliu Suarez", "parent_code": "14.0", "group_type": "nomina_proyecto", "monthly_budget_usd": 600.0},
+            {"code": "14.4", "name": "Danny Chaparro", "parent_code": "14.0", "group_type": "nomina_proyecto", "monthly_budget_usd": 600.0},
+            {"code": "14.5", "name": "Ernesto Chaparro", "parent_code": "14.0", "group_type": "nomina_proyecto", "monthly_budget_usd": 500.0},
+            {"code": "14.6", "name": "Mervis Parra", "parent_code": "14.0", "group_type": "nomina_proyecto", "monthly_budget_usd": 500.0},
+            # 15 - 20 Operativos de Campo
+            {"code": "15.0", "name": "Hospedaje", "parent_code": None, "group_type": "operativo_campo", "monthly_budget_usd": 1500.0},
+            {"code": "16.0", "name": "Comidas", "parent_code": None, "group_type": "operativo_campo", "monthly_budget_usd": 1800.0},
+            {"code": "17.0", "name": "Insumos", "parent_code": None, "group_type": "operativo_campo", "monthly_budget_usd": 2500.0},
+            {"code": "18.0", "name": "Consumibles", "parent_code": None, "group_type": "operativo_campo", "monthly_budget_usd": 800.0},
+            {"code": "19.0", "name": "Combustible", "parent_code": None, "group_type": "operativo_campo", "monthly_budget_usd": 2000.0},
+            {"code": "20.0", "name": "Traslados", "parent_code": None, "group_type": "operativo_campo", "monthly_budget_usd": 600.0}
+        ]
+        
+        parent_map = {}
+        for item in dalor_cats_data:
+            if item["parent_code"] is None:
+                cat = db.query(ExpenseCategory).filter(ExpenseCategory.code == item["code"]).first()
+                if not cat:
+                    cat = ExpenseCategory(code=item["code"])
+                    db.add(cat)
+                cat.name = item["name"]
+                cat.group_type = item["group_type"]
+                cat.monthly_budget_usd = item["monthly_budget_usd"]
+                cat.parent_id = None
+                db.flush()
+                parent_map[item["code"]] = cat.id
+
+        for item in dalor_cats_data:
+            if item["parent_code"] is not None:
+                cat = db.query(ExpenseCategory).filter(ExpenseCategory.code == item["code"]).first()
+                if not cat:
+                    cat = ExpenseCategory(code=item["code"])
+                    db.add(cat)
+                cat.name = item["name"]
+                cat.group_type = item["group_type"]
+                cat.monthly_budget_usd = item["monthly_budget_usd"]
+                cat.parent_id = parent_map.get(item["parent_code"])
+                db.flush()
+        db.commit()
 
         # 6. Client & Active Project
         if db.query(Project).count() == 0:

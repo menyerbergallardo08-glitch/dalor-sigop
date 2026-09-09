@@ -27,6 +27,9 @@ class ExpenseValidationInput(BaseModel):
     has_fiscal_invoice: bool = False
     fuel_liters: Optional[float] = None
     odometer_at_fueling: Optional[float] = None
+    base_amount_usd: Optional[float] = None
+    tax_amount_usd: Optional[float] = None
+    is_tax_exempt: Optional[bool] = False
 
 @router.get("/", response_model=List[ExpenseOut])
 def get_expenses(
@@ -62,6 +65,41 @@ def get_expense_categories(db: Session = Depends(get_db)):
         }
         for c in cats
     ]
+
+@router.get("/categories-tree")
+def get_categories_tree(db: Session = Depends(get_db)):
+    cats = db.query(ExpenseCategory).order_by(ExpenseCategory.code.asc()).all()
+    expenses = db.query(Expense).filter(Expense.status == "aprobado").all()
+    
+    spent_by_cat = {}
+    for exp in expenses:
+        spent_by_cat[exp.category_id] = spent_by_cat.get(exp.category_id, 0.0) + (exp.amount_usd or 0.0)
+
+    parents = [c for c in cats if not c.parent_id or "." not in c.code or c.code.endswith(".0")]
+    if not parents:
+        parents = cats[:8]
+
+    tree = []
+    for p in parents:
+        prefix = p.code.split('.')[0] if '.' in p.code else p.code
+        subcats = [c for c in cats if c.parent_id == p.id or (c.code.startswith(prefix + '.') and c.id != p.id)]
+        p_spent = spent_by_cat.get(p.id, 0.0) + sum(spent_by_cat.get(s.id, 0.0) for s in subcats)
+        
+        tree.append({
+            "id": p.id,
+            "code": p.code,
+            "name": p.name,
+            "total_spent_usd": round(p_spent, 2),
+            "subcategories": [
+                {
+                    "id": s.id,
+                    "code": s.code,
+                    "name": s.name,
+                    "spent_usd": round(spent_by_cat.get(s.id, 0.0), 2)
+                } for s in subcats
+            ]
+        })
+    return tree
 
 # ------------------------------------------------------------------------------
 # 📥 BUZÓN DE COMPROBANTES DE CAMPO PENDIENTES DE VALIDACIÓN
@@ -183,6 +221,13 @@ def validate_and_impute_expense(
     exp.amount_usd = val_in.amount_usd
     exp.amount_bs = round(val_in.amount_usd * val_in.exchange_rate, 2)
     exp.exchange_rate = val_in.exchange_rate
+    exp.is_tax_exempt = val_in.is_tax_exempt
+    if val_in.is_tax_exempt:
+        exp.base_amount_usd = val_in.amount_usd
+        exp.tax_amount_usd = 0.0
+    else:
+        exp.base_amount_usd = val_in.base_amount_usd if val_in.base_amount_usd is not None else round(val_in.amount_usd * 0.862, 2)
+        exp.tax_amount_usd = val_in.tax_amount_usd if val_in.tax_amount_usd is not None else round(val_in.amount_usd - exp.base_amount_usd, 2)
     exp.payment_method = val_in.payment_method
     exp.fuel_liters = val_in.fuel_liters
     exp.odometer_at_fueling = val_in.odometer_at_fueling
@@ -337,6 +382,9 @@ def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
         amount_bs=expense_in.amount_bs,
         exchange_rate=expense_in.exchange_rate,
         amount_usd=expense_in.amount_usd,
+        base_amount_usd=expense_in.base_amount_usd if expense_in.base_amount_usd is not None else (expense_in.amount_usd if expense_in.is_tax_exempt else round(expense_in.amount_usd * 0.862, 2)),
+        tax_amount_usd=expense_in.tax_amount_usd if expense_in.tax_amount_usd is not None else (0.0 if expense_in.is_tax_exempt else round(expense_in.amount_usd * 0.138, 2)),
+        is_tax_exempt=expense_in.is_tax_exempt,
         fuel_liters=expense_in.fuel_liters,
         price_per_liter_usd=price_l,
         odometer_at_fueling=expense_in.odometer_at_fueling,

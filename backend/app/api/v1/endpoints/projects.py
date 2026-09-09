@@ -214,6 +214,20 @@ def update_phase_status(project_id: int, phase_id: int, update_in: PhaseStatusUp
     phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    # Restricción Secuencial Estricta:
+    if update_in.status in ["en_progreso", "completado"] and phase.phase_number > 1:
+        prev_phases = db.query(ProjectPhase).filter(
+            ProjectPhase.project_id == project_id,
+            ProjectPhase.phase_number < phase.phase_number
+        ).order_by(ProjectPhase.phase_number.asc()).all()
+        for p in prev_phases:
+            if p.status != "completado":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Acción Bloqueada: No puedes avanzar la Etapa {phase.phase_number} ('{phase.name}') porque la Etapa {p.phase_number} ('{p.name}') no ha sido culminada aún."
+                )
+
     phase.status = update_in.status
     db.commit()
     return {"success": True, "message": f"Etapa '{phase.name}' actualizada a {phase.status}."}

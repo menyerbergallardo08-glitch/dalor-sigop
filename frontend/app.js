@@ -3590,7 +3590,7 @@ function openMaintenanceSubtab(subtab) {
 }
 
 function switchMaintenanceSubtab(subtab) {
-    ['users', 'audit'].forEach(t => {
+    ['users', 'audit', 'clean'].forEach(t => {
         const pane = document.getElementById(`subtab-maint-${t}`);
         const btn = document.getElementById(`tabbtn-maint-${t}`);
         if (pane) pane.classList.add('hidden');
@@ -5596,4 +5596,35 @@ function exportExpensesLogExcel() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+
+async function submitResetToCleanSlate(event) {
+    event.preventDefault();
+    const pwd = document.getElementById("clean_slate_password")?.value;
+    if (!pwd) return;
+
+    if (!confirm("⚠️ ADVERTENCIA CRÍTICA:\n\n¿Estás 100% seguro de que deseas purgar todos los registros de prueba y llevar el sistema a CERO para el arranque oficial de DALOR?\n\nEsta acción dejará la base de datos impecable para la contabilidad real.")) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/maintenance/reset-to-clean-slate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ director_password: pwd })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            alert("🧹 " + data.message);
+            document.getElementById("clean_slate_password").value = "";
+            await loadInitialMasterData();
+            switchView("executive", "gerencia");
+        } else {
+            const err = await res.json();
+            alert("❌ Error: " + (err.detail || "No se pudo realizar la puesta a cero."));
+        }
+    } catch (e) {
+        alert("Error de conexión al ejecutar puesta a cero.");
+    }
 }

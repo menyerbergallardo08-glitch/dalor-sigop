@@ -860,9 +860,9 @@
             </div>
 
             <!-- Tasa de Cambio Editable, Usuario Activo & Logout -->
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <button onclick="openQuickFlowModal()" class="btn-primary" style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 11px; padding: 6px 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(245, 184, 0, 0.4);">
-                    <i class="fa-solid fa-bolt"></i> Carga Rápida en 3 Toques
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
+                <button onclick="openQuickFlowModal()" class="btn-primary" style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 11px; padding: 6px 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(245, 184, 0, 0.4); white-space: nowrap;">
+                    <i class="fa-solid fa-bolt"></i> 3 Toques
                 </button>
                 <div class="tasa-editor-box" title="Haz clic en el número para editar la tasa oficial en Bs/$">
                     <span style="color: #94a3b8; font-weight: 600;"><i class="fa-solid fa-pen" style="font-size: 10px; color: var(--dalor-gold);"></i> Tasa:</span>
@@ -871,18 +871,20 @@
                 </div>
 
                 <!-- Perfil de Usuario Activo -->
-                <div id="currentUserBadge" style="background-color: #0f172a; border: 1px solid #334155; padding: 4px 10px; border-radius: 8px; display: flex; align-items: center; gap: 8px;">
+                <div id="currentUserBadge" style="background-color: #0f172a; border: 1px solid #334155; padding: 4px 8px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
                     <div style="width: 26px; height: 26px; border-radius: 50%; background: var(--dalor-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;" id="userAvatar">
                         A
                     </div>
-                    <div style="line-height: 1.1;">
+                    <div style="line-height: 1.1;" class="hide-on-small-mobile">
                         <span id="userFullNameDisplay" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block;">Director General</span>
                         <span id="userRoleDisplay" style="font-size: 10px; color: var(--dalor-gold); font-weight: 700;">Director</span>
                     </div>
-                    <button onclick="handleLogout()" title="Cerrar Sesión" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px 4px; font-size: 13px; margin-left: 4px;">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                    </button>
                 </div>
+
+                <!-- Botón Directo y Visible de Cerrar Sesión Móvil / Desktop -->
+                <button onclick="handleLogout()" title="Cerrar Sesión Segura" style="background: #e11d48; color: white; border: none; padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                    <i class="fa-solid fa-power-off"></i> <span style="display: inline;">Salir</span>
+                </button>
             </div>
         </div>
     </header>
@@ -999,20 +1001,24 @@
                     <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
                 </button>
                 <div class="dropdown-menu">
-                    <div class="dropdown-item" onclick="switchView('inbox', 'gastos')">
+                    <div class="dropdown-item" id="item-gasto-inbox" onclick="switchView('inbox', 'gastos')">
                         <i class="fa-solid fa-inbox" style="color: #059669;"></i>
                         <span>Bandeja de Aprobación de Gastos</span>
                         <span id="badgeInboxCount" style="background: #e11d48; color: white; border-radius: 9999px; font-size: 10px; padding: 1px 6px; font-weight: 800; margin-left: auto; display: none;">0</span>
                     </div>
-                    <div class="dropdown-item" onclick="switchView('pwa', 'gastos')">
+                    <div class="dropdown-item" id="item-gasto-pwa" onclick="switchView('pwa', 'gastos')">
                         <i class="fa-solid fa-camera" style="color: #0284c7;"></i>
-                        <span>Captura OCR / Facturas PDF</span>
+                        <span>Captura OCR / Rendir Gasto</span>
                     </div>
-                    <div class="dropdown-item" onclick="switchView('manual', 'gastos')">
+                    <div class="dropdown-item" id="item-gasto-manual" onclick="switchView('manual', 'gastos')">
                         <i class="fa-solid fa-money-bill-transfer" style="color: #10b981;"></i>
                         <span>Carga Oficina & Transferencias</span>
                     </div>
-                    <div class="dropdown-item" onclick="switchView('tree', 'gastos')">
+                    <div class="dropdown-item" id="item-gasto-dashboard" onclick="switchView('dashboard', 'gastos')">
+                        <i class="fa-solid fa-chart-pie" style="color: var(--dalor-blue);"></i>
+                        <span>Control de Gastos Acumulados & Job Costing</span>
+                    </div>
+                    <div class="dropdown-item" id="item-gasto-tree" onclick="switchView('tree', 'gastos')">
                         <i class="fa-solid fa-sitemap" style="color: #8b5cf6;"></i>
                         <span>Árbol Jerárquico de Partidas</span>
                     </div>
@@ -2283,14 +2289,38 @@
                     </div>
 
                     <form id="expenseForm" onsubmit="submitFieldExpense(event)" style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                        <input type="hidden" id="field_receipt_image_path">
+                        <input type="hidden" id="field_base_amount_usd" value="0.0">
+                        <input type="hidden" id="field_tax_amount_usd" value="0.0">
+
+                        <div>
+                            <label class="form-label">Comercio / Proveedor *</label>
+                            <input type="text" id="field_vendor" placeholder="Nombre del Proveedor / Comercio" class="form-input" required>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                             <div>
-                                <label class="form-label">Comercio / Proveedor</label>
-                                <input type="text" id="field_vendor" placeholder="Nombre del Proveedor" class="form-input">
+                                <label class="form-label">Monto Bs (Ticket) *</label>
+                                <input type="number" step="0.01" id="field_amount_bs" placeholder="0.00" class="form-input" style="font-weight: 800; color: #334155; font-size: 15px;" oninput="calcFieldUsd()" required>
                             </div>
                             <div>
                                 <label class="form-label">Monto USD ($) *</label>
-                                <input type="number" step="0.01" id="field_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 800; color: var(--dalor-blue); font-size: 15px;" required>
+                                <input type="number" step="0.01" id="field_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 900; color: var(--dalor-blue); font-size: 15px;" oninput="calcFieldBs()" required>
+                            </div>
+                        </div>
+
+                        <!-- Desglose Fiscal / IVA -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 10px; border-radius: 8px;">
+                            <div>
+                                <label class="form-label" style="font-size: 11px; margin-bottom: 2px;">Tratamiento Fiscal (IVA)</label>
+                                <select id="field_is_tax_exempt" class="form-select" style="font-size: 11px; padding: 4px 8px;" onchange="onFieldTaxConditionChanged()">
+                                    <option value="false">Factura con IVA (16% Crédito)</option>
+                                    <option value="true">Exento / Sin IVA (Peajes, Gasolina, etc.)</option>
+                                </select>
+                            </div>
+                            <div style="font-size: 11px; display: flex; flex-direction: column; justify-content: center;">
+                                <span style="color: #64748b;">Base Imponible: <b id="field_base_display" style="color: var(--dalor-navy);">$0.00</b></span>
+                                <span style="color: #64748b;">IVA Crédito Fiscal: <b id="field_tax_display" style="color: #059669;">$0.00</b></span>
                             </div>
                         </div>
 
@@ -3795,7 +3825,11 @@
                 <!-- Columna Izquierda: Foto de la factura -->
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; min-height: 320px;">
                     <span style="font-size: 11px; font-weight: 800; color: #64748b; margin-bottom: 8px;">FOTO DEL COMPROBANTE ORIGINAL</span>
-                    <img id="val_receipt_image" src="" alt="Comprobante" style="max-height: 280px; max-width: 100%; border-radius: 6px; object-fit: contain; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div id="val_receipt_placeholder" style="display: none; text-align: center; padding: 30px 15px; color: #94a3b8;">
+                        <i class="fa-solid fa-file-invoice" style="font-size: 48px; color: #cbd5e1; margin-bottom: 8px;"></i>
+                        <p style="font-size: 11px; margin: 0;">Sin archivo de foto adjunto</p>
+                    </div>
+                    <img id="val_receipt_image" src="" alt="Comprobante" style="max-height: 280px; max-width: 100%; border-radius: 6px; object-fit: contain; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onerror="this.style.display='none'; document.getElementById('val_receipt_placeholder').style.display='block';">
                     <a id="val_receipt_link" href="#" target="_blank" style="font-size: 11px; color: var(--dalor-blue); font-weight: 700; margin-top: 10px; text-decoration: none;">
                         <i class="fa-solid fa-up-right-from-square"></i> Ver imagen en tamaño completo
                     </a>
@@ -3845,6 +3879,27 @@
                         </div>
                     </div>
 
+                    <!-- Desglose Fiscal en Auditoría -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
+                        <div>
+                            <label class="form-label" style="font-size: 11px;">Condición Fiscal</label>
+                            <select id="val_is_tax_exempt" class="form-select" style="font-size: 11px; padding: 4px;" onchange="onValTaxChanged()">
+                                <option value="false">Factura con IVA (16%)</option>
+                                <option value="true">Exento / Sin IVA</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 4px;">
+                            <div style="flex: 1;">
+                                <label class="form-label" style="font-size: 11px;">Base ($)</label>
+                                <input type="number" step="0.01" id="val_base_usd" class="form-input" style="font-size: 11px; padding: 4px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label class="form-label" style="font-size: 11px;">IVA ($)</label>
+                                <input type="number" step="0.01" id="val_tax_usd" class="form-input" style="font-size: 11px; padding: 4px;">
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="form-label">Concepto / Descripción *</label>
                         <input type="text" id="val_description" class="form-input" required>
@@ -3869,6 +3924,6 @@
     </div><!-- /app-authenticated-shell -->
 
     <!-- App Logic -->
-    <script src="app.js?v=20260908v19"></script>
+    <script src="app.js?v=20260908v20"></script>
 </body>
 </html>

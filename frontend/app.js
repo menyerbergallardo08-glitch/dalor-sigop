@@ -55,8 +55,8 @@ window.onValTaxChanged = function() {
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.08.v21";
-console.log("--> DALOR SIGO-P INITIALIZED v21");
+window.APP_BUILD_VERSION = "2026.09.08.v22";
+console.log("--> DALOR SIGO-P INITIALIZED v22");
 
 // ==============================================================================
 // 🔐 CONTROLADOR CORPORATIVO DE AUTENTICACIÓN & SESIONES (PRODUCCIÓN)
@@ -193,7 +193,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.08.v21";
+const APP_BUILD_VERSION = "2026.09.08.v22";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();
@@ -458,13 +458,33 @@ function initProjectPlanningView() {
     populatePlanDropdownSelectors();
     renderAssignedTags();
     
-    // Iniciar con 3 etapas estándar si está vacío
+    // Iniciar con 4 etapas industriales estándar y sus tareas operativas desglosadas
     const container = document.getElementById("projectPhasesContainer");
     if (container && container.children.length === 0) {
         phaseRowsCount = 0;
-        addProjectPhaseRow("Fase 1: Movilización, Permisos & Seguridad", "Gestión de pases de planta, charla de inducción SHA y traslado de cuadrilla/equipos", 5, 1200);
-        addProjectPhaseRow("Fase 2: Ejecución Técnica & Montaje", "Obras civiles menores, desmontaje, tendido de cables y conexionado electromecánico", 15, 8500);
-        addProjectPhaseRow("Fase 3: Pruebas, Calibración & Entrega", "Pruebas de aislamiento, termografía, puesta en servicio y firma de acta de entrega", 5, 2000);
+        addProjectPhaseRow("Fase 1: Movilización, Permisos & Seguridad SHA", [
+            "Gestión de pases de planta PDVSA/Corpoelec",
+            "Charla de inducción y seguridad industrial SHA",
+            "Inspección de EPP y movilización de equipos y maquinaria"
+        ], 10, 15000);
+
+        addProjectPhaseRow("Fase 2: Desmontaje Mecánico & Corte con Oxicorte", [
+            "Corte de tolvas deterioradas en sitio",
+            "Retiro de vigas secundarias y soportería",
+            "Desconexión y retiro de ductos de gases calientes"
+        ], 15, 25000);
+
+        addProjectPhaseRow("Fase 3: Fabricación & Montaje de Estructuras Nuevas", [
+            "Armado y calderería de tolvas en acero A36",
+            "Soldadura calificada bajo código ASME Sección IX / AWS",
+            "Izamiento e instalación de vigas principales HEA"
+        ], 25, 45000);
+
+        addProjectPhaseRow("Fase 4: Ensayos No Destructivos (END), Pintura & Entrega", [
+            "Inspección de soldaduras por líquidos penetrantes y ultrasonido",
+            "Aplicación de recubrimiento epóxico anticorrosivo",
+            "Pruebas en frío, firma de acta de entrega y recepción definitiva"
+        ], 10, 20500);
     }
 }
 
@@ -601,38 +621,126 @@ function renderAssignedTags() {
     }
 }
 
-// Creador Dinámico de Etapas / Fases con Membretes
-function addProjectPhaseRow(defName = "", defDesc = "", defDays = 7, defCost = 0) {
+// Creador Dinámico de Etapas / Fases con Sub-campos de Tareas Operativas
+function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 0) {
     phaseRowsCount++;
     const container = document.getElementById("projectPhasesContainer");
-    const rowId = `phase_row_${phaseRowsCount}`;
+    const phaseId = `phase_card_${phaseRowsCount}`;
+    const pNum = phaseRowsCount;
 
-    const div = document.createElement("div");
-    div.id = rowId;
-    div.style.cssText = "display: grid; grid-template-columns: 2fr 3fr 1fr 1fr 30px; gap: 6px; background: white; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; align-items: center;";
-    div.innerHTML = `
-        <div>
-            <input type="text" class="form-input ph-name" placeholder="Ej: Fase 1: Movilización" value="${defName}" style="font-size: 11px; font-weight: 700;" required>
+    if (typeof defTasks === 'string') {
+        defTasks = defTasks.split(/[,;\.]\s+/).filter(t => t.trim().length > 0);
+    }
+    if (!Array.isArray(defTasks) || defTasks.length === 0) {
+        defTasks = ["Tarea inicial de la etapa"];
+    }
+
+    const card = document.createElement("div");
+    card.id = phaseId;
+    card.className = "project-phase-card";
+    card.style.cssText = "background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px;";
+
+    card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="phase-number-badge" style="background: var(--dalor-navy); color: white; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 3px 8px;">
+                    Etapa ${pNum}
+                </span>
+                <span style="font-size: 12px; font-weight: 700; color: #475569;">Datos Principales del Hito</span>
+            </div>
+            <button type="button" onclick="removeProjectPhaseRow('${phaseId}')" style="background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer;" title="Eliminar Etapa">
+                <i class="fa-solid fa-trash"></i> Eliminar Etapa
+            </button>
         </div>
-        <div>
-            <input type="text" class="form-input ph-desc" placeholder="Descripción de tareas y alcance" value="${defDesc}" style="font-size: 11px;">
+
+        <!-- Campos de la Fase -->
+        <div style="display: grid; grid-template-columns: 3fr 1fr 1.2fr; gap: 10px;">
+            <div>
+                <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
+                    Nombre de la Etapa / Hito
+                </label>
+                <input type="text" class="form-input ph-name" placeholder="Ej: Fase 1: Movilización & Permisos" value="${defName}" style="font-size: 12px; font-weight: 700;" required>
+            </div>
+            <div>
+                <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
+                    Duración (Días)
+                </label>
+                <input type="number" class="form-input ph-days" placeholder="Días" value="${defDays}" style="font-size: 12px; font-weight: bold;">
+            </div>
+            <div>
+                <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
+                    Presupuesto Fase ($)
+                </label>
+                <input type="number" step="0.01" class="form-input ph-cost" placeholder="Ppto ($)" value="${defCost}" style="font-size: 12px; font-weight: 800; color: var(--dalor-blue);">
+            </div>
         </div>
-        <div>
-            <input type="number" class="form-input ph-days" placeholder="Días" value="${defDays}" style="font-size: 11px; font-weight: bold;">
-        </div>
-        <div>
-            <input type="number" step="0.01" class="form-input ph-cost" placeholder="Ppto ($)" value="${defCost}" style="font-size: 11px; font-weight: 800; color: var(--dalor-blue);">
-        </div>
-        <div style="text-align: center;">
-            <button type="button" onclick="removeProjectPhaseRow('${rowId}')" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer;" title="Eliminar Etapa">&times;</button>
+
+        <!-- Sub-campo de Tareas / Actividades Asignadas a esta Fase -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas / Actividades Operativas de esta Etapa:
+                </label>
+                <button type="button" onclick="addProjectPhaseTask('${phaseId}')" class="btn-primary" style="font-size: 10px; padding: 3px 8px; background: #0284c7;">
+                    <i class="fa-solid fa-plus"></i> Añadir Tarea
+                </button>
+            </div>
+            
+            <div class="phase-tasks-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
         </div>
     `;
-    container.appendChild(div);
+
+    container.appendChild(card);
+    
+    // Poblar las tareas iniciales
+    const tasksContainer = card.querySelector('.phase-tasks-container');
+    defTasks.forEach((taskText) => {
+        addProjectPhaseTaskRow(tasksContainer, taskText);
+    });
+
+    renumberPhasesAndTasks();
 }
 
-function removeProjectPhaseRow(rowId) {
-    const el = document.getElementById(rowId);
+function addProjectPhaseTask(phaseCardId) {
+    const card = document.getElementById(phaseCardId);
+    if (!card) return;
+    const tasksContainer = card.querySelector('.phase-tasks-container');
+    addProjectPhaseTaskRow(tasksContainer, "");
+    renumberPhasesAndTasks();
+}
+
+function addProjectPhaseTaskRow(container, textValue = "") {
+    const taskRow = document.createElement("div");
+    taskRow.className = "phase-task-row";
+    taskRow.style.cssText = "display: flex; align-items: center; gap: 6px;";
+    taskRow.innerHTML = `
+        <span class="task-number-badge" style="font-size: 10px; font-weight: 800; background: #e2e8f0; color: #334155; padding: 4px 6px; border-radius: 4px; min-width: 34px; text-align: center;">
+            -
+        </span>
+        <input type="text" class="form-input ph-task-input" placeholder="Escribe la tarea puntual (ej: Corte con oxicorte, Pases de planta...)" value="${textValue}" style="font-size: 11px; flex: 1;" required>
+        <button type="button" onclick="this.closest('.phase-task-row').remove(); renumberPhasesAndTasks();" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding: 0 4px;" title="Eliminar Tarea">&times;</button>
+    `;
+    container.appendChild(taskRow);
+}
+
+function removeProjectPhaseRow(phaseId) {
+    const el = document.getElementById(phaseId);
     if (el) el.remove();
+    renumberPhasesAndTasks();
+}
+
+function renumberPhasesAndTasks() {
+    const phaseCards = document.querySelectorAll("#projectPhasesContainer .project-phase-card");
+    phaseCards.forEach((card, pIdx) => {
+        const badge = card.querySelector('.phase-number-badge');
+        if (badge) badge.innerText = `Etapa ${pIdx + 1}`;
+
+        const taskRows = card.querySelectorAll('.phase-task-row');
+        taskRows.forEach((tRow, tIdx) => {
+            const tBadge = tRow.querySelector('.task-number-badge');
+            if (tBadge) tBadge.innerText = `${pIdx + 1}.${tIdx + 1}`;
+        });
+    });
 }
 
 function recalcProjectBudgetPreview() {
@@ -657,18 +765,22 @@ function recalcProjectBudgetPreview() {
 async function submitCreateProject(event) {
     event.preventDefault();
 
-    // 1. Etapas
-    const phaseRows = document.querySelectorAll("#projectPhasesContainer > div");
+    // 1. Etapas con Sub-tareas Operativas
+    const phaseCards = document.querySelectorAll("#projectPhasesContainer .project-phase-card");
     let phases = [];
-    phaseRows.forEach((r, idx) => {
-        const name = r.querySelector(".ph-name").value;
-        const desc = r.querySelector(".ph-desc").value;
-        const days = parseInt(r.querySelector(".ph-days").value) || 7;
-        const cost = parseFloat(r.querySelector(".ph-cost").value) || 0.0;
+    phaseCards.forEach((card, idx) => {
+        const name = card.querySelector(".ph-name").value.trim();
+        const days = parseInt(card.querySelector(".ph-days").value) || 7;
+        const cost = parseFloat(card.querySelector(".ph-cost").value) || 0.0;
+        
+        const taskInputs = card.querySelectorAll(".ph-task-input");
+        const tasksList = Array.from(taskInputs).map(inp => inp.value.trim()).filter(Boolean);
+        const description = tasksList.length > 0 ? tasksList.join("; ") : name;
+
         phases.push({
             phase_number: idx + 1,
             name: name,
-            description: desc,
+            description: description,
             duration_days: days,
             estimated_cost_usd: cost,
             status: "pendiente"
@@ -776,6 +888,33 @@ async function loadProjectsList() {
                         </button>
                     </div>
                 </div>
+
+                <!-- Desglose de Fases & Tareas Desplegable Directo -->
+                <details style="margin-top: 8px; font-size: 11px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px;">
+                    <summary style="cursor: pointer; font-weight: 700; color: var(--dalor-navy); display: flex; justify-content: space-between; align-items: center;">
+                        <span><i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas por Fase de Obra (${phasesCount})</span>
+                        <span style="font-size: 10px; color: #0284c7; font-weight: 600;">(Ver Desglose)</span>
+                    </summary>
+                    <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                        ${(p.phases || []).map((ph, idx) => `
+                            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--dalor-navy);">
+                                    <span><b>Etapa ${idx + 1}:</b> ${ph.name}</span>
+                                    <span style="font-size: 10px; font-weight: 800; color: ${ph.status === 'completado' ? '#059669' : (ph.status === 'en_progreso' ? '#0284c7' : '#64748b')};">
+                                        ${ph.status === 'completado' ? '✅ Culminada' : (ph.status === 'en_progreso' ? '🔄 En Progreso' : '⏳ Pendiente')}
+                                    </span>
+                                </div>
+                                ${ph.description ? `
+                                    <div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1; font-size: 10px; color: #475569; display: flex; flex-direction: column; gap: 2px;">
+                                        ${ph.description.split(/[,;\.]\s+/).filter(t => t.trim().length > 2).map((t, tidx) => `
+                                            <div>&bull; <b>${idx + 1}.${tidx + 1}</b> ${t}</div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>
             </div>`;
         }).join('');
     } catch (e) {
@@ -2651,21 +2790,28 @@ async function loadCategoriesTree() {
         const tree = await res.json();
 
         container.innerHTML = tree.map(parent => `
-            <div class="card" style="margin-bottom: 0;">
+            <div class="card" style="margin-bottom: 0; border-top: 3px solid var(--dalor-blue);">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 8px;">
                     <div>
                         <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 6px; border-radius: 4px;">${parent.code}</span>
-                        <h4 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); display: inline-block; margin-left: 6px;">${parent.name}</h4>
+                        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); display: inline-block; margin-left: 6px;">${parent.name}</h4>
                     </div>
-                    <span style="font-weight: 800; color: #e11d48; font-size: 14px;">$${parent.total_spent_usd.toFixed(2)}</span>
+                    <div style="text-align: right;">
+                        <span style="font-size: 10px; color: #64748b; display: block;">Gasto Real</span>
+                        <span style="font-weight: 800; color: #e11d48; font-size: 13px;">$${parent.total_spent_usd.toFixed(2)}</span>
+                    </div>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                    ${parent.subcategories.map(sub => `
-                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #475569; padding: 3px 6px; background: #f8fafc; border-radius: 4px;">
+                    ${parent.subcategories && parent.subcategories.length > 0 ? parent.subcategories.map(sub => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #475569; padding: 4px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #f1f5f9;">
                             <span><b>${sub.code}</b> ${sub.name}</span>
                             <span style="font-weight: 700; color: var(--dalor-navy);">$${sub.spent_usd.toFixed(2)}</span>
                         </div>
-                    `).join('')}
+                    `).join('') : `
+                        <div style="font-size: 11px; color: #94a3b8; font-style: italic; padding: 4px 6px;">
+                            Partida directa sin sub-cuentas &bull; Ppto ref: $${(parent.monthly_budget_usd || 0).toLocaleString()}
+                        </div>
+                    `}
                 </div>
             </div>
         `).join('');

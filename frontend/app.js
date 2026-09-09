@@ -47,6 +47,33 @@ function compressImageForOCR(file, maxWidth = 1280, maxHeight = 1280, quality = 
     });
 }
 
+// ==============================================================================
+// 🛠️ FUNCIONES UNIVERSALES DE UTILIDAD & ORDENAMIENTO NUMÉRICO JERÁRQUICO
+// ==============================================================================
+function populateSelect(selectId, items, mapFn) {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+    if (!Array.isArray(items)) {
+        el.innerHTML = '';
+        return;
+    }
+    el.innerHTML = items.map(mapFn).join('');
+}
+
+function sortCategoriesNumerically(cats) {
+    if (!Array.isArray(cats)) return [];
+    return [...cats].sort((a, b) => {
+        const partsA = String(a.code || "").split('.').map(n => parseInt(n, 10) || 0);
+        const partsB = String(b.code || "").split('.').map(n => parseInt(n, 10) || 0);
+        for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+            const valA = partsA[i] !== undefined ? partsA[i] : -1;
+            const valB = partsB[i] !== undefined ? partsB[i] : -1;
+            if (valA !== valB) return valA - valB;
+        }
+        return String(a.name || "").localeCompare(String(b.name || ""));
+    });
+}
+
 // Purga obligatoria de localStorage para garantizar que SIEMPRE aparezca la pantalla de login
 localStorage.removeItem('dalor_user');
 localStorage.removeItem('dalor_token');
@@ -104,7 +131,7 @@ window.onValTaxChanged = function() {
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.09.v24";
+window.APP_BUILD_VERSION = "2026.09.09.v25";
 console.log("--> DALOR SIGO-P INITIALIZED v22");
 
 // ==============================================================================
@@ -244,7 +271,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-const APP_BUILD_VERSION = "2026.09.09.v24";
+const APP_BUILD_VERSION = "2026.09.09.v25";
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.clear();
@@ -418,6 +445,7 @@ async function loadInitialMasterData() {
 
         populateSelectDropdowns();
         populatePlanDropdownSelectors();
+        updatePendingInboxBadge();
     } catch (e) {
         console.error("Error al cargar datos maestros:", e);
     }
@@ -459,8 +487,9 @@ function populateSelectDropdowns() {
         `<option value="">-- Seleccione Proyecto Aprobado --</option>` +
         safeProjects.map(p => `<option value="${p.id}" data-location="${p.location}">${p.code} - ${p.name} (${p.location})</option>`).join('');
 
-    // Categorías Selects
-    const catOptions = safeCategories.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
+    // Categorías Selects (Ordenadas numéricamente 1.0 -> 1.1 -> 2.0 -> 10.0)
+    const sortedCats = sortCategoriesNumerically(safeCategories);
+    const catOptions = sortedCats.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
     if (document.getElementById("field_category_id")) document.getElementById("field_category_id").innerHTML = catOptions;
     if (document.getElementById("manual_category_id")) document.getElementById("manual_category_id").innerHTML = catOptions;
 
@@ -932,6 +961,9 @@ async function loadProjectsList() {
                 <div style="font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px;">
                     <span><i class="fa-solid fa-list-ol"></i> <b>${phasesCount} Etapas</b> &bull; <b>${p.duration_days} días</b></span>
                     <div style="display: flex; gap: 6px;">
+                        <button onclick="openCreateCxCForProject(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #059669;" title="Facturar Valuación a Cliente">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> Facturar (CxC)
+                        </button>
                         <button onclick="viewProjectDetails(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px;">
                             <i class="fa-solid fa-eye"></i> Ficha & Etapas
                         </button>
@@ -2791,11 +2823,17 @@ function openValidateExpenseModal(expenseId) {
             allProjects.map(p => `<option value="${p.id}" ${p.id === exp.project_id ? 'selected' : ''}>[${p.code}] ${p.name}</option>`).join('');
     }
 
-    // Categorías Select
+    // Categorías Select (Orden Numérico & Preselección Inteligente por OCR)
     const catSelect = document.getElementById("val_category_id");
     if (catSelect) {
+        const sortedCats = sortCategoriesNumerically(allCategories);
+        let selectedCatId = exp.category_id;
+        if (!selectedCatId && exp.category_code) {
+            const match = sortedCats.find(c => c.code === exp.category_code || c.code.startsWith(exp.category_code));
+            if (match) selectedCatId = match.id;
+        }
         catSelect.innerHTML = `<option value="">-- Seleccione Partida Dalor --</option>` + 
-            allCategories.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
+            sortedCats.map(c => `<option value="${c.id}" ${c.id === selectedCatId ? 'selected' : ''}>[${c.code}] ${c.name}</option>`).join('');
     }
 
     onValExpenseTypeChanged();
@@ -5501,7 +5539,8 @@ async function loadExpensesLog() {
 
 function populateExpensesLogFilters() {
     populateSelect("log_filter_project", [{id: '', code: '-- Todos los Proyectos --'}, ...allProjects], p => `<option value="${p.id || ''}">${p.code ? p.code + ' - ' + (p.name || '') : p.name}</option>`);
-    populateSelect("log_filter_category", [{id: '', code: '', name: '-- Todas las Partidas --'}, ...(allCategories || [])], c => `<option value="${c.id || ''}">${c.code ? c.code + ' - ' + c.name : c.name}</option>`);
+    const sortedCats = sortCategoriesNumerically(allCategories || []);
+    populateSelect("log_filter_category", [{id: '', code: '', name: '-- Todas las Partidas --'}, ...sortedCats], c => `<option value="${c.id || ''}">${c.code ? '[' + c.code + '] ' + c.name : c.name}</option>`);
 }
 
 function filterExpensesLog() {
@@ -5697,3 +5736,60 @@ async function submitResetToCleanSlate(event) {
         alert("Error de conexión al ejecutar puesta a cero.");
     }
 }
+
+// ==============================================================================
+// 📄 FACTURACIÓN RÁPIDA 1-CLIC DESDE PROYECTO HACIA CxC
+// ==============================================================================
+function openCreateCxCForProject(projId) {
+    const proj = allProjects.find(p => p.id === projId);
+    if (!proj) return;
+
+    switchView('financial', 'finanzas');
+    switchFinancialSubtab('cxc');
+    openNewReceivableModal();
+
+    setTimeout(() => {
+        if (proj.client_id && document.getElementById("cxc_client_id")) {
+            document.getElementById("cxc_client_id").value = proj.client_id;
+        }
+        if (document.getElementById("cxc_project_id")) {
+            document.getElementById("cxc_project_id").value = proj.id;
+        }
+        if (document.getElementById("cxc_description")) {
+            document.getElementById("cxc_description").value = `Valuación / Facturación de Obra - [${proj.code}] ${proj.name}`;
+        }
+        if (document.getElementById("cxc_amount_usd") && proj.contract_amount_usd) {
+            document.getElementById("cxc_amount_usd").value = proj.contract_amount_usd;
+        }
+        if (document.getElementById("cxc_invoice_number")) {
+            const randNum = Math.floor(1000 + Math.random() * 9000);
+            document.getElementById("cxc_invoice_number").value = `VAL-${proj.code}-${randNum}`;
+        }
+    }, 60);
+}
+
+// ==============================================================================
+// 🔔 ALERTA & BADGE VISUAL EN VIVO PARA BANDEJA DE APROBACIÓN
+// ==============================================================================
+async function updatePendingInboxBadge() {
+    try {
+        const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
+        if (!res.ok) return;
+        const pending = await res.json();
+        const count = Array.isArray(pending) ? pending.length : 0;
+
+        const b1 = document.getElementById("badgeInboxCount");
+        if (b1) {
+            b1.innerText = count;
+            b1.style.display = count > 0 ? "inline-block" : "none";
+        }
+        const b2 = document.getElementById("badgeGastosDropdown");
+        if (b2) {
+            b2.innerText = count;
+            b2.style.display = count > 0 ? "inline-block" : "none";
+        }
+    } catch(e) {
+        // Silencioso
+    }
+}
+setInterval(updatePendingInboxBadge, 25000);

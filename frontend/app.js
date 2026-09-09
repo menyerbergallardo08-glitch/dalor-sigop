@@ -1,5 +1,59 @@
-window.APP_BUILD_VERSION = "2026.09.08.v19";
-console.log("--> DALOR SIGO-P INITIALIZED v19");
+
+// ==============================================================================
+// 💵 CÁLCULOS DE MONTO & CONDICIÓN FISCAL EN FORMULARIO DE CAMPO
+// ==============================================================================
+window.calcFieldBs = function() {
+    const usd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
+    const rate = parseFloat(document.getElementById("globalExchangeRateInput")?.value) || EXCHANGE_RATE;
+    const bsEl = document.getElementById("field_amount_bs");
+    if (bsEl && !isNaN(usd)) {
+        bsEl.value = (usd * rate).toFixed(2);
+    }
+    updateFieldTaxDisplays();
+};
+
+window.calcFieldUsd = function() {
+    const bs = parseFloat(document.getElementById("field_amount_bs")?.value) || 0;
+    const rate = parseFloat(document.getElementById("globalExchangeRateInput")?.value) || EXCHANGE_RATE;
+    const usdEl = document.getElementById("field_amount_usd");
+    if (usdEl && !isNaN(bs) && rate > 0) {
+        usdEl.value = (bs / rate).toFixed(2);
+    }
+    updateFieldTaxDisplays();
+};
+
+window.onFieldTaxConditionChanged = function() {
+    updateFieldTaxDisplays();
+};
+
+function updateFieldTaxDisplays() {
+    const usd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
+    const isExempt = document.getElementById("field_is_tax_exempt")?.value === "true";
+    const base = isExempt ? usd : (usd * 0.862);
+    const tax = isExempt ? 0.0 : (usd * 0.138);
+    const baseIn = document.getElementById("field_base_amount_usd");
+    const taxIn = document.getElementById("field_tax_amount_usd");
+    const baseDisp = document.getElementById("field_base_display");
+    const taxDisp = document.getElementById("field_tax_display");
+    if (baseIn) baseIn.value = base.toFixed(2);
+    if (taxIn) taxIn.value = tax.toFixed(2);
+    if (baseDisp) baseDisp.innerText = `$${base.toFixed(2)}`;
+    if (taxDisp) taxDisp.innerText = `$${tax.toFixed(2)}`;
+}
+
+window.onValTaxChanged = function() {
+    const usd = parseFloat(document.getElementById("val_amount_usd")?.value) || 0;
+    const isExempt = document.getElementById("val_is_tax_exempt")?.value === "true";
+    const base = isExempt ? usd : (usd * 0.862);
+    const tax = isExempt ? 0.0 : (usd * 0.138);
+    const baseEl = document.getElementById("val_base_usd");
+    const taxEl = document.getElementById("val_tax_usd");
+    if (baseEl) baseEl.value = base.toFixed(2);
+    if (taxEl) taxEl.value = tax.toFixed(2);
+};
+
+window.APP_BUILD_VERSION = "2026.09.08.v20";
+console.log("--> DALOR SIGO-P INITIALIZED v20");
 
 // ==============================================================================
 // 🔐 CONTROLADOR CORPORATIVO DE AUTENTICACIÓN & SESIONES (PRODUCCIÓN)
@@ -770,12 +824,38 @@ async function viewProjectDetails(projectId) {
             html += data.phases.map((ph, idx) => {
                 const isDone = ph.status === 'completado';
                 const isInProg = ph.status === 'en_progreso';
+                
+                // Restricción Secuencial Estricta:
+                const prevPhases = data.phases.slice(0, idx);
+                const isUnlocked = prevPhases.every(p => p.status === 'completado');
+
+                // Tareas desglosadas por etapa
+                let tasksHtml = '';
+                if (ph.description) {
+                    const tasksList = ph.description.split(/[,;\.]\s+/).filter(t => t.trim().length > 3);
+                    if (tasksList.length > 0) {
+                        tasksHtml = `
+                        <div style="margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 6px;">
+                            <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">
+                                <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas / Actividades de la Etapa:
+                            </span>
+                            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                                ${tasksList.map((t, tIdx) => `
+                                    <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: ${isDone ? '#166534' : '#334155'};">
+                                        <i class="fa-solid ${isDone ? 'fa-square-check' : (isInProg ? 'fa-spinner fa-spin' : 'fa-square')}" style="color: ${isDone ? '#059669' : (isInProg ? '#0284c7' : '#94a3b8')};"></i>
+                                        <span><b>${idx + 1}.${tIdx + 1}</b> ${t}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>`;
+                    }
+                }
 
                 return `
-                <div style="background: ${isDone ? '#f0fdf4' : '#ffffff'}; border: 1px solid ${isDone ? '#86efac' : '#cbd5e1'}; border-radius: 8px; padding: 10px 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                <div style="background: ${isDone ? '#f0fdf4' : (!isUnlocked ? '#f8fafc' : '#ffffff')}; border: 1px solid ${isDone ? '#86efac' : (!isUnlocked ? '#e2e8f0' : '#cbd5e1')}; border-radius: 8px; padding: 10px 12px; ${!isUnlocked ? 'opacity: 0.8;' : ''}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="background: ${isDone ? '#059669' : '#002B49'}; color: white; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 2px 6px;">
+                            <span style="background: ${isDone ? '#059669' : (!isUnlocked ? '#94a3b8' : '#002B49')}; color: white; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 2px 6px;">
                                 Etapa ${idx + 1}
                             </span>
                             <div>
@@ -784,18 +864,21 @@ async function viewProjectDetails(projectId) {
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            ${isDone 
-                                ? `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'pendiente')" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #64748b;" title="Reabrir Etapa"><i class="fa-solid fa-rotate-left"></i> Reabrir</button>`
-                                : `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'completado')" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669; font-weight: 800;"><i class="fa-solid fa-check"></i> Culminar Etapa</button>`
+                            ${!isUnlocked 
+                                ? `<span style="font-size: 10px; font-weight: 800; background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px;"><i class="fa-solid fa-lock"></i> Bloqueada (Culmina Etapa ${idx})</span>`
+                                : (isDone 
+                                    ? `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'pendiente')" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #64748b;" title="Reabrir Etapa"><i class="fa-solid fa-rotate-left"></i> Reabrir</button>`
+                                    : `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'completado')" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669; font-weight: 800;"><i class="fa-solid fa-check"></i> Culminar Etapa</button>`
+                                )
                             }
-                            <select onchange="updatePhaseStatus(${data.id}, ${ph.id}, this.value)" style="font-size: 11px; padding: 3px 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700;">
+                            <select onchange="updatePhaseStatus(${data.id}, ${ph.id}, this.value)" style="font-size: 11px; padding: 3px 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700;" ${!isUnlocked ? 'disabled' : ''}>
                                 <option value="pendiente" ${ph.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
                                 <option value="en_progreso" ${ph.status === 'en_progreso' ? 'selected' : ''}>🔄 En Progreso</option>
                                 <option value="completado" ${ph.status === 'completado' ? 'selected' : ''}>✅ Culminada</option>
                             </select>
                         </div>
                     </div>
-                    ${ph.description ? `<p style="font-size: 11px; color: #475569; margin-top: 4px; padding-left: 2px;">${ph.description}</p>` : ''}
+                    ${tasksHtml}
                 </div>`;
             }).join('');
 
@@ -1498,7 +1581,15 @@ function addQuotationRow() {
             <input type="text" class="form-input q-desc" placeholder="Descripción detallada de la partida / APU" style="font-size: 11px; padding: 4px 6px; margin-top: 4px;" required>
         </div>
         <div>
-            <input type="text" class="form-input q-unit" placeholder="Unidad" value="Global" style="font-size: 11px; padding: 5px;" readonly>
+            <select class="form-select q-unit" style="font-size: 11px; padding: 5px;">
+                <option value="Global">Global</option>
+                <option value="Ton">Ton</option>
+                <option value="m²">m²</option>
+                <option value="ml">ml</option>
+                <option value="Und">Und</option>
+                <option value="Horas">Horas</option>
+                <option value="Días">Días</option>
+            </select>
         </div>
         <div>
             <input type="number" step="0.01" class="form-input q-qty" placeholder="Cant" value="1" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
@@ -2008,12 +2099,22 @@ async function processOCRFile(file) {
 
         const data = await res.json();
         
+        if (data.image_url && document.getElementById("field_receipt_image_path")) {
+            document.getElementById("field_receipt_image_path").value = data.image_url;
+        }
         if (data.detected_vendor && document.getElementById("field_vendor")) {
             document.getElementById("field_vendor").value = data.detected_vendor;
         }
         if (data.detected_amount_usd !== undefined && data.detected_amount_usd !== null && document.getElementById("field_amount_usd")) {
-            document.getElementById("field_amount_usd").value = data.detected_amount_usd;
+            document.getElementById("field_amount_usd").value = Number(data.detected_amount_usd).toFixed(2);
         }
+        if (data.detected_amount_bs !== undefined && data.detected_amount_bs !== null && document.getElementById("field_amount_bs")) {
+            document.getElementById("field_amount_bs").value = Number(data.detected_amount_bs).toFixed(2);
+        }
+        if (document.getElementById("field_is_tax_exempt")) {
+            document.getElementById("field_is_tax_exempt").value = data.is_tax_exempt ? "true" : "false";
+        }
+        updateFieldTaxDisplays();
         if (data.fuel_liters && document.getElementById("field_fuel_liters")) {
             document.getElementById("field_fuel_liters").value = data.fuel_liters;
         }
@@ -2137,14 +2238,24 @@ async function submitFieldExpense(event) {
         return;
     }
 
+    const bsAmount = parseFloat(document.getElementById("field_amount_bs")?.value) || (Math.round(totalUsd * EXCHANGE_RATE * 100) / 100);
+    const isExempt = document.getElementById("field_is_tax_exempt")?.value === "true";
+    const baseAmt = parseFloat(document.getElementById("field_base_amount_usd")?.value) || (isExempt ? totalUsd : totalUsd * 0.862);
+    const taxAmt = parseFloat(document.getElementById("field_tax_amount_usd")?.value) || (isExempt ? 0.0 : totalUsd * 0.138);
+    const imgPath = document.getElementById("field_receipt_image_path")?.value || null;
+
     let payload = {
         supplier_vendor: document.getElementById("field_vendor").value || "Comercio General",
-        reported_by_id: parseInt(document.getElementById("field_reported_by").value) || 1,
-        payment_method: document.getElementById("field_payment_method").value || "caja_chica",
+        reported_by_id: parseInt(document.getElementById("field_reported_by")?.value) || 1,
+        payment_method: document.getElementById("field_payment_method")?.value || "caja_chica",
         amount_usd: totalUsd,
-        amount_bs: Math.round(totalUsd * EXCHANGE_RATE * 100) / 100,
+        amount_bs: bsAmount,
+        base_amount_usd: Math.round(baseAmt * 100) / 100,
+        tax_amount_usd: Math.round(taxAmt * 100) / 100,
+        is_tax_exempt: isExempt,
         exchange_rate: EXCHANGE_RATE,
-        has_receipt: true
+        has_receipt: true,
+        receipt_image_path: imgPath
     };
 
     if (isSplit) {
@@ -2322,14 +2433,27 @@ function openValidateExpenseModal(expenseId) {
     // Foto
     const imgEl = document.getElementById("val_receipt_image");
     const linkEl = document.getElementById("val_receipt_link");
+    const phEl = document.getElementById("val_receipt_placeholder");
     if (imgEl && exp.receipt_image_path) {
         imgEl.src = exp.receipt_image_path;
+        imgEl.style.display = "block";
+        if (phEl) phEl.style.display = "none";
         linkEl.href = exp.receipt_image_path;
         linkEl.style.display = "inline-block";
     } else if (imgEl) {
         imgEl.src = "";
+        imgEl.style.display = "none";
+        if (phEl) phEl.style.display = "block";
         linkEl.style.display = "none";
     }
+
+    if (document.getElementById("val_is_tax_exempt")) {
+        document.getElementById("val_is_tax_exempt").value = exp.is_tax_exempt ? "true" : "false";
+    }
+    const valBase = exp.base_amount_usd !== undefined && exp.base_amount_usd !== null ? exp.base_amount_usd : (exp.is_tax_exempt ? exp.amount_usd : exp.amount_usd * 0.862);
+    const valTax = exp.tax_amount_usd !== undefined && exp.tax_amount_usd !== null ? exp.tax_amount_usd : (exp.is_tax_exempt ? 0.0 : exp.amount_usd * 0.138);
+    if (document.getElementById("val_base_usd")) document.getElementById("val_base_usd").value = Number(valBase).toFixed(2);
+    if (document.getElementById("val_tax_usd")) document.getElementById("val_tax_usd").value = Number(valTax).toFixed(2);
 
     // Proyectos Select
     const projSelect = document.getElementById("val_project_id");
@@ -2999,10 +3123,40 @@ function applyPermissionMap(user) {
         dRec.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
     }
 
-    // Dropdown Gastos (Accesible para todos los usuarios)
+    // Dropdown Gastos (Filtrado estricto según rol)
     const dGas = document.getElementById('dropdown-gastos');
     if (dGas) {
         dGas.style.display = 'inline-block';
+    }
+
+    const itmInbox = document.getElementById('item-gasto-inbox');
+    const itmPwa = document.getElementById('item-gasto-pwa');
+    const itmManual = document.getElementById('item-gasto-manual');
+    const itmDashboard = document.getElementById('item-gasto-dashboard');
+    const itmTree = document.getElementById('item-gasto-tree');
+
+    if (isCampo) {
+        // ROL DE CAMPO: SOLO RENDICIÓN DE GASTO / CAPTURA OCR
+        if (itmInbox) itmInbox.style.display = 'none';
+        if (itmPwa) itmPwa.style.display = 'flex';
+        if (itmManual) itmManual.style.display = 'none';
+        if (itmDashboard) itmDashboard.style.display = 'none';
+        if (itmTree) itmTree.style.display = 'none';
+        switchView('pwa', 'gastos');
+    } else if (isFinanzas) {
+        // ADMINISTRACIÓN: Inbox, Carga Oficina, Dashboard, Árbol
+        if (itmInbox) itmInbox.style.display = 'flex';
+        if (itmPwa) itmPwa.style.display = 'none';
+        if (itmManual) itmManual.style.display = 'flex';
+        if (itmDashboard) itmDashboard.style.display = 'flex';
+        if (itmTree) itmTree.style.display = 'flex';
+    } else {
+        // DIRECTOR / INGENIERO: Todos disponibles
+        if (itmInbox) itmInbox.style.display = 'flex';
+        if (itmPwa) itmPwa.style.display = 'flex';
+        if (itmManual) itmManual.style.display = 'flex';
+        if (itmDashboard) itmDashboard.style.display = 'flex';
+        if (itmTree) itmTree.style.display = 'flex';
     }
 
     // Dropdown Mantenimiento (SOLO Director General / Superuser)
@@ -3101,8 +3255,11 @@ function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem('dalor_user');
     localStorage.removeItem('dalor_token');
+    localStorage.clear();
     currentUser = null;
     authToken = null;
+    window.location.reload();
+    return;
 
     document.body.classList.remove('authenticated');
     const loginScreen = document.getElementById('app-login-screen');

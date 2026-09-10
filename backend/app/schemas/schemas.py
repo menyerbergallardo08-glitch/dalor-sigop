@@ -272,3 +272,18 @@ class CategoryTreeOut(BaseModel):
     total_spent_usd: float
     subcategories_count: int
     subcategories: List[dict] = []
+
+# --- OCR EXTRACT RESULT ---
+class OCRExtractResult(BaseModel):
+    detected_vendor: Optional[str] = "Comercio General"
+    detected_amount_bs: Optional[float] = 0.0
+    detected_amount_usd: Optional[float] = 0.0
+    detected_base_usd: Optional[float] = 0.0
+    detected_tax_usd: Optional[float] = 0.0
+    suggested_category_code: Optional[str] = "10.0"
+    suggested_category_id: Optional[int] = None
+    fuel_liters: Optional[float] = None
+    raw_text: Optional[str] = None
+    image_url: Optional[str] = None
+    is_tax_exempt: Optional[bool] = False
+

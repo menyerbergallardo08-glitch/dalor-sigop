@@ -131,7 +131,7 @@ window.onValTaxChanged = function() {
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.09.v26";
+window.APP_BUILD_VERSION = "2026.09.09.v27";
 console.log("--> DALOR SIGO-P INITIALIZED v22");
 
 // ==============================================================================
@@ -2642,7 +2642,7 @@ async function submitFieldExpense(event) {
                     if (isCampo) {
                         switchView('pwa', 'gastos');
                     } else {
-                        switchView('dashboard', 'proyectos');
+                        switchView('expenses-log', 'gastos');
                     }
                     return;
                 }
@@ -2661,7 +2661,7 @@ async function submitFieldExpense(event) {
             if (isCampo) {
                 switchView('pwa', 'gastos');
             } else {
-                switchView('dashboard', 'proyectos');
+                switchView('expenses-log', 'gastos');
             }
         } else {
             const err = await res.json();
@@ -2717,7 +2717,7 @@ async function submitManualExpense(event) {
         if (res.ok) {
             alert("¡Gasto / Transferencia de oficina guardado exitosamente!");
             document.getElementById("manualExpenseForm").reset();
-            switchView('dashboard', 'proyectos');
+            switchView('expenses-log', 'gastos');
         } else {
             const err = await res.json();
         }
@@ -5639,10 +5639,14 @@ function renderExpensesLogTable(list) {
 
     if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:24px; color:#94a3b8;">No se encontraron gastos que coincidan con los filtros seleccionados.</td></tr>`;
+        const tfoot = document.getElementById("expensesLogTableFoot");
+        if (tfoot) tfoot.innerHTML = "";
         return;
     }
 
-    tbody.innerHTML = list.map(e => {
+    let totBase = 0, totTax = 0, totUsd = 0, totBs = 0;
+
+    tbody.innerHTML = list.map((e, idx) => {
         const dateStr = (e.expense_date || '').split('T')[0] || '-';
         const proj = allProjects.find(p => p.id === e.project_id);
         const projLabel = proj ? `[${proj.code}] ${proj.name}` : (e.project_id ? `Proyecto #${e.project_id}` : 'Gasto General Sede');
@@ -5656,8 +5660,18 @@ function renderExpensesLogTable(list) {
             ? `<span style="background:#d1fae5; color:#065f46; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Aprobado</span>`
             : `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Pendiente</span>`;
 
+        const bAmount = (e.base_amount_usd !== undefined && e.base_amount_usd !== null) ? e.base_amount_usd : (e.is_tax_exempt ? e.amount_usd : (e.amount_usd - (e.tax_amount_usd||0)));
+        const tAmount = e.tax_amount_usd || 0;
+        const uAmount = e.amount_usd || 0;
+        const bsAmount = e.amount_bs || 0;
+
+        totBase += bAmount;
+        totTax += tAmount;
+        totUsd += uAmount;
+        totBs += bsAmount;
+
         const viewBtn = e.receipt_image_path
-            ? `<button onclick="viewReceiptImage('${e.receipt_image_path}')" class="btn-primary" style="padding:3px 8px; font-size:11px; background:#0284c7;" title="Ver Comprobante"><i class="fa-solid fa-eye"></i></button>`
+            ? `<button onclick="viewReceiptImageById(${e.id})" class="btn-primary" style="padding:3px 8px; font-size:11px; background:#0284c7; cursor:pointer;" title="Ver Comprobante Digital"><i class="fa-solid fa-eye"></i></button>`
             : `<span style="color:#cbd5e1; font-size:11px;">-</span>`;
 
         return `
@@ -5665,28 +5679,82 @@ function renderExpensesLogTable(list) {
                 <td style="font-size:11px; color:#64748b;">${dateStr}</td>
                 <td style="font-weight:700; font-size:11px; color:var(--dalor-navy);">${projLabel}</td>
                 <td style="font-size:11px;"><span style="background:#f0f9ff; color:#0369a1; padding:2px 5px; border-radius:4px; font-weight:700;">${catLabel}</span></td>
-                <td style="font-weight:600; font-size:11px;">${e.vendor || 'Comercio'}</td>
+                <td style="font-weight:600; font-size:11px;">${e.vendor || e.supplier_vendor || 'Comercio'}</td>
                 <td style="font-family:monospace; font-size:11px;">${e.invoice_number || '-'}</td>
                 <td style="text-align:center;">${fiscalBadge}</td>
-                <td style="text-align:right; font-size:11px;">$${(e.base_amount_usd || (e.amount_usd - (e.tax_amount_usd||0))).toFixed(2)}</td>
-                <td style="text-align:right; font-size:11px; color:#8b5cf6;">$${(e.tax_amount_usd || 0).toFixed(2)}</td>
-                <td style="text-align:right; font-weight:800; font-size:12px; color:var(--dalor-navy);">$${(e.amount_usd || 0).toFixed(2)}</td>
-                <td style="text-align:right; font-weight:700; font-size:11px; color:#0284c7;">Bs. ${(e.amount_bs || 0).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td style="text-align:right; font-size:11px;">$${bAmount.toFixed(2)}</td>
+                <td style="text-align:right; font-size:11px; color:#8b5cf6;">$${tAmount.toFixed(2)}</td>
+                <td style="text-align:right; font-weight:800; font-size:12px; color:var(--dalor-navy);">$${uAmount.toFixed(2)}</td>
+                <td style="text-align:right; font-weight:700; font-size:11px; color:#0284c7;">Bs. ${bsAmount.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                 <td style="font-size:11px; color:#475569;">${e.reported_by || '-'}</td>
                 <td style="text-align:center;">${statusBadge}</td>
                 <td style="text-align:center;">${viewBtn}</td>
             </tr>
         `;
     }).join('');
+
+    // RENDERIZAR FILA TOTALIZADORA FIJA (TFOOT)
+    let tfoot = document.getElementById("expensesLogTableFoot");
+    if (!tfoot) {
+        const table = tbody.closest("table");
+        if (table) {
+            tfoot = document.createElement("tfoot");
+            tfoot.id = "expensesLogTableFoot";
+            table.appendChild(tfoot);
+        }
+    }
+    if (tfoot) {
+        tfoot.innerHTML = `
+            <tr style="background: var(--dalor-navy); color: white; font-weight: 800; font-size: 11px; border-top: 2px solid var(--dalor-gold);">
+                <td colspan="6" style="padding: 10px 12px; text-align: left; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="fa-solid fa-calculator" style="color: var(--dalor-gold); margin-right: 6px;"></i> TOTALIZADO AUDITORÍA (${list.length} Registros)
+                </td>
+                <td style="padding: 10px 8px; text-align: right; color: #93c5fd;">$${totBase.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td style="padding: 10px 8px; text-align: right; color: #c4b5fd;">$${totTax.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td style="padding: 10px 8px; text-align: right; color: var(--dalor-gold); font-size: 13px;">$${totUsd.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td style="padding: 10px 8px; text-align: right; color: #38bdf8; font-size: 12px;">Bs. ${totBs.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td colspan="3" style="padding: 10px 8px; text-align: center; color: #94a3b8; font-size: 10px;">Sincronizado con Tesorería</td>
+            </tr>
+        `;
+    }
 }
+
+window.viewReceiptImageById = function(expId) {
+    const exp = (allExpensesCache || []).find(e => e.id === expId);
+    if (!exp || !exp.receipt_image_path) {
+        alert("Este gasto no tiene imagen de comprobante digital adjunta.");
+        return;
+    }
+    viewReceiptImage(exp.receipt_image_path);
+};
+
+window.openReceiptInNewTab = function() {
+    const imgEl = document.getElementById("receiptViewerImg");
+    if (!imgEl || !imgEl.src) return;
+    const src = imgEl.src;
+    if (src.startsWith("data:")) {
+        const w = window.open("");
+        w.document.write(`<html><head><title>Comprobante DALOR</title><style>body{margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;}img{max-width:98%;max-height:98vh;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);}</style></head><body><img src="${src}"></body></html>`);
+    } else {
+        window.open(src, "_blank");
+    }
+};
 
 function viewReceiptImage(imagePath) {
     if (!imagePath) return;
-    const fullUrl = imagePath.startsWith('http') ? imagePath : (imagePath.startsWith('/') ? imagePath : '/' + imagePath);
+    const fullUrl = (imagePath.startsWith('http') || imagePath.startsWith('data:')) ? imagePath : (imagePath.startsWith('/') ? imagePath : '/' + imagePath);
     const imgEl = document.getElementById("receiptViewerImg");
     const linkEl = document.getElementById("receiptViewerDownload");
     if (imgEl) imgEl.src = fullUrl;
-    if (linkEl) linkEl.href = fullUrl;
+    if (linkEl) {
+        linkEl.href = fullUrl;
+        if (fullUrl.startsWith('data:')) {
+            linkEl.setAttribute('download', `Comprobante_DALOR_${Date.now()}.jpg`);
+            linkEl.onclick = function(e) { e.preventDefault(); openReceiptInNewTab(); };
+        } else {
+            linkEl.onclick = null;
+        }
+    }
     openModal("modalReceiptViewer");
 }
 

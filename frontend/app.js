@@ -2371,8 +2371,19 @@ function handleFileSelected(event) {
         const reader = new FileReader();
         reader.onload = function(e) {
             imgPreview.src = e.target.result;
+            if (document.getElementById("field_receipt_image_path") && !document.getElementById("field_receipt_image_path").value) {
+                document.getElementById("field_receipt_image_path").value = e.target.result;
+            }
         };
         reader.readAsDataURL(file);
+    }
+
+    const btnSubmit = document.getElementById("btnSubmitExpense");
+    if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Comprobante a Administración';
+        btnSubmit.style.background = "#059669";
+        btnSubmit.style.color = "#ffffff";
     }
 
     processOCRFile(file);
@@ -2384,11 +2395,7 @@ async function processOCRFile(rawFile) {
     if (badge) {
         badge.style.background = "#fef3c7";
         badge.style.color = "#92400e";
-        badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Optimizando imagen y analizando con Gemini...';
-    }
-    if (btnSubmit) {
-        btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analizando factura con IA de Gemini...';
+        badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Leyendo con Gemini IA...';
     }
 
     // Compresión instantánea en el navegador (<100ms, reduce foto de 15MB a ~200KB)
@@ -2482,13 +2489,15 @@ async function processOCRFile(rawFile) {
     } catch (e) {
         console.error("Error en lectura OCR:", e);
         if (badge) {
-            badge.style.background = "#fee2e2";
-            badge.style.color = "#991b1b";
-            badge.innerText = "Lectura Manual (Ingresa Monto)";
+            badge.style.background = "#e0f2fe";
+            badge.style.color = "#0369a1";
+            badge.innerText = "Foto adjunta lista para enviar";
         }
         if (btnSubmit) {
             btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Registrar y Enviar a Administración';
+            btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Comprobante a Administración';
+            btnSubmit.style.background = "#059669";
+            btnSubmit.style.color = "#ffffff";
         }
     }
 }
@@ -2580,12 +2589,6 @@ async function submitFieldExpense(event) {
         }
     }
 
-    if (totalUsd <= 0) {
-        alert("⚠️ Por favor ingresa el monto de la compra o comprobante (en Bs o en $).");
-        if (document.getElementById("field_amount_usd")) document.getElementById("field_amount_usd").focus();
-        return;
-    }
-
     if (btnSubmit) {
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando a Administración...';
@@ -2597,7 +2600,7 @@ async function submitFieldExpense(event) {
     const imgPath = document.getElementById("field_receipt_image_path")?.value || null;
 
     let payload = {
-        supplier_vendor: document.getElementById("field_vendor")?.value || "Comercio General",
+        supplier_vendor: document.getElementById("field_vendor")?.value || "Por auditar en oficina",
         reported_by_id: parseInt(document.getElementById("field_reported_by")?.value) || 1,
         payment_method: document.getElementById("field_payment_method")?.value || "caja_chica",
         amount_usd: totalUsd,

@@ -424,6 +424,7 @@ def seed_master_demo(db: Session = Depends(get_db)):
             code="PRJ-2026-001",
             name="Mantenimiento Integral y Pruebas a Subestación Eléctrica 115kV - Planta San Joaquín",
             client_id=cli_polar.id,
+            client_name=cli_polar.name,
             location="Planta San Joaquín, Cervecería Polar",
             status="activo",
             scope_of_work="Mantenimiento mayor a transformadores de potencia, pruebas de aislamiento a cables de 115kV, calibración de relés de protección y revisión de seccionadores e interruptores SF6.",
@@ -441,13 +442,13 @@ def seed_master_demo(db: Session = Depends(get_db)):
         db.commit()
         db.refresh(prj_polar)
 
-        # Fases del Proyecto
+        # Fases del Proyecto con Tareas Estructuradas (Checklist WBS)
         fases = [
             ProjectPhase(
                 project_id=prj_polar.id,
                 phase_number=1,
                 name="Fase 1: Desconexión, Puesta a Tierra y Pruebas de Aislamiento (Megado)",
-                description="Inspección visual, instalación de tierras temporales y megado de devanados y cables 115kV.",
+                description="[x] Tramitación de permisos de trabajo seguro SHA; [x] Desconexión y bloqueo LOTO de barrajes 115kV; [x] Instalación de tierras temporales de seguridad; [ ] Megado de devanados y aislamiento de cables con Megger MIT515",
                 duration_days=4,
                 estimated_cost_usd=2500.00,
                 status="en_progreso",
@@ -457,7 +458,7 @@ def seed_master_demo(db: Session = Depends(get_db)):
                 project_id=prj_polar.id,
                 phase_number=2,
                 name="Fase 2: Mantenimiento de Seccionadores e Interruptores en SF6",
-                description="Limpieza dieléctrica, ajuste de contactos, engrase conductor y medición de presión de gas SF6.",
+                description="[ ] Desmontaje y limpieza de cámaras de extinción SF6; [ ] Ajuste de torques y bornes de potencia; [ ] Medición de presión de gas SF6 y engrase conductivo",
                 duration_days=6,
                 estimated_cost_usd=4000.00,
                 status="pendiente",
@@ -467,7 +468,7 @@ def seed_master_demo(db: Session = Depends(get_db)):
                 project_id=prj_polar.id,
                 phase_number=3,
                 name="Fase 3: Calibración de Protecciones, Protocolos y Energización",
-                description="Pruebas de inyección secundaria a relés SEL y protocolo final de entrega al cliente.",
+                description="[ ] Inyección secundaria de corriente a relés SEL; [ ] Retiro de tierras temporales y energización controlada; [ ] Firma de acta de entrega técnica con el cliente",
                 duration_days=5,
                 estimated_cost_usd=1700.00,
                 status="pendiente",
@@ -518,6 +519,7 @@ def seed_master_demo(db: Session = Depends(get_db)):
             code="SRV-2026-001",
             name="Revisión, Rebobinado y Pruebas a Motor Eléctrico Siemens 150HP en Taller Guacara",
             client_id=cli_pirelli.id,
+            client_name=cli_pirelli.name,
             location="Taller Central Guacara (Servicio Interno)",
             status="activo",
             scope_of_work="Desarme de motor trifásico 150HP, limpieza química, rebobinado de estator con alambre clase H, cambio de rodamientos SKF y prueba de aislamiento en banco de taller.",
@@ -532,6 +534,32 @@ def seed_master_demo(db: Session = Depends(get_db)):
             is_active=True
         )
         db.add(srv_taller)
+        db.commit()
+        db.refresh(srv_taller)
+
+        fases_taller = [
+            ProjectPhase(
+                project_id=srv_taller.id,
+                phase_number=1,
+                name="Fase 1: Desarme, Inspección Inicial y Lavado Químico",
+                description="[x] Desarme de tapas y extracción de rotor; [x] Inspección de entrehierro y aislamiento; [x] Lavado químico y secado en horno",
+                duration_days=2,
+                estimated_cost_usd=600.00,
+                status="completado",
+                responsible_person="Técnico de Bobinado"
+            ),
+            ProjectPhase(
+                project_id=srv_taller.id,
+                phase_number=2,
+                name="Fase 2: Rebobinado Estatórico, Rodamientos y Pruebas",
+                description="[ ] Confección de bobinas de cobre clase H; [ ] Barnizado por inmersión y curado térmico; [ ] Montaje de rodamientos SKF y pruebas dinámicas en banco",
+                duration_days=3,
+                estimated_cost_usd=1000.00,
+                status="en_progreso",
+                responsible_person="Jefe de Taller Guacara"
+            )
+        ]
+        db.add_all(fases_taller)
         db.commit()
 
         # 7. COMPROBANTE DE CAMPO DEMO (Listo en Buzón de Entrada para validar con campana en vivo)

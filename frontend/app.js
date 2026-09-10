@@ -925,80 +925,184 @@ async function loadProjectsList() {
             return;
         }
 
+        // Determinar permisos de rol para visualización financiera
+        const savedUserStr = sessionStorage.getItem('dalor_user') || localStorage.getItem('dalor_user');
+        const userObj = savedUserStr ? JSON.parse(savedUserStr) : (currentUser || {});
+        const uname = (userObj.username || '').toLowerCase();
+        const urole = (userObj.role_name || '').toLowerCase();
+        const isDirector = uname === 'director' || urole.includes('director') || userObj.is_superuser;
+        const isFinanzas = uname === 'administracion' || urole.includes('admin') || urole.includes('finanzas');
+        const canSeeFinances = isDirector || isFinanzas;
+
         container.innerHTML = allProjects.map(p => {
-            const marginEst = p.contract_amount_usd - p.budget_limit_usd;
-            const marginPct = p.contract_amount_usd > 0 ? (marginEst / p.contract_amount_usd * 100).toFixed(1) : 0;
+            const spent = p.total_spent_usd || 0;
+            const budget = p.budget_limit_usd || 0;
+            const contract = p.contract_amount_usd || 0;
+            const balance = budget - spent;
+            const isOverBudget = spent > budget && budget > 0;
+            const burnPct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+            const realBurnPct = budget > 0 ? (spent / budget * 100).toFixed(1) : 0;
+            
+            const marginReal = contract - spent;
+            const marginRealPct = contract > 0 ? ((marginReal / contract) * 100).toFixed(1) : 0;
+
             const phasesCount = p.phases ? p.phases.length : 0;
+            const completedPhases = p.phases ? p.phases.filter(ph => ph.status === 'completado').length : 0;
+            const inProgPhases = p.phases ? p.phases.filter(ph => ph.status === 'en_progreso').length : 0;
+
+            // Calcular porcentaje de avance físico
+            let progressPct = p.progress_pct !== undefined ? p.progress_pct : 0;
+            if (phasesCount > 0 && progressPct === 0 && (completedPhases > 0 || inProgPhases > 0)) {
+                progressPct = Math.round(((completedPhases + (0.5 * inProgPhases)) / phasesCount) * 100);
+            }
+
+            // Semáforo presupuestario
+            let burnColor = '#059669'; // verde
+            if (realBurnPct >= 80 && realBurnPct <= 100) burnColor = '#f59e0b'; // ámbar
+            if (realBurnPct > 100) burnColor = '#e11d48'; // rojo sobrecosto
 
             return `
-            <div class="card" style="border-left: 4px solid var(--dalor-blue); margin-bottom: 0;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                    <div>
-                        <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 6px; border-radius: 4px;">${p.code}</span>
-                        <h4 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">${p.name}</h4>
-                        <p style="font-size: 11px; color: #64748b;">Cliente: <b>${p.client_name || 'General'}</b> | Ubicación: <b>${p.location}</b></p>
+            <div class="card" style="border-left: 4px solid var(--dalor-blue); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <!-- Encabezado de la Obra -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <div>
+                            <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 8px; border-radius: 4px;">${p.code}</span>
+                            <h4 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px; line-height: 1.3;">${p.name}</h4>
+                            <p style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                                <i class="fa-solid fa-building-user"></i> Cliente: <b>${p.client_name || 'General'}</b> &bull; <i class="fa-solid fa-location-dot"></i> <b>${p.location}</b>
+                            </p>
+                        </div>
+                        <span style="font-size: 10px; background: ${p.status === 'completado' ? '#dcfce7' : '#e0f2fe'}; color: ${p.status === 'completado' ? '#166534' : '#0369a1'}; padding: 3px 10px; border-radius: 9999px; font-weight: 800; text-transform: uppercase;">
+                            ${p.status}
+                        </span>
                     </div>
-                    <span style="font-size: 10px; background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 9999px; font-weight: 800;">
-                        ${p.status.toUpperCase()}
-                    </span>
-                </div>
 
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; margin-bottom: 10px;">
-                    <div>
-                        <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Contrato ($)</span>
-                        <p style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">$${p.contract_amount_usd.toLocaleString()}</p>
+                    <!-- 1. BARRA DE AVANCE FÍSICO DE LA OBRA -->
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 800; margin-bottom: 6px;">
+                            <span style="color: var(--dalor-navy); display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-bars-progress" style="color: var(--dalor-blue);"></i> Avance Físico de Obra:
+                            </span>
+                            <span style="color: ${progressPct === 100 ? '#059669' : 'var(--dalor-blue)'}; font-size: 12px;">
+                                <b>${progressPct}%</b> (${completedPhases} de ${phasesCount} Etapas Culminadas)
+                            </span>
+                        </div>
+                        <div style="height: 10px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
+                            <div style="width: ${progressPct}%; height: 100%; background: linear-gradient(90deg, #0284c7 0%, #059669 100%); transition: width 0.4s ease;"></div>
+                        </div>
                     </div>
-                    <div>
-                        <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Ppto Costo ($)</span>
-                        <p style="font-size: 14px; font-weight: 800; color: #e11d48;">$${p.budget_limit_usd.toLocaleString()}</p>
-                    </div>
-                    <div>
-                        <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Margen Est (%)</span>
-                        <p style="font-size: 14px; font-weight: 800; color: #059669;">${marginPct}%</p>
-                    </div>
-                </div>
 
-                <div style="font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px;">
-                    <span><i class="fa-solid fa-list-ol"></i> <b>${phasesCount} Etapas</b> &bull; <b>${p.duration_days} días</b></span>
-                    <div style="display: flex; gap: 6px;">
-                        <button onclick="openCreateCxCForProject(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #059669;" title="Facturar Valuación a Cliente">
-                            <i class="fa-solid fa-file-invoice-dollar"></i> Facturar (CxC)
-                        </button>
-                        <button onclick="viewProjectDetails(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px;">
-                            <i class="fa-solid fa-eye"></i> Ficha & Etapas
-                        </button>
-                        <button onclick="deleteProject(${p.id})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px;" title="Inactivar Proyecto">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Desglose de Fases & Tareas Desplegable Directo -->
-                <details style="margin-top: 8px; font-size: 11px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px;">
-                    <summary style="cursor: pointer; font-weight: 700; color: var(--dalor-navy); display: flex; justify-content: space-between; align-items: center;">
-                        <span><i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas por Fase de Obra (${phasesCount})</span>
-                        <span style="font-size: 10px; color: #0284c7; font-weight: 600;">(Ver Desglose)</span>
-                    </summary>
-                    <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
-                        ${(p.phases || []).map((ph, idx) => `
-                            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--dalor-navy);">
-                                    <span><b>Etapa ${idx + 1}:</b> ${ph.name}</span>
-                                    <span style="font-size: 10px; font-weight: 800; color: ${ph.status === 'completado' ? '#059669' : (ph.status === 'en_progreso' ? '#0284c7' : '#64748b')};">
-                                        ${ph.status === 'completado' ? '✅ Culminada' : (ph.status === 'en_progreso' ? '🔄 En Progreso' : '⏳ Pendiente')}
-                                    </span>
-                                </div>
-                                ${ph.description ? `
-                                    <div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1; font-size: 10px; color: #475569; display: flex; flex-direction: column; gap: 2px;">
-                                        ${ph.description.split(/[,;\.]\s+/).filter(t => t.trim().length > 2).map((t, tidx) => `
-                                            <div>&bull; <b>${idx + 1}.${tidx + 1}</b> ${t}</div>
-                                        `).join('')}
-                                    </div>
-                                ` : ''}
+                    <!-- 2. CONTROL FINANCIERO & JOB COSTING (Solo Director y Administración) -->
+                    ${canSeeFinances ? `
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">
+                            <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fa-solid fa-chart-pie" style="color: var(--dalor-gold);"></i> Job Costing en Tiempo Real
+                            </span>
+                            <span style="font-size: 10px; font-weight: 800; color: ${isOverBudget ? '#e11d48' : '#059669'};">
+                                ${isOverBudget ? '⚠️ Sobrecosto Presupuestario' : '✅ En Presupuesto'}
+                            </span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; text-align: center; margin-bottom: 8px;">
+                            <div style="background: #f8fafc; padding: 6px 4px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                                <span style="font-size: 9px; color: #64748b; text-transform: uppercase; display: block;">Contrato</span>
+                                <strong style="font-size: 12px; color: var(--dalor-navy);">$${contract.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</strong>
                             </div>
-                        `).join('')}
+                            <div style="background: #f8fafc; padding: 6px 4px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                                <span style="font-size: 9px; color: #64748b; text-transform: uppercase; display: block;">Ppto Techo</span>
+                                <strong style="font-size: 12px; color: #0284c7;">$${budget.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</strong>
+                            </div>
+                            <div style="background: #f8fafc; padding: 6px 4px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                                <span style="font-size: 9px; color: #64748b; text-transform: uppercase; display: block;">Gasto Real</span>
+                                <strong style="font-size: 12px; color: ${isOverBudget ? '#e11d48' : '#d97706'};">$${spent.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                            </div>
+                            <div style="background: #f8fafc; padding: 6px 4px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                                <span style="font-size: 9px; color: #64748b; text-transform: uppercase; display: block;">Saldo Disponible</span>
+                                <strong style="font-size: 12px; color: ${balance >= 0 ? '#059669' : '#e11d48'};">
+                                    ${balance >= 0 ? '+' : ''}$${balance.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                                </strong>
+                            </div>
+                        </div>
+
+                        <!-- Barra de Consumo de Presupuesto -->
+                        <div style="font-size: 10px; color: #64748b; margin-top: 4px;">
+                            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 2px;">
+                                <span>Consumo de Presupuesto: <b>${realBurnPct}%</b> ($${spent.toLocaleString()} / $${budget.toLocaleString()})</span>
+                                <span style="color: #059669;">Margen Proyectado: <b>${marginRealPct}%</b></span>
+                            </div>
+                            <div style="height: 6px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
+                                <div style="width: ${Math.min(100, Math.max(0, realBurnPct))}%; height: 100%; background: ${burnColor};"></div>
+                            </div>
+                        </div>
                     </div>
-                </details>
+                    ` : `
+                    <!-- Vista Operativa para Ingeniero Residente (Sin montos en $) -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; margin-bottom: 10px;">
+                        <div>
+                            <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Duración Total</span>
+                            <p style="font-size: 13px; font-weight: 800; color: var(--dalor-navy);">${p.duration_days} días</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Hitos WBS</span>
+                            <p style="font-size: 13px; font-weight: 800; color: #0284c7;">${phasesCount} Etapas</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Régimen de Turno</span>
+                            <p style="font-size: 13px; font-weight: 800; color: #059669;">Operativo</p>
+                        </div>
+                    </div>
+                    `}
+                </div>
+
+                <div>
+                    <!-- Barra de Acciones y Botones -->
+                    <div style="font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+                        <span><i class="fa-solid fa-list-ol"></i> <b>${phasesCount} Etapas</b> &bull; <b>${p.duration_days} días</b></span>
+                        <div style="display: flex; gap: 6px;">
+                            ${canSeeFinances ? `
+                            <button onclick="openCreateCxCForProject(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #059669;" title="Facturar Valuación a Cliente">
+                                <i class="fa-solid fa-file-invoice-dollar"></i> Facturar (CxC)
+                            </button>
+                            ` : ''}
+                            <button onclick="viewProjectDetails(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px;">
+                                <i class="fa-solid fa-eye"></i> Ficha & Etapas
+                            </button>
+                            ${isDirector ? `
+                            <button onclick="deleteProject(${p.id})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px;" title="Inactivar Proyecto">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Desglose de Fases & Tareas Desplegable Directo -->
+                    <details style="margin-top: 8px; font-size: 11px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px;">
+                        <summary style="cursor: pointer; font-weight: 700; color: var(--dalor-navy); display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas por Fase de Obra (${phasesCount})</span>
+                            <span style="font-size: 10px; color: #0284c7; font-weight: 600;">(Ver Desglose)</span>
+                        </summary>
+                        <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                            ${(p.phases || []).map((ph, idx) => `
+                                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--dalor-navy);">
+                                        <span><b>Etapa ${idx + 1}:</b> ${ph.name}</span>
+                                        <span style="font-size: 10px; font-weight: 800; color: ${ph.status === 'completado' ? '#059669' : (ph.status === 'en_progreso' ? '#0284c7' : '#64748b')};">
+                                            ${ph.status === 'completado' ? '✅ Culminada' : (ph.status === 'en_progreso' ? '🔄 En Progreso' : '⏳ Pendiente')}
+                                        </span>
+                                    </div>
+                                    ${ph.description ? `
+                                        <div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1; font-size: 10px; color: #475569; display: flex; flex-direction: column; gap: 2px;">
+                                            ${ph.description.split(/[,;\.]\s+/).filter(t => t.trim().length > 2).map((t, tidx) => `
+                                                <div>&bull; <b>${idx + 1}.${tidx + 1}</b> ${t}</div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </details>
+                </div>
             </div>`;
         }).join('');
     } catch (e) {
@@ -1010,6 +1114,18 @@ async function viewProjectDetails(projectId) {
     try {
         const res = await fetch(`${API_BASE}/projects/${projectId}/details`);
         const data = await res.json();
+
+        // Determinar permisos de rol para modal
+        const savedUserStr = sessionStorage.getItem('dalor_user') || localStorage.getItem('dalor_user');
+        const userObj = savedUserStr ? JSON.parse(savedUserStr) : (currentUser || {});
+        const uname = (userObj.username || '').toLowerCase();
+        const urole = (userObj.role_name || '').toLowerCase();
+        const isDirector = uname === 'director' || urole.includes('director') || userObj.is_superuser;
+        const isFinanzas = uname === 'administracion' || urole.includes('admin') || urole.includes('finanzas');
+        const canSeeFinances = isDirector || isFinanzas;
+
+        const finBox = document.getElementById("detail_proj_financial_box");
+        if (finBox) finBox.style.display = canSeeFinances ? 'grid' : 'none';
 
         document.getElementById("detail_proj_code").innerText = data.code;
         document.getElementById("detail_proj_name").innerText = data.name;

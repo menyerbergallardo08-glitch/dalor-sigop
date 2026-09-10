@@ -131,7 +131,7 @@ window.onValTaxChanged = function() {
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.09.v28";
+window.APP_BUILD_VERSION = "2026.09.09.v29";
 console.log("--> DALOR SIGO-P INITIALIZED v22");
 
 // ==============================================================================

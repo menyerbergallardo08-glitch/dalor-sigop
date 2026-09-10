@@ -563,10 +563,16 @@
             .btn-floating-logout {
                 display: none !important;
             }
+            .header-logout-btn {
+                display: flex !important;
+            }
         }
         @media (max-width: 768px) {
             .btn-floating-logout {
                 display: inline-flex !important;
+            }
+            .header-logout-btn {
+                display: none !important;
             }
         }
         .btn-floating-logout:hover {
@@ -942,7 +948,7 @@
                 </div>
 
                 <!-- Botón Directo y Visible de Cerrar Sesión Móvil / Desktop -->
-                <button onclick="handleLogout()" title="Cerrar Sesión Segura" style="background: #e11d48; color: white; border: none; padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                <button onclick="handleLogout()" class="header-logout-btn" title="Cerrar Sesión Segura" style="background: #e11d48; color: white; border: none; padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
                     <i class="fa-solid fa-power-off"></i> <span style="display: inline;">Salir</span>
                 </button>
             </div>
@@ -4147,7 +4153,7 @@
     </div><!-- /app-authenticated-shell -->
 
     <!-- App Logic -->
-    <script src="app.js?v=2026.09.09.v25"></script>
+    <script src="app.js?v=2026.09.09.v26"></script>
     <!-- MODAL: NOTA DE ENTREGA & DESPACHO DE MATERIALES (PARA JEFE DE ALMACÉN / OBRA) -->
     <div id="modalMaterialDelivery" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 700px;">

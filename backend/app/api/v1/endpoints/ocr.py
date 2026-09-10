@@ -24,29 +24,13 @@ async def scan_ticket(
     unique_filename = f"ticket_{uuid.uuid4().hex[:8]}.{file_ext}"
     file_path = os.path.join(settings.UPLOAD_DIR, unique_filename)
 
-    # Guardar archivo en disco
+    # Guardar archivo temporalmente en disco y subirlo a Cloudflare R2
     contents = await file.read()
     with open(file_path, "wb") as f:
         f.write(contents)
 
-    import base64
-    import io
-    from PIL import Image
-
-    try:
-        img = Image.open(io.BytesIO(contents))
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-        max_dim = 1200
-        if max(img.size) > max_dim:
-            img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=75, optimize=True)
-        b64_str = base64.b64encode(buf.getvalue()).decode("utf-8")
-        image_url = f"data:image/jpeg;base64,{b64_str}"
-    except Exception as e:
-        b64_str = base64.b64encode(contents).decode("utf-8")
-        image_url = f"data:image/jpeg;base64,{b64_str}"
+    from app.services.storage import R2StorageService
+    image_url, _ = R2StorageService.upload_receipt_image(contents, unique_filename)
 
     # 1. Intentar primero con Gemini 3.6 Flash Vision Multimodal
     gemini_result = OCRReceiptParser.extract_with_gemini(file_path, default_rate=exchange_rate)

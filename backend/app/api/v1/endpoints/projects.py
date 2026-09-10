@@ -14,7 +14,67 @@ class PhaseStatusUpdate(BaseModel):
 
 @router.get("/", response_model=List[ProjectOut])
 def get_projects(db: Session = Depends(get_db)):
-    return db.query(Project).filter(Project.is_active == True).order_by(Project.created_at.desc()).all()
+    projects = db.query(Project).filter(Project.is_active == True).order_by(Project.created_at.desc()).all()
+    results = []
+    for proj in projects:
+        spent = sum(e.amount_usd for e in proj.expenses) if proj.expenses else 0.0
+        
+        # Calculate physical progress percentage based on tasks or completed phases
+        total_tasks = 0
+        completed_tasks = 0
+        if proj.phases:
+            for ph in proj.phases:
+                raw_tasks = [t.strip() for t in (ph.description or "").split(";") if t.strip()]
+                if not raw_tasks and (ph.description or "").strip():
+                    raw_tasks = [t.strip() for t in ph.description.split("\n") if t.strip()]
+                
+                if raw_tasks:
+                    total_tasks += len(raw_tasks)
+                    completed_tasks += sum(1 for t in raw_tasks if t.startswith("[x]") or t.startswith("[X]"))
+                else:
+                    total_tasks += 1
+                    if ph.status == "completado":
+                        completed_tasks += 1
+        
+        prog_pct = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else (100.0 if proj.status == "completado" else 0.0)
+        
+        # Build ProjectOut dictionary/object
+        p_out = ProjectOut(
+            id=proj.id,
+            code=proj.code,
+            name=proj.name,
+            client_id=proj.client_id,
+            client_name=proj.client_name or (proj.client.name if proj.client else "General"),
+            location=proj.location,
+            status=proj.status,
+            scope_of_work=proj.scope_of_work,
+            duration_days=proj.duration_days,
+            contract_amount_usd=proj.contract_amount_usd,
+            estimated_labor_usd=proj.estimated_labor_usd,
+            estimated_fuel_usd=proj.estimated_fuel_usd,
+            estimated_materials_usd=proj.estimated_materials_usd,
+            estimated_tools_usd=proj.estimated_tools_usd,
+            estimated_services_usd=proj.estimated_services_usd,
+            budget_limit_usd=proj.budget_limit_usd,
+            total_spent_usd=round(spent, 2),
+            progress_pct=prog_pct,
+            is_active=proj.is_active,
+            created_at=proj.created_at,
+            phases=[
+                {
+                    "id": ph.id,
+                    "phase_number": ph.phase_number,
+                    "name": ph.name,
+                    "description": ph.description,
+                    "duration_days": ph.duration_days,
+                    "estimated_cost_usd": ph.estimated_cost_usd,
+                    "status": ph.status,
+                    "responsible_person": ph.responsible_person
+                } for ph in proj.phases
+            ]
+        )
+        results.append(p_out)
+    return results
 
 @router.get("/{project_id}/details")
 def get_project_details(project_id: int, db: Session = Depends(get_db)):

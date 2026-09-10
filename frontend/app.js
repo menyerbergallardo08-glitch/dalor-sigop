@@ -108,8 +108,8 @@ window.onFieldTaxConditionChanged = function() {
 function updateFieldTaxDisplays() {
     const usd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
     const isExempt = document.getElementById("field_is_tax_exempt")?.value === "true";
-    const base = isExempt ? usd : (usd * 0.862);
-    const tax = isExempt ? 0.0 : (usd * 0.138);
+    const base = isExempt ? usd : +(usd / 1.16).toFixed(2);
+    const tax = isExempt ? 0.0 : +(usd - base).toFixed(2);
     const baseIn = document.getElementById("field_base_amount_usd");
     const taxIn = document.getElementById("field_tax_amount_usd");
     const baseDisp = document.getElementById("field_base_display");
@@ -123,15 +123,15 @@ function updateFieldTaxDisplays() {
 window.onValTaxChanged = function() {
     const usd = parseFloat(document.getElementById("val_amount_usd")?.value) || 0;
     const isExempt = document.getElementById("val_is_tax_exempt")?.value === "true";
-    const base = isExempt ? usd : (usd * 0.862);
-    const tax = isExempt ? 0.0 : (usd * 0.138);
+    const base = isExempt ? usd : +(usd / 1.16).toFixed(2);
+    const tax = isExempt ? 0.0 : +(usd - base).toFixed(2);
     const baseEl = document.getElementById("val_base_usd");
     const taxEl = document.getElementById("val_tax_usd");
     if (baseEl) baseEl.value = base.toFixed(2);
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.09.v25";
+window.APP_BUILD_VERSION = "2026.09.09.v26";
 console.log("--> DALOR SIGO-P INITIALIZED v22");
 
 // ==============================================================================
@@ -2562,8 +2562,8 @@ async function submitFieldExpense(event) {
 
     const bsAmount = parseFloat(document.getElementById("field_amount_bs")?.value) || (Math.round(totalUsd * EXCHANGE_RATE * 100) / 100);
     const isExempt = document.getElementById("field_is_tax_exempt")?.value === "true";
-    const baseAmt = parseFloat(document.getElementById("field_base_amount_usd")?.value) || (isExempt ? totalUsd : totalUsd * 0.862);
-    const taxAmt = parseFloat(document.getElementById("field_tax_amount_usd")?.value) || (isExempt ? 0.0 : totalUsd * 0.138);
+    const baseAmt = parseFloat(document.getElementById("field_base_amount_usd")?.value) || (isExempt ? totalUsd : +(totalUsd / 1.16).toFixed(2));
+    const taxAmt = parseFloat(document.getElementById("field_tax_amount_usd")?.value) || (isExempt ? 0.0 : +(totalUsd - baseAmt).toFixed(2));
     const imgPath = document.getElementById("field_receipt_image_path")?.value || null;
 
     let payload = {
@@ -2811,8 +2811,8 @@ function openValidateExpenseModal(expenseId) {
     if (document.getElementById("val_is_tax_exempt")) {
         document.getElementById("val_is_tax_exempt").value = exp.is_tax_exempt ? "true" : "false";
     }
-    const valBase = exp.base_amount_usd !== undefined && exp.base_amount_usd !== null ? exp.base_amount_usd : (exp.is_tax_exempt ? exp.amount_usd : exp.amount_usd * 0.862);
-    const valTax = exp.tax_amount_usd !== undefined && exp.tax_amount_usd !== null ? exp.tax_amount_usd : (exp.is_tax_exempt ? 0.0 : exp.amount_usd * 0.138);
+    const valBase = exp.base_amount_usd !== undefined && exp.base_amount_usd !== null ? exp.base_amount_usd : (exp.is_tax_exempt ? exp.amount_usd : +(exp.amount_usd / 1.16).toFixed(2));
+    const valTax = exp.tax_amount_usd !== undefined && exp.tax_amount_usd !== null ? exp.tax_amount_usd : (exp.is_tax_exempt ? 0.0 : +(exp.amount_usd - valBase).toFixed(2));
     if (document.getElementById("val_base_usd")) document.getElementById("val_base_usd").value = Number(valBase).toFixed(2);
     if (document.getElementById("val_tax_usd")) document.getElementById("val_tax_usd").value = Number(valTax).toFixed(2);
 
@@ -2879,6 +2879,10 @@ async function submitValidateExpense(event) {
         return;
     }
 
+    const isExempt = document.getElementById("val_is_tax_exempt")?.value === "true";
+    const baseUsd = parseFloat(document.getElementById("val_base_usd")?.value) || (isExempt ? usd : +(usd / 1.16).toFixed(2));
+    const taxUsd = parseFloat(document.getElementById("val_tax_usd")?.value) || (isExempt ? 0.0 : +(usd - baseUsd).toFixed(2));
+
     const payload = {
         expense_type: document.getElementById("val_expense_type").value,
         category_id: parseInt(document.getElementById("val_category_id").value) || (allCategories[0]?.id || 1),
@@ -2889,7 +2893,10 @@ async function submitValidateExpense(event) {
         amount_usd: usd,
         exchange_rate: EXCHANGE_RATE,
         payment_method: "caja_chica",
-        has_fiscal_invoice: true
+        has_fiscal_invoice: !isExempt,
+        is_tax_exempt: isExempt,
+        base_amount_usd: Math.round(baseUsd * 100) / 100,
+        tax_amount_usd: Math.round(taxUsd * 100) / 100
     };
 
     try {
@@ -3533,8 +3540,11 @@ function applyPermissionMap(user) {
         if (repText) repText.innerHTML = `Reportando como: <b>${user.full_name || user.username}</b> (Supervisor de Campo)`;
     }
 
-    const flLogout = document.getElementById('btnFloatingLogout');
-    if (flLogout) flLogout.style.display = 'inline-flex';
+    // Tasa editable solo visible para Administración / Dirección (oculta para Campo)
+    const tasaBox = document.querySelector('.tasa-editor-box');
+    if (tasaBox) {
+        tasaBox.style.display = isCampo ? 'none' : 'flex';
+    }
 
     if (isCampo) {
         // ROL DE CAMPO: SOLO RENDICIÓN DE GASTO / CAPTURA OCR
@@ -3545,11 +3555,11 @@ function applyPermissionMap(user) {
         if (itmTree) itmTree.style.display = 'none';
         switchView('pwa', 'gastos');
     } else if (isFinanzas) {
-        // ADMINISTRACIÓN: Inbox, Carga Oficina, Dashboard, Árbol
+        // ADMINISTRACIÓN: Inbox, Carga Oficina, Dashboard Oculto (Job Costing solo para dirección/ing), Árbol
         if (itmInbox) itmInbox.style.display = 'flex';
         if (itmPwa) itmPwa.style.display = 'none';
         if (itmManual) itmManual.style.display = 'flex';
-        if (itmDashboard) itmDashboard.style.display = 'flex';
+        if (itmDashboard) itmDashboard.style.display = 'none';
         if (itmTree) itmTree.style.display = 'flex';
     } else {
         // DIRECTOR / INGENIERO: Todos disponibles
@@ -5672,7 +5682,7 @@ function renderExpensesLogTable(list) {
 
 function viewReceiptImage(imagePath) {
     if (!imagePath) return;
-    const fullUrl = imagePath.startsWith('http') ? imagePath : `${BACKEND_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+    const fullUrl = imagePath.startsWith('http') ? imagePath : (imagePath.startsWith('/') ? imagePath : '/' + imagePath);
     const imgEl = document.getElementById("receiptViewerImg");
     const linkEl = document.getElementById("receiptViewerDownload");
     if (imgEl) imgEl.src = fullUrl;
@@ -5773,6 +5783,18 @@ function openCreateCxCForProject(projId) {
 // ==============================================================================
 async function updatePendingInboxBadge() {
     try {
+        if (!currentUser) return;
+        const uname = (currentUser.username || '').toLowerCase();
+        const role = (currentUser.role_name || '').toLowerCase();
+        const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
+        if (isCampo) {
+            const b1 = document.getElementById("badgeInboxCount");
+            const b2 = document.getElementById("badgeGastosDropdown");
+            if (b1) b1.style.display = "none";
+            if (b2) b2.style.display = "none";
+            return;
+        }
+
         const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
         if (!res.ok) return;
         const pending = await res.json();

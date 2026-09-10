@@ -131,7 +131,7 @@ window.onValTaxChanged = function() {
     if (taxEl) taxEl.value = tax.toFixed(2);
 };
 
-window.APP_BUILD_VERSION = "2026.09.09.v27";
+window.APP_BUILD_VERSION = "2026.09.09.v28";
 console.log("--> DALOR SIGO-P INITIALIZED v22");
 
 // ==============================================================================
@@ -5883,3 +5883,8 @@ async function updatePendingInboxBadge() {
     }
 }
 setInterval(updatePendingInboxBadge, 25000);
+
+// 🟢 UPTIME & KEEP-ALIVE PING (Mantiene Render 100% activo sin latencia en frío)
+setInterval(() => {
+    fetch('/healthz').catch(() => {});
+}, 300000); // Cada 5 minutos

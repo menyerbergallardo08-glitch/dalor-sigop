@@ -11,6 +11,19 @@ from app.api.v1.api_router import api_router
 # Crear tablas en SQLite/PostgreSQL
 Base.metadata.create_all(bind=engine)
 
+from datetime import datetime
+
+@app.get("/healthz")
+@app.get("/ping")
+def healthcheck():
+    return {
+        "status": "healthy",
+        "system": "DALOR SIGO-P ERP",
+        "version": "2026.09.09.v28",
+        "database": "Neon PostgreSQL",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",

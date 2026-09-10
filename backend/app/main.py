@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
+from datetime import datetime
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.init_db import init_db
@@ -10,19 +11,6 @@ from app.api.v1.api_router import api_router
 
 # Crear tablas en SQLite/PostgreSQL
 Base.metadata.create_all(bind=engine)
-
-from datetime import datetime
-
-@app.get("/healthz")
-@app.get("/ping")
-def healthcheck():
-    return {
-        "status": "healthy",
-        "system": "DALOR SIGO-P ERP",
-        "version": "2026.09.09.v28",
-        "database": "Neon PostgreSQL",
-        "timestamp": datetime.utcnow().isoformat()
-    }
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -51,6 +39,17 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 
 # Incluir Rutas de API
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+@app.get("/healthz")
+@app.get("/ping")
+def healthcheck():
+    return {
+        "status": "healthy",
+        "system": "DALOR SIGO-P ERP",
+        "version": "2026.09.09.v28",
+        "database": "Neon PostgreSQL (Connected)",
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 @app.get("/")
 @app.get("/index.html")

@@ -947,6 +947,12 @@
                     </div>
                 </div>
 
+                <!-- Botón Switch de Alertas Sonoras (Campana / Silencio) -->
+                <button id="btnSoundToggle" onclick="toggleSoundAlerts()" class="sound-toggle-btn" title="Habilitar o Silenciar Alertas Sonoras" style="background: #0f172a; color: #fbbf24; border: 1px solid #334155; padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
+                    <i id="iconSoundToggle" class="fa-solid fa-bell"></i>
+                    <span id="textSoundToggle" class="hide-on-small-mobile">Sonido: ON</span>
+                </button>
+
                 <!-- Botón Directo y Visible de Cerrar Sesión Móvil / Desktop -->
                 <button onclick="handleLogout()" class="header-logout-btn" title="Cerrar Sesión Segura" style="background: #e11d48; color: white; border: none; padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
                     <i class="fa-solid fa-power-off"></i> <span style="display: inline;">Salir</span>
@@ -2327,7 +2333,13 @@
                         </h3>
                         <p style="font-size: 11px; color: #64748b;">Los gastos aprobados aquí se imputan de inmediato al Job Costing del proyecto y al P&L gerencial.</p>
                     </div>
-                    <button onclick="loadPendingExpensesInbox()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar Bandeja</button>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button id="btnSoundToggleInbox" onclick="toggleSoundAlerts()" class="btn-secondary" style="font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1;">
+                            <i id="iconSoundToggleInbox" class="fa-solid fa-bell" style="color: #059669;"></i>
+                            <span id="textSoundToggleInbox">Alertas Sonoras: ON</span>
+                        </button>
+                        <button onclick="loadPendingExpensesInbox()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar Bandeja</button>
+                    </div>
                 </div>
 
                 <div class="table-wrapper">
@@ -2517,13 +2529,14 @@
                             </div>
                         </div>
 
-                        <div>
-                            <label class="form-label">Concepto / Detalle *</label>
-                            <input type="text" id="field_description" placeholder="Ej: Compra de insumos para obra" class="form-input" required>
+                        <!-- Notificación de Éxito de Escaneo -->
+                        <div id="ocrNoticeBox" class="hidden" style="background: #ecfdf5; border: 1.5px solid #10b981; color: #065f46; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                            <i class="fa-solid fa-circle-check" style="font-size: 16px; color: #10b981; flex-shrink: 0;"></i>
+                            <span>¡Factura leída con éxito! Revisa los datos y presiona el botón a continuación para enviarla a Administración.</span>
                         </div>
 
-                        <button type="submit" id="btnSubmitExpense" class="btn-primary" style="margin-top: 4px;">
-                            <i class="fa-solid fa-floppy-disk"></i> Registrar e Imputar Gasto
+                        <button type="submit" id="btnSubmitExpense" class="btn-primary" style="margin-top: 4px; font-size: 13px; font-weight: 800;">
+                            <i class="fa-solid fa-paper-plane"></i> Registrar y Enviar a Administración
                         </button>
                     </form>
                 </div>
@@ -4250,6 +4263,30 @@
             </div>
         </div>
     </div>
+
+    <!-- 🔔 CONTENEDOR FLOTANTE DE NOTIFICACIONES TOAST EN VIVO -->
+    <div id="toastNotificationContainer" style="position: fixed; top: 75px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 390px; width: 92%;"></div>
+
+    <style>
+        @keyframes slideInToast {
+            from {
+                opacity: 0;
+                transform: translateX(100px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+        @keyframes pulseGlowGreen {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .toast-card-live {
+            animation: slideInToast 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
 
 </body>
 </html>

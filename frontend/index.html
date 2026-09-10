@@ -716,6 +716,20 @@
         }
 
         /* Tarjeta KPI con Arco Radial */
+        .bi-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .bi-main-grid {
+            display: grid;
+            grid-template-columns: 260px 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
         .bi-kpi-card {
             background: #ffffff;
             border-radius: 12px;
@@ -753,6 +767,46 @@
             padding: 16px;
             border: 1px solid #e2e8f0;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        @media (max-width: 1024px) {
+            .bi-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .bi-main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .bi-kpi-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .bi-main-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .bi-ribbon {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                padding: 12px 14px !important;
+                gap: 10px !important;
+            }
+            .bi-kpi-card {
+                padding: 12px !important;
+            }
+            .bi-kpi-card h3 {
+                font-size: 18px !important;
+            }
+            .bi-kpi-radial {
+                width: 54px !important;
+                height: 54px !important;
+            }
+            .bi-kpi-radial canvas {
+                width: 54px !important;
+                height: 54px !important;
+            }
         }
 
         /* ==================================================================
@@ -896,6 +950,9 @@
                     </button>
                     <button type="button" onclick="quickFillAndLogin('campo', 'campo2026')" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left;">
                         📱 Campo OCR
+                    </button>
+                    <button type="button" onclick="quickFillAndLogin('almacen', 'almacen123')" style="background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left; grid-column: span 2;">
+                        📦 Almacén & Pañol Central (almacen / almacen123)
                     </button>
                 </div>
             </div>
@@ -1176,7 +1233,7 @@
                 <div id="executiveAlertsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
 
                 <!-- 4 Tarjetas de Respuestas Claras Directivas (Caja Libre, Gastos Fijos, Ganancia de Obras, Retiros Socios) -->
-                <div class="grid-4" id="biRadialKPIs" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px;">
+                <div class="bi-kpi-grid" id="biRadialKPIs">
                     
                     <!-- 1. Caja Libre Disponible -->
                     <div class="bi-kpi-card" style="border-top: 4px solid #059669; padding: 16px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
@@ -1249,7 +1306,7 @@
                 </div>
 
                 <!-- Grilla Central: Sidebar de Tarjetas Sólidas + Gráficos Analíticos -->
-                <div style="display: grid; grid-template-columns: 260px 1fr 1fr; gap: 14px;">
+                <div class="bi-main-grid">
                     
                     <!-- Sidebar Izquierdo de Tarjetas Sólidas (Estilo Referencia) -->
                     <div style="display: flex; flex-direction: column; gap: 10px;">

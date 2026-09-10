@@ -105,8 +105,32 @@ def init_db():
                     is_active=True,
                     is_superuser=False
                 ),
+                User(
+                    username="almacen",
+                    full_name="Almacén & Pañol Central",
+                    email="almacen@dalor.com.ve",
+                    hashed_password=get_password_hash("almacen123"),
+                    role_name="almacenista",
+                    is_active=True,
+                    is_superuser=False
+                ),
             ]
             db.add_all(users)
+            db.commit()
+
+        # Asegurar usuario Almacén si ya existía la base de datos
+        almacen_usr = db.query(User).filter(User.username == "almacen").first()
+        if not almacen_usr:
+            almacen_usr = User(
+                username="almacen",
+                full_name="Almacén & Pañol Central",
+                email="almacen@dalor.com.ve",
+                hashed_password=get_password_hash("almacen123"),
+                role_name="almacenista",
+                is_active=True,
+                is_superuser=False
+            )
+            db.add(almacen_usr)
             db.commit()
 
         # 2. Clean Personnel Roster (Purge legacy test names like 'Carlos Hurtado' or 'Herby')

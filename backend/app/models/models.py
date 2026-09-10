@@ -319,7 +319,7 @@ class Expense(Base):
     payment_method = Column(String(50), default="caja_chica")
     status = Column(String(50), default="aprobado")
     has_receipt = Column(Boolean, default=True)
-    receipt_image_path = Column(String(255), nullable=True)
+    receipt_image_path = Column(Text, nullable=True)
     
     alert_flag = Column(Boolean, default=False)
     alert_notes = Column(String(255), nullable=True)

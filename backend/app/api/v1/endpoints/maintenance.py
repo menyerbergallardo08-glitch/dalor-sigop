@@ -293,3 +293,308 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
         "message": "Puesta a Cero completada con éxito. Todos los registros de prueba han sido purgados y la base de datos está en cero para la operación real."
     }
 
+# ------------------------------------------------------------------------------
+# 5. 🌟 ESCENARIO MAESTRO DE DEMOSTRACIÓN INTEGRAL (GOLDEN THREAD)
+# ------------------------------------------------------------------------------
+@router.post("/seed-master-demo")
+def seed_master_demo(db: Session = Depends(get_db)):
+    from app.models.models import (
+        Expense, Quotation, QuotationItem, Project, ProjectPhase,
+        AccountReceivable, AccountPayable, ResourceAssignmentHistory,
+        PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset,
+        Personnel, Client, ExpenseCategory, User
+    )
+
+    # 1. Purgar tablas operacionales de prueba
+    db.query(Expense).delete()
+    db.query(QuotationItem).delete()
+    db.query(Quotation).delete()
+    db.query(AccountReceivable).delete()
+    db.query(AccountPayable).delete()
+    db.query(ResourceAssignmentHistory).delete()
+    db.query(PartnerWithdrawal).delete()
+    db.query(FinancialPayment).delete()
+    db.query(MaterialMovement).delete()
+    db.query(ProjectPhase).delete()
+    db.query(Project).delete()
+    db.commit()
+
+    # 2. Resetear activos y personal a estado Sede Central
+    db.query(Asset).update({
+        "status": "disponible_base",
+        "current_location": "Sede Central (Almacén)",
+        "current_project_id": None,
+        "current_custodian_name": None
+    })
+    db.query(Personnel).update({
+        "status": "disponible_base",
+        "current_location": "Sede Central",
+        "current_project_id": None
+    })
+    db.commit()
+
+    # 3. Asegurar Clientes Corporativos
+    cli_polar = db.query(Client).filter(Client.code == "CLI-POLAR").first()
+    if not cli_polar:
+        cli_polar = Client(
+            code="CLI-POLAR",
+            name="Empresas Polar C.A. (Cervecería Modelo)",
+            rif="J-00041372-8",
+            contact_name="Ing. Carlos Mendoza (Gte. Mantenimiento)",
+            contact_phone="0414-4321980",
+            contact_email="cmendoza@polar.com.ve",
+            address="Carretera Nacional San Joaquín, Planta Cervecería, Carabobo",
+            industry="Alimentos y Bebidas / Industrial",
+            is_active=True
+        )
+        db.add(cli_polar)
+        db.commit()
+        db.refresh(cli_polar)
+
+    cli_pirelli = db.query(Client).filter(Client.code == "CLI-PIRELLI").first()
+    if not cli_pirelli:
+        cli_pirelli = Client(
+            code="CLI-PIRELLI",
+            name="Pirelli de Venezuela C.A.",
+            rif="J-00012984-1",
+            contact_name="Ing. Roberto Gómez",
+            contact_phone="0424-4198230",
+            contact_email="rgomez@pirelli.com.ve",
+            address="Zona Industrial Guacara, Edo. Carabobo",
+            industry="Manufactura / Automotriz",
+            is_active=True
+        )
+        db.add(cli_pirelli)
+        db.commit()
+        db.refresh(cli_pirelli)
+
+    # 4. Asegurar Activos y Herramientas Maestras en Almacén
+    hilux = db.query(Asset).filter(Asset.asset_code == "VEH-001").first()
+    if not hilux:
+        hilux = Asset(
+            asset_code="VEH-001",
+            name="Camioneta Toyota Hilux 4x4 Doble Cabina",
+            asset_type="vehiculo",
+            brand="Toyota",
+            model="Hilux D-4D 3.0",
+            serial_number="8AJBA3CD9E1029384",
+            license_plate="A12BC3D",
+            current_odometer=142500.0,
+            status="disponible_base",
+            current_location="Sede Central (Almacén)",
+            is_active=True
+        )
+        db.add(hilux)
+
+    megger = db.query(Asset).filter(Asset.asset_code == "HER-001").first()
+    if not megger:
+        megger = Asset(
+            asset_code="HER-001",
+            name="Megóhmetro Digital de Aislamiento 10kV Megger",
+            asset_type="herramienta_mayor",
+            brand="Megger",
+            model="MIT515",
+            serial_number="MG-10KV-90823",
+            status="disponible_base",
+            current_location="Sede Central (Almacén)",
+            is_active=True
+        )
+        db.add(megger)
+
+    fluke = db.query(Asset).filter(Asset.asset_code == "HER-002").first()
+    if not fluke:
+        fluke = Asset(
+            asset_code="HER-002",
+            name="Analizador de Calidad de Energía y Redes Fluke",
+            asset_type="herramienta_mayor",
+            brand="Fluke",
+            model="435 Series II",
+            serial_number="FLK-435-77491",
+            status="disponible_base",
+            current_location="Sede Central (Almacén)",
+            is_active=True
+        )
+        db.add(fluke)
+
+    db.commit()
+
+    # 5. CASO 1: OBRA EXTERNA (Proyecto de Campo Completo)
+    prj_polar = Project(
+        code="PRJ-2026-001",
+        name="Mantenimiento Integral y Pruebas a Subestación Eléctrica 115kV - Planta San Joaquín",
+        client_id=cli_polar.id,
+        location="Planta San Joaquín, Cervecería Polar",
+        status="activo",
+        scope_of_work="Mantenimiento mayor a transformadores de potencia, pruebas de aislamiento a cables de 115kV, calibración de relés de protección y revisión de seccionadores e interruptores SF6.",
+        duration_days=15,
+        contract_amount_usd=12500.00,
+        budget_limit_usd=8200.00,
+        estimated_labor_usd=3500.00,
+        estimated_fuel_usd=900.00,
+        estimated_materials_usd=2800.00,
+        estimated_tools_usd=600.00,
+        estimated_services_usd=400.00,
+        is_active=True
+    )
+    db.add(prj_polar)
+    db.commit()
+    db.refresh(prj_polar)
+
+    # Fases del Proyecto
+    fases = [
+        ProjectPhase(
+            project_id=prj_polar.id,
+            phase_number=1,
+            name="Fase 1: Desconexión, Puesta a Tierra y Pruebas de Aislamiento (Megado)",
+            description="Inspección visual, instalación de tierras temporales y megado de devanados y cables 115kV.",
+            duration_days=4,
+            estimated_cost_usd=2500.00,
+            status="en_progreso",
+            responsible_person="Ing. Residente de Obra"
+        ),
+        ProjectPhase(
+            project_id=prj_polar.id,
+            phase_number=2,
+            name="Fase 2: Mantenimiento de Seccionadores e Interruptores en SF6",
+            description="Limpieza dieléctrica, ajuste de contactos, engrase conductor y medición de presión de gas SF6.",
+            duration_days=6,
+            estimated_cost_usd=4000.00,
+            status="pendiente",
+            responsible_person="Supervisor de Cuadrilla A"
+        ),
+        ProjectPhase(
+            project_id=prj_polar.id,
+            phase_number=3,
+            name="Fase 3: Calibración de Protecciones, Protocolos y Energización",
+            description="Pruebas de inyección secundaria a relés SEL y protocolo final de entrega al cliente.",
+            duration_days=5,
+            estimated_cost_usd=1700.00,
+            status="pendiente",
+            responsible_person="Especialista de Protecciones"
+        )
+    ]
+    db.add_all(fases)
+
+    # Asignar activos al proyecto PRJ-polar (Despachados por Almacén)
+    hilux = db.query(Asset).filter(Asset.asset_code == "VEH-001").first()
+    megger = db.query(Asset).filter(Asset.asset_code == "HER-001").first()
+    fluke = db.query(Asset).filter(Asset.asset_code == "HER-002").first()
+
+    if hilux:
+        hilux.status = "en_obra"
+        hilux.current_location = "Planta San Joaquín (En Obra)"
+        hilux.current_project_id = prj_polar.id
+        hilux.current_custodian_name = "Supervisor de Campo"
+
+    if megger:
+        megger.status = "en_obra"
+        megger.current_location = "Planta San Joaquín (En Obra)"
+        megger.current_project_id = prj_polar.id
+        megger.current_custodian_name = "Supervisor de Campo"
+
+    if fluke:
+        fluke.status = "en_obra"
+        fluke.current_location = "Planta San Joaquín (En Obra)"
+        fluke.current_project_id = prj_polar.id
+        fluke.current_custodian_name = "Supervisor de Campo"
+
+    # Historial de despacho Almacén
+    hist = ResourceAssignmentHistory(
+        project_id=prj_polar.id,
+        resource_type="asset",
+        resource_id=megger.id if megger else 1,
+        resource_name="Megóhmetro Digital 10kV Megger + Fluke 435 + Camioneta Hilux",
+        destination_location="Planta San Joaquín, Cervecería Polar",
+        custodian_name="Supervisor de Campo (Guía GT-DALOR-2026-001)",
+        start_odometer=142500.0,
+        notes="Despacho autorizado por Almacén Central según requerimiento de Ingeniería de Obra."
+    )
+    db.add(hist)
+    db.commit()
+
+    # 6. CASO 2: SERVICIO INTERNO (Taller Central Guacara)
+    srv_taller = Project(
+        code="SRV-2026-001",
+        name="Revisión, Rebobinado y Pruebas a Motor Eléctrico Siemens 150HP en Taller Guacara",
+        client_id=cli_pirelli.id,
+        location="Taller Central Guacara (Servicio Interno)",
+        status="activo",
+        scope_of_work="Desarme de motor trifásico 150HP, limpieza química, rebobinado de estator con alambre clase H, cambio de rodamientos SKF y prueba de aislamiento en banco de taller.",
+        duration_days=5,
+        contract_amount_usd=3200.00,
+        budget_limit_usd=1600.00,
+        estimated_labor_usd=800.00,
+        estimated_fuel_usd=0.00,
+        estimated_materials_usd=700.00,
+        estimated_tools_usd=100.00,
+        estimated_services_usd=0.00,
+        is_active=True
+    )
+    db.add(srv_taller)
+    db.commit()
+
+    # 7. COMPROBANTE DE CAMPO DEMO (Listo en Buzón de Entrada para validar con campana en vivo)
+    cat_mat = db.query(ExpenseCategory).filter(ExpenseCategory.code.startswith("17.")).first()
+    if not cat_mat:
+        cat_mat = db.query(ExpenseCategory).first()
+
+    exp_demo = Expense(
+        category_id=cat_mat.id if cat_mat else 1,
+        project_id=prj_polar.id,
+        partner_name="Reportado por: Supervisor de Campo",
+        expense_type="costo_obra",
+        description="Compra de cinta de alta tensión 3M, terminales de compresión de cobre y spray dieléctrico para Subestación San Joaquín",
+        supplier_vendor="Ferretería y Suministros Industriales Carabobo C.A.",
+        amount_bs=3033.54,
+        exchange_rate=35.48,
+        amount_usd=85.50,
+        base_amount_usd=73.71,
+        tax_amount_usd=11.79,
+        is_tax_exempt=False,
+        payment_method="caja_chica",
+        status="pendiente_validacion",
+        has_receipt=True,
+        receipt_image_path="https://res.cloudinary.com/demo/image/upload/sample.jpg",
+        alert_flag=False,
+        alert_notes=None
+    )
+    db.add(exp_demo)
+    db.commit()
+
+    # 8. Auditoría
+    audit = AuditLog(
+        username="director",
+        module="sistema",
+        action="inicializar_escenario_demo_maestro",
+        details="Escenario Maestro de Demostración inicializado con éxito: Obra Externa Polar (PRJ-2026-001) + Servicio Taller Pirelli (SRV-2026-001) + Guía de Despacho de Almacén + Comprobante OCR pendiente en buzón."
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Escenario Maestro de Demostración inicializado con éxito en la base de datos.",
+        "project_field": {
+            "code": prj_polar.code,
+            "name": prj_polar.name,
+            "client": cli_polar.name,
+            "contract_amount_usd": prj_polar.contract_amount_usd,
+            "budget_limit_usd": prj_polar.budget_limit_usd,
+            "dispatched_assets": ["VEH-001 Camioneta Hilux", "HER-001 Megóhmetro 10kV", "HER-002 Fluke 435"]
+        },
+        "project_workshop": {
+            "code": srv_taller.code,
+            "name": srv_taller.name,
+            "client": cli_pirelli.name,
+            "contract_amount_usd": srv_taller.contract_amount_usd,
+            "budget_limit_usd": srv_taller.budget_limit_usd
+        },
+        "pending_inbox_expense": {
+            "vendor": exp_demo.supplier_vendor,
+            "amount_usd": exp_demo.amount_usd,
+            "description": exp_demo.description,
+            "status": exp_demo.status
+        }
+    }
+
+

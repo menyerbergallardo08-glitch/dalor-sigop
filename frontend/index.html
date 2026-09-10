@@ -975,7 +975,7 @@
                 <div class="dropdown-menu">
                     <div class="dropdown-item" onclick="switchView('quotations', 'comercial')">
                         <i class="fa-solid fa-file-invoice-dollar" style="color: #0284c7;"></i>
-                        <span>Presupuestos (LuloWin)</span>
+                        <span>Presupuestos & APU</span>
                     </div>
                     <div class="dropdown-item" onclick="switchView('clients', 'comercial')">
                         <i class="fa-solid fa-building-user" style="color: #0d9488;"></i>
@@ -1684,13 +1684,13 @@
         </section>
 
         <!-- ====================================================================
-             4. VISTA: PRESUPUESTOS (LULOWIN STYLE)
+             4. VISTA: PRESUPUESTOS (ESTIMACIONES & APU)
              ==================================================================== -->
         <section id="view-quotations" class="hidden">
             <div class="banner-dalor">
                 <div>
                     <span class="badge-tag">Módulo Comercial</span>
-                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Presupuestos & Cotizaciones (Estilo LuloWin)</h2>
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Presupuestos & Cotizaciones Formales (APU)</h2>
                     <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Crea presupuestos con partidas ilimitadas, manejo de IVA (16%, 8% o Exento 0%) y conversión a Proyecto Activo.</p>
                 </div>
                 <button onclick="openNewQuotationModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy);">
@@ -3115,7 +3115,7 @@
                 <button onclick="closeModal('modalProjectDetail')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
             </div>
 
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; text-align: center;">
+            <div id="detail_proj_financial_box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; text-align: center;">
                 <div>
                     <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Monto Contrato</span>
                     <p id="detail_proj_contract" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">$0.00</p>
@@ -3177,12 +3177,12 @@
         </div>
     </div>
 
-    <!-- MODAL: NUEVA COTIZACIÓN (LULOWIN STYLE) -->
+    <!-- MODAL: NUEVA COTIZACIÓN (ESTIMACIONES & APU) -->
     <div id="modalQuotation" class="modal-overlay hidden">
         <div class="modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
                 <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
-                    <i class="fa-solid fa-calculator" style="color: var(--dalor-blue);"></i> Armar Presupuesto / Cotización (LuloWin)
+                    <i class="fa-solid fa-calculator" style="color: var(--dalor-blue);"></i> Armar Presupuesto / Cotización Formal (APU)
                 </h3>
                 <button onclick="closeModal('modalQuotation')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
             </div>

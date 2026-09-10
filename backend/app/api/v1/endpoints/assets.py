@@ -192,3 +192,47 @@ def create_dispatch_guide(guide_in: DispatchGuideCreate, db: Session = Depends(g
         "items_count": len(guide_in.items),
         "message": f"Guía de Traslado {guide_number} generada con éxito."
     }
+
+class AssetMaintenanceInput(BaseModel):
+    maintenance_type: str = "preventivo" # preventivo, correctivo, cambio_aceite, frenos, cauchos
+    service_odometer: Optional[float] = None
+    technician_or_workshop: str = "Taller Central Guacara"
+    cost_usd: Optional[float] = 0.0
+    description: str = "Cambio de aceite 15W40 y filtros de aire/aceite"
+
+@router.post("/{asset_id}/record-maintenance")
+def record_asset_maintenance(
+    asset_id: int,
+    maint_in: AssetMaintenanceInput,
+    db: Session = Depends(get_db)
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Vehículo o activo no encontrado.")
+
+    # Actualizar odómetro de último servicio
+    current_km = maint_in.service_odometer or asset.current_odometer or 0.0
+    asset.last_service_odometer = current_km
+    if maint_in.service_odometer and maint_in.service_odometer > (asset.current_odometer or 0.0):
+        asset.current_odometer = maint_in.service_odometer
+
+    # Registrar auditoría de mantenimiento
+    audit = AuditLog(
+        username="almacen",
+        module="mantenimiento_flota",
+        action="registrar_servicio_vehicular",
+        details=f"Mantenimiento {maint_in.maintenance_type.upper()} registrado para [{asset.asset_code}] {asset.name} a los {current_km:,.0f} Km por '{maint_in.technician_or_workshop}': {maint_in.description}"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(asset)
+
+    return {
+        "success": True,
+        "message": f"Mantenimiento registrado exitosamente para {asset.name}. Semáforo de servicio reiniciado a Verde (0 Km acumulados de 5,000 Km).",
+        "asset_code": asset.asset_code,
+        "current_odometer": asset.current_odometer,
+        "last_service_odometer": asset.last_service_odometer,
+        "traffic_light": "VERDE_OK"
+    }
+

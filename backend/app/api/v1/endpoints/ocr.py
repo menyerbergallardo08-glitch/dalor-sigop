@@ -29,7 +29,24 @@ async def scan_ticket(
     with open(file_path, "wb") as f:
         f.write(contents)
 
-    image_url = f"/uploads/{unique_filename}"
+    import base64
+    import io
+    from PIL import Image
+
+    try:
+        img = Image.open(io.BytesIO(contents))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        max_dim = 1200
+        if max(img.size) > max_dim:
+            img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=75, optimize=True)
+        b64_str = base64.b64encode(buf.getvalue()).decode("utf-8")
+        image_url = f"data:image/jpeg;base64,{b64_str}"
+    except Exception as e:
+        b64_str = base64.b64encode(contents).decode("utf-8")
+        image_url = f"data:image/jpeg;base64,{b64_str}"
 
     # 1. Intentar primero con Gemini 3.6 Flash Vision Multimodal
     gemini_result = OCRReceiptParser.extract_with_gemini(file_path, default_rate=exchange_rate)

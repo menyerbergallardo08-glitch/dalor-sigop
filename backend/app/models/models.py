@@ -300,11 +300,11 @@ class Expense(Base):
     
     # Clasificación de Alto Nivel
     expense_type = Column(String(50), default="costo_obra") # costo_obra, gasto_sede, retiro_socio
-    partner_name = Column(String(150), nullable=True) # Para retiros de socios
+    partner_name = Column(Text, nullable=True) # Para retiros de socios o autor que reporta
     
     expense_date = Column(DateTime, default=datetime.utcnow)
-    description = Column(String(255), nullable=False)
-    supplier_vendor = Column(String(150), nullable=False)
+    description = Column(Text, nullable=False)
+    supplier_vendor = Column(Text, nullable=False)
     amount_bs = Column(Float, nullable=False)
     exchange_rate = Column(Float, nullable=False)
     amount_usd = Column(Float, nullable=False)
@@ -322,7 +322,7 @@ class Expense(Base):
     receipt_image_path = Column(Text, nullable=True)
     
     alert_flag = Column(Boolean, default=False)
-    alert_notes = Column(String(255), nullable=True)
+    alert_notes = Column(Text, nullable=True)
 
     category = relationship("ExpenseCategory", back_populates="expenses")
     project = relationship("Project", back_populates="expenses")

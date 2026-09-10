@@ -3540,6 +3540,7 @@ function applyPermissionMap(user) {
     const isFinanzas = uname === 'administracion' || role.includes('admin') || role.includes('finanzas') || role.includes('contador');
     const isIngeniero = uname === 'ingeniero' || role.includes('ingeniero');
     const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
+    const isAlmacen = uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
 
     // Dropdown Comercial (Solo Director e Ingeniero)
     const dCom = document.getElementById('dropdown-comercial');
@@ -3559,16 +3560,16 @@ function applyPermissionMap(user) {
         dFin.style.display = (isDirector || isFinanzas) ? 'inline-block' : 'none';
     }
 
-    // Dropdown Recursos (Director e Ingeniero)
+    // Dropdown Recursos (Director, Ingeniero y Almacén/Pañol)
     const dRec = document.getElementById('dropdown-recursos');
     if (dRec) {
-        dRec.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
+        dRec.style.display = (isDirector || isIngeniero || isAlmacen) ? 'inline-block' : 'none';
     }
 
-    // Dropdown Gastos (Filtrado estricto según rol)
+    // Dropdown Gastos (Oculto para Almacén, filtrado para los demás)
     const dGas = document.getElementById('dropdown-gastos');
     if (dGas) {
-        dGas.style.display = 'inline-block';
+        dGas.style.display = isAlmacen ? 'none' : 'inline-block';
     }
 
     const itmInbox = document.getElementById('item-gasto-inbox');
@@ -3577,9 +3578,9 @@ function applyPermissionMap(user) {
     const itmDashboard = document.getElementById('item-gasto-dashboard');
     const itmTree = document.getElementById('item-gasto-tree');
 
-    // 🛡️ V24: Restricciones y Adaptaciones de Rol para Campo vs Administración
+    // 🛡️ Restricciones y Adaptaciones de Rol para Campo vs Administración vs Almacén
     const btnQF = document.getElementById('btnQuickFlow');
-    if (btnQF) btnQF.style.display = isCampo ? 'none' : 'inline-flex';
+    if (btnQF) btnQF.style.display = (isCampo || isAlmacen) ? 'none' : 'inline-flex';
 
     const fiscalBox = document.getElementById('field_fiscal_tax_box');
     if (fiscalBox) fiscalBox.style.display = isCampo ? 'none' : 'grid';
@@ -3597,13 +3598,16 @@ function applyPermissionMap(user) {
         if (repText) repText.innerHTML = `Reportando como: <b>${user.full_name || user.username}</b> (Supervisor de Campo)`;
     }
 
-    // Tasa editable solo visible para Administración / Dirección (oculta para Campo)
+    // Tasa editable solo visible para Administración / Dirección
     const tasaBox = document.querySelector('.tasa-editor-box');
     if (tasaBox) {
-        tasaBox.style.display = isCampo ? 'none' : 'flex';
+        tasaBox.style.display = (isDirector || isFinanzas) ? 'flex' : 'none';
     }
 
-    if (isCampo) {
+    if (isAlmacen) {
+        // ROL ALMACÉN & PAÑOL: Solo Activos, Recursos, Materiales y Despachos
+        switchView('resources');
+    } else if (isCampo) {
         // ROL DE CAMPO: SOLO RENDICIÓN DE GASTO / CAPTURA OCR
         if (itmInbox) itmInbox.style.display = 'none';
         if (itmPwa) itmPwa.style.display = 'flex';

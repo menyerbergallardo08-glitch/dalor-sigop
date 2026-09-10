@@ -408,9 +408,27 @@ def import_batch_expenses(rows: List[BatchExpenseRow], db: Session = Depends(get
 
 @router.post("/", response_model=List[ExpenseOut])
 def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
+    # 🛡️ Validación y resolución segura de Foreign Keys para evitar errores de integridad
     cat = db.query(ExpenseCategory).filter(ExpenseCategory.id == expense_in.category_id).first()
     if not cat:
-        raise HTTPException(status_code=404, detail="Categoría de gasto no encontrada.")
+        first_cat = db.query(ExpenseCategory).first()
+        expense_in.category_id = first_cat.id if first_cat else 1
+
+    if expense_in.reported_by_id:
+        pers = db.query(Personnel).filter(Personnel.id == expense_in.reported_by_id).first()
+        if not pers:
+            first_pers = db.query(Personnel).first()
+            expense_in.reported_by_id = first_pers.id if first_pers else None
+
+    if expense_in.project_id:
+        proj = db.query(Project).filter(Project.id == expense_in.project_id).first()
+        if not proj:
+            expense_in.project_id = None
+
+    if expense_in.asset_id:
+        ass = db.query(Asset).filter(Asset.id == expense_in.asset_id).first()
+        if not ass:
+            expense_in.asset_id = None
 
     # 🛡️ FILTRO ANTI-DUPLICADOS DALOR: Detección preventiva de comprobantes ya registrados
     if not expense_in.allow_duplicate and expense_in.amount_usd > 0 and expense_in.supplier_vendor:

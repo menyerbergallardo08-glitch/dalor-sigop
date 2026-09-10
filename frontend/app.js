@@ -3834,7 +3834,9 @@ function redirectUserByRole(user) {
     if (!user) return;
     const role = (user.role_name || user.username || '').toLowerCase();
     
-    if (role.includes('supervisor') || role.includes('campo')) {
+    if (role.includes('almacen') || role.includes('panol') || role.includes('taller')) {
+        switchView('resources', 'recursos');
+    } else if (role.includes('supervisor') || role.includes('campo')) {
         switchView('pwa', 'gastos');
     } else if (role.includes('admin') || role.includes('finanzas') || role.includes('administrador')) {
         switchView('financial', 'finanzas');

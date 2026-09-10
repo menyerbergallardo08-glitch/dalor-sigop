@@ -2559,23 +2559,45 @@ function updateSplitBalance() {
 }
 
 async function submitFieldExpense(event) {
-    event.preventDefault();
-    const isSplit = document.getElementById("chkEnableSplit").checked;
-    const totalUsd = parseFloat(document.getElementById("field_amount_usd").value) || 0;
+    if (event && event.preventDefault) event.preventDefault();
+    const btnSubmit = document.getElementById("btnSubmitExpense");
+    const origBtnHtml = btnSubmit ? btnSubmit.innerHTML : 'Registrar y Enviar';
+    
+    const isSplit = document.getElementById("chkEnableSplit") ? document.getElementById("chkEnableSplit").checked : false;
+    let totalUsd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
+    let bsAmount = parseFloat(document.getElementById("field_amount_bs")?.value) || 0;
+
+    // Si tiene monto en Bs pero no en USD, convertir automáticamente
+    if (totalUsd <= 0 && bsAmount > 0) {
+        totalUsd = Math.round((bsAmount / (EXCHANGE_RATE || 800.0)) * 100) / 100;
+        if (document.getElementById("field_amount_usd")) {
+            document.getElementById("field_amount_usd").value = totalUsd.toFixed(2);
+        }
+    } else if (bsAmount <= 0 && totalUsd > 0) {
+        bsAmount = Math.round(totalUsd * (EXCHANGE_RATE || 800.0) * 100) / 100;
+        if (document.getElementById("field_amount_bs")) {
+            document.getElementById("field_amount_bs").value = bsAmount.toFixed(2);
+        }
+    }
 
     if (totalUsd <= 0) {
-        alert("Ingresa un monto válido en USD.");
+        alert("⚠️ Por favor ingresa el monto de la compra o comprobante (en Bs o en $).");
+        if (document.getElementById("field_amount_usd")) document.getElementById("field_amount_usd").focus();
         return;
     }
 
-    const bsAmount = parseFloat(document.getElementById("field_amount_bs")?.value) || (Math.round(totalUsd * EXCHANGE_RATE * 100) / 100);
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando a Administración...';
+    }
+
     const isExempt = document.getElementById("field_is_tax_exempt")?.value === "true";
     const baseAmt = parseFloat(document.getElementById("field_base_amount_usd")?.value) || (isExempt ? totalUsd : +(totalUsd / 1.16).toFixed(2));
     const taxAmt = parseFloat(document.getElementById("field_tax_amount_usd")?.value) || (isExempt ? 0.0 : +(totalUsd - baseAmt).toFixed(2));
     const imgPath = document.getElementById("field_receipt_image_path")?.value || null;
 
     let payload = {
-        supplier_vendor: document.getElementById("field_vendor").value || "Comercio General",
+        supplier_vendor: document.getElementById("field_vendor")?.value || "Comercio General",
         reported_by_id: parseInt(document.getElementById("field_reported_by")?.value) || 1,
         payment_method: document.getElementById("field_payment_method")?.value || "caja_chica",
         amount_usd: totalUsd,
@@ -2583,7 +2605,7 @@ async function submitFieldExpense(event) {
         base_amount_usd: Math.round(baseAmt * 100) / 100,
         tax_amount_usd: Math.round(taxAmt * 100) / 100,
         is_tax_exempt: isExempt,
-        exchange_rate: EXCHANGE_RATE,
+        exchange_rate: EXCHANGE_RATE || 800.0,
         has_receipt: true,
         receipt_image_path: imgPath
     };
@@ -2603,6 +2625,7 @@ async function submitFieldExpense(event) {
 
         if (Math.abs(totalUsd - runningSum) > 0.05) {
             alert(`La suma del desglose ($${runningSum.toFixed(2)}) no coincide con el total de la factura ($${totalUsd.toFixed(2)}).`);
+            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = origBtnHtml; }
             return;
         }
 
@@ -2610,12 +2633,12 @@ async function submitFieldExpense(event) {
         payload.description = `Factura Desglosada (${splitItems.length} partidas) en ${payload.supplier_vendor}`;
         payload.split_items = splitItems;
     } else {
-        payload.category_id = parseInt(document.getElementById("field_category_id").value) || 1;
-        payload.project_id = document.getElementById("field_project_id").value ? parseInt(document.getElementById("field_project_id").value) : null;
-        payload.asset_id = document.getElementById("field_asset_id").value ? parseInt(document.getElementById("field_asset_id").value) : null;
-        payload.description = document.getElementById("field_description").value || "Gasto de campo";
-        payload.fuel_liters = document.getElementById("field_fuel_liters").value ? parseFloat(document.getElementById("field_fuel_liters").value) : null;
-        payload.odometer_at_fueling = document.getElementById("field_odometer").value ? parseFloat(document.getElementById("field_odometer").value) : null;
+        payload.category_id = parseInt(document.getElementById("field_category_id")?.value) || 1;
+        payload.project_id = document.getElementById("field_project_id")?.value ? parseInt(document.getElementById("field_project_id").value) : null;
+        payload.asset_id = document.getElementById("field_asset_id")?.value ? parseInt(document.getElementById("field_asset_id").value) : null;
+        payload.description = document.getElementById("field_description")?.value || (payload.supplier_vendor ? `Compra en ${payload.supplier_vendor}` : "Comprobante de campo");
+        payload.fuel_liters = document.getElementById("field_fuel_liters")?.value ? parseFloat(document.getElementById("field_fuel_liters").value) : null;
+        payload.odometer_at_fueling = document.getElementById("field_odometer")?.value ? parseFloat(document.getElementById("field_odometer").value) : null;
     }
 
     // Asociación automática de usuario que reporta
@@ -2642,10 +2665,11 @@ async function submitFieldExpense(event) {
                     body: JSON.stringify(payload)
                 });
                 if (res2.ok) {
-                    alert("¡Gasto registrado con éxito (confirmado por el usuario)!");
+                    alert("¡Gasto registrado con éxito y enviado a Administración!");
                     document.getElementById("expenseForm").reset();
-                    document.getElementById("imagePreviewContainer").classList.add("hidden");
-                    document.getElementById("dropzoneContent").classList.remove("hidden");
+                    document.getElementById("imagePreviewContainer")?.classList.add("hidden");
+                    document.getElementById("dropzoneContent")?.classList.remove("hidden");
+                    document.getElementById("ocrNoticeBox")?.classList.add("hidden");
                     const isCampo = (currentUser?.role_name || currentUser?.username || '').toLowerCase().includes('campo');
                     if (isCampo) {
                         switchView('pwa', 'gastos');
@@ -2655,16 +2679,20 @@ async function submitFieldExpense(event) {
                     return;
                 }
             }
+            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = origBtnHtml; }
             return;
         }
 
         if (res.ok) {
-            alert("¡Gasto registrado e imputado exitosamente!");
+            alert("¡Comprobante enviado con éxito a la Bandeja de Administración!");
             document.getElementById("expenseForm").reset();
-            document.getElementById("imagePreviewContainer").classList.add("hidden");
-            document.getElementById("dropzoneContent").classList.remove("hidden");
-            document.getElementById("chkEnableSplit").checked = false;
-            toggleSplitMode();
+            document.getElementById("imagePreviewContainer")?.classList.add("hidden");
+            document.getElementById("dropzoneContent")?.classList.remove("hidden");
+            document.getElementById("ocrNoticeBox")?.classList.add("hidden");
+            if (document.getElementById("chkEnableSplit")) {
+                document.getElementById("chkEnableSplit").checked = false;
+                toggleSplitMode();
+            }
             const isCampo = (currentUser?.role_name || currentUser?.username || '').toLowerCase().includes('campo');
             if (isCampo) {
                 switchView('pwa', 'gastos');
@@ -2676,7 +2704,13 @@ async function submitFieldExpense(event) {
             alert("Error: " + (err.detail || JSON.stringify(err)));
         }
     } catch (e) {
-        alert("Error de conexión con el backend.");
+        console.error("Error al enviar gasto:", e);
+        alert("Error de conexión con el servidor. Intenta de nuevo.");
+    } finally {
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = origBtnHtml;
+        }
     }
 }
 

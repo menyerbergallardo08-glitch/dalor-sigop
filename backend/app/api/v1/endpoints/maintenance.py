@@ -332,7 +332,21 @@ def seed_master_demo(db: Session = Depends(get_db)):
         db.query(MaterialMovement).delete()
         db.query(ProjectPhase).delete()
         db.query(Project).delete()
-        db.commit()
+        # 2.1 Asegurar Usuario Almacén
+        from app.core.security import get_password_hash
+        almacen_usr = db.query(User).filter(User.username == "almacen").first()
+        if not almacen_usr:
+            almacen_usr = User(
+                username="almacen",
+                full_name="Almacén & Pañol Central",
+                email="almacen@dalor.com.ve",
+                hashed_password=get_password_hash("almacen123"),
+                role_name="almacenista",
+                is_active=True,
+                is_superuser=False
+            )
+            db.add(almacen_usr)
+            db.commit()
 
         # 3. Asegurar Clientes Corporativos
         cli_polar = db.query(Client).filter(Client.code == "CLI-POLAR").first()

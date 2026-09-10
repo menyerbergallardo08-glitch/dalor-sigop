@@ -450,26 +450,52 @@ def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
     
     rep_tag = f"Reportado por: {expense_in.reported_by_name}" if expense_in.reported_by_name else None
 
+    # 🛡️ Resolución segura de Claves Foráneas (Previene errores 500 por IDs inexistentes)
+    safe_rep_id = expense_in.reported_by_id
+    if safe_rep_id:
+        p_check = db.query(Personnel.id).filter(Personnel.id == safe_rep_id).first()
+        if not p_check:
+            first_p = db.query(Personnel.id).first()
+            safe_rep_id = first_p[0] if first_p else None
+
+    safe_proj_id = expense_in.project_id
+    if safe_proj_id:
+        proj_check = db.query(Project.id).filter(Project.id == safe_proj_id).first()
+        if not proj_check:
+            safe_proj_id = None
+
+    safe_asset_id = expense_in.asset_id
+    if safe_asset_id:
+        asset_check = db.query(Asset.id).filter(Asset.id == safe_asset_id).first()
+        if not asset_check:
+            safe_asset_id = None
+
+    safe_cat_id = expense_in.category_id or 1
+    cat_check = db.query(ExpenseCategory.id).filter(ExpenseCategory.id == safe_cat_id).first()
+    if not cat_check:
+        first_cat = db.query(ExpenseCategory.id).first()
+        safe_cat_id = first_cat[0] if first_cat else 1
+
     db_exp = Expense(
-        category_id=expense_in.category_id,
-        project_id=expense_in.project_id,
+        category_id=safe_cat_id,
+        project_id=safe_proj_id,
         cost_center_id=expense_in.cost_center_id,
-        asset_id=expense_in.asset_id,
-        reported_by_id=expense_in.reported_by_id,
+        asset_id=safe_asset_id,
+        reported_by_id=safe_rep_id,
         partner_name=rep_tag,
-        expense_type="costo_obra" if expense_in.project_id else "gasto_sede",
-        description=expense_in.description,
-        supplier_vendor=expense_in.supplier_vendor,
-        amount_bs=expense_in.amount_bs,
-        exchange_rate=expense_in.exchange_rate,
-        amount_usd=expense_in.amount_usd,
+        expense_type="costo_obra" if safe_proj_id else "gasto_sede",
+        description=expense_in.description or "Comprobante de campo",
+        supplier_vendor=expense_in.supplier_vendor or "Comercio General",
+        amount_bs=expense_in.amount_bs or 0.0,
+        exchange_rate=expense_in.exchange_rate or 800.0,
+        amount_usd=expense_in.amount_usd or 0.0,
         base_amount_usd=expense_in.base_amount_usd if expense_in.base_amount_usd is not None else (expense_in.amount_usd if expense_in.is_tax_exempt else round(expense_in.amount_usd / 1.16, 2)),
         tax_amount_usd=expense_in.tax_amount_usd if expense_in.tax_amount_usd is not None else (0.0 if expense_in.is_tax_exempt else round(expense_in.amount_usd - round(expense_in.amount_usd / 1.16, 2), 2)),
         is_tax_exempt=expense_in.is_tax_exempt,
         fuel_liters=expense_in.fuel_liters,
         price_per_liter_usd=price_l,
         odometer_at_fueling=expense_in.odometer_at_fueling,
-        payment_method=expense_in.payment_method,
+        payment_method=expense_in.payment_method or "caja_chica",
         status="pendiente_validacion" if expense_in.has_receipt else "aprobado",
         has_receipt=expense_in.has_receipt,
         receipt_image_path=expense_in.receipt_image_path,

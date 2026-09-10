@@ -10,15 +10,23 @@ from app.models.models import (
 def init_db():
     Base.metadata.create_all(bind=engine)
     
-    # Safe SQLite auto-migration for newly added columns
+    # Safe auto-migration for newly added columns and TEXT column expansion
     with engine.connect() as conn:
-        for col, col_type in [
-            ("base_amount_usd", "FLOAT DEFAULT 0.0"),
-            ("tax_amount_usd", "FLOAT DEFAULT 0.0"),
-            ("is_tax_exempt", "BOOLEAN DEFAULT 0")
+        for stmt in [
+            "ALTER TABLE expenses ALTER COLUMN description TYPE TEXT;",
+            "ALTER TABLE expenses ALTER COLUMN supplier_vendor TYPE TEXT;",
+            "ALTER TABLE expenses ALTER COLUMN partner_name TYPE TEXT;",
+            "ALTER TABLE expenses ALTER COLUMN alert_notes TYPE TEXT;",
+            "ALTER TABLE expenses ALTER COLUMN receipt_image_path TYPE TEXT;",
+            "ALTER TABLE audit_logs ALTER COLUMN username TYPE VARCHAR(150);",
+            "ALTER TABLE audit_logs ALTER COLUMN action TYPE VARCHAR(150);",
+            "ALTER TABLE audit_logs ALTER COLUMN details TYPE TEXT;",
+            "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS base_amount_usd FLOAT DEFAULT 0.0;",
+            "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS tax_amount_usd FLOAT DEFAULT 0.0;",
+            "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_tax_exempt BOOLEAN DEFAULT FALSE;"
         ]:
             try:
-                conn.execute(text(f"ALTER TABLE expenses ADD COLUMN {col} {col_type};"))
+                conn.execute(text(stmt))
                 conn.commit()
             except Exception:
                 pass

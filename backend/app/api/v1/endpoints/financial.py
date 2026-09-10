@@ -91,7 +91,7 @@ def get_financial_summary(db: Session = Depends(get_db)):
     pending_cxp = sum(p.balance_usd for p in p_query)
 
     # 3. Gastos Directos y de Oficina
-    all_expenses = db.query(Expense).all()
+    all_expenses = db.query(Expense).filter(Expense.status == "aprobado").all()
     total_direct_expenses = sum(e.amount_usd for e in all_expenses)
 
     # 4. Retiros Personales de Socios / Dueños

@@ -45,7 +45,7 @@ class ServiceItemOut(ServiceItemBase):
     class Config:
         from_attributes = True
 
-# --- COTIZACIONES (LULOWIN STYLE) ---
+# --- COTIZACIONES (APU STYLE) ---
 class QuotationItemBase(BaseModel):
     service_id: Optional[int] = None
     item_code: Optional[str] = None
@@ -158,6 +158,8 @@ class ProjectOut(BaseModel):
     estimated_tools_usd: float
     estimated_services_usd: float
     budget_limit_usd: float
+    total_spent_usd: float = 0.0
+    progress_pct: float = 0.0
     is_active: bool
     created_at: datetime
     phases: List[ProjectPhaseOut] = []

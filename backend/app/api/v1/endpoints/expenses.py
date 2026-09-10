@@ -408,10 +408,6 @@ def import_batch_expenses(rows: List[BatchExpenseRow], db: Session = Depends(get
 
 @router.post("/", response_model=List[ExpenseOut])
 def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
-    cat = db.query(ExpenseCategory).filter(ExpenseCategory.id == expense_in.category_id).first()
-    if not cat:
-        raise HTTPException(status_code=404, detail="Categoría de gasto no encontrada.")
-
     # 🛡️ FILTRO ANTI-DUPLICADOS DALOR: Detección preventiva sin bloquear al supervisor
     alert_flag = False
     alert_notes = None

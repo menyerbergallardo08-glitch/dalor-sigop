@@ -298,40 +298,41 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
 # ------------------------------------------------------------------------------
 @router.post("/seed-master-demo")
 def seed_master_demo(db: Session = Depends(get_db)):
-    from app.models.models import (
-        Expense, Quotation, QuotationItem, Project, ProjectPhase,
-        AccountReceivable, AccountPayable, ResourceAssignmentHistory,
-        PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset,
-        Personnel, Client, ExpenseCategory, User
-    )
+    try:
+        from app.models.models import (
+            Expense, Quotation, QuotationItem, Project, ProjectPhase,
+            AccountReceivable, AccountPayable, ResourceAssignmentHistory,
+            PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset,
+            Personnel, Client, ExpenseCategory, User, AuditLog
+        )
 
-    # 1. Purgar tablas operacionales de prueba
-    db.query(Expense).delete()
-    db.query(QuotationItem).delete()
-    db.query(Quotation).delete()
-    db.query(AccountReceivable).delete()
-    db.query(AccountPayable).delete()
-    db.query(ResourceAssignmentHistory).delete()
-    db.query(PartnerWithdrawal).delete()
-    db.query(FinancialPayment).delete()
-    db.query(MaterialMovement).delete()
-    db.query(ProjectPhase).delete()
-    db.query(Project).delete()
-    db.commit()
+        # 1. Desvincular llaves foráneas de proyectos en activos y personal
+        db.query(Asset).update({
+            "status": "disponible_base",
+            "current_location": "Sede Central (Almacén)",
+            "current_project_id": None,
+            "current_custodian_name": None
+        })
+        db.query(Personnel).update({
+            "status": "disponible_base",
+            "current_location": "Sede Central",
+            "current_project_id": None
+        })
+        db.commit()
 
-    # 2. Resetear activos y personal a estado Sede Central
-    db.query(Asset).update({
-        "status": "disponible_base",
-        "current_location": "Sede Central (Almacén)",
-        "current_project_id": None,
-        "current_custodian_name": None
-    })
-    db.query(Personnel).update({
-        "status": "disponible_base",
-        "current_location": "Sede Central",
-        "current_project_id": None
-    })
-    db.commit()
+        # 2. Purgar tablas operacionales dependientes
+        db.query(Expense).delete()
+        db.query(QuotationItem).delete()
+        db.query(Quotation).delete()
+        db.query(AccountReceivable).delete()
+        db.query(AccountPayable).delete()
+        db.query(ResourceAssignmentHistory).delete()
+        db.query(PartnerWithdrawal).delete()
+        db.query(FinancialPayment).delete()
+        db.query(MaterialMovement).delete()
+        db.query(ProjectPhase).delete()
+        db.query(Project).delete()
+        db.commit()
 
     # 3. Asegurar Clientes Corporativos
     cli_polar = db.query(Client).filter(Client.code == "CLI-POLAR").first()
@@ -571,30 +572,33 @@ def seed_master_demo(db: Session = Depends(get_db)):
     db.add(audit)
     db.commit()
 
-    return {
-        "success": True,
-        "message": "Escenario Maestro de Demostración inicializado con éxito en la base de datos.",
-        "project_field": {
-            "code": prj_polar.code,
-            "name": prj_polar.name,
-            "client": cli_polar.name,
-            "contract_amount_usd": prj_polar.contract_amount_usd,
-            "budget_limit_usd": prj_polar.budget_limit_usd,
-            "dispatched_assets": ["VEH-001 Camioneta Hilux", "HER-001 Megóhmetro 10kV", "HER-002 Fluke 435"]
-        },
-        "project_workshop": {
-            "code": srv_taller.code,
-            "name": srv_taller.name,
-            "client": cli_pirelli.name,
-            "contract_amount_usd": srv_taller.contract_amount_usd,
-            "budget_limit_usd": srv_taller.budget_limit_usd
-        },
-        "pending_inbox_expense": {
-            "vendor": exp_demo.supplier_vendor,
-            "amount_usd": exp_demo.amount_usd,
-            "description": exp_demo.description,
-            "status": exp_demo.status
+        return {
+            "success": True,
+            "message": "Escenario Maestro de Demostración inicializado con éxito en la base de datos.",
+            "project_field": {
+                "code": prj_polar.code,
+                "name": prj_polar.name,
+                "client": cli_polar.name,
+                "contract_amount_usd": prj_polar.contract_amount_usd,
+                "budget_limit_usd": prj_polar.budget_limit_usd,
+                "dispatched_assets": ["VEH-001 Camioneta Hilux", "HER-001 Megóhmetro 10kV", "HER-002 Fluke 435"]
+            },
+            "project_workshop": {
+                "code": srv_taller.code,
+                "name": srv_taller.name,
+                "client": cli_pirelli.name,
+                "contract_amount_usd": srv_taller.contract_amount_usd,
+                "budget_limit_usd": srv_taller.budget_limit_usd
+            },
+            "pending_inbox_expense": {
+                "vendor": exp_demo.supplier_vendor,
+                "amount_usd": exp_demo.amount_usd,
+                "description": exp_demo.description,
+                "status": exp_demo.status
+            }
         }
-    }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al sembrar escenario demo maestro: {str(e)}")
 
 

@@ -270,7 +270,7 @@ def validate_and_impute_expense(
         exp.base_amount_usd = val_in.amount_usd
         exp.tax_amount_usd = 0.0
     else:
-        exp.base_amount_usd = val_in.base_amount_usd if val_in.base_amount_usd is not None else round(val_in.amount_usd * 0.862, 2)
+        exp.base_amount_usd = val_in.base_amount_usd if val_in.base_amount_usd is not None else round(val_in.amount_usd / 1.16, 2)
         exp.tax_amount_usd = val_in.tax_amount_usd if val_in.tax_amount_usd is not None else round(val_in.amount_usd - exp.base_amount_usd, 2)
     exp.payment_method = val_in.payment_method
     exp.fuel_liters = val_in.fuel_liters
@@ -449,8 +449,8 @@ def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
         amount_bs=expense_in.amount_bs,
         exchange_rate=expense_in.exchange_rate,
         amount_usd=expense_in.amount_usd,
-        base_amount_usd=expense_in.base_amount_usd if expense_in.base_amount_usd is not None else (expense_in.amount_usd if expense_in.is_tax_exempt else round(expense_in.amount_usd * 0.862, 2)),
-        tax_amount_usd=expense_in.tax_amount_usd if expense_in.tax_amount_usd is not None else (0.0 if expense_in.is_tax_exempt else round(expense_in.amount_usd * 0.138, 2)),
+        base_amount_usd=expense_in.base_amount_usd if expense_in.base_amount_usd is not None else (expense_in.amount_usd if expense_in.is_tax_exempt else round(expense_in.amount_usd / 1.16, 2)),
+        tax_amount_usd=expense_in.tax_amount_usd if expense_in.tax_amount_usd is not None else (0.0 if expense_in.is_tax_exempt else round(expense_in.amount_usd - round(expense_in.amount_usd / 1.16, 2), 2)),
         is_tax_exempt=expense_in.is_tax_exempt,
         fuel_liters=expense_in.fuel_liters,
         price_per_liter_usd=price_l,

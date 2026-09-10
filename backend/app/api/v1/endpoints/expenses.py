@@ -31,6 +31,13 @@ class ExpenseValidationInput(BaseModel):
     tax_amount_usd: Optional[float] = None
     is_tax_exempt: Optional[bool] = False
 
+@router.get("/{expense_id}/receipt")
+def get_expense_receipt(expense_id: int, db: Session = Depends(get_db)):
+    exp = db.query(Expense.receipt_image_path).filter(Expense.id == expense_id).first()
+    if not exp or not exp[0]:
+        raise HTTPException(status_code=404, detail="Comprobante digital no encontrado.")
+    return {"receipt_image_path": exp[0]}
+
 @router.get("/", response_model=List[ExpenseOut])
 def get_expenses(
     project_id: Optional[int] = None,

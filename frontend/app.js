@@ -951,9 +951,22 @@ async function loadProjectsList() {
             const inProgPhases = p.phases ? p.phases.filter(ph => ph.status === 'en_progreso').length : 0;
 
             // Calcular porcentaje de avance físico
-            let progressPct = p.progress_pct !== undefined ? p.progress_pct : 0;
-            if (phasesCount > 0 && progressPct === 0 && (completedPhases > 0 || inProgPhases > 0)) {
-                progressPct = Math.round(((completedPhases + (0.5 * inProgPhases)) / phasesCount) * 100);
+            let progressPct = (p.progress_pct !== undefined && p.progress_pct > 0) ? p.progress_pct : 0;
+            if (phasesCount > 0 && progressPct === 0) {
+                let totalT = 0;
+                let doneT = 0;
+                (p.phases || []).forEach(ph => {
+                    const raw = (ph.description || '').split(';').map(t => t.trim()).filter(Boolean);
+                    if (raw.length > 0) {
+                        totalT += raw.length;
+                        doneT += raw.filter(t => t.startsWith('[x]') || t.startsWith('[X]')).length;
+                    } else {
+                        totalT += 1;
+                        if (ph.status === 'completado') doneT += 1;
+                        else if (ph.status === 'en_progreso') doneT += 0.5;
+                    }
+                });
+                progressPct = totalT > 0 ? Math.round((doneT / totalT) * 100) : 0;
             }
 
             // Semáforo presupuestario

@@ -211,22 +211,22 @@ class SplitExpenseItem(BaseModel):
     description: Optional[str] = None
 
 class ExpenseCreate(BaseModel):
-    category_id: int
+    category_id: Optional[int] = 1
     project_id: Optional[int] = None
     cost_center_id: Optional[int] = None
     asset_id: Optional[int] = None
-    reported_by_id: int
-    description: str
-    supplier_vendor: str
-    amount_bs: float
+    reported_by_id: Optional[int] = 1
+    description: Optional[str] = "Comprobante de campo"
+    supplier_vendor: Optional[str] = "Comercio General"
+    amount_bs: Optional[float] = 0.0
     exchange_rate: float = 800.0
-    amount_usd: float
+    amount_usd: float = 0.0
     base_amount_usd: Optional[float] = 0.0
     tax_amount_usd: Optional[float] = 0.0
     is_tax_exempt: Optional[bool] = False
     fuel_liters: Optional[float] = None
     odometer_at_fueling: Optional[float] = None
-    payment_method: str = "caja_chica"
+    payment_method: Optional[str] = "caja_chica"
     has_receipt: bool = True
     receipt_image_path: Optional[str] = None
     reported_by_name: Optional[str] = None

@@ -2700,12 +2700,24 @@ async function submitFieldExpense(event) {
                 switchView('expenses-log', 'gastos');
             }
         } else {
-            const err = await res.json();
-            alert("Error: " + (err.detail || JSON.stringify(err)));
+            let errorMsg = `Error del servidor (${res.status})`;
+            try {
+                const err = await res.json();
+                if (typeof err.detail === 'string') {
+                    errorMsg = err.detail;
+                } else if (Array.isArray(err.detail)) {
+                    errorMsg = err.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+                } else if (err.detail) {
+                    errorMsg = JSON.stringify(err.detail);
+                }
+            } catch (pErr) {
+                try { errorMsg = await res.text(); } catch(tErr) {}
+            }
+            alert("⚠️ " + errorMsg);
         }
     } catch (e) {
         console.error("Error al enviar gasto:", e);
-        alert("Error de conexión con el servidor. Intenta de nuevo.");
+        alert("⚠️ Error al registrar comprobante: " + (e.message || e));
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;

@@ -456,3 +456,23 @@ def record_cxp_payment(payable_id: int, p_in: PaymentCreate, db: Session = Depen
 
     db.commit()
     return {"success": True, "message": "Pago aplicado con éxito.", "new_balance_usd": p.balance_usd, "status": p.status}
+
+# ------------------------------------------------------------------------------
+# 5. COTIZACIÓN OFICIAL BCV (SCRAPING AUTOMATIZADO CON FAIL-SAFE)
+# ------------------------------------------------------------------------------
+@router.get("/bcv-rate")
+def get_bcv_rate(force_refresh: bool = False):
+    from app.services.bcv_scraper import BCVExchangeRateService
+    rate_info = BCVExchangeRateService.get_current_rate(force_refresh=force_refresh)
+    return rate_info
+
+@router.post("/bcv-rate/sync")
+def sync_bcv_rate():
+    from app.services.bcv_scraper import BCVExchangeRateService
+    rate_info = BCVExchangeRateService.get_current_rate(force_refresh=True)
+    return {
+        "success": True,
+        "message": f"Tasa BCV sincronizada exitosamente: {rate_info['formatted_rate']} Bs/$ ({rate_info['source']})",
+        "data": rate_info
+    }
+

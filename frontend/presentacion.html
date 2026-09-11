@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DALOR SIGO-P - Presentación Ejecutiva & Guía de Términos</title>
+  <title>DALOR SIGO-P - Presentación Ejecutiva & Glosario de Términos</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -16,8 +16,8 @@
     .glow-gold { box-shadow: 0 0 35px rgba(245, 158, 11, 0.25); }
     .glow-emerald { box-shadow: 0 0 35px rgba(16, 185, 129, 0.25); }
     
-    /* Caja de Guía y Glosario para el Expositor */
-    .presenter-guide {
+    /* Caja de Glosario para Audiencia y Expositor */
+    .terms-box {
       background: rgba(15, 23, 42, 0.95);
       border: 1px solid rgba(245, 158, 11, 0.4);
       border-radius: 12px;
@@ -77,28 +77,29 @@
           <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Arquitectura</div>
           <div class="text-xs font-bold text-white mt-0.5">100% Cloud Continua</div>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
           <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Tecnología</div>
           <div class="text-xs font-bold text-amber-400 mt-0.5">Captura Móvil OCR</div>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
           <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Control</div>
           <div class="text-xs font-bold text-emerald-400 mt-0.5">Job Costing en Vivo</div>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
           <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Acceso</div>
           <div class="text-xs font-bold text-cyan-400 mt-0.5">Global a 1-Clic</div>
         </div>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 1 -->
-      <div class="presenter-guide max-w-3xl w-full text-left">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | TÉRMINOS CLAVE:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 1 -->
+      <div class="terms-box max-w-3xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>ERP (Enterprise Resource Planning):</b> <i>Sistema Central de Gestión Integral</i> que une en una sola base de datos las compras, inventarios, obras y finanzas de DALOR.</div>
-          <div>• <b>Cloud Continua:</b> <i>En la nube 24/7</i>; funciona sin depender de computadoras encendidas en la oficina ni de cortes de luz locales.</div>
+          <div>• <b>ERP (Enterprise Resource Planning):</b> <i>Sistema Central de Planificación</i> que integra compras, obras, inventario y finanzas en una sola base de datos.</div>
+          <div>• <b>Cloud / En la Nube:</b> Sistema alojado en internet disponible 24/7 sin depender de computadoras ni servidores físicos en la oficina.</div>
         </div>
       </div>
     </section>
@@ -121,445 +122,435 @@
 
         <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
           <div>
-            <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-sm mb-2">⏳</div>
-            <h3 class="text-sm font-bold text-white mb-1.5">Desconexión Campo - Finanzas</h3>
-            <p class="text-[11.5px] text-slate-400 leading-relaxed">Las compras de emergencia y viáticos en faena se registran en papel o WhatsApp. Llegan a administración con semanas de desfase, impidiendo conocer el gasto real durante la obra.</p>
+            <div class="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-sm mb-2">📄</div>
+            <h3 class="text-sm font-bold text-white mb-1.5">Fuga de Información en Campo</h3>
+            <p class="text-[11.5px] text-slate-400 leading-relaxed">El avance de obra, facturas de caja chica y consumo de materiales se reportan en papel o chats de WhatsApp desordenados, generando retrasos de días en la facturación y pérdida de comprobantes.</p>
           </div>
-          <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-amber-400 font-semibold">Falla: Fuga invisible de presupuesto</div>
+          <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-rose-400 font-semibold">Falla: Desconexión obra-oficina</div>
         </div>
 
         <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
           <div>
-            <div class="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 text-sm mb-2">🚚</div>
-            <h3 class="text-sm font-bold text-white mb-1.5">Pérdida de Custodia de Activos</h3>
-            <p class="text-[11.5px] text-slate-400 leading-relaxed">Herramientas de alta precisión (Megóhmetros, Fluke) y camionetas salen a frentes de trabajo sin un control formal de custodia, horas de uso u odómetro, arriesgando el patrimonio.</p>
+            <div class="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-sm mb-2">💸</div>
+            <h3 class="text-sm font-bold text-white mb-1.5">Costeo 'A Ciegas'</h3>
+            <p class="text-[11.5px] text-slate-400 leading-relaxed">Sin imputación directa por proyecto, la rentabilidad real de cada obra solo se conoce meses después de terminar. Para entonces, las pérdidas por sobrecostos son irreversibles.</p>
           </div>
-          <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-blue-400 font-semibold">Falla: Extravío y falta de servicio</div>
+          <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-rose-400 font-semibold">Falla: Falta de Job Costing en vivo</div>
         </div>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 2 -->
-      <div class="presenter-guide">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | TÉRMINOS CLAVE:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 2 -->
+      <div class="terms-box max-w-5xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>Faena / Frente de Obra:</b> El lugar físico donde se ejecuta el servicio técnico (planta del cliente, subestación, taller).</div>
-          <div>• <b>Custodia de Activo:</b> La responsabilidad legal y operativa firmada por el chofer o trabajador al recibir un equipo o vehículo.</div>
+          <div>• <b>AnyDesk / TeamViewer:</b> <i>Programas de escritorio remoto</i> que permiten entrar a una computadora de oficina a distancia, pero se caen ante apagones o fallas de internet local.</div>
+          <div>• <b>DSO (Days Sales Outstanding):</b> <i>Días de Cobranza</i>; métrica que mide cuánto tiempo tarda la empresa en cobrar sus facturas desde que entrega la obra.</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 3: LA SOLUCIÓN INTEGRAL SIGO-P -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="La Propuesta de Valor">
-      <div class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-2">02. LA SOLUCIÓN ESTRATÉGICA</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">DALOR SIGO-P: Conectividad 360° en Tiempo Real</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">Una plataforma diseñada desde los cimientos para enlazar cada eslabón de la cadena de valor de DALOR:</p>
+    <!-- SLIDE 3: LA ARQUITECTURA MODULAR -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Ecosistema Modular">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">02. LA SOLUCIÓN</div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Cuatro Pilares Integrados en una Sola Plataforma</h2>
+      <p class="text-xs md:text-sm text-slate-400 mb-4">SIGO-P conecta en tiempo real todas las áreas operativas y directivas de DALOR sin fisuras:</p>
 
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 glow-emerald">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-2.5 text-center">
-          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-            <div class="text-lg mb-1">📱</div>
-            <div class="text-xs font-bold text-amber-400">1. Campo</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Captura OCR en 1-Touch de tickets en faena</div>
-          </div>
-          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-            <div class="text-lg mb-1">📦</div>
-            <div class="text-xs font-bold text-blue-400">2. Almacén</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Custodia de activos y guías de despacho</div>
-          </div>
-          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-            <div class="text-lg mb-1">👷‍♂️</div>
-            <div class="text-xs font-bold text-purple-400">3. Residente</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Checklist WBS y % de avance dinámico</div>
-          </div>
-          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-            <div class="text-lg mb-1">💼</div>
-            <div class="text-xs font-bold text-emerald-400">4. Finanzas</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Aprobación, flujo de caja y CxC/CxP</div>
-          </div>
-          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-            <div class="text-lg mb-1">📊</div>
-            <div class="text-xs font-bold text-cyan-400">5. Gerencia</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Job Costing 4 cuadrantes al segundo</div>
-          </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-2">
+        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 transition">
+          <div class="text-amber-400 text-lg mb-1"><i class="fa-solid fa-compass-drafting"></i></div>
+          <h4 class="text-xs font-bold text-white mb-1">1. Obras & Partidas (EDT)</h4>
+          <p class="text-[11px] text-slate-400">Presupuestos desglosados, rendimientos diarios y cómputos métricos con curvas de avance físico.</p>
         </div>
 
-        <div class="mt-4 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-center justify-between">
-          <div class="text-xs text-emerald-300 font-medium">
-            <b>🌐 Acceso Global Sin VPN:</b> Directores y socios consultan el estado financiero y operativo desde su móvil, laptop o tablet en cualquier parte del mundo.
-          </div>
-          <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/30">Nube Continua 24/7</span>
+        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 transition">
+          <div class="text-emerald-400 text-lg mb-1"><i class="fa-solid fa-receipt"></i></div>
+          <h4 class="text-xs font-bold text-white mb-1">2. Finanzas & AI-OCR</h4>
+          <p class="text-[11px] text-slate-400">Lectura instantánea de facturas con IA, división de gastos (Split) y control de cuentas por pagar/cobrar.</p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition">
+          <div class="text-cyan-400 text-lg mb-1"><i class="fa-solid fa-truck-ramp-box"></i></div>
+          <h4 class="text-xs font-bold text-white mb-1">3. Almacén & Custodia</h4>
+          <p class="text-[11px] text-slate-400">Control de inventario, registro de horómetros/odómetros de maquinaria y actas de custodia de activos.</p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 transition">
+          <div class="text-purple-400 text-lg mb-1"><i class="fa-solid fa-chart-pie"></i></div>
+          <h4 class="text-xs font-bold text-white mb-1">4. Cockpit Gerencial (P&L)</h4>
+          <p class="text-[11px] text-slate-400">Semáforos de rentabilidad en tiempo real, CPI de cada obra y auditoría de decisiones directivas.</p>
         </div>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 3 -->
-      <div class="presenter-guide">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | TÉRMINOS CLAVE:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 3 -->
+      <div class="terms-box max-w-5xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>WBS / EDT (Work Breakdown Structure):</b> <i>Estructura de Desglose del Trabajo</i>. Divide la obra en fases y tareas puntuales medibles.</div>
-          <div>• <b>Job Costing:</b> <i>Costeo por Proyecto</i>. Permite saber al centavo cuánto cuesta ejecutar cada obra en tiempo real.</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
+          <div>• <b>Job Costing:</b> <i>Costeo por Proyecto</i>; método contable que imputa cada gasto exacto a la obra que lo originó para saber su ganancia real.</div>
+          <div>• <b>AI-OCR:</b> <i>Reconocimiento Óptico con IA</i> que digitaliza facturas fotográficas extrayendo RIF, montos e IVA sin tipeo manual.</div>
+          <div>• <b>Cockpit Gerencial:</b> <i>Panel de Control Ejecutivo</i> con indicadores financieros e índices de desempeño al instante.</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 4: MATRIZ COMPARATIVA DE MERCADO -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Comparativa de Mercado">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">03. BENCHMARK OBJETIVO</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Lo mejor de cada referente, adaptado a nuestra realidad</h2>
-      <p class="text-xs text-slate-400 mb-3">Evaluación respetuosa y técnica de las herramientas tradicionales frente a DALOR SIGO-P:</p>
+    <!-- SLIDE 4: GESTIÓN DE OBRAS & EDT -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Control de Obras & EDT">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">03. CONTROL DE OBRAS</div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Estructuración Técnica por Partidas y Avance Físico</h2>
+      <p class="text-xs md:text-sm text-slate-400 mb-4">Control milimétrico del proyecto desde la cotización inicial hasta la valuación final del cliente:</p>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-[11.5px] border-collapse">
-          <thead>
-            <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-300 font-mono">
-              <th class="p-2">Software Referente</th>
-              <th class="p-2">Su Fortaleza Principal</th>
-              <th class="p-2 text-slate-400">Limitación en Contratistas</th>
-              <th class="p-2 text-amber-400 font-bold">Aporte Integrado en SIGO-P</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800/60 font-sans">
-            <tr class="hover:bg-slate-900/40">
-              <td class="p-2 font-bold text-white">SAP / Odoo</td>
-              <td class="p-2 text-slate-300">Potencia contable corporativa y auditoría</td>
-              <td class="p-2 text-slate-400">Alta burocracia, costos elevados y nula agilidad en campo</td>
-              <td class="p-2 text-emerald-400 font-semibold">P&L limpio y control de costos sin trabas administrativas</td>
-            </tr>
-            <tr class="hover:bg-slate-900/40">
-              <td class="p-2 font-bold text-white">Profit Plus / Saint</td>
-              <td class="p-2 text-slate-300">Estándar local de facturación y nómina legal</td>
-              <td class="p-2 text-slate-400">Atado a PC local; sin seguimiento de obras en faena</td>
-              <td class="p-2 text-emerald-400 font-semibold">Independencia total de servidores físicos locales</td>
-            </tr>
-            <tr class="hover:bg-slate-900/40">
-              <td class="p-2 font-bold text-white">MS Project</td>
-              <td class="p-2 text-slate-300">Excelente para cronogramas y estructura WBS</td>
-              <td class="p-2 text-slate-400">Desconectado del flujo de caja, compras reales y campo</td>
-              <td class="p-2 text-emerald-400 font-semibold">Fases WBS familiares conectadas al % de avance dinámico</td>
-            </tr>
-            <tr class="hover:bg-slate-900/40">
-              <td class="p-2 font-bold text-white">LuloWin</td>
-              <td class="p-2 text-slate-300">Cálculo de matrices de Precios Unitarios (APU)</td>
-              <td class="p-2 text-slate-400">Estático: se queda en papel o PDF sin control de ejecución</td>
-              <td class="p-2 text-emerald-400 font-semibold">Importación de partidas APU + Job Costing en vivo</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-cyan-400 font-bold text-xs mb-1">Estructura EDT / WBS</div>
+          <p class="text-[11px] text-slate-400">Desglose jerárquico de fases (Civil, Eléctrica, Mecánica, Puesta en Marcha) con cómputos métricos exactos (m³, m², kg, ml).</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-emerald-400 font-bold text-xs mb-1">Reporte Diario desde Campo</div>
+          <p class="text-[11px] text-slate-400">Los inspectores e ingenieros cargan el avance ejecutado y fotografías georreferenciadas desde su celular en el sitio de la obra.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-amber-400 font-bold text-xs mb-1">Curva S & Valuaciones</div>
+          <p class="text-[11px] text-slate-400">Comparación automática del avance programado vs. ejecutado y generación del dossier de valuación listo para cobro.</p>
+        </div>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 4 -->
-      <div class="presenter-guide">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | TÉRMINOS CLAVE:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 4 -->
+      <div class="terms-box max-w-5xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>APU (Análisis de Precios Unitarios):</b> Desglose de costos de materiales, mano de obra y equipos por cada partida a presupuestar.</div>
-          <div>• <b>P&L (Profit & Loss Statement):</b> <i>Estado de Resultados</i> (Ingresos menos Gastos = Utilidad Neta).</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
+          <div>• <b>EDT / WBS (Work Breakdown Structure):</b> <i>Estructura de Desglose del Trabajo</i>; mapa que divide la obra en partidas medibles.</div>
+          <div>• <b>APU (Análisis de Precios Unitarios):</b> Desglose del costo de cada partida separando materiales, mano de obra y equipos.</div>
+          <div>• <b>Curva S:</b> Gráfico en forma de 'S' que compara el avance físico programado vs. el realmente ejecutado en el tiempo.</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 5: TECNOLOGÍA DE PUNTA: OCR MÓVIL -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Innovación Tecnológica">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">04. INNOVACIÓN TECNOLÓGICA</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Captura Inteligente OCR: De la Faena al Balance en Segundos</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
-        <div class="md:col-span-7 space-y-3 text-xs text-slate-300 leading-relaxed">
-          <p>
-            En lugar de esperar a que un recibo llegue arrugado a la oficina central, el supervisor en campo utiliza la cámara de su teléfono móvil:
-          </p>
-          <ul class="space-y-2 font-mono text-[11.5px]">
-            <li class="flex items-start gap-2">
-              <span class="text-emerald-400 font-bold">✔</span>
-              <span><b>Extracción Automática:</b> Reconoce RIF, Proveedor, Fecha y Monto Total (\$ USD y Bs a tasa oficial BCV).</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-emerald-400 font-bold">✔</span>
-              <span><b>Imputación Directa:</b> Se asocia a la obra activa sin exponer costos ni utilidades al personal de campo.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-emerald-400 font-bold">✔</span>
-              <span><b>Validación en 1-Clic:</b> Administración recibe el comprobante en su bandeja y aprueba con un toque.</span>
-            </li>
-          </ul>
-        </div>
+    <!-- SLIDE 5: OCR INTELIGENTE & COMPRAS -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="OCR Inteligente & Gastos">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">04. FINANZAS & COMPRAS</div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Automatización de Facturas con OCR y Split de Gastos</h2>
+      <p class="text-xs md:text-sm text-slate-400 mb-4">Eliminación de la transcripción manual de facturas y control de compras compartidas entre proyectos:</p>
 
-        <div class="md:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-xl">
-          <div class="text-[11px] font-mono font-bold text-amber-400 mb-2 flex items-center justify-between">
-            <span>📱 BANDEJA OCR EN VIVO</span>
-            <span class="text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded text-[9px]">EN COLA</span>
-          </div>
-          <div class="space-y-2 text-xs font-mono bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-            <div class="text-slate-400 text-[10px]">Factura #FAC-9012</div>
-            <div class="text-white font-bold">Ferretería Industrial Carabobo C.A.</div>
-            <div class="text-slate-400 text-[11px]">Compra de cinta 3M y terminales</div>
-            <div class="flex justify-between items-center pt-2 border-t border-slate-800 text-emerald-400 font-bold">
-              <span>Monto: $85.50 USD</span>
-              <span class="text-slate-400 text-[10px]">Tasa BCV Oficial</span>
-            </div>
-          </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-amber-400 font-bold text-xs mb-1">Extracción con IA en 3 Segundos</div>
+          <p class="text-[11px] text-slate-400">Una foto tomada con el celular extrae automáticamente: RIF del proveedor, número de factura, base imponible, IVA y fecha.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-cyan-400 font-bold text-xs mb-1">Split de Gastos Compartidos</div>
+          <p class="text-[11px] text-slate-400">Divide una compra (ej. flete o materiales al mayor) entre varios proyectos con porcentajes o montos exactos para no distorsionar márgenes.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-emerald-400 font-bold text-xs mb-1">Tasa Oficial BCV en Vivo</div>
+          <p class="text-[11px] text-slate-400">Conversión multimoneda automática en tiempo real para conciliar pagos en Bolívares y Dólares sin descuadres cambiarios.</p>
         </div>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 5 -->
-      <div class="presenter-guide">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | TÉRMINOS CLAVE:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 5 -->
+      <div class="terms-box max-w-5xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>OCR (Optical Character Recognition):</b> <i>Reconocimiento Óptico de Caracteres</i> por Inteligencia Artificial que lee el texto de las fotos.</div>
-          <div>• <b>Imputación de Gasto:</b> Asignar formalmente el valor de una factura a la cuenta contable o al presupuesto de una obra específica.</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
+          <div>• <b>OCR (Optical Character Recognition):</b> <i>Reconocimiento Óptico de Caracteres</i>; tecnología que lee el texto de fotos de facturas.</div>
+          <div>• <b>Split de Gastos:</b> <i>División de Compras</i>; reparte una sola factura entre múltiples obras según su consumo real.</div>
+          <div>• <b>Tasa BCV:</b> Cotización oficial del Dólar según el Banco Central de Venezuela usada para pagos legales en Bolívares.</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 6: CUSTODIA Y LOGÍSTICA DE PAÑOL -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Custodia y Logística">
-      <div class="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider mb-2">05. CUSTODIA PATRIMONIAL</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Protección de Flota, Herramientas y Consumibles</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
-          <div class="text-base">📦</div>
-          <h3 class="font-bold text-white text-sm">30 Activos en Custodia</h3>
-          <p class="text-slate-400 text-[11px]">Control individual de herramientas mayores (Megóhmetro 10kV, Analizador Fluke), soldadoras diésel y equipos de oxicorte.</p>
-        </div>
+    <!-- SLIDE 6: ALMACÉN, MAQUINARIA & CUSTODIA -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Almacén, Maquinaria & Custodia">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">05. LOGÍSTICA & ACTIVOS</div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Custodia de Activos y Control de Desgaste Mecánico</h2>
+      <p class="text-xs md:text-sm text-slate-400 mb-4">Blindaje del patrimonio físico de la empresa: maquinaria, vehículos pesados y herramientas mayores:</p>
 
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
-          <div class="text-base">🛢️</div>
-          <h3 class="font-bold text-amber-400 text-sm">Semáforo de Aceite (5.000 km)</h3>
-          <p class="text-slate-400 text-[11px]">Seguimiento automático de odómetros por foto OCR para evitar fallas mecánicas costosas en camionetas y camiones.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-amber-400 font-bold text-xs mb-1">Horómetros & Odómetros</div>
+          <p class="text-[11px] text-slate-400">Monitoreo de horas de trabajo en plantas/maquinaria y kilometraje en camiones para programar mantenimientos preventivos.</p>
         </div>
-
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
-          <div class="text-base">📄</div>
-          <h3 class="font-bold text-cyan-400 text-sm">Guías de Despacho Oficiales</h3>
-          <p class="text-slate-400 text-[11px]">Emisión digital correlativa (<code class="text-slate-300">GT-DALOR-2026-001</code>) con firma de responsable en faena y fecha de retorno.</p>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-emerald-400 font-bold text-xs mb-1">Actas Digitales de Custodia</div>
+          <p class="text-[11px] text-slate-400">Cada herramienta o equipo queda asignado formalmente a un chofer o cuadrillero responsable, evitando pérdidas.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-cyan-400 font-bold text-xs mb-1">Despachos & Guías de Salida</div>
+          <p class="text-[11px] text-slate-400">Trazabilidad de materiales despachados del almacén central directo a cada frente de obra con confirmación digital.</p>
         </div>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 6 -->
-      <div class="presenter-guide">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | TÉRMINOS CLAVE:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 6 -->
+      <div class="terms-box max-w-5xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>Pañol:</b> Almacén técnico especializado donde se guardan, calibran y entregan herramientas y equipos pesados.</div>
-          <div>• <b>Traffic Light (Semáforo de Flota):</b> Alerta de colores (Verde = Al día, Amarillo = Próximo a vencer, Rojo = Mantenimiento vencido).</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
+          <div>• <b>Horómetro (Hour Meter):</b> Contador que registra las horas de funcionamiento del motor de maquinaria pesada o generadores.</div>
+          <div>• <b>Odómetro (Odometer):</b> Instrumento que mide los kilómetros recorridos por vehículos y camiones de carga.</div>
+          <div>• <b>Acta de Custodia:</b> Asignación patrimonial formal de un equipo a una persona para garantizar su cuidado y retorno.</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 7: JOB COSTING Y AVANCE FÍSICO -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Job Costing en Vivo">
-      <div class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-2">06. CONTROL DE RENTABILIDAD</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Job Costing de 4 Cuadrantes y Avance Físico</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
-        <div class="md:col-span-6 space-y-3">
-          <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
-            <div class="flex justify-between items-center text-xs">
-              <span class="font-bold text-white">Avance Físico Dinámico (WBS):</span>
-              <span class="font-mono font-bold text-purple-400">65.0%</span>
-            </div>
-            <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
-              <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-full w-[65%] rounded-full"></div>
-            </div>
-            <div class="text-[10px] text-slate-400">Calculado automáticamente a partir de las tareas técnicas completadas [x].</div>
-          </div>
+    <!-- SLIDE 7: P&L & SEMÁFOROS FINANCIEROS -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="P&L & Indicadores Financieros">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">06. CONTROL GERENCIAL</div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Semáforo de Rentabilidad y Control de Desviaciones (CPI)</h2>
+      <p class="text-xs md:text-sm text-slate-400 mb-4">Información financiera clara para la toma de decisiones oportunas por parte de los directores:</p>
 
-          <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
-            <div class="flex justify-between items-center text-xs">
-              <span class="font-bold text-white">Consumo Presupuestario:</span>
-              <span class="font-mono font-bold text-emerald-400">7.1% (Verde Rentable)</span>
-            </div>
-            <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
-              <div class="bg-emerald-500 h-full w-[7.1%] rounded-full"></div>
-            </div>
-            <div class="text-[10px] text-slate-400">Semáforo de alerta temprana para prevenir sobrecostos antes de cerrar la obra.</div>
-          </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-emerald-400 font-bold text-xs mb-1">Semáforo P&L en Vivo</div>
+          <p class="text-[11px] text-slate-400">Verde (Margen Óptimo &gt;25%), Amarillo (Margen en Riesgo 10-24%) y Rojo (Alerta de Pérdida &lt;10%) por proyecto.</p>
         </div>
-
-        <div class="md:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl">
-          <div class="text-[11px] font-mono font-bold text-slate-400 uppercase mb-2">MATRIZ DE 4 CUADRANTES FINANCIEROS</div>
-          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
-            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-500">Monto Contrato</div>
-              <div class="text-sm font-bold text-white mt-0.5">$12,500.00</div>
-            </div>
-            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-500">Presupuesto Límite</div>
-              <div class="text-sm font-bold text-amber-400 mt-0.5">$8,200.00</div>
-            </div>
-            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-500">Gasto Real Incurrido</div>
-              <div class="text-sm font-bold text-rose-400 mt-0.5">$585.50</div>
-            </div>
-            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-500">Margen Estimado</div>
-              <div class="text-sm font-bold text-emerald-400 mt-0.5">95.3% (+$11.9k)</div>
-            </div>
-          </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-amber-400 font-bold text-xs mb-1">Índice CPI por Obra</div>
+          <p class="text-[11px] text-slate-400">Calcula la eficiencia financiera en tiempo real: detecta al instante si una partida se está desviando del presupuesto original.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-cyan-400 font-bold text-xs mb-1">Flujo de Caja (Cash Flow)</div>
+          <p class="text-[11px] text-slate-400">Control de liquidez proyectada vs. compromisos de pago para evitar asfixia financiera durante la ejecución.</p>
         </div>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 7 -->
-      <div class="presenter-guide">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | TÉRMINOS CLAVE:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 7 -->
+      <div class="terms-box max-w-5xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>4 Cuadrantes:</b> <i>Contrato vs Presupuesto Techo vs Gastos Reales = Margen Neto</i>.</div>
-          <div>• <b>CPI (Cost Performance Index):</b> Índice de Eficiencia: $CPI > 1$ significa que la obra ahorra dinero; $CPI < 1$ alerta sobrecosto.</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
+          <div>• <b>P&L (Profit and Loss Statement):</b> <i>Estado de Pérdidas y Ganancias</i>; balance que muestra la utilidad neta de cada obra.</div>
+          <div>• <b>CPI (Cost Performance Index):</b> <i>Índice de Rendimiento del Costo</i>. CPI = 1.0 (exacto al plan), &gt;1.0 (ahorro), &lt;1.0 (sobrecosto).</div>
+          <div>• <b>Cash Flow:</b> <i>Flujo de Caja</i>; entradas y salidas reales de dinero líquido en las cuentas bancarias.</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 8: SEGURIDAD Y DISPONIBILIDAD GLOBAL -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Seguridad y Estabilidad">
-      <div class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider mb-2">07. SEGURIDAD INSTITUCIONAL</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Robustez Tecnológica Diseñada para Perdurar</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-        <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-          <div class="text-base mb-1">🛡️</div>
-          <h3 class="font-bold text-white mb-1">Cifrado Bancario SSL 256-bit</h3>
-          <p class="text-slate-400 text-[11px]">Comunicaciones encriptadas de extremo a extremo con autenticación JWT y contraseñas hasheadas en PBKDF2/bcrypt.</p>
-        </div>
+    <!-- SLIDE 8: SEGURIDAD & BLINDAJE DE ROLES -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Seguridad & Blindaje de Roles">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">07. SEGURIDAD & AUDITORÍA</div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Blindaje por Roles y Protección de Información Crítica</h2>
+      <p class="text-xs md:text-sm text-slate-400 mb-4">Cada usuario solo ve lo indispensable para cumplir su función, manteniendo la confidencialidad financiera:</p>
 
-        <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-          <div class="text-base mb-1">☁️</div>
-          <h3 class="font-bold text-white mb-1">PostgreSQL en la Nube (AWS)</h3>
-          <p class="text-slate-400 text-[11px]">Base de datos relacional Neon de alto rendimiento con copias de seguridad automáticas y aislamiento de datos.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-purple-400 font-bold text-xs mb-1">Director General (Master)</div>
+          <p class="text-[11px] text-slate-400">Visión total: P&L consolidado, aprobación de gastos críticos, semáforos financieros y auditoría de usuarios.</p>
         </div>
-
-        <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-          <div class="text-base mb-1">⚡</div>
-          <h3 class="font-bold text-white mb-1">Alta Disponibilidad Cloud</h3>
-          <p class="text-slate-400 text-[11px]">Cero dependencia de la electricidad local o de PCs físicas en oficina. El sistema no se cae ni se desconecta.</p>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-cyan-400 font-bold text-xs mb-1">Ingeniero de Obra (Técnico)</div>
+          <p class="text-[11px] text-slate-400">Control de avance físico, cómputos métricos y fotos de obra. <b>Costos y márgenes comerciales 100% ocultos.</b></p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-amber-400 font-bold text-xs mb-1">Jefe de Almacén (Custodia)</div>
+          <p class="text-[11px] text-slate-400">Entradas, salidas de stock y horas/km de maquinaria. <b>Sin acceso a precios de compra ni finanzas.</b></p>
         </div>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 8 -->
-      <div class="presenter-guide">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | TÉRMINOS CLAVE:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 8 -->
+      <div class="terms-box max-w-5xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>SSL / TLS:</b> Protocolo de seguridad que protege la transmisión de datos para que nadie pueda interceptar contraseñas o montos.</div>
-          <div>• <b>Snapshot / Respaldo:</b> Copia congelada de la base de datos descargable a un pendrive o nube de respaldo.</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
+          <div>• <b>RBAC (Role-Based Access Control):</b> <i>Control de Acceso por Roles</i>; restricción de pantallas según el cargo del empleado.</div>
+          <div>• <b>SoD (Segregation of Duties):</b> <i>Separación de Funciones</i>; regla que impide que una sola persona compre y se auto-apruebe los pagos.</div>
+          <div>• <b>Trazabilidad Forense:</b> Registro imborrable con usuario, fecha y hora de cada acción ejecutada en el sistema.</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 9: CONCLUSIONES Y BENEFICIOS -->
-    <section class="slide flex-col justify-center max-w-4xl mx-auto text-center py-4" data-title="Conclusiones">
+    <!-- SLIDE 9: RETORNO DE INVERSIÓN (ROI) -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Retorno de Inversión">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">08. IMPACTO ECONÓMICO</div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Retorno de Inversión y Beneficios Cuantificables</h2>
+      <p class="text-xs md:text-sm text-slate-400 mb-4">El impacto directo de la automatización en el flujo de caja y la rentabilidad de DALOR:</p>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+          <div class="text-2xl font-black text-emerald-400 mb-0.5">85%</div>
+          <div class="text-xs font-bold text-white mb-1">Ahorro de Tiempo</div>
+          <p class="text-[10.5px] text-slate-400">En procesamiento de facturas y carga de compras con AI-OCR.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+          <div class="text-2xl font-black text-amber-400 mb-0.5">100%</div>
+          <div class="text-xs font-bold text-white mb-1">Custodia de Activos</div>
+          <p class="text-[10.5px] text-slate-400">Eliminación de extravíos de herramientas y maquinaria en frentes de obra.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+          <div class="text-2xl font-black text-cyan-400 mb-0.5">12 Días</div>
+          <div class="text-xs font-bold text-white mb-1">Cobro más Rápido</div>
+          <p class="text-[10.5px] text-slate-400">Reducción del ciclo de emisión y aprobación de valuaciones con clientes.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+          <div class="text-2xl font-black text-purple-400 mb-0.5">0</div>
+          <div class="text-xs font-bold text-white mb-1">Servidores Físicos</div>
+          <p class="text-[10.5px] text-slate-400">Cero costos de mantenimiento de servidores locales ni licencias costosas.</p>
+        </div>
+      </div>
+
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 9 -->
+      <div class="terms-box max-w-5xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
+          <div>• <b>ROI (Return on Investment):</b> <i>Retorno de Inversión</i>; indicador que demuestra cuánto dinero ahorra o gana la empresa por implementar el sistema.</div>
+          <div>• <b>TCO (Total Cost of Ownership):</b> <i>Costo Total de Propiedad</i>; ahorro integral al no gastar en servidores, licencias anuales de terceros ni técnicos locales.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: CIERRE & DEMO EN VIVO -->
+    <section class="slide flex-col justify-center items-center text-center max-w-4xl mx-auto py-4" data-title="Cierre & Demostración">
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3">
-        <span>🎯 Impacto Directo en el Negocio</span>
+        <span>✅ Sistema Activo y Desplegado en Producción</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-black text-white mb-3">El Salto Cuántico en Gestión de DALOR</h2>
-      <p class="text-xs md:text-sm text-slate-400 max-w-xl mx-auto mb-4">Con DALOR SIGO-P, la empresa transforma sus operaciones en una ventaja competitiva medible:</p>
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-2">DALOR SIGO-P está listo para operar</h2>
+      <p class="text-xs md:text-sm text-slate-400 max-w-lg mx-auto mb-6">
+        Pasemos a la demostración interactiva en vivo del sistema con los usuarios de Director, Ingeniero y Almacén.
+      </p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-left mb-4">
-        <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-          <div class="text-xs font-bold text-amber-400 mb-1">1. Cero Fuga de Caja</div>
-          <div class="text-[11px] text-slate-400">Cada gasto en faena se aprueba e imputa al segundo con respaldo fotográfico.</div>
-        </div>
-        <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-          <div class="text-xs font-bold text-blue-400 mb-1">2. Blindaje Patrimonial</div>
-          <div class="text-[11px] text-slate-400">Custodia total de herramientas de precisión y mantenimiento preventivo de flota.</div>
-        </div>
-        <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-          <div class="text-xs font-bold text-emerald-400 mb-1">3. Decisiones al 1-Clic</div>
-          <div class="text-[11px] text-slate-400">Margen real de cada contrato visible desde el teléfono móvil en cualquier lugar.</div>
-        </div>
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-6">
+        <a href="/" target="_blank" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs transition shadow-lg flex items-center gap-2">
+          <i class="fa-solid fa-play"></i> Iniciar Demostración en Vivo
+        </a>
+        <a href="/manual" target="_blank" class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs border border-slate-700 transition flex items-center gap-2">
+          <i class="fa-solid fa-book"></i> Ver Manuales & Glosario
+        </a>
       </div>
 
-      <!-- GUÍA DEL EXPOSITOR / GLOSARIO LÁMINA 9 -->
-      <div class="presenter-guide text-left">
-        <div class="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
-          <i class="fa-solid fa-lightbulb"></i> <span>GUÍA DEL EXPOSITOR | CIERRE ESTRATÉGICO:</span>
+      <!-- GLOSARIO DE TÉRMINOS LÁMINA 10 -->
+      <div class="terms-box max-w-3xl w-full text-left">
+        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
+          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
         </div>
-        <div class="text-[11px] text-slate-300">
-          <b>Mensaje de Impacto:</b> "SIGO-P no es un costo de software; es un blindaje operativo que ahorra miles de dólares al mes en pérdidas de herramientas, sobrecostos ocultos en obras y demoras en cobranzas."
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
+          <div>• <b>PWA (Progressive Web App):</b> Aplicación web que se instala en teléfonos celulares y funciona tanto online como offline en obra.</div>
+          <div>• <b>SLA (Service Level Agreement):</b> <i>Garantía de Servicio</i>; compromiso técnico de alta disponibilidad, seguridad y soporte continuo del sistema.</div>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- Bottom Control Bar -->
-  <footer class="w-full border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-3 flex items-center justify-between z-50">
-    <div class="text-xs text-slate-400 font-medium hidden sm:block">
-      <span class="text-amber-400 font-bold">Tip:</span> Usa las flechas <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono border border-slate-700">◀</kbd> <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono border border-slate-700">▶</kbd> o espacio para avanzar.
-    </div>
-    
-    <div class="flex items-center gap-3 mx-auto sm:mx-0">
-      <button onclick="prevSlide()" class="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">◀ Anterior</button>
-      <button onclick="nextSlide()" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black tracking-wide shadow-md shadow-amber-900/30 transition">Siguiente ▶</button>
+  <!-- Bottom Navigation & Controls Bar -->
+  <footer class="w-full border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-2.5 flex items-center justify-between z-50">
+    <div class="flex items-center gap-2">
+      <span class="text-[11px] text-slate-500 font-medium hidden sm:inline">Usa las teclas de flecha (◀ ▶) o los botones para navegar</span>
     </div>
 
-    <div class="text-[11px] text-slate-500 font-mono hidden md:block">
-      Sistema Propietario DALOR SIGO-P
+    <!-- Mini Slide Bullets -->
+    <div class="flex items-center gap-1.5" id="bulletContainer">
+      <!-- Bullets generated by JS -->
+    </div>
+
+    <div class="text-[11px] text-slate-500 font-mono">
+      DALOR &copy; 2026
     </div>
   </footer>
 
   <script>
-    const slides = document.querySelectorAll('.slide');
     let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const slideIndicator = document.getElementById('slideIndicator');
+    const bulletContainer = document.getElementById('bulletContainer');
 
-    function showSlide(index) {
-      if (index < 0) index = 0;
-      if (index >= slides.length) index = slides.length - 1;
+    // Create navigation dots/bullets
+    for (let i = 0; i < totalSlides; i++) {
+      const dot = document.createElement('button');
+      dot.className = `w-2 h-2 rounded-full transition-all ${i === 0 ? 'bg-amber-400 w-5' : 'bg-slate-700 hover:bg-slate-500'}`;
+      dot.title = `Ir a lámina ${i + 1}: ${slides[i].dataset.title || ''}`;
+      dot.onclick = () => goToSlide(i);
+      bulletContainer.appendChild(dot);
+    }
 
-      slides.forEach((s, i) => {
-        if (i === index) {
-          s.classList.add('active');
+    function updateSlides() {
+      slides.forEach((slide, idx) => {
+        if (idx === currentSlide) {
+          slide.classList.add('active');
         } else {
-          s.classList.remove('active');
+          slide.classList.remove('active');
         }
       });
 
-      currentSlide = index;
-      document.getElementById('slideIndicator').innerText = 
-        `${String(currentSlide + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+      slideIndicator.innerText = `${String(currentSlide + 1).padStart(2, '0')} / ${String(totalSlides).padStart(2, '0')}`;
+
+      // Update dots
+      const dots = bulletContainer.children;
+      for (let i = 0; i < dots.length; i++) {
+        if (i === currentSlide) {
+          dots[i].className = 'w-5 h-2 rounded-full bg-amber-400 transition-all';
+        } else {
+          dots[i].className = 'w-2 h-2 rounded-full bg-slate-700 hover:bg-slate-500 transition-all';
+        }
+      }
     }
 
     function nextSlide() {
-      showSlide(currentSlide + 1);
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlides();
+      }
     }
 
     function prevSlide() {
-      showSlide(currentSlide - 1);
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlides();
+      }
+    }
+
+    function goToSlide(idx) {
+      if (idx >= 0 && idx < totalSlides) {
+        currentSlide = idx;
+        updateSlides();
+      }
     }
 
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log(`Error al activar pantalla completa: ${err.message}`);
+        });
       } else {
         if (document.exitFullscreen) {
-          document.exitFullscreen().catch(() => {});
+          document.exitFullscreen();
         }
       }
     }
 
     // Keyboard navigation
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'PageDown') {
         nextSlide();
-      } else if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         prevSlide();
       } else if (e.key === 'f' || e.key === 'F') {
         toggleFullscreen();
+      } else if (e.key >= '1' && e.key <= '9') {
+        const target = parseInt(e.key) - 1;
+        if (target < totalSlides) goToSlide(target);
+      } else if (e.key === '0') {
+        if (totalSlides >= 10) goToSlide(9);
       }
     });
-
-    // Initialize
-    showSlide(0);
   </script>
 </body>
 </html>

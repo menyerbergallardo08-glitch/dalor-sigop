@@ -332,6 +332,17 @@ def seed_master_demo(db: Session = Depends(get_db)):
         db.query(MaterialMovement).delete()
         db.query(ProjectPhase).delete()
         db.query(Project).delete()
+
+        # 2.0 Calibrar odómetros y servicios de flota para semáforos limpios
+        db.query(Asset).filter(Asset.asset_code == "VEH-001").update({"current_odometer": 142500.0, "last_service_odometer": 141000.0, "service_interval_km": 5000.0})
+        db.query(Asset).filter(Asset.asset_code == "VEH-01").update({"current_odometer": 142000.0, "last_service_odometer": 140000.0, "service_interval_km": 5000.0})
+        db.query(Asset).filter(Asset.asset_code == "VEH-02").update({"current_odometer": 85000.0, "last_service_odometer": 83500.0, "service_interval_km": 5000.0})
+        db.query(Asset).filter(Asset.asset_code == "VEH-03").update({"current_odometer": 118000.0, "last_service_odometer": 114000.0, "service_interval_km": 5000.0})
+        db.query(Asset).filter(Asset.asset_code == "VEH-04").update({"current_odometer": 195000.0, "last_service_odometer": 190200.0, "service_interval_km": 5000.0}) # Amarillo 200 km
+        db.query(Asset).filter(Asset.asset_code == "VEH-05").update({"current_odometer": 240000.0, "last_service_odometer": 234800.0, "service_interval_km": 5000.0}) # Rojo -200 km
+        db.query(Asset).filter(Asset.asset_code == "VEH-06").update({"current_odometer": 165000.0, "last_service_odometer": 162500.0, "service_interval_km": 5000.0})
+        db.query(Asset).filter(Asset.asset_code == "VEH-07").update({"current_odometer": 132000.0, "last_service_odometer": 129000.0, "service_interval_km": 5000.0})
+        db.commit()
         # 2.1 Asegurar Usuario Almacén
         from app.core.security import get_password_hash
         almacen_usr = db.query(User).filter(User.username == "almacen").first()

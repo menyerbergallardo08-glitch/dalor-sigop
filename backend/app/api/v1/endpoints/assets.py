@@ -121,6 +121,46 @@ def get_fleet_summary(db: Session = Depends(get_db)):
         })
     return result
 
+class ServiceRecordCreate(BaseModel):
+    new_odometer: float
+    service_type: str = "cambio_aceite_filtros"
+    cost_usd: float = 0.0
+    performed_by: Optional[str] = "Taller Central / Taller Externo"
+    notes: Optional[str] = None
+
+@router.post("/{asset_id}/record-service")
+def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Vehículo/Activo no encontrado.")
+    
+    asset.current_odometer = req.new_odometer
+    asset.last_service_odometer = req.new_odometer
+    
+    if req.cost_usd > 0:
+        exp = Expense(
+            asset_id=asset.id,
+            amount_usd=req.cost_usd,
+            description=f"Mantenimiento {req.service_type} a {asset.asset_code} ({asset.name}) a los {req.new_odometer} km.",
+            status="aprobado",
+            exchange_rate=800.0,
+            amount_bs=req.cost_usd * 800.0
+        )
+        db.add(exp)
+        
+    log = AuditLog(
+        module="activos",
+        action="mantenimiento_vehiculo",
+        details=f"Servicio de {req.service_type} registrado para {asset.asset_code}. Odómetro reseteado a {req.new_odometer} km."
+    )
+    db.add(log)
+    db.commit()
+    return {
+        "success": True, 
+        "message": f"Servicio de {req.service_type} registrado. Odómetro actualizado a {req.new_odometer:,.0f} km. Semáforo en VERDE OK (5.000 Km restantes).",
+        "remaining_km": asset.service_interval_km or 5000.0
+    }
+
 # ------------------------------------------------------------------------------
 # 📄 GUÍAS DE TRASLADO & PASES DE SALIDA DE HERRAMIENTAS Y EQUIPOS
 # ------------------------------------------------------------------------------

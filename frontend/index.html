@@ -987,10 +987,19 @@
                 <button id="btnQuickFlow" onclick="openQuickFlowModal()" class="btn-primary" style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 11px; padding: 6px 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(245, 184, 0, 0.4); white-space: nowrap;">
                     <i class="fa-solid fa-bolt"></i> 3 Toques
                 </button>
-                <div class="tasa-editor-box" title="Haz clic en el número para editar la tasa oficial en Bs/$">
-                    <span style="color: #94a3b8; font-weight: 600;"><i class="fa-solid fa-pen" style="font-size: 10px; color: var(--dalor-gold);"></i> Tasa:</span>
-                    <input type="number" step="0.01" id="globalExchangeRateInput" class="tasa-input" value="850.00" onchange="updateGlobalExchangeRate(this.value)" title="Edita la tasa y presiona Enter">
-                    <span style="color: #cbd5e1; font-weight: 700;">Bs/$</span>
+                <div class="tasa-editor-box" id="bcvTasaBadge" title="Tasa Oficial del Banco Central de Venezuela sincronizada automáticamente">
+                    <span style="display: inline-flex; align-items: center; gap: 5px; color: #94a3b8; font-weight: 700; font-size: 11px;">
+                        <span id="bcvStatusDot" style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 5px #10b981;"></span>
+                        <span id="bcvSourceName">BCV:</span>
+                    </span>
+                    <span id="bcvRateDisplay" style="font-size: 13px; font-weight: 900; color: var(--dalor-gold); font-family: monospace; letter-spacing: 0.5px;">832.49</span>
+                    <span style="color: #cbd5e1; font-weight: 700; font-size: 11px;">Bs/$</span>
+                    <button onclick="syncBcvRateFromBtn(event)" id="btnSyncBcv" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 2px 4px; margin-left: 2px; transition: transform 0.3s;" title="Refrescar cotización oficial BCV">
+                        <i class="fa-solid fa-arrows-rotate" id="bcvSyncIcon" style="font-size: 10px;"></i>
+                    </button>
+                    <button onclick="openManualTasaModal(event)" id="btnManualTasa" style="background: none; border: none; color: #64748b; cursor: pointer; padding: 2px 2px;" title="Ajuste manual de contingencia (Solo Administrador)">
+                        <i class="fa-solid fa-pen" style="font-size: 9px;"></i>
+                    </button>
                 </div>
 
                 <!-- Perfil de Usuario Activo -->
@@ -4326,6 +4335,104 @@
         </div>
     </div>
 
+    <!-- MODAL: AJUSTE MANUAL DE CONTINGENCIA DE TASA BCV -->
+    <div id="modalManualTasa" class="modal-overlay hidden" style="z-index: 100000;">
+        <div class="modal-card" style="max-width: 420px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); display: flex; align-items: center; gap: 8px; margin: 0;">
+                    <i class="fa-solid fa-scale-balanced" style="color: var(--dalor-gold);"></i> Tasa de Cambio (Contingencia)
+                </h3>
+                <button onclick="closeModal('modalManualTasa')" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size: 12px; color: #475569;">
+                <p style="margin: 0 0 6px 0;"><b>Cotización BCV Actual:</b> <span id="modalBcvCurrentRate" style="color: var(--dalor-blue); font-weight: 800;">832.49 Bs/$</span></p>
+                <p style="margin: 0 0 6px 0;"><b>Fecha Valor Oficial:</b> <span id="modalBcvDateValue" style="color: #0f172a; font-weight: 700;">-</span></p>
+                <p style="margin: 0; font-size: 11px; color: #64748b;">El sistema actualiza esta tasa automáticamente desde el portal del BCV. Modifícala solo si existe una contingencia bancaria o feriado extraordinario.</p>
+            </div>
+            <form onsubmit="submitManualTasa(event)">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label" style="font-weight: 700;">Nueva Tasa Manual (Bs/$):</label>
+                    <input type="number" step="0.01" id="manualTasaInput" class="form-control" style="font-size: 16px; font-weight: 800; text-align: center; color: var(--dalor-navy);" required>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalManualTasa')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+                    <button type="button" onclick="syncBcvRateFromBtn(event); closeModal('modalManualTasa');" class="btn-secondary" style="font-size: 12px; color: #0284c7;">
+                        <i class="fa-solid fa-arrows-rotate"></i> Forzar BCV Oficial
+                    </button>
+                    <button type="submit" class="btn-primary" style="font-size: 12px; background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800;">
+                        Guardar Tasa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CAPTURA & OCR DE ODÓMETRO VEHICULAR -->
+    <div id="modalOdometerOcr" class="modal-overlay hidden" style="z-index: 100000;">
+        <div class="modal-card" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 800; color: #0284c7; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i class="fa-solid fa-camera"></i> Escaneo de Odómetro (OCR IA)
+                    </h3>
+                    <p id="odoVehicleSubtitle" style="font-size: 12px; color: #64748b; margin: 2px 0 0 0; font-weight: 600;">[VEH-01] Toyota Hilux - Placa A82CK1M</p>
+                </div>
+                <button onclick="closeModal('modalOdometerOcr')" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Kilometraje Anterior Registrado -->
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: #0369a1; font-weight: 700;">Último Kilometraje Registrado:</span>
+                <span id="odoCurrentKmDisplay" style="font-size: 14px; font-weight: 900; color: #0c4a6e; font-family: monospace;">125.000 Km</span>
+            </div>
+
+            <!-- Botón de Captura / Selección de Foto -->
+            <div style="text-align: center; margin-bottom: 14px;">
+                <input type="file" id="odometerFileInput" accept="image/*" capture="environment" style="display: none;" onchange="handleOdometerImageSelected(event)">
+                <button type="button" onclick="document.getElementById('odometerFileInput').click()" class="btn-primary" style="background: #0284c7; font-size: 13px; padding: 10px 18px; border-radius: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 3px 6px rgba(2, 132, 199, 0.3);">
+                    <i class="fa-solid fa-camera" style="font-size: 16px;"></i> Tomar Foto al Tablero / Odómetro
+                </button>
+            </div>
+
+            <!-- Preview y Animación de Escaneo -->
+            <div id="odoPreviewBox" style="display: none; background: #0f172a; border-radius: 8px; padding: 8px; text-align: center; margin-bottom: 14px; position: relative; overflow: hidden;">
+                <img id="odoPreviewImg" src="" style="max-height: 180px; max-width: 100%; object-fit: contain; border-radius: 6px;">
+                <div id="odoScanningOverlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.75); flex-direction: column; align-items: center; justify-content: center; color: white;">
+                    <i class="fa-solid fa-microchip fa-spin" style="font-size: 28px; color: #38bdf8; margin-bottom: 8px;"></i>
+                    <span style="font-size: 12px; font-weight: 700; color: #e0f2fe;">Analizando tablero con IA de Visión...</span>
+                </div>
+            </div>
+
+            <!-- Resultado de Lectura Detectada -->
+            <div id="odoResultBox" style="display: none; background: #ecfdf5; border: 1.5px solid #6ee7b7; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 12px; font-weight: 800; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Kilometraje Detectado:
+                    </span>
+                    <span id="odoConfidenceBadge" style="font-size: 10px; font-weight: 800; background: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px;">
+                        Confianza 95%
+                    </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="number" id="odoDetectedInput" step="1" style="font-size: 20px; font-weight: 900; text-align: center; color: #064e3b; font-family: monospace; border: 2px solid #34d399; border-radius: 6px; padding: 6px; width: 100%; background: #ffffff;" required>
+                    <span style="font-size: 16px; font-weight: 800; color: #065f46;">Km</span>
+                </div>
+                <p id="odoDetectedNotes" style="font-size: 11px; color: #047857; margin: 6px 0 0 0; text-align: center;">Lectura clara del odómetro principal</p>
+            </div>
+
+            <form id="formConfirmOdometer" onsubmit="submitConfirmOdometer(event)">
+                <input type="hidden" id="odoAssetIdHidden">
+                <input type="hidden" id="odoImageUrlHidden">
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalOdometerOcr')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+                    <button type="submit" id="btnConfirmOdometer" class="btn-primary" style="font-size: 12px; background: #059669; display: none;">
+                        <i class="fa-solid fa-check-double"></i> Confirmar y Guardar Lectura
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- 🔔 CONTENEDOR FLOTANTE DE NOTIFICACIONES TOAST EN VIVO -->
     <div id="toastNotificationContainer" style="position: fixed; top: 75px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 390px; width: 92%;"></div>
 
@@ -4351,6 +4458,6 @@
     </style>
 
     <!-- 🚀 LÓGICA CORE SPA JAVASCRIPT -->
-    <script src="/app.js?v=2026.09.10.v32"></script>
+    <script src="/app.js?v=2026.09.11.v33"></script>
 </body>
 </html>

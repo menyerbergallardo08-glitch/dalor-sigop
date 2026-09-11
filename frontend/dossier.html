@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DALOR & NEPTUNIA | Dossier Estratégico y Propuesta de Valor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: true, theme: 'neutral' });</script>
+    <style>
+        :root {
+            --dalor-navy: #002B49;
+            --dalor-blue: #005691;
+            --dalor-gold: #F5B800;
+            --dalor-dark: #0f172a;
+            --dalor-border: #e2e8f0;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            font-size: 13.5px;
+        }
+        .top-toolbar {
+            position: sticky;
+            top: 0;
+            background: var(--dalor-navy);
+            color: white;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .print-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .doc-container {
+            max-width: 960px;
+            margin: 24px auto;
+            background: white;
+            padding: 48px 56px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            border: 1px solid var(--dalor-border);
+        }
+        h1 { font-size: 24px; font-weight: 900; color: var(--dalor-navy); margin-top: 0; line-height: 1.2; }
+        h2 { font-size: 18px; font-weight: 800; color: var(--dalor-navy); border-bottom: 2px solid var(--dalor-blue); padding-bottom: 6px; margin-top: 28px; }
+        h3 { font-size: 15px; font-weight: 700; color: var(--dalor-blue); margin-top: 20px; }
+        .hero-banner {
+            background: linear-gradient(135deg, var(--dalor-navy) 0%, var(--dalor-blue) 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+        .price-box {
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        .price-val { font-size: 32px; font-weight: 900; color: #065f46; font-family: monospace; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12.5px; page-break-inside: avoid; break-inside: avoid; }
+        th, td { padding: 10px 12px; border: 1px solid #e2e8f0; text-align: left; }
+        th { background: #0f172a; color: white; }
+        tr:nth-child(even) { background: #f8fafc; }
+        .diagram-box { background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; font-size: 12px; }
+            .doc-container { max-width: 100%; margin: 0; padding: 0; border: none; box-shadow: none; }
+            .page-break { page-break-after: always; break-after: page; }
+            @page { size: A4 portrait; margin: 15mm 12mm 15mm 12mm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-toolbar no-print">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="fa-solid fa-briefcase" style="color: var(--dalor-gold); font-size: 20px;"></i>
+            <div>
+                <b style="font-size: 14px;">DOSSIER ESTRATÉGICO & PROPUESTA DE VALOR</b>
+                <span style="font-size: 11px; color: #94a3b8; display: block;">Dirección Tecnológica, Transformación Digital & Retainer Mensual</span>
+            </div>
+        </div>
+        <button class="print-btn" onclick="window.print()">
+            <i class="fa-solid fa-file-pdf"></i> Imprimir / Guardar en PDF
+        </button>
+    </div>
+
+    <div class="doc-container">
+
+        <div class="hero-banner">
+            <span style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 10px; padding: 3px 8px; border-radius: 4px; text-transform: uppercase;">Propuesta de Servicios Profesionales</span>
+            <h1 style="color: white; margin: 8px 0 4px 0;">Transformación Digital & Dirección de Procesos</h1>
+            <p style="margin: 0; font-size: 13px; color: #cbd5e1;">Ecosistema Corporativo: DALOR, C.A. • Metalmecánica Neptunia • Todo Eléctrico Valencia</p>
+        </div>
+
+        <h2>1. Resumen Ejecutivo y Diagnóstico Estratégico</h2>
+        <p>El sector electromecánico, metalmecánico e industrial en Venezuela exige hoy <b>control en tiempo real, agilidad de respuesta y blindaje del margen de utilidad</b>. Las soluciones tradicionales han demostrado ser insuficientes:</p>
+        <ul>
+            <li><b>Software On-Premise Tradicional (Profit Plus / Saint):</b> Diseñados hace más de 20 años, desconectados de las obras en campo y dependientes de servidores físicos en oficina con fallas eléctricas o de enlace.</li>
+            <li><b>ERPs Enlatados (SAP / Odoo):</b> Costosos ($15.000 - $25.000 USD de inversión inicial), burocráticos y lentos para adaptarse a la velocidad de cotización y despacho en Venezuela.</li>
+        </ul>
+        <p><b>DALOR SIGO-P</b> demuestra el poder de una solución 100% a la medida, alojada en la nube, con Inteligencia Artificial y costo operativo prácticamente nulo.</p>
+
+        <h2>2. El Perfil de Alto Impacto: La Tríada Estratégica</h2>
+        <div class="diagram-box">
+            <div class="mermaid">
+            graph TD
+                A["1. Diagnóstico & Arquitectura de Procesos<br>(Mapeo de cuellos de botella y fugas de costo)"] --> B["2. Desarrollo Tecnológico a Medida<br>(Construcción de software Cloud, OCR y BI Móvil)"]
+                B --> C["3. Gestión del Cambio & Adopción<br>(Capacitación del personal en campo y taller)"]
+                C --> D["RESULTADO: Control Total y Blindaje Financiero"]
+            </div>
+        </div>
+
+        <h2>3. Propuesta Económica y Modelo de Retainer Mensual</h2>
+        <div class="price-box">
+            <span style="font-size: 13px; font-weight: 800; color: #047857; text-transform: uppercase; letter-spacing: 1px;">Asignación Mensual Consolidada (Retainer)</span>
+            <div class="price-val">$4,000 USD / Mes</div>
+            <p style="margin: 6px 0 0 0; font-size: 12px; color: #065f46;">Dirección Tecnológica, Mantenimiento Continuo y Desarrollo Ilimitado para las 3 Empresas</p>
+        </div>
+
+        <h3>Distribución Sugerida por Empresa:</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Empresa</th>
+                    <th>Actividad Operativa</th>
+                    <th>Aporte Mensual Sugerido</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><b>DALOR, C.A.</b></td>
+                    <td>Proyectos Electromecánicos, Obras y Servicios de Campo</td>
+                    <td><b>$1,500 USD</b></td>
+                </tr>
+                <tr>
+                    <td><b>Metalmecánica Neptunia</b></td>
+                    <td>Taller de Mecanizado, Fabricación y Pailería Industrial</td>
+                    <td><b>$1,500 USD</b></td>
+                </tr>
+                <tr>
+                    <td><b>Todo Eléctrico Valencia</b></td>
+                    <td>Retail, Distribución y Comercialización de Materiales</td>
+                    <td><b>$1,000 USD</b></td>
+                </tr>
+                <tr style="background: #f1f5f9; font-weight: 800;">
+                    <td colspan="2">TOTAL CONSOLIDADO MENSUAL</td>
+                    <td>$4,000 USD</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>4. Tabla Comparativa: Retainer a Medida vs. Fábrica Externa</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Criterio</th>
+                    <th>Fábrica Externa / Software Enlatado</th>
+                    <th>Modelo Propuesto (Retainer Dedicado)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><b>Inversión Inicial</b></td>
+                    <td>$15,000 - $25,000 USD por empresa.</td>
+                    <td><b>$0 en licencias.</b> Solo asignación mensual.</td>
+                </tr>
+                <tr>
+                    <td><b>Evolución y Cambios</b></td>
+                    <td>Cobro por hora adicional ($50-$80/h) y semanas de espera.</td>
+                    <td><b>Evolución ilimitada e inmediata.</b></td>
+                </tr>
+                <tr>
+                    <td><b>Usuarios</b></td>
+                    <td>Cobro por usuario ($20-$50/mes/usuario).</td>
+                    <td><b>Usuarios y frentes de trabajo ilimitados.</b></td>
+                </tr>
+                <tr>
+                    <td><b>Acompañamiento</b></td>
+                    <td>Mesa de tickets remota impersonal.</td>
+                    <td><b>Presencial, directo y en sitio en Valencia.</b></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>5. Hoja de Ruta de Implementación (Próximos 90 Días)</h2>
+        <div class="diagram-box">
+            <div class="mermaid">
+            gantt
+                title Cronograma Maestro de Implementación
+                dateFormat  YYYY-MM-DD
+                section DALOR SIGO-P
+                Despliegue y Capacitación en Campo    :done, 2026-09-10, 2026-09-25
+                Control de Flota y Odómetros OCR     :active, 2026-09-25, 2026-10-10
+                section NEPTUNIA
+                Módulo de Taller y Órdenes de Trabajo :2026-10-10, 2026-10-31
+                section TODO ELECTRICO
+                Control de Retail y Enlace con Ventas :2026-11-01, 2026-11-20
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

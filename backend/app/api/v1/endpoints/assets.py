@@ -138,8 +138,15 @@ def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = 
     asset.last_service_odometer = req.new_odometer
     
     if req.cost_usd > 0:
+        from app.models.models import ExpenseCategory
+        cat = db.query(ExpenseCategory).filter(ExpenseCategory.name.ilike("%mantenimiento%")).first()
+        if not cat:
+            cat = db.query(ExpenseCategory).first()
+        cat_id = cat.id if cat else 1
         exp = Expense(
+            category_id=cat_id,
             asset_id=asset.id,
+            supplier_vendor=req.notes or "Taller Central",
             amount_usd=req.cost_usd,
             description=f"Mantenimiento {req.service_type} a {asset.asset_code} ({asset.name}) a los {req.new_odometer} km.",
             status="aprobado",

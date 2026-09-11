@@ -77,6 +77,14 @@ def serve_logo():
     logo_path = os.path.join(FRONTEND_DIR, "logo_dalor.jpg")
     return FileResponse(logo_path)
 
+@app.get("/simulador")
+@app.get("/simulador.html")
+def serve_simulator():
+    sim_path = os.path.join(FRONTEND_DIR, "simulador.html")
+    if os.path.exists(sim_path):
+        return FileResponse(sim_path)
+    return {"status": "Simulator not found"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

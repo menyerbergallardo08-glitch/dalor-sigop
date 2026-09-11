@@ -156,6 +156,7 @@ def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = 
         db.add(exp)
         
     log = AuditLog(
+        username="almacen",
         module="activos",
         action="mantenimiento_vehiculo",
         details=f"Servicio de {req.service_type} registrado para {asset.asset_code}. Odómetro reseteado a {req.new_odometer} km."

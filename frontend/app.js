@@ -314,6 +314,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     const isAuth = await checkAuthStatus();
+    fetchAndApplyBcvRate();
     
     const loginScreen = document.getElementById('app-login-screen');
     const authShell = document.getElementById('app-authenticated-shell');
@@ -337,23 +338,105 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-// Control de Tasa Editable Global
-function updateGlobalExchangeRate(newRate) {
-    const val = parseFloat(newRate);
-    if (!isNaN(val) && val > 0) {
-        EXCHANGE_RATE = val;
-        localStorage.setItem('dalor_exchange_rate', val);
-        calcManualBs();
-        
-        const input = document.getElementById("globalExchangeRateInput");
-        if (input) {
-            input.style.color = "#34d399";
-            setTimeout(() => {
-                input.style.color = "var(--dalor-gold)";
-            }, 800);
+// Control de Tasa Oficial BCV Automatizada con Blindaje Fail-Safe
+let BCV_DATA = {
+    rate: 832.49,
+    date_value: '',
+    source: 'BCV Oficial',
+    source_tier: 'oficial_directo'
+};
+
+async function fetchAndApplyBcvRate(forceRefresh = false) {
+    const icon = document.getElementById("bcvSyncIcon");
+    if (icon) icon.classList.add("fa-spin");
+
+    try {
+        const res = await fetch(`${API_BASE}/financial/bcv-rate?force_refresh=${forceRefresh}`);
+        if (res.ok) {
+            const data = await res.json();
+            BCV_DATA = data;
+            const val = parseFloat(data.rate);
+            if (!isNaN(val) && val > 0) {
+                EXCHANGE_RATE = val;
+                localStorage.setItem('dalor_exchange_rate', val);
+                
+                // Actualizar interfaz
+                const display = document.getElementById("bcvRateDisplay");
+                if (display) display.innerText = data.formatted_rate || val.toFixed(2);
+                
+                const srcName = document.getElementById("bcvSourceName");
+                if (srcName) srcName.innerText = data.source_tier === 'oficial_directo' ? 'BCV:' : 'BCV Espejo:';
+                
+                const dot = document.getElementById("bcvStatusDot");
+                if (dot) {
+                    dot.style.background = data.is_fallback ? '#f59e0b' : '#10b981';
+                    dot.style.boxShadow = data.is_fallback ? '0 0 5px #f59e0b' : '0 0 5px #10b981';
+                }
+
+                const badge = document.getElementById("bcvTasaBadge");
+                if (badge) {
+                    badge.title = `Tasa: ${val.toFixed(2)} Bs/$ | Fuente: ${data.source} | Fecha Valor: ${data.date_value || 'Hoy'} | Actualizado: ${data.last_updated || 'Ahora'}`;
+                }
+
+                const modalRate = document.getElementById("modalBcvCurrentRate");
+                if (modalRate) modalRate.innerText = `${val.toFixed(2)} Bs/$ (${data.source})`;
+
+                const modalDate = document.getElementById("modalBcvDateValue");
+                if (modalDate) modalDate.innerText = data.date_value || 'Vigente';
+
+                calcManualBs();
+
+                if (forceRefresh) {
+                    showRealtimeToast(`Cotización BCV Oficial: ${val.toFixed(2)} Bs/$ (${data.date_value || 'Hoy'})`, 'tasa_bcv', 'info');
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("No se pudo sincronizar tasa BCV, usando tasa guardada:", e);
+    } finally {
+        if (icon) {
+            setTimeout(() => icon.classList.remove("fa-spin"), 500);
         }
     }
 }
+
+function syncBcvRateFromBtn(e) {
+    if (e) e.stopPropagation();
+    fetchAndApplyBcvRate(true);
+}
+
+function openManualTasaModal(e) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById("manualTasaInput");
+    if (input) input.value = EXCHANGE_RATE.toFixed(2);
+    openModal("modalManualTasa");
+}
+
+function submitManualTasa(e) {
+    e.preventDefault();
+    const input = document.getElementById("manualTasaInput");
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && val > 0) {
+        EXCHANGE_RATE = val;
+        localStorage.setItem('dalor_exchange_rate', val);
+        const display = document.getElementById("bcvRateDisplay");
+        if (display) display.innerText = val.toFixed(2);
+        
+        const dot = document.getElementById("bcvStatusDot");
+        if (dot) {
+            dot.style.background = '#f59e0b';
+            dot.style.boxShadow = '0 0 5px #f59e0b';
+        }
+        
+        const srcName = document.getElementById("bcvSourceName");
+        if (srcName) srcName.innerText = 'Manual:';
+
+        closeModal("modalManualTasa");
+        calcManualBs();
+        showRealtimeToast(`Tasa manual establecida a ${val.toFixed(2)} Bs/$ (Modo Contingencia)`, 'tasa_bcv', 'warning');
+    }
+}
+
 
 // Desplegables Tipo ERP (Profit Plus Style) con Soporte Móvil Táctil
 function toggleDropdown(event, dropdownId) {
@@ -1527,6 +1610,9 @@ async function loadFleetList() {
                 <td>${v.current_location}</td>
                 <td>${v.custodian}</td>
                 <td style="text-align: center; white-space: nowrap;">
+                    <button onclick="openOdometerOcrModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', '${v.license_plate || ''}', ${v.current_odometer})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
+                        <i class="fa-solid fa-camera"></i> Odómetro
+                    </button>
                     <button onclick="openRecordServiceModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
                         <i class="fa-solid fa-wrench"></i> Servicio
                     </button>
@@ -1587,17 +1673,17 @@ function openRecordServiceModal(assetId, code, name, currentKm) {
                     <input type="number" step="1" id="srv_odometer" class="form-control" required>
                 </div>
                 <div class="form-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Costo Total del Servicio ($ USD):</label>
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Costo Total del Servicio (USD)</label>
                     <input type="number" step="0.01" id="srv_cost" class="form-control" value="0.00">
                 </div>
                 <div class="form-group" style="margin-bottom: 16px;">
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Notas / Taller Ejecutor:</label>
-                    <input type="text" id="srv_notes" class="form-control" placeholder="Ej: Taller Central Dalor - Aceite 15W-40 Shell Rimula">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Taller / Observaciones</label>
+                    <textarea id="srv_notes" class="form-control" rows="2" placeholder="Ej: Taller Central - Aceite 15W40 mineral"></textarea>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                    <button type="button" onclick="closeModal('modalRecordService')" class="btn-secondary">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="background: #ea580c;">
-                        <i class="fa-solid fa-check"></i> Guardar y Resetear Semáforo a Verde
+                    <button type="button" onclick="closeModal('modalRecordService')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="font-size: 12px; background: #ea580c;">
+                        <i class="fa-solid fa-check"></i> Guardar Servicio y Resetear Semáforo
                     </button>
                 </div>
             </form>
@@ -1637,6 +1723,128 @@ async function submitRecordService(event) {
         }
     } catch (e) {
         alert("Error al conectar con el servidor.");
+    }
+}
+
+// ----------------------------------------------------
+// 📸 CAPTURA & OCR DE ODÓMETRO VEHICULAR
+// ----------------------------------------------------
+function openOdometerOcrModal(assetId, code, name, plate, currentKm) {
+    document.getElementById("odoAssetIdHidden").value = assetId;
+    document.getElementById("odoImageUrlHidden").value = "";
+    document.getElementById("odoVehicleSubtitle").innerText = `[${code}] ${name} - Placa: ${plate || 'N/A'}`;
+    document.getElementById("odoCurrentKmDisplay").innerText = `${(currentKm || 0).toLocaleString()} Km`;
+    
+    // Resetear preview y resultados
+    const previewBox = document.getElementById("odoPreviewBox");
+    const resultBox = document.getElementById("odoResultBox");
+    const btnConfirm = document.getElementById("btnConfirmOdometer");
+    const fileInput = document.getElementById("odometerFileInput");
+    
+    if (previewBox) previewBox.style.display = "none";
+    if (resultBox) resultBox.style.display = "none";
+    if (btnConfirm) btnConfirm.style.display = "none";
+    if (fileInput) fileInput.value = "";
+
+    openModal("modalOdometerOcr");
+}
+
+async function handleOdometerImageSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const previewBox = document.getElementById("odoPreviewBox");
+    const previewImg = document.getElementById("odoPreviewImg");
+    const scanningOverlay = document.getElementById("odoScanningOverlay");
+    const resultBox = document.getElementById("odoResultBox");
+    const btnConfirm = document.getElementById("btnConfirmOdometer");
+    const detectedInput = document.getElementById("odoDetectedInput");
+    const confidenceBadge = document.getElementById("odoConfidenceBadge");
+    const notesEl = document.getElementById("odoDetectedNotes");
+    const assetId = document.getElementById("odoAssetIdHidden").value;
+
+    // Mostrar preview local
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        previewImg.src = e.target.result;
+        previewBox.style.display = "block";
+        scanningOverlay.style.display = "flex";
+    };
+    reader.readAsDataURL(file);
+
+    resultBox.style.display = "none";
+    btnConfirm.style.display = "none";
+
+    // Enviar al backend para OCR
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        if (assetId) formData.append("asset_id", assetId);
+
+        const res = await fetch(`${API_BASE}/ocr/scan-odometer`, {
+            method: "POST",
+            body: formData
+        });
+
+        if (!res.ok) throw new Error("Error en servidor OCR");
+
+        const data = await res.json();
+        scanningOverlay.style.display = "none";
+
+        const odoVal = data.detected_odometer || 0;
+        document.getElementById("odoImageUrlHidden").value = data.image_url || "";
+        
+        detectedInput.value = odoVal > 0 ? odoVal : "";
+        confidenceBadge.innerText = data.is_ai_vision ? `IA Visión (${Math.round((data.confidence || 0.95)*100)}%)` : "Lectura OCR";
+        notesEl.innerText = data.notes || "Verifica la lectura antes de confirmar.";
+
+        resultBox.style.display = "block";
+        btnConfirm.style.display = "inline-flex";
+
+        if (odoVal > 0) {
+            showRealtimeToast(`Odómetro leído: ${odoVal.toLocaleString()} Km`, 'ocr_flota', 'info');
+        }
+    } catch (err) {
+        console.error("Error analizando odómetro:", err);
+        scanningOverlay.style.display = "none";
+        resultBox.style.display = "block";
+        detectedInput.value = "";
+        confidenceBadge.innerText = "Modo Manual";
+        notesEl.innerText = "No se pudo leer automáticamente el tablero. Ingresa el kilometraje a mano.";
+        btnConfirm.style.display = "inline-flex";
+    }
+}
+
+async function submitConfirmOdometer(event) {
+    event.preventDefault();
+    const assetId = document.getElementById("odoAssetIdHidden").value;
+    const reading = parseFloat(document.getElementById("odoDetectedInput").value);
+    const photoUrl = document.getElementById("odoImageUrlHidden").value;
+
+    if (isNaN(reading) || reading <= 0) {
+        alert("Por favor ingresa un kilometraje válido mayor a 0.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/assets/${assetId}/record-odometer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                odometer_reading: reading,
+                photo_url: photoUrl,
+                reported_by: (currentUser && currentUser.full_name) ? currentUser.full_name : "Supervisor de Campo"
+            })
+        });
+
+        if (!res.ok) throw new Error("Error al guardar odómetro");
+
+        const data = await res.json();
+        closeModal("modalOdometerOcr");
+        showRealtimeToast(`✅ Odómetro registrado: ${reading.toLocaleString()} Km (${data.traffic_light.replace('_', ' ')})`, 'flota', 'success');
+        await loadFleetList();
+    } catch (err) {
+        alert("Error al guardar odómetro: " + err.message);
     }
 }
 
@@ -3817,11 +4025,12 @@ function applyPermissionMap(user) {
         if (repText) repText.innerHTML = `Reportando como: <b>${user.full_name || user.username}</b> (Supervisor de Campo)`;
     }
 
-    // Tasa editable solo visible para Administración / Dirección
-    const tasaBox = document.querySelector('.tasa-editor-box');
+    // Tasa BCV Oficial solo visible para Administración / Dirección
+    const tasaBox = document.getElementById('bcvTasaBadge') || document.querySelector('.tasa-editor-box');
     if (tasaBox) {
-        tasaBox.style.display = (isDirector || isFinanzas) ? 'flex' : 'none';
+        tasaBox.style.display = (isDirector || isFinanzas) ? 'inline-flex' : 'none';
     }
+
 
     if (isAlmacen) {
         // ROL ALMACÉN & PAÑOL: Solo Activos, Recursos, Materiales y Despachos

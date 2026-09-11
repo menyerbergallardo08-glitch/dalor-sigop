@@ -111,11 +111,10 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
             }
 
             candidate_models = [
-                "models/gemini-3.6-flash",
                 "models/gemini-flash-latest",
-                "models/gemini-2.5-flash-lite",
+                "models/gemini-3.5-flash",
                 "models/gemini-2.5-pro",
-                "models/gemini-1.5-flash"
+                "models/gemini-2.5-flash-lite"
             ]
             text_resp = None
             for model_name in candidate_models:
@@ -536,10 +535,10 @@ Responde ÚNICAMENTE con este JSON válido:
                 }
 
                 candidate_models = [
-                    "models/gemini-3.6-flash",
                     "models/gemini-flash-latest",
-                    "models/gemini-2.5-flash-lite",
-                    "models/gemini-1.5-flash"
+                    "models/gemini-3.5-flash",
+                    "models/gemini-2.5-pro",
+                    "models/gemini-2.5-flash-lite"
                 ]
                 for model_name in candidate_models:
                     try:

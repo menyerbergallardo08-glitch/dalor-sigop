@@ -302,16 +302,21 @@ let selectedToolIds = [];
 // Inicialización
 let currentUser = null;
 let authToken = localStorage.getItem('dalor_token') || null;
+let lastDropdownToggleTime = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
     const rateInput = document.getElementById("globalExchangeRateInput");
     if (rateInput) rateInput.value = EXCHANGE_RATE.toFixed(2);
 
-    document.addEventListener("click", (e) => {
+    const handleOutsideClick = (e) => {
+        if (Date.now() - lastDropdownToggleTime < 350) return;
         if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu")) {
             closeAllDropdowns();
         }
-    });
+    };
+
+    document.addEventListener("click", handleOutsideClick);
+    document.addEventListener("touchend", handleOutsideClick);
 
     const isAuth = await checkAuthStatus();
     fetchAndApplyBcvRate();
@@ -438,11 +443,12 @@ function submitManualTasa(e) {
 }
 
 
-// Desplegables Tipo ERP (Profit Plus Style) con Soporte Móvil Táctil
+// Desplegables Tipo ERP (Profit Plus Style) con Soporte Móvil Táctil (iOS / Android / Desktop)
 function toggleDropdown(event, dropdownId) {
     if (event) {
-        event.stopPropagation();
+        if (event.stopPropagation) event.stopPropagation();
     }
+    lastDropdownToggleTime = Date.now();
     const targetDropdown = document.getElementById(dropdownId);
     if (!targetDropdown) return;
     const isOpen = targetDropdown.classList.contains("open");

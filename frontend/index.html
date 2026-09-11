@@ -251,9 +251,11 @@
                 display: flex;
                 flex-wrap: nowrap;
                 overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
                 padding: 6px 8px;
                 gap: 6px;
                 width: auto;
+                touch-action: pan-x;
             }
             .dropdown-btn {
                 padding: 7px 10px;
@@ -263,30 +265,37 @@
                 border-radius: 8px;
                 white-space: nowrap;
                 flex-shrink: 0;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+                cursor: pointer;
             }
             .nav-dropdown.open .dropdown-menu {
-                display: block;
-                position: fixed;
+                display: block !important;
+                position: fixed !important;
                 top: 50% !important;
                 left: 50% !important;
                 right: auto !important;
                 bottom: auto !important;
-                transform: translate(-50%, -50%);
-                width: 90vw;
-                max-width: 320px;
-                max-height: 80vh;
-                overflow-y: auto;
-                background-color: #ffffff;
-                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 100vmax rgba(0, 0, 0, 0.45);
-                border: 2px solid var(--dalor-blue);
-                border-radius: 14px;
-                z-index: 99999;
-                padding: 10px 0;
+                transform: translate(-50%, -50%) !important;
+                width: 90vw !important;
+                max-width: 320px !important;
+                max-height: 80vh !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                background-color: #ffffff !important;
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 100vmax rgba(0, 0, 0, 0.55) !important;
+                border: 2px solid var(--dalor-blue) !important;
+                border-radius: 14px !important;
+                z-index: 999999 !important;
+                padding: 10px 0 !important;
             }
             .dropdown-item {
                 padding: 12px 18px;
                 font-size: 13px;
                 border-bottom: 1px solid #f1f5f9;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+                cursor: pointer;
             }
             .main-container, main {
                 width: 100vw !important;

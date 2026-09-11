@@ -169,6 +169,45 @@ def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = 
         "remaining_km": asset.service_interval_km or 5000.0
     }
 
+class OdometerUpdate(BaseModel):
+    odometer_reading: float
+    photo_url: Optional[str] = None
+    reported_by: Optional[str] = "Supervisor de Campo"
+    notes: Optional[str] = None
+
+@router.post("/{asset_id}/record-odometer")
+def record_asset_odometer(asset_id: int, req: OdometerUpdate, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Vehículo/Activo no encontrado.")
+    
+    asset.current_odometer = req.odometer_reading
+    km_since_service = (asset.current_odometer or 0.0) - (asset.last_service_odometer or 0.0)
+    remaining_km = (asset.service_interval_km or 5000.0) - km_since_service
+
+    traffic_light = "VERDE_OK"
+    if remaining_km <= 0:
+        traffic_light = "ROJO_VENCIDO"
+    elif remaining_km <= 500:
+        traffic_light = "AMARILLO_PROXIMO"
+
+    log = AuditLog(
+        username=req.reported_by or "campo",
+        module="flota",
+        action="actualizar_odometro_ocr",
+        details=f"Odómetro de [{asset.asset_code}] {asset.name} actualizado a {req.odometer_reading:,.0f} km. Semáforo: {traffic_light}. {f'Foto: {req.photo_url}' if req.photo_url else ''}"
+    )
+    db.add(log)
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Odómetro actualizado a {req.odometer_reading:,.0f} Km para {asset.name}. Semáforo: {traffic_light}.",
+        "current_odometer": asset.current_odometer,
+        "remaining_km": round(remaining_km, 1),
+        "traffic_light": traffic_light
+    }
+
+
 # ------------------------------------------------------------------------------
 # 📄 GUÍAS DE TRASLADO & PASES DE SALIDA DE HERRAMIENTAS Y EQUIPOS
 # ------------------------------------------------------------------------------

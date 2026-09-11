@@ -3,327 +3,375 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DALOR SIGO-P - Presentación Ejecutiva</title>
+  <title>DALOR SIGO-P - Presentación Ejecutiva (Modo Smart TV)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
-    body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; }
+    
+    :root {
+      --tv-scale: 1.25; /* Escala base ampliada para Smart TV */
+    }
+
+    body { 
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: calc(16px * var(--tv-scale));
+    }
+    
     .font-mono { font-family: 'JetBrains Mono', monospace; }
-    .slide { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
+    .slide { display: none; opacity: 0; transition: opacity 0.25s ease-in-out; }
     .slide.active { display: flex; opacity: 1; }
-    .gradient-dalor { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0b132b 100%); }
-    .glow-gold { box-shadow: 0 0 35px rgba(245, 158, 11, 0.2); }
-    .glow-emerald { box-shadow: 0 0 35px rgba(16, 185, 129, 0.2); }
+    
     .feature-card {
-      background: rgba(15, 23, 42, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(10px);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
       transition: all 0.25s ease;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
     }
+    
     .feature-card:hover {
-      border-color: rgba(245, 158, 11, 0.4);
-      transform: translateY(-2px);
+      border-color: rgba(245, 158, 11, 0.6);
+      transform: translateY(-3px);
     }
+
+    /* Escalado inteligente para Proyección y Smart TV */
+    @media (min-width: 1024px) {
+      :root { --tv-scale: 1.35; }
+      .slide-title { font-size: 2.75rem !important; line-height: 1.15 !important; }
+      .slide-subtitle { font-size: 1.35rem !important; }
+      .card-title { font-size: 1.35rem !important; }
+      .card-text { font-size: 1.05rem !important; line-height: 1.6 !important; }
+      .hero-title { font-size: 4.2rem !important; line-height: 1.05 !important; }
+      .hero-sub { font-size: 1.55rem !important; }
+      .hero-desc { font-size: 1.25rem !important; }
+      .stat-num { font-size: 3.5rem !important; }
+      .stat-label { font-size: 1.2rem !important; }
+    }
+
+    @media (min-width: 1600px) {
+      :root { --tv-scale: 1.55; }
+      .slide-title { font-size: 3.4rem !important; }
+      .slide-subtitle { font-size: 1.6rem !important; }
+      .card-title { font-size: 1.55rem !important; }
+      .card-text { font-size: 1.22rem !important; }
+      .hero-title { font-size: 5.2rem !important; }
+      .hero-sub { font-size: 1.85rem !important; }
+      .hero-desc { font-size: 1.45rem !important; }
+      .stat-num { font-size: 4.2rem !important; }
+      .stat-label { font-size: 1.4rem !important; }
+    }
+
+    /* Modos de Zoom Manual */
+    body.zoom-tv-large { --tv-scale: 1.5; }
+    body.zoom-tv-huge { --tv-scale: 1.8; }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
 
   <!-- Top Navigation Ribbon -->
-  <header class="w-full border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between z-50 sticky top-0">
+  <header class="w-full border-b border-slate-800/80 bg-slate-900/95 backdrop-blur-md px-6 py-4 flex items-center justify-between z-50 sticky top-0">
     <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center font-black text-slate-950 text-base shadow-md">D</div>
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center font-black text-slate-950 text-lg shadow-lg">D</div>
       <div>
-        <span class="font-extrabold tracking-tight text-white text-base">DALOR, C.A.</span>
-        <span class="text-slate-500 text-xs ml-1.5 font-medium">| Sistema SIGO-P</span>
+        <span class="font-extrabold tracking-tight text-white text-lg">DALOR, C.A.</span>
+        <span class="text-slate-400 text-sm ml-2 font-medium">| Sistema SIGO-P</span>
       </div>
     </div>
     
-    <div class="flex items-center gap-2 text-xs text-slate-400 font-mono">
-      <span>LÁMINA</span>
-      <span id="slideIndicator" class="px-2.5 py-1 rounded-md bg-slate-800 text-amber-400 font-bold border border-slate-700">01 / 10</span>
-    </div>
+    <div class="flex items-center gap-3">
+      <!-- Selector de Tamaño de Letra / TV Zoom -->
+      <div class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg p-1 text-xs gap-1">
+        <span class="text-slate-400 px-2 font-bold hidden sm:inline"><i class="fa-solid fa-tv"></i> Tamaño Letra:</span>
+        <button onclick="setZoom('normal')" id="btnZoomNormal" class="px-2.5 py-1 rounded bg-slate-700 text-white font-bold hover:bg-slate-600 transition">Normal</button>
+        <button onclick="setZoom('large')" id="btnZoomLarge" class="px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition">TV Grande (+30%)</button>
+        <button onclick="setZoom('huge')" id="btnZoomHuge" class="px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition">TV Gigante (+60%)</button>
+      </div>
 
-    <div class="flex items-center gap-2">
-      <a href="/manual" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold transition flex items-center gap-1.5 border border-slate-700" title="Ver Manuales de Operación">
-        <i class="fa-solid fa-book-open"></i> Manual de Usuario
+      <div class="flex items-center gap-2 text-sm text-slate-300 font-mono">
+        <span id="slideIndicator" class="px-3 py-1 rounded-md bg-slate-800 text-amber-400 font-bold border border-slate-700">01 / 10</span>
+      </div>
+
+      <a href="/manual" target="_blank" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold transition flex items-center gap-1.5 border border-slate-700" title="Ver Manuales de Operación">
+        <i class="fa-solid fa-book-open"></i> <span class="hidden md:inline">Manual de Usuario</span>
       </a>
-      <button onclick="prevSlide()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs font-bold" title="Anterior (Flecha Izq)">◀</button>
-      <button onclick="nextSlide()" class="p-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition text-xs font-bold" title="Siguiente (Flecha Der)">▶</button>
-      <button onclick="toggleFullscreen()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs ml-1" title="Pantalla Completa">⛶</button>
+      
+      <button onclick="prevSlide()" class="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition text-sm font-bold" title="Anterior (Flecha Izq)">◀</button>
+      <button onclick="nextSlide()" class="p-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition text-sm font-bold" title="Siguiente (Flecha Der)">▶</button>
+      <button onclick="toggleFullscreen()" class="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition text-sm ml-1" title="Pantalla Completa">⛶</button>
     </div>
   </header>
 
   <!-- Main Slide Display Area -->
-  <main class="flex-1 max-w-6xl w-full mx-auto p-6 md:p-10 flex items-center justify-center relative">
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 md:p-12 flex items-center justify-center relative">
 
     <!-- SLIDE 1: PORTADA -->
-    <section class="slide active flex-col justify-center items-center text-center max-w-4xl mx-auto py-6" data-title="Portada">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider mb-6">
+    <section class="slide active flex-col justify-center items-center text-center max-w-5xl mx-auto py-8" data-title="Portada">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-400 text-sm font-bold uppercase tracking-wider mb-6">
         <span>⚡ Solución Operativa y Gerencial</span>
       </div>
-      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight mb-4">
+      <h1 class="hero-title text-4xl md:text-6xl font-black tracking-tight text-white leading-tight mb-4">
         DALOR <span class="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 bg-clip-text text-transparent">SIGO-P</span>
       </h1>
-      <p class="text-lg md:text-xl font-medium text-slate-200 max-w-2xl mx-auto mb-3">
+      <p class="hero-sub text-xl md:text-2xl font-bold text-slate-200 max-w-3xl mx-auto mb-3">
         Control Total de Fabricación en Taller, Montaje y Finanzas
       </p>
-      <p class="text-sm md:text-base text-slate-400 max-w-xl mx-auto mb-8 leading-relaxed">
-        Una plataforma ágil en internet que conecta la producción diaria, el inventario de materiales, el uso de maquinaria y las ganancias reales de cada proyecto.
+      <p class="hero-desc text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+        Una plataforma en internet que conecta la producción diaria, el inventario de materiales, la maquinaria y las ganancias de cada proyecto.
       </p>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl w-full text-left">
-        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-slate-400 text-xs font-bold uppercase mb-1">Producción</div>
-          <div class="text-sm font-bold text-white">Avance Diario de Taller</div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-4xl w-full text-left">
+        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg">
+          <div class="text-slate-400 text-xs font-bold uppercase mb-1.5">Producción</div>
+          <div class="card-title text-base font-bold text-white">Avance Diario de Taller</div>
         </div>
-        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-slate-400 text-xs font-bold uppercase mb-1">Compras</div>
-          <div class="text-sm font-bold text-amber-400">Facturas desde el Celular</div>
+        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg">
+          <div class="text-slate-400 text-xs font-bold uppercase mb-1.5">Compras</div>
+          <div class="card-title text-base font-bold text-amber-400">Facturas desde el Celular</div>
         </div>
-        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-slate-400 text-xs font-bold uppercase mb-1">Finanzas</div>
-          <div class="text-sm font-bold text-emerald-400">Ganancias en Tiempo Real</div>
+        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg">
+          <div class="text-slate-400 text-xs font-bold uppercase mb-1.5">Finanzas</div>
+          <div class="card-title text-base font-bold text-emerald-400">Ganancias en Tiempo Real</div>
         </div>
-        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-slate-400 text-xs font-bold uppercase mb-1">Equipos</div>
-          <div class="text-sm font-bold text-cyan-400">Custodia de Maquinaria</div>
+        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg">
+          <div class="text-slate-400 text-xs font-bold uppercase mb-1.5">Equipos</div>
+          <div class="card-title text-base font-bold text-cyan-400">Custodia de Maquinaria</div>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 2: EL DIAGNÓSTICO -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Diagnóstico y Retos Actuales">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">01. EL DIAGNÓSTICO</div>
-      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Los principales retos del día a día</h2>
-      <p class="text-sm text-slate-400 mb-6">Tres problemas comunes que frenan la rentabilidad y el control en los proyectos de fabricación y montaje:</p>
+    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Diagnóstico y Retos Actuales">
+      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">01. EL DIAGNÓSTICO</div>
+      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Los principales retos del día a día</h2>
+      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Tres problemas comunes que frenan la rentabilidad y el control de las operaciones:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="feature-card p-6 rounded-2xl flex flex-col justify-between">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="feature-card p-7 rounded-3xl flex flex-col justify-between">
           <div>
-            <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-base mb-3">🔌</div>
-            <h3 class="text-base font-bold text-white mb-2">Sistemas Atados a la Oficina</h3>
-            <p class="text-xs text-slate-300 leading-relaxed">Si se va la luz o el internet en la oficina, la gerencia no puede ver la información. Depender de computadoras encendidas o programas lentos de acceso remoto genera demoras y riesgos.</p>
+            <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl mb-4">🔌</div>
+            <h3 class="card-title text-lg md:text-xl font-bold text-white mb-2.5">Sistemas Atados a la Oficina</h3>
+            <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Si se va la luz o el internet en la oficina, la gerencia no puede ver la información. Depender de computadoras encendidas o programas lentos de acceso remoto genera demoras y riesgos.</p>
           </div>
-          <div class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-rose-400 font-semibold">Problema: Falta de acceso remoto seguro</div>
+          <div class="mt-6 pt-3 border-t border-slate-800 text-sm text-rose-400 font-bold">Problema: Falta de acceso remoto seguro</div>
         </div>
 
-        <div class="feature-card p-6 rounded-2xl flex flex-col justify-between">
+        <div class="feature-card p-7 rounded-3xl flex flex-col justify-between">
           <div>
-            <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-base mb-3">📄</div>
-            <h3 class="text-base font-bold text-white mb-2">Información Dispersa</h3>
-            <p class="text-xs text-slate-300 leading-relaxed">El avance de trabajo, los consumos de material y los recibos de compras se reportan en papeles o mensajes de WhatsApp sueltos, lo que causa pérdidas de comprobantes y atrasos al cobrar.</p>
+            <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl mb-4">📄</div>
+            <h3 class="card-title text-lg md:text-xl font-bold text-white mb-2.5">Información Dispersa</h3>
+            <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">El avance de trabajo, los consumos de material y los recibos de compras se reportan en papeles o mensajes de WhatsApp sueltos, lo que causa pérdidas de comprobantes y atrasos al cobrar.</p>
           </div>
-          <div class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-rose-400 font-semibold">Problema: Desconexión entre taller y oficina</div>
+          <div class="mt-6 pt-3 border-t border-slate-800 text-sm text-rose-400 font-bold">Problema: Desconexión entre taller y oficina</div>
         </div>
 
-        <div class="feature-card p-6 rounded-2xl flex flex-col justify-between">
+        <div class="feature-card p-7 rounded-3xl flex flex-col justify-between">
           <div>
-            <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-base mb-3">💸</div>
-            <h3 class="text-base font-bold text-white mb-2">Costos que se Conocen Tarde</h3>
-            <p class="text-xs text-slate-300 leading-relaxed">Saber si un trabajo dejó ganancias semanas o meses después de haberlo entregado impide corregir sobrecostos de material o mano de obra a tiempo.</p>
+            <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl mb-4">💸</div>
+            <h3 class="card-title text-lg md:text-xl font-bold text-white mb-2.5">Costos que se Conocen Tarde</h3>
+            <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Saber si un trabajo dejó ganancias semanas o meses después de haberlo entregado impide corregir sobrecostos de material o mano de obra a tiempo.</p>
           </div>
-          <div class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-rose-400 font-semibold">Problema: Rentabilidad a ciegas</div>
+          <div class="mt-6 pt-3 border-t border-slate-800 text-sm text-rose-400 font-bold">Problema: Rentabilidad a ciegas</div>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 3: LA SOLUCIÓN INTEGRAL -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="La Solución Modular">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">02. LA SOLUCIÓN</div>
-      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Cuatro módulos trabajando como un solo equipo</h2>
-      <p class="text-sm text-slate-400 mb-6">SIGO-P une en una sola pantalla todas las actividades de la empresa:</p>
+    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="La Solución Modular">
+      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">02. LA SOLUCIÓN</div>
+      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Cuatro módulos trabajando como un solo equipo</h2>
+      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">SIGO-P une en una sola pantalla todas las actividades de la empresa:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="feature-card p-5 rounded-2xl">
-          <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg mb-3">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div class="feature-card p-6 rounded-3xl">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-2xl mb-4">
             <i class="fa-solid fa-industry"></i>
           </div>
-          <h4 class="text-sm font-bold text-white mb-1.5">1. Taller & Montaje</h4>
-          <p class="text-xs text-slate-300 leading-relaxed">Registro diario de corte, armado, soldadura y montaje con fotos de respaldo desde el celular.</p>
+          <h4 class="card-title text-lg font-bold text-white mb-2">1. Taller & Montaje</h4>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Registro diario de corte, armado, soldadura y montaje con fotos de respaldo desde el celular.</p>
         </div>
 
-        <div class="feature-card p-5 rounded-2xl">
-          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg mb-3">
+        <div class="feature-card p-6 rounded-3xl">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-2xl mb-4">
             <i class="fa-solid fa-receipt"></i>
           </div>
-          <h4 class="text-sm font-bold text-white mb-1.5">2. Compras & Facturas</h4>
-          <p class="text-xs text-slate-300 leading-relaxed">Lectura automática de facturas con una foto y reparto de costos entre los proyectos que usaron el material.</p>
+          <h4 class="card-title text-lg font-bold text-white mb-2">2. Compras & Facturas</h4>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Lectura automática de facturas con una foto y reparto de costos entre los proyectos que usaron el material.</p>
         </div>
 
-        <div class="feature-card p-5 rounded-2xl">
-          <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-lg mb-3">
+        <div class="feature-card p-6 rounded-3xl">
+          <div class="w-12 h-12 rounded-2xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center text-2xl mb-4">
             <i class="fa-solid fa-truck-ramp-box"></i>
           </div>
-          <h4 class="text-sm font-bold text-white mb-1.5">3. Patio & Maquinaria</h4>
-          <p class="text-xs text-slate-300 leading-relaxed">Control de inventario de acero, horas de uso en máquinas de soldar/generadores y asignación de herramientas.</p>
+          <h4 class="card-title text-lg font-bold text-white mb-2">3. Patio & Maquinaria</h4>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Control de inventario de acero, horas de uso en máquinas de soldar/generadores y asignación de herramientas.</p>
         </div>
 
-        <div class="feature-card p-5 rounded-2xl">
-          <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg mb-3">
+        <div class="feature-card p-6 rounded-3xl">
+          <div class="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center text-2xl mb-4">
             <i class="fa-solid fa-chart-pie"></i>
           </div>
-          <h4 class="text-sm font-bold text-white mb-1.5">4. Panel Gerencial</h4>
-          <p class="text-xs text-slate-300 leading-relaxed">Semáforos de ganancia neta en vivo para saber si cada trabajo va en verde (ganancia) o rojo (alerta).</p>
+          <h4 class="card-title text-lg font-bold text-white mb-2">4. Panel Gerencial</h4>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Semáforos de ganancia neta en vivo para saber si cada trabajo va en verde (ganancia) o rojo (alerta).</p>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 4: CONTROL DE PRODUCCIÓN -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Control de Producción & Avance">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">03. PRODUCCIÓN & TALLER</div>
-      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Seguimiento paso a paso de cada pieza</h2>
-      <p class="text-sm text-slate-400 mb-6">Claridad absoluta desde que se corta la primera plancha hasta la entrega en sitio al cliente:</p>
+    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Control de Producción & Avance">
+      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">03. PRODUCCIÓN & TALLER</div>
+      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Seguimiento paso a paso de cada pieza</h2>
+      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Claridad absoluta desde que se corta la primera plancha hasta la entrega en sitio al cliente:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-layer-group"></i> Fases Claras de Trabajo</div>
-          <p class="text-xs text-slate-300 leading-relaxed">El trabajo se divide en pasos sencillos: Corte, Armado, Soldadura, Limpieza/Pintura y Montaje en sitio. Cada paso tiene sus cantidades y metas de entrega.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-layer-group"></i> Fases Claras de Trabajo</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">El trabajo se divide en pasos sencillos: Corte, Armado, Soldadura, Limpieza/Pintura y Montaje en sitio. Cada paso tiene sus cantidades y fechas de entrega.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-emerald-400 font-bold text-sm mb-2"><i class="fa-solid fa-mobile-screen"></i> Reporte Diario Fácil</div>
-          <p class="text-xs text-slate-300 leading-relaxed">El supervisor o ingeniero anota las piezas completadas y toma fotos con el celular directo en el taller o en la obra, incluso sin señal de internet.</p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-emerald-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-mobile-screen"></i> Reporte Diario Fácil</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">El supervisor o ingeniero anota las piezas completadas y toma fotos con el celular directo en el taller o en la obra, incluso sin señal de internet.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-file-invoice-dollar"></i> Cobro Rápido al Cliente</div>
-          <p class="text-xs text-slate-300 leading-relaxed">El sistema genera automáticamente el reporte de avance con fotos de respaldo listo para presentar al cliente y acelerar el pago de la valuación.</p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-file-invoice-dollar"></i> Cobro Rápido al Cliente</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">El sistema genera automáticamente el reporte de avance con fotos de respaldo listo para presentar al cliente y acelerar el pago de la valuación.</p>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 5: COMPRAS FÁCILES & OCR -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Compras Rápidas & Facturas">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">04. COMPRAS & GASTOS</div>
-      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Cero tipeo manual de facturas</h2>
-      <p class="text-sm text-slate-400 mb-6">La cámara del celular lee las facturas y registra los gastos en segundos:</p>
+    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Compras Rápidas & Facturas">
+      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">04. COMPRAS & GASTOS</div>
+      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Cero tipeo manual de facturas</h2>
+      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">La cámara del celular lee las facturas y registra los gastos en segundos:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-camera"></i> Lectura Automática con Foto</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Se le toma una foto a la factura del proveedor y el sistema extrae de inmediato el nombre, RIF, número, monto total e IVA sin tener que escribirlo a mano.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-camera"></i> Lectura Automática con Foto</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Se le toma una foto a la factura del proveedor y el sistema extrae de inmediato el nombre, RIF, número, monto total e IVA sin tener que escribirlo a mano.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-share-nodes"></i> Reparto de Gastos Compartidos</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Si se compran materiales o se paga un flete que sirve para dos o más trabajos, el gasto se divide con un clic entre los proyectos correspondientes.</p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-share-nodes"></i> Reparto de Gastos Compartidos</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Si se compran materiales o se paga un flete que sirve para dos o más trabajos, el gasto se divide con un clic entre los proyectos correspondientes.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-emerald-400 font-bold text-sm mb-2"><i class="fa-solid fa-coins"></i> Dólares y Bolívares al Día</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Calcula al instante la conversión oficial con la tasa del día del Banco Central (BCV), evitando descuadres en pagos de transferencias o caja.</p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-emerald-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-coins"></i> Dólares y Bolívares al Día</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Calcula al instante la conversión oficial con la tasa del día del Banco Central (BCV), evitando descuadres en pagos de transferencias o caja.</p>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 6: MAQUINARIA & CUSTODIA -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Patio & Maquinaria">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">05. MAQUINARIA & PATIO</div>
-      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Cuidado de herramientas y maquinaria pesada</h2>
-      <p class="text-sm text-slate-400 mb-6">Protección y control de los activos más valiosos de la empresa:</p>
+    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Patio & Maquinaria">
+      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">05. MAQUINARIA & PATIO</div>
+      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Cuidado de herramientas y maquinaria pesada</h2>
+      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Protección y control de los activos más valiosos de la empresa:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-clock"></i> Horas de Motor y Kilómetros</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Control de horas de trabajo en plantas eléctricas, compresores y máquinas de soldar, y kilometraje en camiones para hacer mantenimientos a tiempo.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-clock"></i> Horas de Motor y Kilómetros</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Control de horas de trabajo en plantas eléctricas, compresores y máquinas de soldar, y kilometraje en camiones para hacer mantenimientos a tiempo.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-emerald-400 font-bold text-sm mb-2"><i class="fa-solid fa-handshake"></i> Responsable por cada Equipo</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Cada herramienta eléctrica, máquina de soldar o esmeril queda asignada con firma digital al trabajador responsable para evitar pérdidas.</p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-emerald-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-handshake"></i> Responsable por cada Equipo</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Cada herramienta eléctrica, máquina de soldar o esmeril queda asignada con firma digital al trabajador responsable para evitar pérdidas.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-truck"></i> Despachos Controlados</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Ningún material o estructura sale del patio hacia la obra sin una nota de entrega digital que indica quién lo llevó y quién lo recibió.</p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-truck"></i> Despachos Controlados</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Ningún material o estructura sale del patio hacia la obra sin una nota de entrega digital que indica quién lo llevó y quién lo recibió.</p>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 7: SEMÁFORO DE GANANCIAS -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Semáforo de Ganancias">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">06. CONTROL GERENCIAL</div>
-      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Semáforo de rentabilidad en tiempo real</h2>
-      <p class="text-sm text-slate-400 mb-6">Información clara y visual para tomar decisiones rápidas:</p>
+    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Semáforo de Ganancias">
+      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">06. CONTROL GERENCIAL</div>
+      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Semáforo de rentabilidad en tiempo real</h2>
+      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Información clara y visual para tomar decisiones rápidas:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-emerald-400 font-bold text-sm mb-2"><i class="fa-solid fa-traffic-light"></i> Semáforo Verde / Rojo</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Verde indica ganancia saludable, amarillo margen ajustado y rojo alerta de sobrecosto, para actuar antes de que el trabajo termine.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-emerald-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-traffic-light"></i> Semáforo Verde / Rojo</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Verde indica ganancia saludable, amarillo margen ajustado y rojo alerta de sobrecosto, para actuar antes de que el trabajo termine.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-scale-balanced"></i> Comparativo Presupuesto vs Real</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Compara lo que se cotizó al cliente contra lo que realmente se ha gastado en acero, insumos y horas de trabajo.</p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-scale-balanced"></i> Presupuesto vs Gasto Real</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Compara lo que se cotizó al cliente contra lo que realmente se ha gastado en acero, insumos y horas de trabajo.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-money-bill-trend-up"></i> Dinero en Mano (Flujo de Caja)</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Muestra lo que está por cobrar y lo que está por pagar, asegurando que siempre haya dinero disponible para compras y nómina.</p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-money-bill-trend-up"></i> Dinero en Mano (Flujo de Caja)</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Muestra lo que está por cobrar y lo que está por pagar, asegurando que siempre haya dinero disponible para compras y nómina.</p>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 8: ACCESO SEGURO POR CARGOS -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Seguridad & Privacidad">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">07. SEGURIDAD & PRIVACIDAD</div>
-      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Cada persona ve solo lo que necesita</h2>
-      <p class="text-sm text-slate-400 mb-6">Los costos financieros y las ganancias de la empresa se mantienen 100% confidenciales:</p>
+    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Seguridad & Privacidad">
+      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">07. SEGURIDAD & PRIVACIDAD</div>
+      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Cada persona ve solo lo que necesita</h2>
+      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Los costos financieros y las ganancias de la empresa se mantienen 100% confidenciales:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-purple-400 font-bold text-sm mb-2"><i class="fa-solid fa-crown"></i> Dirección General</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Acceso completo a ganancias, cuentas bancarias, aprobación de compras mayores y reportes consolidados.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-purple-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-crown"></i> Dirección General</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Acceso completo a ganancias, cuentas bancarias, aprobación de compras mayores y reportes consolidados.</p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-compass-drafting"></i> Ingenieros de Taller / Obra</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Gestionan el avance técnico, fotos y solicitudes de material. <b>Los precios de compra y las ganancias están completamente ocultos.</b></p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-compass-drafting"></i> Ingenieros de Taller / Obra</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Gestionan el avance técnico, fotos y solicitudes de material. <b>Los precios de compra y las ganancias están completamente ocultos.</b></p>
         </div>
-        <div class="feature-card p-6 rounded-2xl">
-          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-boxes-stacked"></i> Almacén & Logística</div>
-          <p class="text-xs text-slate-300 leading-relaxed">Registran entradas y salidas de material y horas de maquinaria. <b>Sin acceso a montos de dinero ni finanzas.</b></p>
+        <div class="feature-card p-7 rounded-3xl">
+          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-boxes-stacked"></i> Almacén & Logística</div>
+          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Registran entradas y salidas de material y horas de maquinaria. <b>Sin acceso a montos de dinero ni finanzas.</b></p>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 9: BENEFICIOS DIRECTOS -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Beneficios y Ahorro">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">08. RESULTADOS</div>
-      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Ahorros y beneficios tangibles</h2>
-      <p class="text-sm text-slate-400 mb-6">El impacto inmediato de modernizar el control de las operaciones:</p>
+    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Beneficios y Ahorro">
+      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">08. RESULTADOS</div>
+      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Ahorros y beneficios tangibles</h2>
+      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">El impacto inmediato de modernizar el control de las operaciones:</p>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="feature-card p-5 rounded-2xl text-center">
-          <div class="text-3xl font-extrabold text-emerald-400 mb-1">85%</div>
-          <div class="text-sm font-bold text-white mb-1">Menos Tiempo</div>
-          <p class="text-xs text-slate-400">En procesar y registrar facturas de proveedores.</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
+        <div class="feature-card p-6 rounded-3xl text-center">
+          <div class="stat-num text-4xl md:text-5xl font-black text-emerald-400 mb-2">85%</div>
+          <div class="stat-label text-base md:text-lg font-bold text-white mb-2">Menos Tiempo</div>
+          <p class="card-text text-xs md:text-sm text-slate-300">En procesar y registrar facturas de proveedores.</p>
         </div>
-        <div class="feature-card p-5 rounded-2xl text-center">
-          <div class="text-3xl font-extrabold text-amber-400 mb-1">100%</div>
-          <div class="text-sm font-bold text-white mb-1">Cuidado de Equipos</div>
-          <p class="text-xs text-slate-400">Sin herramientas extraviadas en taller ni campo.</p>
+        <div class="feature-card p-6 rounded-3xl text-center">
+          <div class="stat-num text-4xl md:text-5xl font-black text-amber-400 mb-2">100%</div>
+          <div class="stat-label text-base md:text-lg font-bold text-white mb-2">Cuidado de Equipos</div>
+          <p class="card-text text-xs md:text-sm text-slate-300">Sin herramientas extraviadas en taller ni campo.</p>
         </div>
-        <div class="feature-card p-5 rounded-2xl text-center">
-          <div class="text-3xl font-extrabold text-cyan-400 mb-1">14 Días</div>
-          <div class="text-sm font-bold text-white mb-1">Cobro más Rápido</div>
-          <p class="text-xs text-slate-400">Entrega rápida de valuaciones respaldadas al cliente.</p>
+        <div class="feature-card p-6 rounded-3xl text-center">
+          <div class="stat-num text-4xl md:text-5xl font-black text-cyan-400 mb-2">14 Días</div>
+          <div class="stat-label text-base md:text-lg font-bold text-white mb-2">Cobro más Rápido</div>
+          <p class="card-text text-xs md:text-sm text-slate-300">Entrega rápida de valuaciones respaldadas al cliente.</p>
         </div>
-        <div class="feature-card p-5 rounded-2xl text-center">
-          <div class="text-3xl font-extrabold text-purple-400 mb-1">24/7</div>
-          <div class="text-sm font-bold text-white mb-1">Disponibilidad</div>
-          <p class="text-xs text-slate-400">Acceso desde cualquier celular o PC sin caídas.</p>
+        <div class="feature-card p-6 rounded-3xl text-center">
+          <div class="stat-num text-4xl md:text-5xl font-black text-purple-400 mb-2">24/7</div>
+          <div class="stat-label text-base md:text-lg font-bold text-white mb-2">Disponibilidad</div>
+          <p class="card-text text-xs md:text-sm text-slate-300">Acceso desde cualquier celular o PC sin caídas.</p>
         </div>
       </div>
     </section>
 
     <!-- SLIDE 10: DEMOSTRACIÓN EN VIVO -->
-    <section class="slide flex-col justify-center items-center text-center max-w-4xl mx-auto py-6" data-title="Demostración en Vivo">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
+    <section class="slide flex-col justify-center items-center text-center max-w-5xl mx-auto py-8" data-title="Demostración en Vivo">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-sm font-bold uppercase tracking-wider mb-6">
         <span>✅ Plataforma Activa y Lista para Operar</span>
       </div>
-      <h2 class="text-3xl md:text-5xl font-extrabold text-white mb-3">DALOR SIGO-P en Acción</h2>
-      <p class="text-sm md:text-base text-slate-300 max-w-lg mx-auto mb-8">
+      <h2 class="hero-title text-4xl md:text-6xl font-black text-white mb-4">DALOR SIGO-P en Acción</h2>
+      <p class="hero-sub text-lg md:text-2xl text-slate-200 max-w-2xl mx-auto mb-10 font-medium">
         Veamos una demostración práctica en vivo ingresando con los diferentes roles del sistema.
       </p>
 
-      <div class="flex flex-wrap items-center justify-center gap-4">
-        <a href="/" target="_blank" class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm transition shadow-lg flex items-center gap-2.5">
+      <div class="flex flex-wrap items-center justify-center gap-5">
+        <a href="/" target="_blank" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-base md:text-lg transition shadow-xl flex items-center gap-3">
           <i class="fa-solid fa-play"></i> Iniciar Demostración en Vivo
         </a>
-        <a href="/manual" target="_blank" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm border border-slate-700 transition flex items-center gap-2.5">
+        <a href="/manual" target="_blank" class="px-8 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-base md:text-lg border border-slate-700 transition flex items-center gap-3">
           <i class="fa-solid fa-book-open"></i> Ver Manuales de Usuario
         </a>
       </div>
@@ -332,17 +380,17 @@
   </main>
 
   <!-- Bottom Navigation & Controls Bar -->
-  <footer class="w-full border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-3 flex items-center justify-between z-50">
-    <div class="flex items-center gap-2">
-      <span class="text-xs text-slate-400 font-medium hidden sm:inline">Navega con las flechas del teclado (◀ ▶) o los botones</span>
+  <footer class="w-full border-t border-slate-800/80 bg-slate-900/95 backdrop-blur-md px-6 py-4 flex items-center justify-between z-50">
+    <div class="flex items-center gap-3">
+      <span class="text-sm text-slate-400 font-medium hidden sm:inline">Navega con las flechas del teclado (◀ ▶) o los botones</span>
     </div>
 
     <!-- Mini Slide Bullets -->
-    <div class="flex items-center gap-2" id="bulletContainer">
+    <div class="flex items-center gap-2.5" id="bulletContainer">
       <!-- Bullets generated by JS -->
     </div>
 
-    <div class="text-xs text-slate-500 font-mono">
+    <div class="text-sm text-slate-400 font-mono font-bold">
       DALOR &copy; 2026
     </div>
   </footer>
@@ -357,7 +405,7 @@
     // Create navigation dots/bullets
     for (let i = 0; i < totalSlides; i++) {
       const dot = document.createElement('button');
-      dot.className = `w-2.5 h-2.5 rounded-full transition-all ${i === 0 ? 'bg-amber-400 w-6' : 'bg-slate-700 hover:bg-slate-500'}`;
+      dot.className = `w-3.5 h-3.5 rounded-full transition-all ${i === 0 ? 'bg-amber-400 w-8' : 'bg-slate-700 hover:bg-slate-500'}`;
       dot.title = `Ir a lámina ${i + 1}: ${slides[i].dataset.title || ''}`;
       dot.onclick = () => goToSlide(i);
       bulletContainer.appendChild(dot);
@@ -378,9 +426,9 @@
       const dots = bulletContainer.children;
       for (let i = 0; i < dots.length; i++) {
         if (i === currentSlide) {
-          dots[i].className = 'w-6 h-2.5 rounded-full bg-amber-400 transition-all';
+          dots[i].className = 'w-8 h-3.5 rounded-full bg-amber-400 transition-all';
         } else {
-          dots[i].className = 'w-2.5 h-2.5 rounded-full bg-slate-700 hover:bg-slate-500 transition-all';
+          dots[i].className = 'w-3.5 h-3.5 rounded-full bg-slate-700 hover:bg-slate-500 transition-all';
         }
       }
     }
@@ -415,6 +463,24 @@
         if (document.exitFullscreen) {
           document.exitFullscreen();
         }
+      }
+    }
+
+    // Zoom Controls for Smart TV
+    function setZoom(level) {
+      document.body.classList.remove('zoom-tv-large', 'zoom-tv-huge');
+      document.getElementById('btnZoomNormal').className = 'px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition';
+      document.getElementById('btnZoomLarge').className = 'px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition';
+      document.getElementById('btnZoomHuge').className = 'px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition';
+
+      if (level === 'large') {
+        document.body.classList.add('zoom-tv-large');
+        document.getElementById('btnZoomLarge').className = 'px-2.5 py-1 rounded bg-amber-500 text-slate-950 font-bold transition';
+      } else if (level === 'huge') {
+        document.body.classList.add('zoom-tv-huge');
+        document.getElementById('btnZoomHuge').className = 'px-2.5 py-1 rounded bg-amber-500 text-slate-950 font-bold transition';
+      } else {
+        document.getElementById('btnZoomNormal').className = 'px-2.5 py-1 rounded bg-slate-700 text-white font-bold transition';
       }
     }
 

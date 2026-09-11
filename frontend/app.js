@@ -1527,6 +1527,9 @@ async function loadFleetList() {
                 <td>${v.current_location}</td>
                 <td>${v.custodian}</td>
                 <td style="text-align: center; white-space: nowrap;">
+                    <button onclick="openRecordServiceModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
+                        <i class="fa-solid fa-wrench"></i> Servicio
+                    </button>
                     ${inBase ? `
                         <button onclick="openAssignModal('asset', ${v.id}, '${v.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
                             Asignar a Obra
@@ -1547,6 +1550,93 @@ async function loadFleetList() {
         }).join('');
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar flota.</td></tr>`;
+    }
+}
+
+function openRecordServiceModal(assetId, code, name, currentKm) {
+    let modal = document.getElementById("modalRecordService");
+    if (!modal) {
+        const div = document.createElement("div");
+        div.id = "modalRecordService";
+        div.className = "modal-overlay hidden";
+        div.innerHTML = `
+        <div class="modal-card" style="max-width: 460px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 800; color: #ea580c; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-wrench"></i> Registrar Mantenimiento / Servicio
+                </h3>
+                <button onclick="closeModal('modalRecordService')" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+            <form id="formRecordService" onsubmit="submitRecordService(event)">
+                <input type="hidden" id="srv_asset_id">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Vehículo / Equipo:</label>
+                    <div id="srv_veh_label" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px; padding: 8px; background: #f1f5f9; border-radius: 6px;"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Tipo de Servicio *</label>
+                    <select id="srv_type" class="form-control" required>
+                        <option value="cambio_aceite_filtros">Cambio de Aceite y Filtros (5.000 Km)</option>
+                        <option value="mantenimiento_preventivo_mayor">Mantenimiento Preventivo Mayor (Frenos/Tren/Correas)</option>
+                        <option value="reparacion_correctiva">Reparación Mecánica Correctiva</option>
+                        <option value="cambio_cauchos_alineacion">Cambio de Cauchos y Alineación</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Nuevo Odómetro al momento del Servicio (Km) *</label>
+                    <input type="number" step="1" id="srv_odometer" class="form-control" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Costo Total del Servicio ($ USD):</label>
+                    <input type="number" step="0.01" id="srv_cost" class="form-control" value="0.00">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Notas / Taller Ejecutor:</label>
+                    <input type="text" id="srv_notes" class="form-control" placeholder="Ej: Taller Central Dalor - Aceite 15W-40 Shell Rimula">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalRecordService')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #ea580c;">
+                        <i class="fa-solid fa-check"></i> Guardar y Resetear Semáforo a Verde
+                    </button>
+                </div>
+            </form>
+        </div>`;
+        document.body.appendChild(div);
+    }
+    document.getElementById("srv_asset_id").value = assetId;
+    document.getElementById("srv_veh_label").innerText = `[${code}] ${name}`;
+    document.getElementById("srv_odometer").value = currentKm;
+    openModal("modalRecordService");
+}
+
+async function submitRecordService(event) {
+    event.preventDefault();
+    const assetId = document.getElementById("srv_asset_id").value;
+    const payload = {
+        new_odometer: parseFloat(document.getElementById("srv_odometer").value),
+        service_type: document.getElementById("srv_type").value,
+        cost_usd: parseFloat(document.getElementById("srv_cost").value) || 0.0,
+        notes: document.getElementById("srv_notes").value
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/assets/${assetId}/record-service`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            alert(data.message || "Servicio registrado exitosamente.");
+            closeModal("modalRecordService");
+            await loadFleetList();
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        alert("Error al conectar con el servidor.");
     }
 }
 

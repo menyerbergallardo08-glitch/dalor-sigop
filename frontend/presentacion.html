@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DALOR SIGO-P - Presentación Ejecutiva</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .slide { display: none; opacity: 0; transition: opacity 0.35s ease-in-out; }
+    .slide.active { display: flex; opacity: 1; }
+    .gradient-dalor { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0b132b 100%); }
+    .glow-gold { box-shadow: 0 0 35px rgba(245, 158, 11, 0.25); }
+    .glow-emerald { box-shadow: 0 0 35px rgba(16, 185, 129, 0.25); }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-hidden select-none">
+
+  <!-- Top Navigation Ribbon -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-3 flex items-center justify-between z-50">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center font-black text-slate-950 text-sm shadow-md">D</div>
+      <div>
+        <span class="font-extrabold tracking-tight text-white text-sm">DALOR, C.A.</span>
+        <span class="text-slate-500 text-xs ml-1.5 font-medium">| SIGO-P v2026</span>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2 text-xs text-slate-400 font-mono">
+      <span>DIAPOSITIVA</span>
+      <span id="slideIndicator" class="px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-bold border border-slate-700">01 / 10</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button onclick="prevSlide()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs font-bold" title="Anterior (Flecha Izq)">◀</button>
+      <button onclick="nextSlide()" class="p-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition text-xs font-bold" title="Siguiente (Flecha Der)">▶</button>
+      <button onclick="toggleFullscreen()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs ml-1" title="Pantalla Completa">⛶</button>
+    </div>
+  </header>
+
+  <!-- Main Slide Display Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 flex items-center justify-center relative">
+
+    <!-- SLIDE 1: PORTADA -->
+    <section class="slide active flex-col justify-center items-center text-center max-w-4xl mx-auto py-6" data-title="Portada">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider mb-6">
+        <span>⚡ Solución Tecnológica Propietaria</span>
+      </div>
+      <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight mb-4">
+        DALOR <span class="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 bg-clip-text text-transparent">SIGO-P</span>
+      </h1>
+      <p class="text-lg md:text-xl font-medium text-slate-300 max-w-2xl mx-auto mb-2">
+        Sistema de Información Gerencial de Operaciones y Proyectos
+      </p>
+      <p class="text-sm text-slate-400 max-w-xl mx-auto mb-8 leading-relaxed">
+        Plataforma integral en la nube para la gestión operativa en campo, custodia de flota y herramientas, Job Costing al segundo y control financiero estratégico.
+      </p>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl w-full text-left">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Arquitectura</div>
+          <div class="text-xs font-bold text-white mt-0.5">100% Cloud Continua</div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Tecnología</div>
+          <div class="text-xs font-bold text-amber-400 mt-0.5">Captura Móvil OCR</div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Control</div>
+          <div class="text-xs font-bold text-emerald-400 mt-0.5">Job Costing en Vivo</div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Acceso</div>
+          <div class="text-xs font-bold text-cyan-400 mt-0.5">Global a 1-Clic</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: EL ORIGEN DEL DOLOR -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="El Diagnóstico de Mercado">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">01. EL DIAGNÓSTICO</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-4">¿Por qué los sistemas tradicionales no responden al sector contratista?</h2>
+      <p class="text-sm text-slate-400 mb-6">En la dinámica real de ejecución electromecánica y mantenimiento industrial, existen tres brechas críticas no resueltas:</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg mb-3">🔌</div>
+            <h3 class="text-base font-bold text-white mb-2">Anclaje a Servidores Físicos</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Los software tradicionales viven instalados en una PC de oficina. Si se corta el fluido eléctrico o cae el internet local, la gerencia queda a ciegas. Depender de AnyDesk o TeamViewer es inestable y de alto riesgo.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] font-mono text-rose-400 font-semibold">Falla: Cero disponibilidad remota real</div>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-lg mb-3">⏳</div>
+            <h3 class="text-base font-bold text-white mb-2">Desconexión Campo - Finanzas</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Las compras de emergencia y gastos menores en faena se registran en papel o WhatsApp. Llegan a administración con semanas de desfase, impidiendo conocer el costo real devengado mientras la obra está en ejecución.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] font-mono text-amber-400 font-semibold">Falla: Fuga invisible de presupuesto</div>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 text-lg mb-3">🚚</div>
+            <h3 class="text-base font-bold text-white mb-2">Pérdida de Trazabilidad de Activos</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Herramientas de alta precisión (Megóhmetros, Fluke) y vehículos salen a frentes de trabajo sin un control formal de custodia, horas de uso u odómetro, arriesgando el patrimonio por falta de mantenimiento.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] font-mono text-blue-400 font-semibold">Falla: Deterioro y extravío de activos</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: LA SOLUCIÓN INTEGRAL SIGO-P -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="La Propuesta de Valor">
+      <div class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-2">02. LA SOLUCIÓN ESTRATÉGICA</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-4">DALOR SIGO-P: Conectividad 360° en Tiempo Real</h2>
+      <p class="text-sm text-slate-400 mb-6">Una plataforma diseñada desde los cimientos para enlazar cada eslabón de la cadena de valor de DALOR:</p>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 glow-emerald">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-center">
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="text-xl mb-1">📱</div>
+            <div class="text-xs font-bold text-amber-400">1. Campo</div>
+            <div class="text-[10px] text-slate-400 mt-1">Captura OCR en 1-Touch de facturas en faena</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="text-xl mb-1">📦</div>
+            <div class="text-xs font-bold text-blue-400">2. Almacén</div>
+            <div class="text-[10px] text-slate-400 mt-1">Custodia de activos y guías de despacho</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="text-xl mb-1">👷‍♂️</div>
+            <div class="text-xs font-bold text-purple-400">3. Residente</div>
+            <div class="text-[10px] text-slate-400 mt-1">Checklist WBS y % de avance dinámico</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="text-xl mb-1">💼</div>
+            <div class="text-xs font-bold text-emerald-400">4. Finanzas</div>
+            <div class="text-[10px] text-slate-400 mt-1">Aprobación, flujo de caja y CxC/CxP</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="text-xl mb-1">📊</div>
+            <div class="text-xs font-bold text-cyan-400">5. Gerencia</div>
+            <div class="text-[10px] text-slate-400 mt-1">Job Costing 4 cuadrantes al segundo</div>
+          </div>
+        </div>
+
+        <div class="mt-6 p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-center justify-between">
+          <div class="text-xs text-emerald-300 font-medium">
+            <b>🌐 Acceso Global Sin VPN:</b> Directores y socios consultan el estado financiero y operativo desde su móvil, laptop o tablet en cualquier parte del mundo.
+          </div>
+          <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30">Nube Continua 24/7</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: MATRIZ COMPARATIVA DE MERCADO -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Comparativa de Mercado">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">03. BENCHMARK OBJETIVO</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-4">Lo mejor de cada referente, adaptado a nuestra realidad</h2>
+      <p class="text-sm text-slate-400 mb-4">Evaluación respetuosa y técnica de las herramientas tradicionales frente a DALOR SIGO-P:</p>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-300 font-mono">
+              <th class="p-2.5">Software Referente</th>
+              <th class="p-2.5">Su Fortaleza Principal</th>
+              <th class="p-2.5 text-slate-400">Limitación en Contratistas</th>
+              <th class="p-2.5 text-amber-400 font-bold">Aporte Integrado en SIGO-P</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 font-sans">
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-2.5 font-bold text-white">SAP / Odoo</td>
+              <td class="p-2.5 text-slate-300">Potencia en contabilidad corporativa y control masivo</td>
+              <td class="p-2.5 text-slate-400">Pesada burocracia, costos altos y poca agilidad en campo</td>
+              <td class="p-2.5 text-emerald-400 font-semibold">Control de P&L limpio sin fricción burocrática</td>
+            </tr>
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-2.5 font-bold text-white">Profit Plus / Saint</td>
+              <td class="p-2.5 text-slate-300">Estándar local de facturación y nómina legal</td>
+              <td class="p-2.5 text-slate-400">Atado a PC en oficina; nula trazabilidad de obras en vivo</td>
+              <td class="p-2.5 text-emerald-400 font-semibold">Independencia total de servidores físicos locales</td>
+            </tr>
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-2.5 font-bold text-white">MS Project</td>
+              <td class="p-2.5 text-slate-300">Excelente para cronogramas y estructura WBS</td>
+              <td class="p-2.5 text-slate-400">Desconectado del flujo de caja, gastos reales y compras</td>
+              <td class="p-2.5 text-emerald-400 font-semibold">Fases y tareas vinculadas al % de avance real</td>
+            </tr>
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-2.5 font-bold text-white">LuloWin</td>
+              <td class="p-2.5 text-slate-300">Cálculo de matrices de Precios Unitarios (APU)</td>
+              <td class="p-2.5 text-slate-400">Estático: no gestiona la obra ejecutada ni la caja</td>
+              <td class="p-2.5 text-emerald-400 font-semibold">Presupuesto formal conectado al Job Costing</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: TECNOLOGÍA DE PUNTA: OCR MÓVIL -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Innovación Tecnológica">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">04. INNOVACIÓN TECNOLÓGICA</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-4">Captura Inteligente OCR: De la Faena al Balance en Segundos</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+        <div class="md:col-span-7 space-y-4 text-xs text-slate-300 leading-relaxed">
+          <p>
+            En lugar de esperar a que un recibo llegue arrugado a la oficina central, el supervisor en campo utiliza la cámara de su teléfono móvil:
+          </p>
+          <ul class="space-y-2.5 font-mono">
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✔</span>
+              <span><b>Extracción Automática:</b> Reconoce RIF, Nombre del Proveedor, Fecha y Monto Total (\$ USD y Bs).</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✔</span>
+              <span><b>Imputación Directa:</b> Se asocia al proyecto activo (Ej. <i>Subestación San Joaquín</i>) sin exponer números financieros al personal de campo.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✔</span>
+              <span><b>Validación en 1-Clic:</b> Administración recibe la notificación y aprueba el gasto con un solo toque, impactando la caja al instante.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="md:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div class="text-[11px] font-mono font-bold text-amber-400 mb-2 flex items-center justify-between">
+            <span>📱 BANDEJA OCR EN VIVO</span>
+            <span class="text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded text-[9px]">EN COLA</span>
+          </div>
+          <div class="space-y-2 text-xs font-mono bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+            <div class="text-slate-400 text-[10px]">Factura #FAC-9012</div>
+            <div class="text-white font-bold">Ferretería Industrial Carabobo C.A.</div>
+            <div class="text-slate-400 text-[11px]">Compra de cinta 3M y terminales</div>
+            <div class="flex justify-between items-center pt-2 border-t border-slate-800 text-emerald-400 font-bold">
+              <span>Monto: $85.50 USD</span>
+              <span class="text-slate-400 text-[10px]">Tasa 800</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: CUSTODIA Y LOGÍSTICA DE PAÑOL -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Custodia y Logística">
+      <div class="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider mb-2">05. CUSTODIA PATRIMONIAL</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-4">Protección de Flota, Herramientas y Consumibles</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+          <div class="text-lg">📦</div>
+          <h3 class="font-bold text-white text-sm">30 Activos en Custodia</h3>
+          <p class="text-slate-400">Control individual de herramientas mayores (Megóhmetro 10kV, Analizador Fluke), soldadoras diésel y equipos de oxicorte.</p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+          <div class="text-lg">🛢️</div>
+          <h3 class="font-bold text-amber-400 text-sm">Semáforo de Aceite (5.000 km)</h3>
+          <p class="text-slate-400">Seguimiento automático de odómetros para evitar fallas mecánicas costosas en camionetas y camiones de transporte.</p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+          <div class="text-lg">📄</div>
+          <h3 class="font-bold text-cyan-400 text-sm">Guías de Despacho Oficiales</h3>
+          <p class="text-slate-400">Emisión digital correlativa (<code class="text-slate-300">GT-DALOR-2026-001</code>) con firma de responsable en faena y fecha de retorno.</p>
+        </div>
+      </div>
+
+      <div class="mt-4 p-3 bg-slate-900/60 border border-slate-800 rounded-xl text-slate-300 text-xs flex items-center gap-3">
+        <span class="text-amber-400 font-bold">🔒 Control Interno:</span>
+        <span>El personal de almacén solo registra unidades y guías físicas, manteniendo 100% blindados los montos financieros y costos de reposición.</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: JOB COSTING Y AVANCE FÍSICO -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Job Costing en Vivo">
+      <div class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-2">06. CONTROL DE RENTABILIDAD</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-4">Job Costing de 4 Cuadrantes y Avance Físico</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+        <div class="md:col-span-6 space-y-3">
+          <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white">Avance Físico Dinámico (WBS):</span>
+              <span class="font-mono font-bold text-purple-400">65.0%</span>
+            </div>
+            <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+              <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-full w-[65%] rounded-full"></div>
+            </div>
+            <div class="text-[10px] text-slate-400">Calculado automáticamente a partir de las tareas técnicas completadas [x].</div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white">Consumo Presupuestario:</span>
+              <span class="font-mono font-bold text-emerald-400">7.1% (Verde Rentable)</span>
+            </div>
+            <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+              <div class="bg-emerald-500 h-full w-[7.1%] rounded-full"></div>
+            </div>
+            <div class="text-[10px] text-slate-400">Semáforo de alerta temprana para prevenir sobrecostos antes de cerrar la obra.</div>
+          </div>
+        </div>
+
+        <div class="md:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div class="text-[11px] font-mono font-bold text-slate-400 uppercase mb-3">MATRIZ DE 4 CUADRANTES FINANCIEROS</div>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-[10px] text-slate-500">Monto Contrato</div>
+              <div class="text-sm font-bold text-white mt-0.5">$12,500.00</div>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-[10px] text-slate-500">Presupuesto Límite</div>
+              <div class="text-sm font-bold text-amber-400 mt-0.5">$8,200.00</div>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-[10px] text-slate-500">Gasto Real Incurrido</div>
+              <div class="text-sm font-bold text-rose-400 mt-0.5">$585.50</div>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-[10px] text-slate-500">Margen Estimado</div>
+              <div class="text-sm font-bold text-emerald-400 mt-0.5">95.3% (+$11.9k)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: SEGURIDAD Y DISPONIBILIDAD GLOBAL -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Seguridad y Estabilidad">
+      <div class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider mb-2">07. SEGURIDAD INSTITUCIONAL</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-4">Robustez Tecnológica Diseñada para Perdurar</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-lg mb-1">🛡️</div>
+          <h3 class="font-bold text-white mb-1">Cifrado Bancario SSL 256-bit</h3>
+          <p class="text-slate-400">Comunicaciones encriptadas de extremo a extremo con autenticación JWT y contraseñas hasheadas en bcrypt.</p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-lg mb-1">☁️</div>
+          <h3 class="font-bold text-white mb-1">Neon PostgreSQL Serverless</h3>
+          <p class="text-slate-400">Base de datos relacional de alto rendimiento en AWS con copias de seguridad automáticas y recuperación instantánea.</p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-lg mb-1">⚡</div>
+          <h3 class="font-bold text-white mb-1">Alta Disponibilidad Cloud</h3>
+          <p class="text-slate-400">Cero dependencia de la electricidad local o de PCs físicas en oficina. El sistema no se cae ni se desconecta.</p>
+        </div>
+      </div>
+
+      <div class="mt-6 p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-300 text-xs text-center">
+        <b>Garantía de Continuidad:</b> Un activo tecnológico institucional propio de DALOR, C.A., escalable a decenas de frentes de obra en simultáneo.
+      </div>
+    </section>
+
+    <!-- SLIDE 9: CONCLUSIONES Y BENEFICIOS -->
+    <section class="slide flex-col justify-center max-w-4xl mx-auto text-center py-6" data-title="Conclusiones">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
+        <span>🎯 Impacto Directo en el Negocio</span>
+      </div>
+      <h2 class="text-3xl md:text-5xl font-black text-white mb-4">El Salto Cuántico en Gestión de DALOR</h2>
+      <p class="text-sm text-slate-400 max-w-xl mx-auto mb-6">Con DALOR SIGO-P, la empresa transforma sus operaciones en una ventaja competitiva medible:</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-left mb-6">
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-xs font-bold text-amber-400 mb-1">1. Cero Fuga de Caja</div>
+          <div class="text-[11px] text-slate-400">Cada gasto en faena se aprueba e imputa al segundo con respaldo fotográfico.</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-xs font-bold text-blue-400 mb-1">2. Blindaje Patrimonial</div>
+          <div class="text-[11px] text-slate-400">Custodia total de herramientas de precisión y mantenimiento preventivo de flota.</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="text-xs font-bold text-emerald-400 mb-1">3. Decisiones al 1-Clic</div>
+          <div class="text-[11px] text-slate-400">Margen real de cada contrato visible desde el teléfono móvil en cualquier lugar.</div>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 font-mono">
+        DALOR, C.A. • Excelencia en Ingeniería, Montaje y Mantenimiento Industrial
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Control Bar -->
+  <footer class="w-full border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-3 flex items-center justify-between z-50">
+    <div class="text-xs text-slate-400 font-medium hidden sm:block">
+      <span class="text-amber-400 font-bold">Tip:</span> Usa las flechas <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono border border-slate-700">◀</kbd> <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono border border-slate-700">▶</kbd> o espacio para avanzar.
+    </div>
+    
+    <div class="flex items-center gap-3 mx-auto sm:mx-0">
+      <button onclick="prevSlide()" class="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">◀ Anterior</button>
+      <button onclick="nextSlide()" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black tracking-wide shadow-md shadow-amber-900/30 transition">Siguiente ▶</button>
+    </div>
+
+    <div class="text-[11px] text-slate-500 font-mono hidden md:block">
+      Sistema Propietario DALOR SIGO-P
+    </div>
+  </footer>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    let currentSlide = 0;
+
+    function showSlide(index) {
+      if (index < 0) index = 0;
+      if (index >= slides.length) index = slides.length - 1;
+
+      slides.forEach((s, i) => {
+        if (i === index) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      currentSlide = index;
+      document.getElementById('slideIndicator').innerText = 
+        `${String(currentSlide + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+    }
+
+    function nextSlide() {
+      showSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+      showSlide(currentSlide - 1);
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+
+    // Keyboard navigation
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+        prevSlide();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      }
+    });
+
+    // Initialize
+    showSlide(0);
+  </script>
+</body>
+</html>

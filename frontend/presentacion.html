@@ -3,464 +3,346 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DALOR SIGO-P - Presentación Ejecutiva Metalmecánica & Términos</title>
+  <title>DALOR SIGO-P - Presentación Ejecutiva</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
-    body { font-family: 'Inter', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+    body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
-    .slide { display: none; opacity: 0; transition: opacity 0.35s ease-in-out; }
+    .slide { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
     .slide.active { display: flex; opacity: 1; }
     .gradient-dalor { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0b132b 100%); }
-    .glow-gold { box-shadow: 0 0 35px rgba(245, 158, 11, 0.25); }
-    .glow-emerald { box-shadow: 0 0 35px rgba(16, 185, 129, 0.25); }
-    
-    /* Caja de Glosario para Audiencia y Expositor */
-    .terms-box {
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      border-radius: 12px;
-      padding: 10px 14px;
-      margin-top: 14px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    .glow-gold { box-shadow: 0 0 35px rgba(245, 158, 11, 0.2); }
+    .glow-emerald { box-shadow: 0 0 35px rgba(16, 185, 129, 0.2); }
+    .feature-card {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      transition: all 0.25s ease;
+    }
+    .feature-card:hover {
+      border-color: rgba(245, 158, 11, 0.4);
+      transform: translateY(-2px);
     }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
 
   <!-- Top Navigation Ribbon -->
-  <header class="w-full border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-3 flex items-center justify-between z-50 sticky top-0">
+  <header class="w-full border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between z-50 sticky top-0">
     <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center font-black text-slate-950 text-sm shadow-md">D</div>
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center font-black text-slate-950 text-base shadow-md">D</div>
       <div>
-        <span class="font-extrabold tracking-tight text-white text-sm">DALOR, C.A.</span>
-        <span class="text-slate-500 text-xs ml-1.5 font-medium">| SIGO-P Metalmecánica v2026</span>
+        <span class="font-extrabold tracking-tight text-white text-base">DALOR, C.A.</span>
+        <span class="text-slate-500 text-xs ml-1.5 font-medium">| Sistema SIGO-P</span>
       </div>
     </div>
     
     <div class="flex items-center gap-2 text-xs text-slate-400 font-mono">
-      <span>DIAPOSITIVA</span>
-      <span id="slideIndicator" class="px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-bold border border-slate-700">01 / 10</span>
+      <span>LÁMINA</span>
+      <span id="slideIndicator" class="px-2.5 py-1 rounded-md bg-slate-800 text-amber-400 font-bold border border-slate-700">01 / 10</span>
     </div>
 
     <div class="flex items-center gap-2">
-      <a href="/manual" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold transition flex items-center gap-1.5 border border-slate-700" title="Ver Manual de Usuario y Glosario Maestro">
-        <i class="fa-solid fa-book"></i> Manuales & Glosario
+      <a href="/manual" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold transition flex items-center gap-1.5 border border-slate-700" title="Ver Manuales de Operación">
+        <i class="fa-solid fa-book-open"></i> Manual de Usuario
       </a>
-      <button onclick="prevSlide()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs font-bold" title="Anterior (Flecha Izq)">◀</button>
-      <button onclick="nextSlide()" class="p-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition text-xs font-bold" title="Siguiente (Flecha Der)">▶</button>
-      <button onclick="toggleFullscreen()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs ml-1" title="Pantalla Completa">⛶</button>
+      <button onclick="prevSlide()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs font-bold" title="Anterior (Flecha Izq)">◀</button>
+      <button onclick="nextSlide()" class="p-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition text-xs font-bold" title="Siguiente (Flecha Der)">▶</button>
+      <button onclick="toggleFullscreen()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs ml-1" title="Pantalla Completa">⛶</button>
     </div>
   </header>
 
   <!-- Main Slide Display Area -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex items-center justify-center relative">
+  <main class="flex-1 max-w-6xl w-full mx-auto p-6 md:p-10 flex items-center justify-center relative">
 
     <!-- SLIDE 1: PORTADA -->
-    <section class="slide active flex-col justify-center items-center text-center max-w-4xl mx-auto py-4" data-title="Portada">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider mb-4">
-        <span>⚡ Gestión Especializada para la Industria Metalmecánica</span>
+    <section class="slide active flex-col justify-center items-center text-center max-w-4xl mx-auto py-6" data-title="Portada">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider mb-6">
+        <span>⚡ Solución Operativa y Gerencial</span>
       </div>
-      <h1 class="text-4xl md:text-5xl font-black tracking-tight text-white leading-tight mb-3">
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight mb-4">
         DALOR <span class="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 bg-clip-text text-transparent">SIGO-P</span>
       </h1>
-      <p class="text-base md:text-lg font-medium text-slate-300 max-w-2xl mx-auto mb-2">
-        Sistema Integral de Operaciones para Fabricación en Taller y Montaje Industrial
+      <p class="text-lg md:text-xl font-medium text-slate-200 max-w-2xl mx-auto mb-3">
+        Control Total de Fabricación en Taller, Montaje y Finanzas
       </p>
-      <p class="text-xs md:text-sm text-slate-400 max-w-xl mx-auto mb-6 leading-relaxed">
-        Control en la nube para corte, armado, soldadura, granallado/pintura, custodia de maquinaria pesada, Job Costing por tonelada y valuaciones de avance.
+      <p class="text-sm md:text-base text-slate-400 max-w-xl mx-auto mb-8 leading-relaxed">
+        Una plataforma ágil en internet que conecta la producción diaria, el inventario de materiales, el uso de maquinaria y las ganancias reales de cada proyecto.
       </p>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl w-full text-left mb-4">
-        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Fabricación</div>
-          <div class="text-xs font-bold text-white mt-0.5">Control por Tonelada/Spool</div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl w-full text-left">
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-slate-400 text-xs font-bold uppercase mb-1">Producción</div>
+          <div class="text-sm font-bold text-white">Avance Diario de Taller</div>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Compras & Acero</div>
-          <div class="text-xs font-bold text-amber-400 mt-0.5">Lectura de Facturas AI-OCR</div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-slate-400 text-xs font-bold uppercase mb-1">Compras</div>
+          <div class="text-sm font-bold text-amber-400">Facturas desde el Celular</div>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Costos Reales</div>
-          <div class="text-xs font-bold text-emerald-400 mt-0.5">Job Costing en Vivo</div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-slate-400 text-xs font-bold uppercase mb-1">Finanzas</div>
+          <div class="text-sm font-bold text-emerald-400">Ganancias en Tiempo Real</div>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-[10px] text-slate-500 uppercase font-mono font-bold">Patrimonio</div>
-          <div class="text-xs font-bold text-cyan-400 mt-0.5">Custodia de Maquinaria</div>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 1 -->
-      <div class="terms-box max-w-3xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>ERP (Enterprise Resource Planning):</b> <i>Sistema Central de Gestión Integral</i> que une en una sola base de datos las compras de acero, taller, montaje en campo y finanzas.</div>
-          <div>• <b>Cloud / En la Nube:</b> Plataforma alojada en servidores seguros de internet disponible 24/7 sin depender de computadoras ni servidores físicos en la oficina.</div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div class="text-slate-400 text-xs font-bold uppercase mb-1">Equipos</div>
+          <div class="text-sm font-bold text-cyan-400">Custodia de Maquinaria</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 2: EL ORIGEN DEL DOLOR METALMECÁNICO -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Diagnóstico Metalmecánico">
+    <!-- SLIDE 2: EL DIAGNÓSTICO -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Diagnóstico y Retos Actuales">
       <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">01. EL DIAGNÓSTICO</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">¿Por qué la fabricación y el montaje industrial sufren con sistemas convencionales?</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">En la dinámica real de corte, armado de vigas, soldadura calificada y montaje en planta, existen tres brechas críticas:</p>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Los principales retos del día a día</h2>
+      <p class="text-sm text-slate-400 mb-6">Tres problemas comunes que frenan la rentabilidad y el control en los proyectos de fabricación y montaje:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="feature-card p-6 rounded-2xl flex flex-col justify-between">
           <div>
-            <div class="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-sm mb-2">🔌</div>
-            <h3 class="text-sm font-bold text-white mb-1.5">Desconexión Taller-Campo vs Oficina</h3>
-            <p class="text-[11.5px] text-slate-400 leading-relaxed">Los software tradicionales viven en una PC de oficina. Si se corta la luz o cae el internet, la gerencia no sabe cuántas toneladas se fabricaron o montaron. Depender de AnyDesk o TeamViewer es lento y riesgoso.</p>
+            <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-base mb-3">🔌</div>
+            <h3 class="text-base font-bold text-white mb-2">Sistemas Atados a la Oficina</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">Si se va la luz o el internet en la oficina, la gerencia no puede ver la información. Depender de computadoras encendidas o programas lentos de acceso remoto genera demoras y riesgos.</p>
           </div>
-          <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-rose-400 font-semibold">Falla: Cero disponibilidad remota</div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-rose-400 font-semibold">Problema: Falta de acceso remoto seguro</div>
         </div>
 
-        <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
+        <div class="feature-card p-6 rounded-2xl flex flex-col justify-between">
           <div>
-            <div class="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-sm mb-2">📄</div>
-            <h3 class="text-sm font-bold text-white mb-1.5">Fuga de Insumos y Merma de Acero</h3>
-            <p class="text-[11.5px] text-slate-400 leading-relaxed">El consumo de consumibles de soldadura (alambre MIG, electrodos, gases argón/oxígeno), discos de corte y retales de acero se maneja sin trazabilidad, retrasando la emisión de valuaciones al cliente.</p>
+            <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-base mb-3">📄</div>
+            <h3 class="text-base font-bold text-white mb-2">Información Dispersa</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">El avance de trabajo, los consumos de material y los recibos de compras se reportan en papeles o mensajes de WhatsApp sueltos, lo que causa pérdidas de comprobantes y atrasos al cobrar.</p>
           </div>
-          <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-rose-400 font-semibold">Falla: Descontrol de consumibles y avance</div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-rose-400 font-semibold">Problema: Desconexión entre taller y oficina</div>
         </div>
 
-        <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
+        <div class="feature-card p-6 rounded-2xl flex flex-col justify-between">
           <div>
-            <div class="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-sm mb-2">💸</div>
-            <h3 class="text-sm font-bold text-white mb-1.5">Costeo Tardío por Tonelada</h3>
-            <p class="text-[11.5px] text-slate-400 leading-relaxed">Sin imputación directa de horas-hombre y materiales por orden de fabricación, la rentabilidad real de la estructura solo se conoce meses después de entregarla, cuando las pérdidas son irreversibles.</p>
+            <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-base mb-3">💸</div>
+            <h3 class="text-base font-bold text-white mb-2">Costos que se Conocen Tarde</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">Saber si un trabajo dejó ganancias semanas o meses después de haberlo entregado impide corregir sobrecostos de material o mano de obra a tiempo.</p>
           </div>
-          <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-rose-400 font-semibold">Falla: Falta de Job Costing en tiempo real</div>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 2 -->
-      <div class="terms-box max-w-5xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>AnyDesk / TeamViewer:</b> <i>Programas de acceso remoto</i> para entrar a una PC a distancia, los cuales fallan ante apagones o caídas de internet local.</div>
-          <div>• <b>DSO (Days Sales Outstanding):</b> <i>Días de Cobro</i>; tiempo que transcurre desde que se entrega la estructura o hito de montaje hasta que el cliente paga la valuación.</div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-rose-400 font-semibold">Problema: Rentabilidad a ciegas</div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 3: LA ARQUITECTURA MODULAR -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Ecosistema Modular Metalmecánico">
+    <!-- SLIDE 3: LA SOLUCIÓN INTEGRAL -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="La Solución Modular">
       <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">02. LA SOLUCIÓN</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Cuatro Pilares Especializados para la Metalmecánica</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">SIGO-P conecta en tiempo real el taller de fabricación, el frente de montaje y la gerencia:</p>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Cuatro módulos trabajando como un solo equipo</h2>
+      <p class="text-sm text-slate-400 mb-6">SIGO-P une en una sola pantalla todas las actividades de la empresa:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-2">
-        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 transition">
-          <div class="text-amber-400 text-lg mb-1"><i class="fa-solid fa-industry"></i></div>
-          <h4 class="text-xs font-bold text-white mb-1">1. Taller & Montaje (EDT)</h4>
-          <p class="text-[11px] text-slate-400">Control de fases: habilitado, corte plasma/CNC, armado, soldadura calificada, granallado/pintura e izaje.</p>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="feature-card p-5 rounded-2xl">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg mb-3">
+            <i class="fa-solid fa-industry"></i>
+          </div>
+          <h4 class="text-sm font-bold text-white mb-1.5">1. Taller & Montaje</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">Registro diario de corte, armado, soldadura y montaje con fotos de respaldo desde el celular.</p>
         </div>
 
-        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 transition">
-          <div class="text-emerald-400 text-lg mb-1"><i class="fa-solid fa-receipt"></i></div>
-          <h4 class="text-xs font-bold text-white mb-1">2. Finanzas & AI-OCR</h4>
-          <p class="text-[11px] text-slate-400">Lectura instantánea de facturas de acero, perfiles, gases y fletes con división de costos (Split) entre órdenes.</p>
+        <div class="feature-card p-5 rounded-2xl">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg mb-3">
+            <i class="fa-solid fa-receipt"></i>
+          </div>
+          <h4 class="text-sm font-bold text-white mb-1.5">2. Compras & Facturas</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">Lectura automática de facturas con una foto y reparto de costos entre los proyectos que usaron el material.</p>
         </div>
 
-        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition">
-          <div class="text-cyan-400 text-lg mb-1"><i class="fa-solid fa-truck-ramp-box"></i></div>
-          <h4 class="text-xs font-bold text-white mb-1">3. Patio & Maquinaria</h4>
-          <p class="text-[11px] text-slate-400">Stock de perfiles y chapas, control de horómetros en máquinas de soldar/compresores y odómetros en camiones grúa.</p>
+        <div class="feature-card p-5 rounded-2xl">
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-lg mb-3">
+            <i class="fa-solid fa-truck-ramp-box"></i>
+          </div>
+          <h4 class="text-sm font-bold text-white mb-1.5">3. Patio & Maquinaria</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">Control de inventario de acero, horas de uso en máquinas de soldar/generadores y asignación de herramientas.</p>
         </div>
 
-        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 transition">
-          <div class="text-purple-400 text-lg mb-1"><i class="fa-solid fa-chart-pie"></i></div>
-          <h4 class="text-xs font-bold text-white mb-1">4. Cockpit Gerencial (P&L)</h4>
-          <p class="text-[11px] text-slate-400">Semáforos de rentabilidad por tonelada, CPI de cada contrato y control estricto de desviaciones presupuestarias.</p>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 3 -->
-      <div class="terms-box max-w-5xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
-          <div>• <b>Job Costing:</b> <i>Costeo por Orden de Fabricación</i>; asigna cada plancha de acero, consumible y hora-hombre directamente al proyecto que lo usó.</div>
-          <div>• <b>AI-OCR:</b> <i>Reconocimiento Óptico con IA</i> que digitaliza facturas de proveedores de metal extrayendo RIF, montos e ítems sin tipeo manual.</div>
-          <div>• <b>Cockpit Gerencial:</b> <i>Panel de Control Ejecutivo</i> con semáforos de ganancia neta e indicadores clave en tiempo real.</div>
+        <div class="feature-card p-5 rounded-2xl">
+          <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg mb-3">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+          <h4 class="text-sm font-bold text-white mb-1.5">4. Panel Gerencial</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">Semáforos de ganancia neta en vivo para saber si cada trabajo va en verde (ganancia) o rojo (alerta).</p>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 4: GESTIÓN DE TALLER, OBRAS & EDT -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Taller, Partidas & EDT">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">03. CONTROL DE FABRICACIÓN & MONTAJE</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Estructuración por Partidas y Avance en Toneladas (EDT)</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">Control milimétrico del proyecto desde el despiece de planos hasta la entrega en sitio del cliente:</p>
+    <!-- SLIDE 4: CONTROL DE PRODUCCIÓN -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Control de Producción & Avance">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">03. PRODUCCIÓN & TALLER</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Seguimiento paso a paso de cada pieza</h2>
+      <p class="text-sm text-slate-400 mb-6">Claridad absoluta desde que se corta la primera plancha hasta la entrega en sitio al cliente:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-cyan-400 font-bold text-xs mb-1">EDT Metalmecánica Especializada</div>
-          <p class="text-[11px] text-slate-400">Desglose de fases: 1) Corte & Habilitado, 2) Armado, 3) Soldadura & Ensayos NDT, 4) Granallado/Pintura (SSPC) y 5) Montaje en Sitio.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-layer-group"></i> Fases Claras de Trabajo</div>
+          <p class="text-xs text-slate-300 leading-relaxed">El trabajo se divide en pasos sencillos: Corte, Armado, Soldadura, Limpieza/Pintura y Montaje en sitio. Cada paso tiene sus cantidades y metas de entrega.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-emerald-400 font-bold text-xs mb-1">Cómputos en Toneladas, Kg y Spools</div>
-          <p class="text-[11px] text-slate-400">Seguimiento en tiempo real de kilos de acero procesados y pulgadas diametrales de soldadura ejecutadas por cuadrilla.</p>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-emerald-400 font-bold text-sm mb-2"><i class="fa-solid fa-mobile-screen"></i> Reporte Diario Fácil</div>
+          <p class="text-xs text-slate-300 leading-relaxed">El supervisor o ingeniero anota las piezas completadas y toma fotos con el celular directo en el taller o en la obra, incluso sin señal de internet.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-amber-400 font-bold text-xs mb-1">Curva S & Dossier de Calidad</div>
-          <p class="text-[11px] text-slate-400">Comparación automática del avance programado vs. fabricado y generación de valuaciones con soporte fotográfico listas para cobro.</p>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 4 -->
-      <div class="terms-box max-w-5xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
-          <div>• <b>EDT / WBS (Work Breakdown Structure):</b> <i>Estructura de Desglose del Trabajo</i>; mapa que divide la fabricación de la estructura en partidas medibles.</div>
-          <div>• <b>APU (Análisis de Precios Unitarios):</b> Desglose de costo por tonelada o pieza separando acero, electrodos/gases, mano de obra y maquinaria.</div>
-          <div>• <b>Curva S:</b> Gráfico en forma de 'S' que compara el avance físico programado de fabricación vs. el realmente producido en taller y montaje.</div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-file-invoice-dollar"></i> Cobro Rápido al Cliente</div>
+          <p class="text-xs text-slate-300 leading-relaxed">El sistema genera automáticamente el reporte de avance con fotos de respaldo listo para presentar al cliente y acelerar el pago de la valuación.</p>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 5: OCR INTELIGENTE & COMPRAS DE ACERO -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="OCR Inteligente & Compras">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">04. FINANZAS & COMPRAS</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Automatización de Facturas de Acero, Gases y Consumibles</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">Eliminación de la transcripción manual de facturas y división de compras compartidas entre proyectos:</p>
+    <!-- SLIDE 5: COMPRAS FÁCILES & OCR -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Compras Rápidas & Facturas">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">04. COMPRAS & GASTOS</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Cero tipeo manual de facturas</h2>
+      <p class="text-sm text-slate-400 mb-6">La cámara del celular lee las facturas y registra los gastos en segundos:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-amber-400 font-bold text-xs mb-1">Extracción con IA en 3 Segundos</div>
-          <p class="text-[11px] text-slate-400">Una foto de la factura extrae automáticamente: proveedor, RIF, número de factura, base imponible, IVA y desglose de materiales.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-camera"></i> Lectura Automática con Foto</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Se le toma una foto a la factura del proveedor y el sistema extrae de inmediato el nombre, RIF, número, monto total e IVA sin tener que escribirlo a mano.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-cyan-400 font-bold text-xs mb-1">Split de Gastos Compartidos</div>
-          <p class="text-[11px] text-slate-400">Divide una compra de planchas de acero, consumibles o fletes entre varias órdenes de trabajo con porcentajes exactos.</p>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-share-nodes"></i> Reparto de Gastos Compartidos</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Si se compran materiales o se paga un flete que sirve para dos o más trabajos, el gasto se divide con un clic entre los proyectos correspondientes.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-emerald-400 font-bold text-xs mb-1">Tasa Oficial BCV en Vivo</div>
-          <p class="text-[11px] text-slate-400">Conversión multimoneda automática para registrar y conciliar pagos en Bolívares y Dólares sin descuadres cambiarios.</p>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 5 -->
-      <div class="terms-box max-w-5xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
-          <div>• <b>OCR (Optical Character Recognition):</b> <i>Reconocimiento Óptico de Caracteres</i>; tecnología que lee el texto de fotos de facturas de proveedores.</div>
-          <div>• <b>Split de Gastos:</b> <i>División de Compras</i>; reparte una factura de materia prima o flete entre múltiples órdenes según su consumo real.</div>
-          <div>• <b>Tasa BCV:</b> Cotización oficial del Dólar emitida por el Banco Central de Venezuela usada para registrar pagos legales en Bolívares.</div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-emerald-400 font-bold text-sm mb-2"><i class="fa-solid fa-coins"></i> Dólares y Bolívares al Día</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Calcula al instante la conversión oficial con la tasa del día del Banco Central (BCV), evitando descuadres en pagos de transferencias o caja.</p>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 6: PATIO, MAQUINARIA & CUSTODIA -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Patio, Maquinaria & Custodia">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">05. PATIO & ACTIVOS INDUSTRIALES</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Custodia de Maquinaria, Soldadoras y Control de Horómetros</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">Blindaje del patrimonio industrial: máquinas de soldar, plantas eléctricas, brazos grúa y herramientas mayores:</p>
+    <!-- SLIDE 6: MAQUINARIA & CUSTODIA -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Patio & Maquinaria">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">05. MAQUINARIA & PATIO</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Cuidado de herramientas y maquinaria pesada</h2>
+      <p class="text-sm text-slate-400 mb-6">Protección y control de los activos más valiosos de la empresa:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-amber-400 font-bold text-xs mb-1">Horómetros & Odómetros</div>
-          <p class="text-[11px] text-slate-400">Monitoreo de horas de trabajo en soldadoras a combustión, compresores de granallado y kilometraje de camiones grúa (Hiab/Picker).</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-clock"></i> Horas de Motor y Kilómetros</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Control de horas de trabajo en plantas eléctricas, compresores y máquinas de soldar, y kilometraje en camiones para hacer mantenimientos a tiempo.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-emerald-400 font-bold text-xs mb-1">Actas Digitales de Custodia</div>
-          <p class="text-[11px] text-slate-400">Inversores, biseladoras, taladros magnéticos y esmeriles quedan asignados formalmente a cada pailero o soldador responsable.</p>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-emerald-400 font-bold text-sm mb-2"><i class="fa-solid fa-handshake"></i> Responsable por cada Equipo</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Cada herramienta eléctrica, máquina de soldar o esmeril queda asignada con firma digital al trabajador responsable para evitar pérdidas.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-cyan-400 font-bold text-xs mb-1">Control de Despachos a Obra</div>
-          <p class="text-[11px] text-slate-400">Trazabilidad de vigas, spools y pernos despachados del taller principal al sitio de montaje con confirmación de entrega.</p>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 6 -->
-      <div class="terms-box max-w-5xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
-          <div>• <b>Horómetro (Hour Meter):</b> Contador que mide las horas de funcionamiento del motor de generadores, compresores y soldadoras industriales.</div>
-          <div>• <b>Odómetro (Odometer):</b> Instrumento que mide los kilómetros recorridos por camiones grúa y vehículos de transporte de carga pesada.</div>
-          <div>• <b>Acta de Custodia:</b> Asignación patrimonial formal de una máquina o herramienta industrial a un operario para garantizar su cuidado.</div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-truck"></i> Despachos Controlados</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Ningún material o estructura sale del patio hacia la obra sin una nota de entrega digital que indica quién lo llevó y quién lo recibió.</p>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 7: P&L GERENCIAL & SEMÁFOROS -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="P&L & Indicadores Financieros">
+    <!-- SLIDE 7: SEMÁFORO DE GANANCIAS -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Semáforo de Ganancias">
       <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">06. CONTROL GERENCIAL</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Semáforo de Rentabilidad por Tonelada y Control de Desviaciones (CPI)</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">Información financiera clara para la toma de decisiones oportunas de la Junta Directiva:</p>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Semáforo de rentabilidad en tiempo real</h2>
+      <p class="text-sm text-slate-400 mb-6">Información clara y visual para tomar decisiones rápidas:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-emerald-400 font-bold text-xs mb-1">Semáforo P&L por Contrato</div>
-          <p class="text-[11px] text-slate-400">Verde (Margen Óptimo &gt;25%), Amarillo (Margen en Riesgo 10-24%) y Rojo (Alerta de Pérdida &lt;10%) por orden de trabajo.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-emerald-400 font-bold text-sm mb-2"><i class="fa-solid fa-traffic-light"></i> Semáforo Verde / Rojo</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Verde indica ganancia saludable, amarillo margen ajustado y rojo alerta de sobrecosto, para actuar antes de que el trabajo termine.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-amber-400 font-bold text-xs mb-1">Índice CPI por Orden de Trabajo</div>
-          <p class="text-[11px] text-slate-400">Calcula la eficiencia del costo en tiempo real: alerta al instante si el consumo de acero o mano de obra supera el presupuesto.</p>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-scale-balanced"></i> Comparativo Presupuesto vs Real</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Compara lo que se cotizó al cliente contra lo que realmente se ha gastado en acero, insumos y horas de trabajo.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-cyan-400 font-bold text-xs mb-1">Flujo de Caja (Cash Flow)</div>
-          <p class="text-[11px] text-slate-400">Control de cobranzas de valuaciones vs. nómina de taller/campo y compras de materia prima para asegurar liquidez.</p>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 7 -->
-      <div class="terms-box max-w-5xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
-          <div>• <b>P&L (Profit and Loss Statement):</b> <i>Estado de Pérdidas y Ganancias</i>; balance que muestra la utilidad neta exacta de cada contrato.</div>
-          <div>• <b>CPI (Cost Performance Index):</b> <i>Índice de Rendimiento del Costo</i>. CPI = 1.0 (exacto al plan), &gt;1.0 (ahorro), &lt;1.0 (sobrecosto en taller).</div>
-          <div>• <b>Cash Flow:</b> <i>Flujo de Caja</i>; entradas y salidas reales de dinero líquido en las cuentas bancarias de la empresa.</div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-money-bill-trend-up"></i> Dinero en Mano (Flujo de Caja)</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Muestra lo que está por cobrar y lo que está por pagar, asegurando que siempre haya dinero disponible para compras y nómina.</p>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 8: SEGURIDAD & BLINDAJE DE ROLES -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Seguridad & Blindaje de Roles">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">07. SEGURIDAD & AUDITORÍA</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Blindaje por Roles y Protección de Información Financiera</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">Cada usuario solo ve lo indispensable para cumplir su labor técnica o logística, protegiendo los márgenes comerciales:</p>
+    <!-- SLIDE 8: ACCESO SEGURO POR CARGOS -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Seguridad & Privacidad">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">07. SEGURIDAD & PRIVACIDAD</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Cada persona ve solo lo que necesita</h2>
+      <p class="text-sm text-slate-400 mb-6">Los costos financieros y las ganancias de la empresa se mantienen 100% confidenciales:</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-purple-400 font-bold text-xs mb-1">Director General (Master)</div>
-          <p class="text-[11px] text-slate-400">Visión total: P&L consolidado, aprobación de compras de acero, semáforos de rentabilidad y auditoría forense.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-purple-400 font-bold text-sm mb-2"><i class="fa-solid fa-crown"></i> Dirección General</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Acceso completo a ganancias, cuentas bancarias, aprobación de compras mayores y reportes consolidados.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-cyan-400 font-bold text-xs mb-1">Ingeniero de Taller / Residente (Técnico)</div>
-          <p class="text-[11px] text-slate-400">Control de avance en toneladas, bitácora y requisiciones. <b>Costos de compra y márgenes comerciales 100% ocultos.</b></p>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-cyan-400 font-bold text-sm mb-2"><i class="fa-solid fa-compass-drafting"></i> Ingenieros de Taller / Obra</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Gestionan el avance técnico, fotos y solicitudes de material. <b>Los precios de compra y las ganancias están completamente ocultos.</b></p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-          <div class="text-amber-400 font-bold text-xs mb-1">Jefe de Patio & Almacén (Custodia)</div>
-          <p class="text-[11px] text-slate-400">Entradas de acero, despacho de consumibles y horas de maquinaria. <b>Sin acceso a precios ni finanzas.</b></p>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 8 -->
-      <div class="terms-box max-w-5xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
-          <div>• <b>RBAC (Role-Based Access Control):</b> <i>Control de Acceso por Roles</i>; restricción de pantallas para que personal de taller no vea costos.</div>
-          <div>• <b>SoD (Segregation of Duties):</b> <i>Separación de Funciones</i>; quien solicita materiales en taller no puede aprobarse las órdenes de pago.</div>
-          <div>• <b>Trazabilidad Forense:</b> Registro inalterable con usuario, fecha y hora de cada movimiento de acero o cambio de estatus.</div>
+        <div class="feature-card p-6 rounded-2xl">
+          <div class="text-amber-400 font-bold text-sm mb-2"><i class="fa-solid fa-boxes-stacked"></i> Almacén & Logística</div>
+          <p class="text-xs text-slate-300 leading-relaxed">Registran entradas y salidas de material y horas de maquinaria. <b>Sin acceso a montos de dinero ni finanzas.</b></p>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 9: RETORNO DE INVERSIÓN (ROI) -->
-    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Retorno de Inversión">
-      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">08. IMPACTO ECONÓMICO</div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3">Retorno de Inversión y Beneficios Cuantificables</h2>
-      <p class="text-xs md:text-sm text-slate-400 mb-4">El impacto directo de la automatización en el flujo de caja y la rentabilidad de DALOR:</p>
+    <!-- SLIDE 9: BENEFICIOS DIRECTOS -->
+    <section class="slide flex-col justify-center max-w-5xl w-full mx-auto" data-title="Beneficios y Ahorro">
+      <div class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">08. RESULTADOS</div>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3">Ahorros y beneficios tangibles</h2>
+      <p class="text-sm text-slate-400 mb-6">El impacto inmediato de modernizar el control de las operaciones:</p>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <div class="text-2xl font-black text-emerald-400 mb-0.5">85%</div>
-          <div class="text-xs font-bold text-white mb-1">Ahorro de Tiempo</div>
-          <p class="text-[10.5px] text-slate-400">En procesamiento de facturas de acero, consumibles y repuestos con AI-OCR.</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="feature-card p-5 rounded-2xl text-center">
+          <div class="text-3xl font-extrabold text-emerald-400 mb-1">85%</div>
+          <div class="text-sm font-bold text-white mb-1">Menos Tiempo</div>
+          <p class="text-xs text-slate-400">En procesar y registrar facturas de proveedores.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <div class="text-2xl font-black text-amber-400 mb-0.5">100%</div>
-          <div class="text-xs font-bold text-white mb-1">Custodia de Activos</div>
-          <p class="text-[10.5px] text-slate-400">Eliminación de pérdidas de máquinas de soldar, herramientas y esmeriles en patio y obra.</p>
+        <div class="feature-card p-5 rounded-2xl text-center">
+          <div class="text-3xl font-extrabold text-amber-400 mb-1">100%</div>
+          <div class="text-sm font-bold text-white mb-1">Cuidado de Equipos</div>
+          <p class="text-xs text-slate-400">Sin herramientas extraviadas en taller ni campo.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <div class="text-2xl font-black text-cyan-400 mb-0.5">14 Días</div>
-          <div class="text-xs font-bold text-white mb-1">Cobro más Rápido</div>
-          <p class="text-[10.5px] text-slate-400">Agilización en la entrega de carpetas técnicas y valuaciones de avance al cliente.</p>
+        <div class="feature-card p-5 rounded-2xl text-center">
+          <div class="text-3xl font-extrabold text-cyan-400 mb-1">14 Días</div>
+          <div class="text-sm font-bold text-white mb-1">Cobro más Rápido</div>
+          <p class="text-xs text-slate-400">Entrega rápida de valuaciones respaldadas al cliente.</p>
         </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <div class="text-2xl font-black text-purple-400 mb-0.5">0</div>
-          <div class="text-xs font-bold text-white mb-1">Servidores Físicos</div>
-          <p class="text-[10.5px] text-slate-400">Cero costos de servidores de oficina ni vulnerabilidad ante cortes eléctricos locales.</p>
-        </div>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 9 -->
-      <div class="terms-box max-w-5xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>ROI (Return on Investment):</b> <i>Retorno de Inversión</i>; porcentaje de beneficio económico que genera el sistema frente a su costo.</div>
-          <div>• <b>TCO (Total Cost of Ownership):</b> <i>Costo Total de Propiedad</i>; ahorro integral al no gastar en servidores físicos locales ni licencias obsoletas.</div>
+        <div class="feature-card p-5 rounded-2xl text-center">
+          <div class="text-3xl font-extrabold text-purple-400 mb-1">24/7</div>
+          <div class="text-sm font-bold text-white mb-1">Disponibilidad</div>
+          <p class="text-xs text-slate-400">Acceso desde cualquier celular o PC sin caídas.</p>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 10: CIERRE & DEMO EN VIVO -->
-    <section class="slide flex-col justify-center items-center text-center max-w-4xl mx-auto py-4" data-title="Cierre & Demostración">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3">
-        <span>✅ Plataforma Activa y Desplegada en la Nube</span>
+    <!-- SLIDE 10: DEMOSTRACIÓN EN VIVO -->
+    <section class="slide flex-col justify-center items-center text-center max-w-4xl mx-auto py-6" data-title="Demostración en Vivo">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
+        <span>✅ Plataforma Activa y Lista para Operar</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-2">DALOR SIGO-P está listo para operar</h2>
-      <p class="text-xs md:text-sm text-slate-400 max-w-lg mx-auto mb-6">
-        Pasemos a la demostración interactiva en vivo del sistema con perfiles de Director General, Ingeniero de Taller/Obra y Almacén.
+      <h2 class="text-3xl md:text-5xl font-extrabold text-white mb-3">DALOR SIGO-P en Acción</h2>
+      <p class="text-sm md:text-base text-slate-300 max-w-lg mx-auto mb-8">
+        Veamos una demostración práctica en vivo ingresando con los diferentes roles del sistema.
       </p>
 
-      <div class="flex flex-wrap items-center justify-center gap-3 mb-6">
-        <a href="/" target="_blank" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs transition shadow-lg flex items-center gap-2">
+      <div class="flex flex-wrap items-center justify-center gap-4">
+        <a href="/" target="_blank" class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm transition shadow-lg flex items-center gap-2.5">
           <i class="fa-solid fa-play"></i> Iniciar Demostración en Vivo
         </a>
-        <a href="/manual" target="_blank" class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs border border-slate-700 transition flex items-center gap-2">
-          <i class="fa-solid fa-book"></i> Ver Manuales & Glosario
+        <a href="/manual" target="_blank" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm border border-slate-700 transition flex items-center gap-2.5">
+          <i class="fa-solid fa-book-open"></i> Ver Manuales de Usuario
         </a>
-      </div>
-
-      <!-- GLOSARIO DE TÉRMINOS LÁMINA 10 -->
-      <div class="terms-box max-w-3xl w-full text-left">
-        <div class="flex items-center justify-between text-[11px] font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">
-          <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> SIGNIFICADO DE TÉRMINOS EN ESTA LÁMINA:</span>
-          <span class="text-[10px] text-slate-400 font-mono">Conceptos clave</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-300">
-          <div>• <b>PWA (Progressive Web App):</b> Aplicación web que se instala en smartphones para capturar fotos y reportes en taller y campo sin depender de internet continuo.</div>
-          <div>• <b>SLA (Service Level Agreement):</b> <i>Garantía de Servicio</i>; compromiso técnico de alta disponibilidad, seguridad y soporte continuo del sistema.</div>
-        </div>
       </div>
     </section>
 
   </main>
 
   <!-- Bottom Navigation & Controls Bar -->
-  <footer class="w-full border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-2.5 flex items-center justify-between z-50">
+  <footer class="w-full border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 py-3 flex items-center justify-between z-50">
     <div class="flex items-center gap-2">
-      <span class="text-[11px] text-slate-500 font-medium hidden sm:inline">Usa las teclas de flecha (◀ ▶) o los botones para navegar</span>
+      <span class="text-xs text-slate-400 font-medium hidden sm:inline">Navega con las flechas del teclado (◀ ▶) o los botones</span>
     </div>
 
     <!-- Mini Slide Bullets -->
-    <div class="flex items-center gap-1.5" id="bulletContainer">
+    <div class="flex items-center gap-2" id="bulletContainer">
       <!-- Bullets generated by JS -->
     </div>
 
-    <div class="text-[11px] text-slate-500 font-mono">
+    <div class="text-xs text-slate-500 font-mono">
       DALOR &copy; 2026
     </div>
   </footer>
@@ -475,7 +357,7 @@
     // Create navigation dots/bullets
     for (let i = 0; i < totalSlides; i++) {
       const dot = document.createElement('button');
-      dot.className = `w-2 h-2 rounded-full transition-all ${i === 0 ? 'bg-amber-400 w-5' : 'bg-slate-700 hover:bg-slate-500'}`;
+      dot.className = `w-2.5 h-2.5 rounded-full transition-all ${i === 0 ? 'bg-amber-400 w-6' : 'bg-slate-700 hover:bg-slate-500'}`;
       dot.title = `Ir a lámina ${i + 1}: ${slides[i].dataset.title || ''}`;
       dot.onclick = () => goToSlide(i);
       bulletContainer.appendChild(dot);
@@ -496,9 +378,9 @@
       const dots = bulletContainer.children;
       for (let i = 0; i < dots.length; i++) {
         if (i === currentSlide) {
-          dots[i].className = 'w-5 h-2 rounded-full bg-amber-400 transition-all';
+          dots[i].className = 'w-6 h-2.5 rounded-full bg-amber-400 transition-all';
         } else {
-          dots[i].className = 'w-2 h-2 rounded-full bg-slate-700 hover:bg-slate-500 transition-all';
+          dots[i].className = 'w-2.5 h-2.5 rounded-full bg-slate-700 hover:bg-slate-500 transition-all';
         }
       }
     }

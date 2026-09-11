@@ -101,6 +101,14 @@ def serve_manual():
         return FileResponse(man_path)
     return {"status": "Manual not found"}
 
+@app.get("/dossier")
+@app.get("/dossier.html")
+def serve_dossier():
+    dos_path = os.path.join(FRONTEND_DIR, "dossier.html")
+    if os.path.exists(dos_path):
+        return FileResponse(dos_path)
+    return {"status": "Dossier not found"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

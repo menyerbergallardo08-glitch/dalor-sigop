@@ -310,8 +310,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const handleOutsideClick = (e) => {
         if (Date.now() - lastDropdownToggleTime < 350) return;
-        if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu")) {
+        if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu") && !e.target.closest(".mobile-submenu-card")) {
             closeAllDropdowns();
+            closeMobileSubmenu();
         }
     };
 
@@ -443,7 +444,11 @@ function submitManualTasa(e) {
 }
 
 
-// Desplegables Tipo ERP (Profit Plus Style) con Soporte Móvil Táctil (iOS / Android / Desktop)
+// Desplegables Tipo ERP (Profit Plus Style) con Soporte Móvil Nativo Action-Sheet (iOS / iPhone / Android / Desktop)
+function isMobileViewport() {
+    return window.innerWidth <= 768 || ('ontouchstart' in window && window.innerWidth <= 1024);
+}
+
 function toggleDropdown(event, dropdownId) {
     if (event) {
         if (event.stopPropagation) event.stopPropagation();
@@ -451,19 +456,75 @@ function toggleDropdown(event, dropdownId) {
     lastDropdownToggleTime = Date.now();
     const targetDropdown = document.getElementById(dropdownId);
     if (!targetDropdown) return;
+
+    // Si estamos en Móvil / iPhone / iPad -> Abrir Action Sheet Nativo
+    if (isMobileViewport()) {
+        openMobileSubmenu(dropdownId);
+        return;
+    }
+
+    // Modo Desktop Estándar
     const isOpen = targetDropdown.classList.contains("open");
-
     closeAllDropdowns();
-
     if (!isOpen) {
         targetDropdown.classList.add("open");
     }
+}
+
+function openMobileSubmenu(dropdownId) {
+    const targetDropdown = document.getElementById(dropdownId);
+    if (!targetDropdown) return;
+
+    const btn = targetDropdown.querySelector(".dropdown-btn");
+    const menu = targetDropdown.querySelector(".dropdown-menu");
+    const sheet = document.getElementById("mobileSubmenuSheet");
+    const sheetTitle = document.getElementById("mobileSubmenuTitle");
+    const sheetItems = document.getElementById("mobileSubmenuItems");
+
+    if (!sheet || !sheetTitle || !sheetItems || !menu) return;
+
+    // Obtener icono y título del botón
+    const btnIcon = btn ? btn.querySelector("i") : null;
+    const btnText = btn ? btn.querySelector("span") : null;
+    const iconHtml = btnIcon ? btnIcon.outerHTML : '<i class="fa-solid fa-layer-group" style="color: var(--dalor-blue);"></i>';
+    const titleText = btnText ? btnText.innerText : 'Opciones del Módulo';
+
+    sheetTitle.innerHTML = `${iconHtml} <span>${titleText}</span>`;
+
+    // Clonar items del menu para el sheet
+    sheetItems.innerHTML = '';
+    const items = menu.querySelectorAll(".dropdown-item");
+    items.forEach(item => {
+        const clone = item.cloneNode(true);
+        // Manejador táctil seguro para iOS Safari
+        clone.onclick = (e) => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            closeMobileSubmenu();
+            if (item.onclick) {
+                item.onclick(e);
+            }
+        };
+        sheetItems.appendChild(clone);
+    });
+
+    sheet.classList.add("active");
+    document.body.style.overflow = "hidden";
+}
+
+function closeMobileSubmenu(event) {
+    if (event && event.target && event.target.closest(".mobile-submenu-card") && !event.target.classList.contains("mobile-submenu-close")) return;
+    const sheet = document.getElementById("mobileSubmenuSheet");
+    if (sheet) {
+        sheet.classList.remove("active");
+    }
+    document.body.style.overflow = "";
 }
 
 function closeAllDropdowns() {
     document.querySelectorAll(".nav-dropdown").forEach(drop => {
         drop.classList.remove("open");
     });
+    closeMobileSubmenu();
 }
 
 // Navegación Modular Principal

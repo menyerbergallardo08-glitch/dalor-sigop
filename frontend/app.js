@@ -3969,13 +3969,13 @@ function applyPermissionMap(user) {
     const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
     const isAlmacen = uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
 
-    // Dropdown Comercial (Solo Director e Ingeniero)
+    // Dropdown Comercial (SOLO Director General)
     const dCom = document.getElementById('dropdown-comercial');
     if (dCom) {
-        dCom.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
+        dCom.style.display = isDirector ? 'inline-block' : 'none';
     }
 
-    // Dropdown Proyectos (Solo Director e Ingeniero)
+    // Dropdown Proyectos (Director e Ingeniero)
     const dProj = document.getElementById('dropdown-proyectos');
     if (dProj) {
         dProj.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
@@ -3993,10 +3993,10 @@ function applyPermissionMap(user) {
         dRec.style.display = (isDirector || isIngeniero || isAlmacen) ? 'inline-block' : 'none';
     }
 
-    // Dropdown Gastos (Oculto para Almacén, filtrado para los demás)
+    // Dropdown Gastos (Oculto para Almacén e Ingeniero; Ingeniero opera en Proyectos/Recursos/Campo)
     const dGas = document.getElementById('dropdown-gastos');
     if (dGas) {
-        dGas.style.display = isAlmacen ? 'none' : 'inline-block';
+        dGas.style.display = (isAlmacen || isIngeniero) ? 'none' : 'inline-block';
     }
 
     const itmInbox = document.getElementById('item-gasto-inbox');
@@ -4005,9 +4005,9 @@ function applyPermissionMap(user) {
     const itmDashboard = document.getElementById('item-gasto-dashboard');
     const itmTree = document.getElementById('item-gasto-tree');
 
-    // 🛡️ Restricciones y Adaptaciones de Rol para Campo vs Administración vs Almacén
+    // 🛡️ Restricciones y Adaptaciones de Rol para Campo vs Administración vs Almacén vs Ingeniero
     const btnQF = document.getElementById('btnQuickFlow');
-    if (btnQF) btnQF.style.display = (isCampo || isAlmacen) ? 'none' : 'inline-flex';
+    if (btnQF) btnQF.style.display = (isCampo || isAlmacen || isIngeniero) ? 'none' : 'inline-flex';
 
     const fiscalBox = document.getElementById('field_fiscal_tax_box');
     if (fiscalBox) fiscalBox.style.display = isCampo ? 'none' : 'grid';
@@ -4031,6 +4031,15 @@ function applyPermissionMap(user) {
         tasaBox.style.display = (isDirector || isFinanzas) ? 'inline-flex' : 'none';
     }
 
+    // Ocultar sección de Bolsas de Costo (Paso 4) en formulario de proyectos para Ingeniero
+    const step4Budget = document.getElementById('new_proj_contract')?.closest('.grid-3')?.parentElement?.parentElement?.querySelector('h4:has(span)') || document.getElementById('new_proj_labor')?.closest('.grid-3')?.parentElement;
+    if (step4Budget) {
+        step4Budget.style.display = isIngeniero ? 'none' : 'block';
+    }
+    const contractInputContainer = document.getElementById('new_proj_contract')?.parentElement;
+    if (contractInputContainer) {
+        contractInputContainer.style.display = isIngeniero ? 'none' : 'block';
+    }
 
     if (isAlmacen) {
         // ROL ALMACÉN & PAÑOL: Solo Activos, Recursos, Materiales y Despachos
@@ -4044,14 +4053,21 @@ function applyPermissionMap(user) {
         if (itmTree) itmTree.style.display = 'none';
         switchView('pwa', 'gastos');
     } else if (isFinanzas) {
-        // ADMINISTRACIÓN: Inbox, Carga Oficina, Dashboard Oculto (Job Costing solo para dirección/ing), Árbol
+        // ADMINISTRACIÓN: Inbox, Carga Oficina, Dashboard Oculto (Job Costing solo para dirección), Árbol
         if (itmInbox) itmInbox.style.display = 'flex';
         if (itmPwa) itmPwa.style.display = 'none';
         if (itmManual) itmManual.style.display = 'flex';
         if (itmDashboard) itmDashboard.style.display = 'none';
         if (itmTree) itmTree.style.display = 'flex';
+    } else if (isIngeniero) {
+        // INGENIERO DE OBRA: Operativa técnica de Proyectos y Recursos (Sin costos ni finanzas)
+        if (itmInbox) itmInbox.style.display = 'none';
+        if (itmPwa) itmPwa.style.display = 'none';
+        if (itmManual) itmManual.style.display = 'none';
+        if (itmDashboard) itmDashboard.style.display = 'none';
+        if (itmTree) itmTree.style.display = 'none';
     } else {
-        // DIRECTOR / INGENIERO: Todos disponibles
+        // DIRECTOR GENERAL: Todo disponible
         if (itmInbox) itmInbox.style.display = 'flex';
         if (itmPwa) itmPwa.style.display = 'flex';
         if (itmManual) itmManual.style.display = 'flex';

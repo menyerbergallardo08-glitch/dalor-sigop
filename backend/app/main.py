@@ -93,6 +93,14 @@ def serve_presentation():
         return FileResponse(pres_path)
     return {"status": "Presentation not found"}
 
+@app.get("/manual")
+@app.get("/manual.html")
+def serve_manual():
+    man_path = os.path.join(FRONTEND_DIR, "manual.html")
+    if os.path.exists(man_path):
+        return FileResponse(man_path)
+    return {"status": "Manual not found"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -886,7 +886,118 @@
             touch-action: manipulation;
         }
 
-</style>
+
+        /* ==========================================================
+           MODAL / BOTTOM SHEET DE SUBMENÚS PARA IPHONE & MÓVILES
+           (Totalmente inmune al clipping de WebKit / iOS Safari)
+           ========================================================== */
+        .mobile-submenu-overlay {
+            display: none;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            z-index: 99999999 !important;
+            align-items: flex-end !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+        .mobile-submenu-overlay.active {
+            display: flex !important;
+        }
+        .mobile-submenu-card {
+            background: #ffffff !important;
+            width: 100% !important;
+            max-width: 540px !important;
+            max-height: 85vh !important;
+            border-radius: 20px 20px 0 0 !important;
+            padding: 16px 18px 32px !important;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            animation: slideUpMobileSheet 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            box-sizing: border-box !important;
+        }
+        @keyframes slideUpMobileSheet {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .mobile-submenu-header {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            border-bottom: 2px solid #e2e8f0 !important;
+            padding-bottom: 12px !important;
+            margin-bottom: 12px !important;
+        }
+        .mobile-submenu-title {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            color: var(--dalor-navy) !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        .mobile-submenu-close {
+            background: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            font-size: 20px !important;
+            line-height: 1 !important;
+            font-weight: 900 !important;
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 50% !important;
+            color: #475569 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+        }
+        .mobile-submenu-body {
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            padding-bottom: 8px !important;
+        }
+        .mobile-submenu-body .dropdown-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 14px 16px !important;
+            font-size: 13.5px !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            cursor: pointer !important;
+            text-decoration: none !important;
+            touch-action: manipulation !important;
+            -webkit-tap-highlight-color: rgba(0, 114, 184, 0.15) !important;
+        }
+        .mobile-submenu-body .dropdown-item:active {
+            background: #e0f2fe !important;
+            border-color: var(--dalor-blue) !important;
+            transform: scale(0.985) !important;
+        }
+        .mobile-submenu-body .dropdown-item i {
+            font-size: 17px !important;
+            width: 22px !important;
+            text-align: center !important;
+            flex-shrink: 0 !important;
+        }
+
+    </style>
 </head>
 <body>
 
@@ -4246,7 +4357,7 @@
     </div><!-- /app-authenticated-shell -->
 
     <!-- App Logic -->
-    <script src="app.js?v=2026.09.09.v29"></script>
+    <script src="app.js?v=2026.09.11.v34"></script>
     <!-- MODAL: NOTA DE ENTREGA & DESPACHO DE MATERIALES (PARA JEFE DE ALMACÉN / OBRA) -->
     <div id="modalMaterialDelivery" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 700px;">
@@ -4442,6 +4553,23 @@
         </div>
     </div>
 
+    
+    <!-- 📱 ACTION SHEET MODAL PARA SUBMENÚS EN IPHONE & MÓVILES (INMUNE A RESTRICCIONES WEBKIT) -->
+    <div id="mobileSubmenuSheet" class="mobile-submenu-overlay" onclick="closeMobileSubmenu(event)">
+        <div class="mobile-submenu-card" onclick="event.stopPropagation()">
+            <div class="mobile-submenu-header">
+                <div id="mobileSubmenuTitle" class="mobile-submenu-title">
+                    <i class="fa-solid fa-layer-group" style="color: var(--dalor-blue);"></i>
+                    <span>Opciones del Módulo</span>
+                </div>
+                <button type="button" class="mobile-submenu-close" onclick="closeMobileSubmenu(event)">&times;</button>
+            </div>
+            <div id="mobileSubmenuItems" class="mobile-submenu-body">
+                <!-- Se clonan dinámicamente los items del submenú -->
+            </div>
+        </div>
+    </div>
+
     <!-- 🔔 CONTENEDOR FLOTANTE DE NOTIFICACIONES TOAST EN VIVO -->
     <div id="toastNotificationContainer" style="position: fixed; top: 75px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 390px; width: 92%;"></div>
 
@@ -4467,6 +4595,6 @@
     </style>
 
     <!-- 🚀 LÓGICA CORE SPA JAVASCRIPT -->
-    <script src="/app.js?v=2026.09.11.v33"></script>
+    <script src="/app.js?v=2026.09.11.v34"></script>
 </body>
 </html>

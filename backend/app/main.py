@@ -85,6 +85,14 @@ def serve_simulator():
         return FileResponse(sim_path)
     return {"status": "Simulator not found"}
 
+@app.get("/presentacion")
+@app.get("/presentacion.html")
+def serve_presentation():
+    pres_path = os.path.join(FRONTEND_DIR, "presentacion.html")
+    if os.path.exists(pres_path):
+        return FileResponse(pres_path)
+    return {"status": "Presentation not found"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

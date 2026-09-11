@@ -3,565 +3,1343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DALOR SIGO-P | Manual Maestro de Procedimientos y Guía por Rol</title>
+    <title>Manuales Operativos y Glosario Corporativo - DALOR SIGO-P</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script>mermaid.initialize({ startOnLoad: true, theme: 'neutral' });</script>
     <style>
         :root {
-            --dalor-navy: #002B49;
-            --dalor-blue: #005691;
-            --dalor-gold: #F5B800;
-            --dalor-dark: #0f172a;
-            --dalor-light: #f8fafc;
-            --dalor-border: #e2e8f0;
+            --bg-dark: #090d16;
+            --bg-card: rgba(15, 23, 42, 0.95);
+            --bg-card-alt: #131d31;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(59, 130, 246, 0.3);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #06b6d4;
         }
 
-        * { box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: #f1f5f9;
-            color: #1e293b;
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            line-height: 1.55;
-            font-size: 13px;
         }
 
-        /* BARRA SUPERIOR FIJA NO IMPRIMIBLE */
-        .top-toolbar {
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Top Header */
+        header {
+            background: rgba(9, 13, 22, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
-            background: var(--dalor-navy);
-            color: white;
-            padding: 12px 24px;
+            z-index: 100;
+            padding: 16px 32px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 1000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        .filter-btn {
-            background: rgba(255,255,255,0.12);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.25);
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 700;
-            transition: all 0.2s;
-        }
-        .filter-btn:hover, .filter-btn.active {
-            background: var(--dalor-gold);
-            color: var(--dalor-navy);
-            border-color: var(--dalor-gold);
-        }
-
-        .print-btn {
-            background: #10b981;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-weight: 800;
-            font-size: 12px;
-            cursor: pointer;
+        .brand {
             display: flex;
             align-items: center;
-            gap: 6px;
-            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+            gap: 14px;
         }
 
-        /* CONTENEDOR DEL DOCUMENTO */
-        .doc-container {
-            max-width: 960px;
-            margin: 24px auto;
-            background: white;
-            padding: 40px 48px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-            border: 1px solid var(--dalor-border);
-        }
-
-        /* ENCABEZADOS Y SECCIONES */
-        h1, h2, h3, h4 { color: var(--dalor-navy); margin-top: 0; }
-        h1 { font-size: 24px; font-weight: 900; }
-        h2 { font-size: 18px; font-weight: 800; border-bottom: 2px solid var(--dalor-blue); padding-bottom: 6px; margin-top: 24px; }
-        h3 { font-size: 15px; font-weight: 700; margin-top: 18px; }
-
-        .role-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 9999px;
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: 800;
-            font-size: 11px;
-            letter-spacing: 0.5px;
+            font-size: 20px;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .brand-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-sub {
+            font-size: 0.8rem;
+            color: var(--accent-blue);
+            font-weight: 600;
             text-transform: uppercase;
-        }
-        .badge-director { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-        .badge-ingeniero { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
-        .badge-finanzas { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
-        .badge-almacen { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
-        .badge-campo { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
-
-        /* TARJETAS DE PROCEDIMIENTO */
-        .sop-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-left: 4px solid var(--dalor-blue);
-            border-radius: 8px;
-            padding: 16px;
-            margin: 14px 0;
-            page-break-inside: avoid;
-            break-inside: avoid;
+            letter-spacing: 1px;
         }
 
-        .sop-step {
+        .header-actions {
             display: flex;
             gap: 12px;
-            margin-bottom: 12px;
-            align-items: flex-start;
         }
-        .step-num {
-            background: var(--dalor-navy);
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: white;
+            border: none;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+            transform: translateY(-1px);
+        }
+
+        /* Navigation Tabs */
+        .role-nav-container {
+            background: #0f172a;
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 32px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            position: sticky;
+            top: 75px;
+            z-index: 90;
+        }
+
+        .role-nav-btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .role-nav-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .role-nav-btn.active {
+            color: #fff;
+            background: rgba(59, 130, 246, 0.15);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+
+        .role-nav-btn .badge-pill {
+            font-size: 0.7rem;
+            padding: 2px 7px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 36px 24px 80px 24px;
+        }
+
+        .manual-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .manual-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Role Hero Banner */
+        .role-banner {
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .role-banner.director { background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(15, 23, 42, 0.95)); border-color: rgba(139, 92, 246, 0.3); }
+        .role-banner.ingeniero { background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(15, 23, 42, 0.95)); border-color: rgba(6, 182, 212, 0.3); }
+        .role-banner.administracion { background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(15, 23, 42, 0.95)); border-color: rgba(16, 185, 129, 0.3); }
+        .role-banner.almacen { background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(15, 23, 42, 0.95)); border-color: rgba(245, 158, 11, 0.3); }
+        .role-banner.campo { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(15, 23, 42, 0.95)); border-color: rgba(59, 130, 246, 0.3); }
+        .role-banner.glosario { background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(15, 23, 42, 0.95)); border-color: rgba(244, 63, 94, 0.3); }
+
+        .banner-info h1 {
+            font-size: 2rem;
             font-weight: 800;
-            font-size: 11px;
-            width: 22px;
-            height: 22px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .banner-info p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            max-width: 750px;
+        }
+
+        .banner-meta {
+            text-align: right;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .banner-meta .role-cred {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: #38bdf8;
+            margin-top: 4px;
+        }
+
+        /* Grid Layout */
+        .manual-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .col-12 { grid-column: span 12; }
+        .col-8 { grid-column: span 8; }
+        .col-6 { grid-column: span 6; }
+        .col-4 { grid-column: span 4; }
+
+        @media (max-width: 900px) {
+            .col-8, .col-6, .col-4 { grid-column: span 12; }
+            .role-banner { flex-direction: column; align-items: flex-start; gap: 20px; }
+            .banner-meta { text-align: left; width: 100%; }
+        }
+
+        /* Cards */
+        .doc-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .doc-card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Dos & Don'ts */
+        .matrix-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .matrix-container { grid-template-columns: 1fr; }
+        }
+
+        .box-do {
+            background: rgba(16, 185, 129, 0.06);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .box-dont {
+            background: rgba(244, 63, 94, 0.06);
+            border: 1px solid rgba(244, 63, 94, 0.25);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .box-title-do {
+            color: #34d399;
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .box-title-dont {
+            color: #fb7185;
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .check-list, .cross-list {
+            list-style: none;
+        }
+
+        .check-list li, .cross-list li {
+            position: relative;
+            padding-left: 28px;
+            margin-bottom: 12px;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+        }
+
+        .check-list li::before {
+            content: "\f058";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            top: 2px;
+            color: var(--accent-emerald);
+        }
+
+        .cross-list li::before {
+            content: "\f057";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            top: 2px;
+            color: var(--accent-rose);
+        }
+
+        /* Step by Step SOP */
+        .sop-step {
+            display: flex;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .sop-step:last-child {
+            border-bottom: none;
+        }
+
+        .sop-number {
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid var(--accent-blue);
+            color: #60a5fa;
+            font-weight: 800;
+            font-size: 0.95rem;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            margin-top: 2px;
         }
-        .step-text { font-size: 12.5px; color: #334155; }
-        .step-text b { color: #0f172a; }
 
+        .sop-content h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 4px;
+        }
+
+        .sop-content p {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .sop-pill {
+            display: inline-block;
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: #93c5fd;
+        }
+
+        /* Flow Diagram Box */
         .diagram-box {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 16px;
+            background: #0b1120;
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
             margin: 16px 0;
-            text-align: center;
-            page-break-inside: avoid;
-            break-inside: avoid;
         }
 
-        .alert-box {
+        .flow-flex {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .flow-node {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 12px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            margin: 12px 0;
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-        .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
-        .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
-        .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
-
-        .role-section {
-            page-break-after: always;
-            break-after: page;
-            margin-bottom: 30px;
+            border-radius: 10px;
+            text-align: center;
+            flex: 1;
+            min-width: 140px;
         }
 
-        /* REGLAS ESTRICTAS DE IMPRESION PDF (ANTI-CORTE DE HOJAS) */
+        .flow-node.primary { border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.1); }
+        .flow-node.success { border-color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); }
+        .flow-node.amber { border-color: var(--accent-amber); background: rgba(245, 158, 11, 0.1); }
+        .flow-node.purple { border-color: var(--accent-purple); background: rgba(139, 92, 246, 0.1); }
+
+        /* Glossary Table & Search */
+        .glossary-search {
+            width: 100%;
+            padding: 14px 20px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 24px;
+        }
+
+        .glossary-search:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .glossary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 16px;
+        }
+
+        .glossary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px;
+            transition: all 0.2s ease;
+        }
+
+        .glossary-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .glossary-term {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .glossary-term h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #38bdf8;
+        }
+
+        .glossary-tag {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .glossary-def {
+            font-size: 0.88rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .glossary-eng {
+            font-size: 0.78rem;
+            color: var(--accent-amber);
+            margin-top: 8px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Print Styles - Perfect PDF without cutoff */
         @media print {
-            .no-print { display: none !important; }
-            body { background: white; font-size: 11px; }
-            .doc-container {
-                max-width: 100%;
-                margin: 0;
-                padding: 0;
-                border: none;
-                box-shadow: none;
+            body {
+                background: #fff !important;
+                color: #000 !important;
+                padding: 0 !important;
             }
-            .role-section {
-                page-break-after: always !important;
-                break-after: page !important;
+            header, .role-nav-container, .btn-action, .glossary-search {
+                display: none !important;
             }
-            .sop-card, .diagram-box, .alert-box, table, tr {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
+            .main-container {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .manual-section {
+                display: block !important;
+                page-break-before: always;
+            }
+            .manual-section:first-of-type {
+                page-break-before: avoid;
+            }
+            .role-banner {
+                background: #f1f5f9 !important;
+                border: 2px solid #000 !important;
+                color: #000 !important;
+                padding: 16px !important;
+                margin-bottom: 20px !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .role-banner * {
+                color: #000 !important;
+            }
+            .doc-card, .box-do, .box-dont, .sop-step, .diagram-box, .glossary-card {
+                background: #fff !important;
+                border: 1px solid #ccc !important;
+                color: #000 !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+                margin-bottom: 12px !important;
+            }
+            .doc-card * {
+                color: #000 !important;
+            }
+            .box-title-do, .box-title-dont, .sop-content h4, .glossary-term h3 {
+                color: #000 !important;
+                font-weight: bold !important;
+            }
+            .check-list li, .cross-list li, .sop-content p, .glossary-def {
+                color: #333 !important;
             }
             @page {
                 size: A4 portrait;
-                margin: 12mm 10mm 12mm 10mm;
+                margin: 12mm 10mm;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- BARRA SUPERIOR DE CONTROL -->
-    <div class="top-toolbar no-print">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <i class="fa-solid fa-book-open" style="color: var(--dalor-gold); font-size: 20px;"></i>
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">D</div>
             <div>
-                <b style="font-size: 14px; display: block; line-height: 1.2;">DALOR SIGO-P | Manual Maestro de Procedimientos</b>
-                <span style="font-size: 11px; color: #94a3b8;">Guía Operativa Detallada por Perfil de Usuario (Imprimible en PDF)</span>
+                <div class="brand-title">DALOR SIGO-P &bull; Manuales Operativos</div>
+                <div class="brand-sub">Sistema Integrado de Gestión de Obras y Proyectos</div>
             </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <button class="filter-btn active" onclick="filterRole('all')">Todos los Roles</button>
-            <button class="filter-btn" onclick="filterRole('director')">Director</button>
-            <button class="filter-btn" onclick="filterRole('ingeniero')">Ingeniero</button>
-            <button class="filter-btn" onclick="filterRole('administracion')">Administración</button>
-            <button class="filter-btn" onclick="filterRole('almacen')">Almacén</button>
-            <button class="filter-btn" onclick="filterRole('campo')">Campo</button>
-            <button class="print-btn" onclick="window.print()">
-                <i class="fa-solid fa-file-pdf"></i> Imprimir / Guardar PDF
+        <div class="header-actions">
+            <a href="/presentacion" class="btn-action btn-outline">
+                <i class="fa-solid fa-tv"></i> Presentación
+            </a>
+            <a href="/" class="btn-action btn-outline">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> Acceder a la App
+            </a>
+            <button onclick="window.print()" class="btn-action btn-primary">
+                <i class="fa-solid fa-file-pdf"></i> Exportar a PDF (A4)
             </button>
         </div>
+    </header>
+
+    <!-- Role Nav Tabs -->
+    <div class="role-nav-container">
+        <button class="role-nav-btn active" onclick="showTab(event, 'tab-director')">
+            <i class="fa-solid fa-crown" style="color:#c084fc;"></i> Director General
+            <span class="badge-pill">Gerencia</span>
+        </button>
+        <button class="role-nav-btn" onclick="showTab(event, 'tab-ingeniero')">
+            <i class="fa-solid fa-compass-drafting" style="color:#38bdf8;"></i> Ingeniero Residente
+            <span class="badge-pill">Obra / EDT</span>
+        </button>
+        <button class="role-nav-btn" onclick="showTab(event, 'tab-admin')">
+            <i class="fa-solid fa-calculator" style="color:#34d399;"></i> Administración & Finanzas
+            <span class="badge-pill">Costos / Flujo</span>
+        </button>
+        <button class="role-nav-btn" onclick="showTab(event, 'tab-almacen')">
+            <i class="fa-solid fa-boxes-stacked" style="color:#fbbf24;"></i> Almacén & Logística
+            <span class="badge-pill">Activos / Stock</span>
+        </button>
+        <button class="role-nav-btn" onclick="showTab(event, 'tab-campo')">
+            <i class="fa-solid fa-mobile-screen-button" style="color:#60a5fa;"></i> Supervisor de Campo
+            <span class="badge-pill">PWA / Avance</span>
+        </button>
+        <button class="role-nav-btn" onclick="showTab(event, 'tab-glosario')">
+            <i class="fa-solid fa-book-atlas" style="color:#f43f5e;"></i> Glosario Bilingüe
+            <span class="badge-pill">30+ Términos</span>
+        </button>
     </div>
 
-    <div class="doc-container">
+    <!-- Main Container -->
+    <div class="main-container">
 
-        <!-- PORTADA Y RESUMEN EJECUTIVO -->
-        <div class="role-section" id="sec-intro">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--dalor-navy); padding-bottom: 16px; margin-bottom: 20px;">
-                <div>
-                    <h1 style="margin: 0; color: var(--dalor-navy);">DALOR, C.A.</h1>
-                    <p style="margin: 2px 0 0 0; font-size: 14px; font-weight: 700; color: var(--dalor-blue);">Sistema Integral de Gestión Operativa, Finanzas & Costeo (SIGO-P)</p>
-                    <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">Manual Maestro de Operaciones, Roles y Estándar de Procedimientos (SOP)</p>
+        <!-- ========================================================================= -->
+        <!-- TAB 1: DIRECTOR GENERAL -->
+        <!-- ========================================================================= -->
+        <div id="tab-director" class="manual-section active">
+            <div class="role-banner director">
+                <div class="banner-info">
+                    <h1><i class="fa-solid fa-crown" style="color:#c084fc;"></i> Manual de Operaciones &bull; Director General</h1>
+                    <p>Máxima autoridad de auditoría, toma de decisiones estratégicas, supervisión de rentabilidad (P&L), aprobación de órdenes de compra mayores y análisis de desviaciones de obra en tiempo real.</p>
                 </div>
-                <div style="text-align: right;">
-                    <span style="background: var(--dalor-navy); color: white; padding: 4px 10px; border-radius: 4px; font-weight: 800; font-size: 11px;">VERSIÓN 2026.1</span>
-                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Vigencia: Año Fiscal 2026</p>
-                </div>
-            </div>
-
-            <div class="alert-box alert-info">
-                <b>Propósito del Documento:</b> Este manual establece los procedimientos obligatorios de operación para cada uno de los 5 perfiles de DALOR SIGO-P, garantizando la trazabilidad de costos, el control de inventario, la rendición de cuentas y la sincronización con la cotización oficial del BCV.
-            </div>
-
-            <h2>Arquitectura General de Flujo de Información</h2>
-            <div class="diagram-box">
-                <div class="mermaid">
-                graph LR
-                    subgraph CAMPO["Faena / Obra"]
-                        C1["Supervisor"] -->|Foto Ticket / Odómetro| OCR["Motor OCR + IA"]
-                    end
-                    subgraph ALMACEN["Logística & Taller"]
-                        A1["Almacenista"] -->|Despacho Materiales| GD["Nota de Despacho"]
-                        A1 -->|Servicio 5.000 Km| FL["Flota & Semáforos"]
-                    end
-                    subgraph INGENIERIA["Oficina Técnica"]
-                        I1["Ingeniero"] -->|APU / Metrados| PR["Presupuesto LuloWin"]
-                    end
-                    subgraph ADMINISTRACION["Caja & Tesorería"]
-                        AD["Administración"] -->|CxC / CxP| FIN["P&L y Flujo de Caja"]
-                    end
-                    subgraph DIRECCION["Directiva"]
-                        DIR["Director"] -->|Tasa BCV Automática| BI["Dashboard Ejecutivo"]
-                    end
-                    OCR --> FIN
-                    GD --> FIN
-                    PR --> FIN
-                    FIN --> BI
+                <div class="banner-meta">
+                    <div><strong>Usuario Demo:</strong></div>
+                    <div class="role-cred">admin &bull; admin123</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Acceso Irrestricto / Master</div>
                 </div>
             </div>
 
-            <h3>Credenciales Oficiales de Acceso</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;">
-                <thead>
-                    <tr style="background: #0f172a; color: white;">
-                        <th style="padding: 8px; text-align: left;">Rol / Perfil</th>
-                        <th style="padding: 8px; text-align: left;">Usuario</th>
-                        <th style="padding: 8px; text-align: left;">Contraseña</th>
-                        <th style="padding: 8px; text-align: left;">Módulos Principales Permitidos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 8px;"><span class="role-badge badge-director">Director General</span></td>
-                        <td style="padding: 8px; font-family: monospace; font-weight: 700;">director</td>
-                        <td style="padding: 8px; font-family: monospace;">dalor2026</td>
-                        <td style="padding: 8px;">P&L Obra por Obra, Retiros de Socios, Tasa BCV, Mantenimiento</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-                        <td style="padding: 8px;"><span class="role-badge badge-ingeniero">Ingeniero de Obra</span></td>
-                        <td style="padding: 8px; font-family: monospace; font-weight: 700;">ingeniero</td>
-                        <td style="padding: 8px; font-family: monospace;">obra2026</td>
-                        <td style="padding: 8px;">APU Presupuestos (LuloWin), Metrados, Proyectos, Costos</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 8px;"><span class="role-badge badge-finanzas">Administración</span></td>
-                        <td style="padding: 8px; font-family: monospace; font-weight: 700;">administracion</td>
-                        <td style="padding: 8px; font-family: monospace;">admin2026</td>
-                        <td style="padding: 8px;">CxC Cobros Clientes, CxP Proveedores, Facturación, Tasa BCV</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-                        <td style="padding: 8px;"><span class="role-badge badge-almacen">Jefe de Almacén</span></td>
-                        <td style="padding: 8px; font-family: monospace; font-weight: 700;">almacen</td>
-                        <td style="padding: 8px; font-family: monospace;">almacen2026</td>
-                        <td style="padding: 8px;">Inventario Kardex, Despachos, Flota Semáforos, Guías de Traslado</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 8px;"><span class="role-badge badge-campo">Supervisor de Campo</span></td>
-                        <td style="padding: 8px; font-family: monospace; font-weight: 700;">campo</td>
-                        <td style="padding: 8px; font-family: monospace;">campo2026</td>
-                        <td style="padding: 8px;">Rendición Rápida 3-Toques OCR, Foto Odómetro Tablero</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- ================================================================== -->
-        <!-- ROL 1: DIRECTOR GENERAL / SOCIO -->
-        <!-- ================================================================== -->
-        <div class="role-section" id="sec-director">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 16px;">
-                <h2 style="margin: 0; color: #991b1b;"><i class="fa-solid fa-crown"></i> MANUAL DE USUARIO: DIRECTOR GENERAL</h2>
-                <span class="role-badge badge-director">Acceso Total & Estratégico</span>
-            </div>
-
-            <p><b>Objetivo del Rol:</b> Monitorear en tiempo real la salud financiera de la empresa, supervisar el margen de utilidad neta de cada contrato activo, autorizar retiros de socios sin descapitalizar la caja y fiscalizar la tasa oficial BCV.</p>
-
-            <div class="diagram-box">
-                <div class="mermaid">
-                graph TD
-                    D1["Ingreso a DALOR SIGO-P"] --> D2["Revisión de Tasa BCV Oficial (Automática)"]
-                    D2 --> D3["Auditoría P&L por Obra (Margen Real vs Contractual)"]
-                    D3 --> D4["Revisión de Flujo de Caja Disponible"]
-                    D4 --> D5{"¿Se autoriza Retiro de Socio?"}
-                    D5 -- "SÍ" --> D6["Registrar Retiro en Módulo Socios"]
-                    D5 -- "NO" --> D7["Reinversión / Cobertura de Gastos Fijos"]
+            <!-- Matriz de Responsabilidades y Blindaje -->
+            <div class="matrix-container" style="margin-bottom:24px;">
+                <div class="box-do">
+                    <div class="box-title-do"><i class="fa-solid fa-circle-check"></i> QUÉ DEBE HACER (Responsabilidades Clave)</div>
+                    <ul class="check-list">
+                        <li><strong>Monitorear el Semáforo de Rentabilidad (P&L):</strong> Revisar diariamente el margen bruto consolidado y detectar sobrecostos antes de que afecten el flujo de caja.</li>
+                        <li><strong>Aprobar Valuaciones y Cotizaciones Comerciales:</strong> Dar el visto bueno a los presupuestos APU emitidos a clientes y validar los hitos de cobro (CxC).</li>
+                        <li><strong>Auditar la Ejecución Presupuestaria vs. Real:</strong> Comparar el presupuesto base (EDT) contra el Job Costing real imputado por facturas y nómina.</li>
+                        <li><strong>Supervisar la Custodia de Maquinaria y Equipos:</strong> Validar el inventario de activos críticos y autorizar traslados inter-obra.</li>
+                        <li><strong>Gestionar Usuarios y Roles:</strong> Crear, desactivar o modificar perfiles de acceso según las políticas de seguridad de la empresa.</li>
+                    </ul>
+                </div>
+                <div class="box-dont">
+                    <div class="box-title-dont"><i class="fa-solid fa-triangle-exclamation"></i> QUÉ NO DEBE HACER (Reglas de Control & Blindaje)</div>
+                    <ul class="cross-list">
+                        <li><strong>NO saltarse la validación documental:</strong> No aprobar compras sin comprobante fiscal o soporte OCR cargado por Administración.</li>
+                        <li><strong>NO alterar partidas de obra cerradas:</strong> No modificar cómputos métricos de fases liquidadas sin una orden de cambio contractual documentada.</li>
+                        <li><strong>NO compartir credenciales Master:</strong> La cuenta de Dirección posee privilegios irreversibles (eliminación y auditoría forense).</li>
+                    </ul>
                 </div>
             </div>
 
-            <div class="sop-card">
-                <h4>SOP-DIR-01: Auditoría de Estado de Resultados (P&L) por Proyecto</h4>
-                <div class="sop-step">
-                    <div class="step-num">1</div>
-                    <div class="step-text">Haga clic en el menú superior <b>Finanzas & P&L &rarr; Resumen Financiero Ejecutivo</b>.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">2</div>
-                    <div class="step-text">Observe las tarjetas superiores: <b>Monto Contratado Total</b>, <b>Cuentas por Cobrar Vivas</b>, <b>Cuentas por Pagar Proveedores</b> y <b>Saldo Líquido en Caja</b>.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">3</div>
-                    <div class="step-text">Revise la tabla inferior <b>Estado de Resultados por Proyecto</b>. Verifique la columna <i>Margen Neto %</i> y el indicador <i>CPI (Eficiencia de Costo)</i>. Si el CPI es menor a 1.0, el proyecto tiene sobrecostos.</div>
-                </div>
-            </div>
+            <!-- Procedimientos Paso a Paso (SOP) -->
+            <div class="manual-grid">
+                <div class="col-8">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-list-check" style="color:var(--accent-purple);"></i> Procedimiento Operativo Estándar (SOP) - Día a Día</div>
+                        
+                        <div class="sop-step">
+                            <div class="sop-number">1</div>
+                            <div class="sop-content">
+                                <h4>Revisión del Panel Ejecutivo (Cockpit)</h4>
+                                <p>Al ingresar, visualice las tarjetas de KPI: Total Facturado, Cobrado, Por Cobrar (CxC), Gastos Totales y Margen Neto. El sistema alerta en rojo si algún proyecto tiene un CPI &lt; 1.0 (Índice de Desempeño de Costo).</p>
+                                <span class="sop-pill">Módulo: Dashboard / Inicio</span>
+                            </div>
+                        </div>
 
-            <div class="sop-card">
-                <h4>SOP-DIR-02: Registro y Blindaje de Retiros de Socios</h4>
-                <div class="sop-step">
-                    <div class="step-num">1</div>
-                    <div class="step-text">En el menú <b>Finanzas</b>, seleccione <b>Retiros de Socios</b>.</div>
+                        <div class="sop-step">
+                            <div class="sop-number">2</div>
+                            <div class="sop-content">
+                                <h4>Auditoría de Desviaciones por Partida (Job Costing)</h4>
+                                <p>Haga clic en un proyecto activo. En la pestaña <em>Control Financiero</em>, compare el costo presupuestado vs. real por partida (Materiales, Mano de Obra, Equipos y Subcontratos).</p>
+                                <span class="sop-pill">Módulo: Proyectos &bull; Control Financiero</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">3</div>
+                            <div class="sop-content">
+                                <h4>Aprobación de Compras y Pagos Críticos</h4>
+                                <p>En el módulo <em>Gastos & Compras</em>, filtre por <em>Pendientes de Aprobación</em>. Verifique la imagen de la factura procesada por OCR y apruebe el desembolso.</p>
+                                <span class="sop-pill">Módulo: Gastos & Finanzas &bull; Aprobaciones</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">4</div>
+                            <div class="sop-content">
+                                <h4>Emisión de Reportes Ejecutivos para Socios / Clientes</h4>
+                                <p>Utilice el botón <em>Generar Reporte PDF</em> para consolidar la curva S de avance físico, el estado financiero y las fotografías de campo en un único dossier listo para imprimir.</p>
+                                <span class="sop-pill">Módulo: Reportes &bull; Exportación</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="sop-step">
-                    <div class="step-num">2</div>
-                    <div class="step-text">Haga clic en <b>Registrar Retiro de Socio</b>. Ingrese: Nombre del Socio, Concepto, Monto en USD y Referencia Bancaria.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">3</div>
-                    <div class="step-text">El sistema descuenta automáticamente el monto del flujo de caja operativo sin alterar el costo contable de las obras.</div>
+
+                <div class="col-4">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-sitemap" style="color:var(--accent-purple);"></i> Flujo de Decisión</div>
+                        <div class="diagram-box">
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                                <div class="flow-node purple"><strong>1. Alerta de Desviación</strong><br><small>CPI &lt; 0.90 o Alerta Roja</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node"><strong>2. Revisión de Partida</strong><br><small>Materiales vs Nómina</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node success"><strong>3. Ajuste o Aprobación</strong><br><small>Decisión Gerencial</small></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ================================================================== -->
-        <!-- ROL 2: INGENIERO RESIDENTE / INGENIERO DE OBRA -->
-        <!-- ================================================================== -->
-        <div class="role-section" id="sec-ingeniero">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 16px;">
-                <h2 style="margin: 0; color: #1d4ed8;"><i class="fa-solid fa-helmet-safety"></i> MANUAL DE USUARIO: INGENIERO DE OBRA</h2>
-                <span class="role-badge badge-ingeniero">Presupuestos, APU & Proyectos</span>
-            </div>
-
-            <p><b>Objetivo del Rol:</b> Estructurar presupuestos y cotizaciones mediante Análisis de Precios Unitarios (APU estilo LuloWin), cargar metrados de obra, asignar equipos y supervisar los costos imputados a sus proyectos.</p>
-
-            <div class="diagram-box">
-                <div class="mermaid">
-                graph TD
-                    I1["Crear Nueva Cotización"] --> I2["Seleccionar Cliente & Proyecto"]
-                    I2 --> I3["Añadir Partidas APU (Materiales + Equipos + Mano de Obra)"]
-                    I3 --> I4["Aplicar Rendimiento, FAI (16%) y Utilidad (15%)"]
-                    I4 --> I5["Generar Presupuesto Formal para Cliente"]
-                    I5 --> I6["Imputar Gastos de Campo a la Partida Correspondiente"]
+        <!-- ========================================================================= -->
+        <!-- TAB 2: INGENIERO RESIDENTE / JEFE DE OBRA -->
+        <!-- ========================================================================= -->
+        <div id="tab-ingeniero" class="manual-section">
+            <div class="role-banner ingeniero">
+                <div class="banner-info">
+                    <h1><i class="fa-solid fa-compass-drafting" style="color:#38bdf8;"></i> Manual de Operaciones &bull; Ingeniero Residente / Jefe de Obra</h1>
+                    <p>Responsable del control técnico de obra, estructuración de partidas (EDT/WBS), reporte diario de avances físicos, control de rendimientos y solicitud de materiales. Vista técnica sin costos financieros confidenciales.</p>
+                </div>
+                <div class="banner-meta">
+                    <div><strong>Usuario Demo:</strong></div>
+                    <div class="role-cred">ingeniero &bull; obra2026</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Perfil Técnico / Sin Costos</div>
                 </div>
             </div>
 
-            <div class="sop-card">
-                <h4>SOP-ING-01: Creación de Presupuesto con APU (Estilo LuloWin)</h4>
-                <div class="sop-step">
-                    <div class="step-num">1</div>
-                    <div class="step-text">Diríjase a <b>Comercial &rarr; Presupuestos & Cotizaciones</b> y presione <b>+ Nueva Cotización</b>.</div>
+            <!-- Matriz de Responsabilidades y Blindaje -->
+            <div class="matrix-container" style="margin-bottom:24px;">
+                <div class="box-do">
+                    <div class="box-title-do"><i class="fa-solid fa-circle-check"></i> QUÉ DEBE HACER (Responsabilidades Clave)</div>
+                    <ul class="check-list">
+                        <li><strong>Registrar el Avance Físico Diario:</strong> Actualizar las cantidades ejecutadas por partida (m², m³, kg, ml) en la EDT del proyecto.</li>
+                        <li><strong>Cargar la Memoria Fotográfica y Bitácora:</strong> Subir evidencias visuales de cada hito técnico completado para respaldar las valuaciones.</li>
+                        <li><strong>Generar Solicitudes de Materiales y Equipos:</strong> Enviar requisiciones a almacén basadas en el cómputo métrico de las próximas actividades.</li>
+                        <li><strong>Controlar la Asistencia de Cuadrillas:</strong> Validar el personal técnico y obrero asignado a las tareas del día.</li>
+                        <li><strong>Reportar Incidencias y Clima:</strong> Documentar lluvias, retrasos por terceros o fallas mecánicas en el Libro de Obra Digital.</li>
+                    </ul>
                 </div>
-                <div class="sop-step">
-                    <div class="step-num">2</div>
-                    <div class="step-text">Seleccione el cliente corporativo (ej: <i>Cervecería Polar / Mondelez</i>) y la obra destino.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">3</div>
-                    <div class="step-text">Añada las partidas del catálogo preconfigurado o cree una partida personalizada desglosando insumos, personal y rendimiento diario.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">4</div>
-                    <div class="step-text">El sistema calcula el Costo Directo, Costo Indirecto (FAI 16%) y Utilidad Neta (15%), generando el precio unitario y total en USD y Bs. oficiales.</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================================================================== -->
-        <!-- ROL 3: ADMINISTRACIÓN / FINANZAS & CONTABILIDAD -->
-        <!-- ================================================================== -->
-        <div class="role-section" id="sec-administracion">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #16a34a; padding-bottom: 8px; margin-bottom: 16px;">
-                <h2 style="margin: 0; color: #15803d;"><i class="fa-solid fa-calculator"></i> MANUAL DE USUARIO: ADMINISTRACIÓN & FINANZAS</h2>
-                <span class="role-badge badge-finanzas">Cuentas por Cobrar & Pagar</span>
-            </div>
-
-            <p><b>Objetivo del Rol:</b> Gestionar la cartera de cobros a clientes (CxC), controlar las deudas con proveedores de materiales (CxP), verificar retenciones de IVA/ISLR y supervisar la sincronización de la tasa oficial BCV.</p>
-
-            <div class="sop-card">
-                <h4>SOP-ADM-01: Registro y Cobro de Factura / Valuación (CxC)</h4>
-                <div class="sop-step">
-                    <div class="step-num">1</div>
-                    <div class="step-text">Vaya a <b>Finanzas &rarr; Cuentas por Cobrar (CxC)</b> y haga clic en <b>Registrar Factura CxC</b>.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">2</div>
-                    <div class="step-text">Ingrese N° de Factura, Cliente, Proyecto, Monto en USD y Fecha de Vencimiento.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">3</div>
-                    <div class="step-text">Cuando el cliente transfiera, presione <b>Registrar Cobro</b> en la fila de la factura, indique el monto abonado y la referencia bancaria.</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================================================================== -->
-        <!-- ROL 4: JEFE DE ALMACÉN, PAÑOL & FLOTA -->
-        <!-- ================================================================== -->
-        <div class="role-section" id="sec-almacen">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ea580c; padding-bottom: 8px; margin-bottom: 16px;">
-                <h2 style="margin: 0; color: #c2410c;"><i class="fa-solid fa-warehouse"></i> MANUAL DE USUARIO: ALMACÉN & FLOTA</h2>
-                <span class="role-badge badge-almacen">Kardex, Despachos & Mantenimiento</span>
-            </div>
-
-            <p><b>Objetivo del Rol:</b> Controlar la entrada y salida de materiales, generar notas de despacho con descuento automático de Kardex, y mantener el semáforo vehicular de la flota en Verde (servicios cada 5.000 Km).</p>
-
-            <div class="diagram-box">
-                <div class="mermaid">
-                graph LR
-                    A["Requisición de Obra"] --> B["Verificar Stock en Almacén"]
-                    B --> C["Emitir Nota de Despacho"]
-                    C --> D["Descuento Automático de Kardex"]
-                    D --> E["Carga del Costo a la Obra"]
+                <div class="box-dont">
+                    <div class="box-title-dont"><i class="fa-solid fa-shield-halved"></i> BLINDAJE Y RESTRICCIONES (Qué NO puede hacer)</div>
+                    <ul class="cross-list">
+                        <li><strong>RESTRINGIDO: No tiene acceso a márgenes ni precios de compra:</strong> El sistema oculta automáticamente montos unitarios, bases imponibles y utilidades de la empresa.</li>
+                        <li><strong>RESTRINGIDO: No puede ver el P&L ni Flujo de Caja:</strong> Solo visualiza métricas de avance físico (%) y cantidades métricas.</li>
+                        <li><strong>NO puede aprobar pagos a proveedores:</strong> Su función se limita a la recepción técnica del material en sitio.</li>
+                    </ul>
                 </div>
             </div>
 
-            <div class="sop-card">
-                <h4>SOP-ALM-01: Despacho de Materiales a Obra</h4>
-                <div class="sop-step">
-                    <div class="step-num">1</div>
-                    <div class="step-text">En el menú <b>Recursos & Flota &rarr; Inventario de Materiales</b>, presione <b>Despachar a Obra</b>.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">2</div>
-                    <div class="step-text">Seleccione el ítem, la cantidad, el proyecto de destino y el custodio/chofer que retira.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">3</div>
-                    <div class="step-text">Al guardar, el sistema reduce el stock en tiempo real e imputa el costo exacto a la obra.</div>
-                </div>
-            </div>
+            <!-- SOP Ingeniero -->
+            <div class="manual-grid">
+                <div class="col-8">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-list-check" style="color:var(--accent-cyan);"></i> Procedimiento Operativo Técnico</div>
+                        
+                        <div class="sop-step">
+                            <div class="sop-number">1</div>
+                            <div class="sop-content">
+                                <h4>Apertura de Jornada y Revisión de Tareas</h4>
+                                <p>Ingrese al proyecto asignado. En la pestaña <em>Cronograma y EDT</em>, verifique las partidas programadas para la semana y las metas de rendimiento.</p>
+                                <span class="sop-pill">Módulo: Proyectos &bull; Planificación Técnica</span>
+                            </div>
+                        </div>
 
-            <div class="sop-card">
-                <h4>SOP-ALM-02: Control de Mantenimiento y Cambio de Aceite (Flota)</h4>
-                <div class="sop-step">
-                    <div class="step-num">1</div>
-                    <div class="step-text">Vaya a <b>Flota y Maquinaria</b>. Revise el semáforo de cada vehículo (Verde, Amarillo o Rojo).</div>
+                        <div class="sop-step">
+                            <div class="sop-number">2</div>
+                            <div class="sop-content">
+                                <h4>Carga del Parte Diario de Obra (Avance Físico)</h4>
+                                <p>Al finalizar la jornada, introduzca la cantidad física ejecutada de cada partida. El sistema recalcula automáticamente el % acumulado y la curva de avance de la obra.</p>
+                                <span class="sop-pill">Módulo: Reportes de Campo &bull; Registro Diario</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">3</div>
+                            <div class="sop-content">
+                                <h4>Adjuntar Evidencia Fotográfica</h4>
+                                <p>Tome fotografías del progreso desde la PWA móvil o suba las imágenes. Quedarán georreferenciadas y asociadas al hito de la valuación técnica.</p>
+                                <span class="sop-pill">Módulo: Bitácora &bull; Galería Técnica</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">4</div>
+                            <div class="sop-content">
+                                <h4>Emisión de Requisición a Almacén</h4>
+                                <p>Solicite los insumos requeridos para las siguientes 48 horas especificando el código de partida EDT para garantizar la trazabilidad del consumo.</p>
+                                <span class="sop-pill">Módulo: Almacén &bull; Requisiciones</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="sop-step">
-                    <div class="step-num">2</div>
-                    <div class="step-text">Al realizar el cambio de aceite, presione el botón naranja <b>🔧 Servicio</b> en el vehículo correspondiente.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">3</div>
-                    <div class="step-text">Ingrese el nuevo kilometraje del odómetro y el costo del servicio. El semáforo volverá automáticamente a <b>Verde OK (5.000 Km restantes)</b>.</div>
+
+                <div class="col-4">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-diagram-project" style="color:var(--accent-cyan);"></i> Flujo Técnico</div>
+                        <div class="diagram-box">
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                                <div class="flow-node primary"><strong>1. Ejecución en Campo</strong><br><small>Vaciado / Montaje / Soldadura</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node"><strong>2. Medición & Fotos</strong><br><small>Cómputo métrico real</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node success"><strong>3. Carga en SIGO-P</strong><br><small>Actualiza Curva S</small></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ================================================================== -->
-        <!-- ROL 5: SUPERVISOR DE CAMPO / CUADRILLA -->
-        <!-- ================================================================== -->
-        <div class="role-section" id="sec-campo">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-bottom: 16px;">
-                <h2 style="margin: 0; color: #0369a1;"><i class="fa-solid fa-mobile-screen"></i> MANUAL DE USUARIO: SUPERVISOR DE CAMPO</h2>
-                <span class="role-badge badge-campo">Rendición Rápida Móvil OCR</span>
-            </div>
-
-            <p><b>Objetivo del Rol:</b> Reportar compras de emergencia, combustible, viáticos y lecturas de odómetro vehicular desde el teléfono en menos de 15 segundos sin papeleos ni transcripciones manuales.</p>
-
-            <div class="sop-card">
-                <h4>SOP-CAM-01: Rendición de Gastos con Cámara OCR (3 Toques)</h4>
-                <div class="sop-step">
-                    <div class="step-num">1</div>
-                    <div class="step-text">Abra DALOR SIGO-P en su celular y toque el botón dorado <b>⚡ 3 Toques (Rendición Rápida)</b>.</div>
+        <!-- ========================================================================= -->
+        <!-- TAB 3: ADMINISTRACIÓN Y FINANZAS -->
+        <!-- ========================================================================= -->
+        <div id="tab-admin" class="manual-section">
+            <div class="role-banner administracion">
+                <div class="banner-info">
+                    <h1><i class="fa-solid fa-calculator" style="color:#34d399;"></i> Manual de Operaciones &bull; Administración y Finanzas</h1>
+                    <p>Gestión del flujo de caja, cuentas por cobrar (CxC), cuentas por pagar (CxP), procesamiento inteligente de facturas mediante OCR con IA, split de gastos y conciliación multimoneda (USD / Bs. BCV).</p>
                 </div>
-                <div class="sop-step">
-                    <div class="step-num">2</div>
-                    <div class="step-text">Tome la foto del ticket o factura con la cámara. La Inteligencia Artificial extraerá automáticamente el proveedor, monto y partida.</div>
-                </div>
-                <div class="sop-step">
-                    <div class="step-num">3</div>
-                    <div class="step-text">Seleccione la obra y presione <b>Guardar Gasto</b>.</div>
+                <div class="banner-meta">
+                    <div><strong>Usuario Demo:</strong></div>
+                    <div class="role-cred">admin &bull; admin123</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Perfil Financiero & Contable</div>
                 </div>
             </div>
 
-            <div class="sop-card">
-                <h4>SOP-CAM-02: Reporte de Odómetro por Foto (OCR Vehicular)</h4>
-                <div class="sop-step">
-                    <div class="step-num">1</div>
-                    <div class="step-text">En la pestaña <b>Flota</b>, ubique su vehículo y toque el botón azul <b>📸 Odómetro</b>.</div>
+            <!-- Matriz de Responsabilidades y Blindaje -->
+            <div class="matrix-container" style="margin-bottom:24px;">
+                <div class="box-do">
+                    <div class="box-title-do"><i class="fa-solid fa-circle-check"></i> QUÉ DEBE HACER (Responsabilidades Clave)</div>
+                    <ul class="check-list">
+                        <li><strong>Procesar Facturas con OCR Inteligente:</strong> Subir fotos o PDFs de facturas de proveedores. Validar RIF, número de control, base imponible, IVA y desglose en segundos.</li>
+                        <li><strong>Aplicar Split de Gastos (Imputación Compartida):</strong> Si una compra de materiales o flete aplica a varios proyectos, dividir el monto porcentualmente o por monto exacto.</li>
+                        <li><strong>Monitorear el Flujo de Caja y Tasa BCV:</strong> Gestionar pagos en Bolívares convertidos a la tasa oficial del día del BCV y saldos en divisas.</li>
+                        <li><strong>Gestionar Cuentas por Cobrar (CxC):</strong> Registrar la emisión de valuaciones al cliente y hacer seguimiento al cronograma de cobranza.</li>
+                        <li><strong>Auditar Cuentas por Pagar (CxP):</strong> Programar pagos a proveedores respetando los días de crédito otorgados.</li>
+                    </ul>
                 </div>
-                <div class="sop-step">
-                    <div class="step-num">2</div>
-                    <div class="step-text">Tome la foto del tablero del vehículo. El sistema detectará la cifra numérica del odómetro.</div>
+                <div class="box-dont">
+                    <div class="box-title-dont"><i class="fa-solid fa-triangle-exclamation"></i> QUÉ NO DEBE HACER (Reglas de Control Interno)</div>
+                    <ul class="cross-list">
+                        <li><strong>NO registrar compras sin soporte digital:</strong> Toda salida de caja chica o transferencia debe contar con la foto del comprobante en el sistema.</li>
+                        <li><strong>NO alterar cómputos métricos de ingeniería:</strong> Las cantidades físicas de obra solo pueden ser modificadas por el Ingeniero Residente.</li>
+                        <li><strong>NO omitir la asignación de proyecto:</strong> Todo gasto debe imputarse a un proyecto específico o al centro de costos de Gastos Generales.</li>
+                    </ul>
                 </div>
-                <div class="sop-step">
-                    <div class="step-num">3</div>
-                    <div class="step-text">Verifique la cifra y presione <b>Confirmar y Guardar Lectura</b>.</div>
+            </div>
+
+            <!-- SOP Administración -->
+            <div class="manual-grid">
+                <div class="col-8">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-list-check" style="color:var(--accent-emerald);"></i> SOP de Procesamiento de Facturas y Gastos</div>
+                        
+                        <div class="sop-step">
+                            <div class="sop-number">1</div>
+                            <div class="sop-content">
+                                <h4>Carga del Documento en el Módulo OCR</h4>
+                                <p>Arrastre la factura o ticket al módulo <em>Gastos & Compras</em>. El motor Gemini Vision extraerá en 3 segundos el proveedor, fecha, RIF, número de factura y montos.</p>
+                                <span class="sop-pill">Módulo: Gastos & Finanzas &bull; Escáner OCR</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">2</div>
+                            <div class="sop-content">
+                                <h4>Validación y Asignación de Partida</h4>
+                                <p>Verifique los datos extraídos contra el documento físico. Seleccione el proyecto de destino y la partida de costo correspondiente (Material, Equipo, Mano de Obra, Subcontrato).</p>
+                                <span class="sop-pill">Módulo: Gastos &bull; Imputación Contable</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">3</div>
+                            <div class="sop-content">
+                                <h4>División de Gasto (Split Expense) si aplica</h4>
+                                <p>Si la compra se distribuye entre 2 o más proyectos, use la función <em>Dividir Gasto</em> indicando el porcentaje asignado a cada obra para no distorsionar el P&L.</p>
+                                <span class="sop-pill">Módulo: Gastos &bull; Split de Costos</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">4</div>
+                            <div class="sop-content">
+                                <h4>Registro del Pago y Conciliación Multimoneda</h4>
+                                <p>Indique el método de pago (Transferencia Bs., Zelle, Efectivo USD). El sistema calcula automáticamente el contravalor según la tasa BCV del día.</p>
+                                <span class="sop-pill">Módulo: Tesorería &bull; Flujo de Caja</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                <div class="col-4">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-bolt" style="color:var(--accent-emerald);"></i> Ciclo OCR & Finanzas</div>
+                        <div class="diagram-box">
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                                <div class="flow-node success"><strong>1. Foto / Factura PDF</strong><br><small>Captura instantánea</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node"><strong>2. Extracción OCR IA</strong><br><small>RIF, Ítems, Totales</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node primary"><strong>3. Imputación al P&L</strong><br><small>Actualiza Costo Real</small></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 4: ALMACÉN Y LOGÍSTICA -->
+        <!-- ========================================================================= -->
+        <div id="tab-almacen" class="manual-section">
+            <div class="role-banner almacen">
+                <div class="banner-info">
+                    <h1><i class="fa-solid fa-boxes-stacked" style="color:#fbbf24;"></i> Manual de Operaciones &bull; Jefe de Almacén & Logística</h1>
+                    <p>Control físico de entradas y salidas de materiales, custodia de maquinaria pesada, herramientas y vehículos, registro de odómetros/horómetros y trazabilidad de despachos inter-obra.</p>
+                </div>
+                <div class="banner-meta">
+                    <div><strong>Usuario Demo:</strong></div>
+                    <div class="role-cred">almacen &bull; almacen2026</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Perfil Logística / Custodia</div>
+                </div>
+            </div>
+
+            <!-- Matriz de Responsabilidades y Blindaje -->
+            <div class="matrix-container" style="margin-bottom:24px;">
+                <div class="box-do">
+                    <div class="box-title-do"><i class="fa-solid fa-circle-check"></i> QUÉ DEBE HACER (Responsabilidades Clave)</div>
+                    <ul class="check-list">
+                        <li><strong>Registrar Entradas de Materiales con Soporte:</strong> Verificar físicamente cantidades y especificaciones de compras recibidas antes de dar entrada en sistema.</li>
+                        <li><strong>Generar Notas de Despacho a Obra:</strong> Ningún material o equipo puede salir del patio sin una Nota de Salida asociada a un proyecto y receptor responsable.</li>
+                        <li><strong>Actualizar Odómetros y Horómetros de Maquinaria:</strong> Registrar semanalmente el kilometraje u horas de uso para programar mantenimientos preventivos.</li>
+                        <li><strong>Asignar Responsables de Equipos y Herramientas:</strong> Vincular cada taladro, planta eléctrica o vehículo al conductor o cuadrillero que lo tiene en custodia.</li>
+                        <li><strong>Controlar Stock Mínimo y Alertas de Reposición:</strong> Informar oportunamente a Compras cuando un insumo crítico esté por agotarse.</li>
+                    </ul>
+                </div>
+                <div class="box-dont">
+                    <div class="box-title-dont"><i class="fa-solid fa-shield-halved"></i> BLINDAJE Y RESTRICCIONES (Qué NO puede hacer)</div>
+                    <ul class="cross-list">
+                        <li><strong>RESTRINGIDO: Sin acceso a precios de compra ni finanzas:</strong> La interfaz de almacén oculta costos unitarios, márgenes comerciales y cuentas bancarias.</li>
+                        <li><strong>NO realizar despachos verbales:</strong> Todo movimiento debe quedar asentado con firma digital o confirmación del receptor.</li>
+                        <li><strong>NO alterar el historial de horómetros:</strong> Las lecturas de maquinaria son inmutables para garantizar la auditoría de desgaste.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- SOP Almacén -->
+            <div class="manual-grid">
+                <div class="col-8">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-list-check" style="color:var(--accent-amber);"></i> SOP de Control de Inventario y Custodia</div>
+                        
+                        <div class="sop-step">
+                            <div class="sop-number">1</div>
+                            <div class="sop-content">
+                                <h4>Recepción Técnica y Cotejo de Guía</h4>
+                                <p>Al llegar el transporte de un proveedor, verifique el material. Abra el módulo <em>Almacén &bull; Entradas</em> y asocie la recepción a la orden de compra emitida.</p>
+                                <span class="sop-pill">Módulo: Almacén &bull; Recepción de Carga</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">2</div>
+                            <div class="sop-content">
+                                <h4>Emisión de Vale de Despacho para Obra</h4>
+                                <p>Al entregar materiales a los transportistas de obra, seleccione el proyecto destino, los ítems y el nombre del chofer. El sistema rebaja el stock del almacén central.</p>
+                                <span class="sop-pill">Módulo: Almacén &bull; Despachos</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">3</div>
+                            <div class="sop-content">
+                                <h4>Lectura de Odómetro / Horómetro de Flota</h4>
+                                <p>En la pestaña <em>Equipos & Maquinaria</em>, seleccione la unidad (ej: Camión Chuto, Retroexcavadora) y actualice la lectura del marcador de desgaste.</p>
+                                <span class="sop-pill">Módulo: Activos &bull; Mantenimiento</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">4</div>
+                            <div class="sop-content">
+                                <h4>Toma de Inventario Físico Periódico</h4>
+                                <p>Ejecute conteos cíclicos semanales para verificar que las existencias en anaquel coincidan al 100% con el stock registrado en SIGO-P.</p>
+                                <span class="sop-pill">Módulo: Almacén &bull; Auditoría de Stock</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-4">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-truck-ramp-box" style="color:var(--accent-amber);"></i> Circuito Logístico</div>
+                        <div class="diagram-box">
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                                <div class="flow-node amber"><strong>1. Recepción & Conteo</strong><br><small>Validación de Guía</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node"><strong>2. Vale de Salida</strong><br><small>Asignación a Proyecto</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node success"><strong>3. Custodia en Obra</strong><br><small>Recepción por Ing. Residente</small></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 5: SUPERVISOR DE CAMPO (PWA MÓVIL) -->
+        <!-- ========================================================================= -->
+        <div id="tab-campo" class="manual-section">
+            <div class="role-banner campo">
+                <div class="banner-info">
+                    <h1><i class="fa-solid fa-mobile-screen-button" style="color:#60a5fa;"></i> Manual de Operaciones &bull; Supervisor de Campo / Maestro de Obra</h1>
+                    <p>Operación ágil desde dispositivos móviles en el frente de trabajo. Registro de horas hombre, rendimiento de cuadrillas, reportes de incidentes y captura de fotografías sin conexión continua a internet.</p>
+                </div>
+                <div class="banner-meta">
+                    <div><strong>Usuario Demo:</strong></div>
+                    <div class="role-cred">ingeniero &bull; obra2026</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Modo Móvil / PWA</div>
+                </div>
+            </div>
+
+            <!-- Matriz de Responsabilidades y Blindaje -->
+            <div class="matrix-container" style="margin-bottom:24px;">
+                <div class="box-do">
+                    <div class="box-title-do"><i class="fa-solid fa-circle-check"></i> QUÉ DEBE HACER (Responsabilidades Clave)</div>
+                    <ul class="check-list">
+                        <li><strong>Pasar Lista de Cuadrillas en la Mañana:</strong> Registrar la presencia de albañiles, electricistas, soldadores y ayudantes al inicio de la jornada.</li>
+                        <li><strong>Tomar Fotos de Avance Diario:</strong> Capturar evidencias de zanjas, encofrados, vaciados y terminaciones desde la cámara del celular.</li>
+                        <li><strong>Registrar Metros Ejecutados por Turno:</strong> Anotar el volumen de trabajo completado por cada grupo de trabajo.</li>
+                        <li><strong>Reportar Novedades de Seguridad (HSE):</strong> Documentar inmediatamente cualquier incidente menor o condición insegura en el sitio.</li>
+                    </ul>
+                </div>
+                <div class="box-dont">
+                    <div class="box-title-dont"><i class="fa-solid fa-shield-halved"></i> BLINDAJE Y RESTRICCIONES (Qué NO puede hacer)</div>
+                    <ul class="cross-list">
+                        <li><strong>RESTRINGIDO: Sin acceso a costos, facturas ni dinero:</strong> La interfaz móvil es 100% operativa y técnica.</li>
+                        <li><strong>NO posponer la carga de fotos:</strong> Las fotos deben tomarse el mismo día de la ejecución para garantizar la fecha real del reporte.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- SOP Campo -->
+            <div class="manual-grid">
+                <div class="col-8">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-list-check" style="color:var(--accent-blue);"></i> Procedimiento Móvil Paso a Paso</div>
+                        
+                        <div class="sop-step">
+                            <div class="sop-number">1</div>
+                            <div class="sop-content">
+                                <h4>Instalación de la PWA en el Teléfono</h4>
+                                <p>Abra el enlace del sistema en Google Chrome o Safari en el celular. Toque los tres puntos y seleccione <em>'Agregar a la pantalla de inicio'</em> para tener el icono de la App directa.</p>
+                                <span class="sop-pill">PWA Móvil &bull; Instalación</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">2</div>
+                            <div class="sop-content">
+                                <h4>Carga del Reporte Diario</h4>
+                                <p>Toque el botón grande <em>'Nuevo Reporte Diario'</em>. Seleccione el proyecto, anote los trabajadores presentes y las tareas concluidas durante el día.</p>
+                                <span class="sop-pill">PWA Móvil &bull; Parte Diario</span>
+                            </div>
+                        </div>
+
+                        <div class="sop-step">
+                            <div class="sop-number">3</div>
+                            <div class="sop-content">
+                                <h4>Captura de Fotos y Sincronización</h4>
+                                <p>Presione el icono de la cámara para adjuntar las fotos de los frentes de trabajo. El sistema subirá las imágenes automáticamente en cuanto detecte señal.</p>
+                                <span class="sop-pill">PWA Móvil &bull; Multimedia</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-4">
+                    <div class="doc-card">
+                        <div class="doc-card-title"><i class="fa-solid fa-wifi" style="color:var(--accent-blue);"></i> Sincronización Móvil</div>
+                        <div class="diagram-box">
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                                <div class="flow-node primary"><strong>1. Captura en Obra</strong><br><small>Con o sin señal</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node success"><strong>2. Sync Automática</strong><br><small>Al conectar WiFi / 4G</small></div>
+                                <div style="text-align:center;"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="flow-node purple"><strong>3. Visible en Oficina</strong><br><small>Ingeniería y Gerencia</small></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 6: GLOSARIO MAESTRO BILINGÜE -->
+        <!-- ========================================================================= -->
+        <div id="tab-glosario" class="manual-section">
+            <div class="role-banner glosario">
+                <div class="banner-info">
+                    <h1><i class="fa-solid fa-book-atlas" style="color:#f43f5e;"></i> Glosario Maestro Bilingüe &bull; Términos Técnicos</h1>
+                    <p>Diccionario corporativo con más de 30 conceptos clave de ingeniería, finanzas y tecnología aplicados en DALOR SIGO-P, con su traducción al inglés y explicación práctica en español sencillo.</p>
+                </div>
+                <div class="banner-meta">
+                    <div><strong>Herramienta:</strong></div>
+                    <div class="role-cred">Buscador Interactivo</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Filtro en Tiempo Real</div>
+                </div>
+            </div>
+
+            <!-- Search Input -->
+            <input type="text" id="glossarySearchInput" class="glossary-search" placeholder="🔍 Buscar término técnico (ej: APU, EDT, OCR, P&L, CPI, BCV, Cash Flow, Split...)" onkeyup="filterGlossary()">
+
+            <!-- Glossary Grid -->
+            <div class="glossary-grid" id="glossaryGrid">
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>APU</h3>
+                        <span class="glossary-tag">Costos</span>
+                    </div>
+                    <div class="glossary-def"><strong>Análisis de Precios Unitarios:</strong> Desglose detallado del costo de una partida de construcción, separando materiales, mano de obra, equipos y costos indirectos.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Unit Price Analysis (UPA)</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>EDT / WBS</h3>
+                        <span class="glossary-tag">Gestión</span>
+                    </div>
+                    <div class="glossary-def"><strong>Estructura de Desglose del Trabajo:</strong> Jerarquía que divide un proyecto grande en fases, sub-fases y partidas medibles y controlables.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Work Breakdown Structure (WBS)</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Job Costing</h3>
+                        <span class="glossary-tag">Finanzas</span>
+                    </div>
+                    <div class="glossary-def"><strong>Costeo por Orden de Trabajo:</strong> Método contable que asigna cada centavo gastado (facturas, nómina, fletes) directamente al proyecto específico que lo originó.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Project Cost Accounting</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>P&L</h3>
+                        <span class="glossary-tag">Gerencia</span>
+                    </div>
+                    <div class="glossary-def"><strong>Estado de Pérdidas y Ganancias:</strong> Reporte que muestra si un proyecto o la empresa está ganando o perdiendo dinero al restar todos los costos a los ingresos facturados.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Profit and Loss Statement (P&L)</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>CPI</h3>
+                        <span class="glossary-tag">Auditoría</span>
+                    </div>
+                    <div class="glossary-def"><strong>Índice de Desempeño del Costo:</strong> Mide la eficiencia financiera de la obra. Un CPI = 1.0 significa gasto exacto al presupuesto; > 1.0 es ahorro; < 1.0 indica sobrecosto.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Cost Performance Index (CPI)</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>OCR Inteligente</h3>
+                        <span class="glossary-tag">Tecnología</span>
+                    </div>
+                    <div class="glossary-def"><strong>Reconocimiento Óptico de Caracteres:</strong> Tecnología con Inteligencia Artificial que lee automáticamente el texto de fotos de facturas y extrae RIF, montos y fechas sin tipeo manual.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Optical Character Recognition (AI-OCR)</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>PWA</h3>
+                        <span class="glossary-tag">Móvil</span>
+                    </div>
+                    <div class="glossary-def"><strong>Aplicación Web Progresiva:</strong> Sistema que funciona en el navegador pero se instala en el celular como una App nativa, con acceso a cámara y funcionamiento offline.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Progressive Web App (PWA)</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Split de Gastos</h3>
+                        <span class="glossary-tag">Costos</span>
+                    </div>
+                    <div class="glossary-def"><strong>División de Compras Compartidas:</strong> Función que permite repartir una factura única entre múltiples obras según porcentajes de consumo para no alterar los márgenes.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Split Expense Allocation</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Cash Flow</h3>
+                        <span class="glossary-tag">Tesorería</span>
+                    </div>
+                    <div class="glossary-def"><strong>Flujo de Caja:</strong> Entradas y salidas reales de dinero líquido en una cuenta bancaria o caja durante un período determinado.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Cash Flow Statement</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>CxC / CxP</h3>
+                        <span class="glossary-tag">Cobranzas</span>
+                    </div>
+                    <div class="glossary-def"><strong>Cuentas por Cobrar / Cuentas por Pagar:</strong> Saldos pendientes por liquidar. CxC es dinero que deben los clientes a DALOR; CxP es dinero que DALOR debe a proveedores.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Accounts Receivable (AR) / Accounts Payable (AP)</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Custodia de Activos</h3>
+                        <span class="glossary-tag">Almacén</span>
+                    </div>
+                    <div class="glossary-def"><strong>Responsabilidad Patrimonial:</strong> Asignación formal de maquinaria, vehículos o herramientas de alto valor a una persona responsable mediante acta digital.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Asset Custody & Accountability</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Semáforo de Rentabilidad</h3>
+                        <span class="glossary-tag">Gerencia</span>
+                    </div>
+                    <div class="glossary-def"><strong>Alerta Visual de Riesgo:</strong> Indicador cromático donde Verde = Margen Óptimo (>25%), Amarillo = Margen en Riesgo (10-24%) y Rojo = Alerta de Pérdida (<10%).</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Profitability Traffic Light System</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Snapshot Financiero</h3>
+                        <span class="glossary-tag">Auditoría</span>
+                    </div>
+                    <div class="glossary-def"><strong>Foto Instantánea del Negocio:</strong> Resumen ejecutivo congelado en un momento exacto del tiempo con el estado consolidado de todas las obras activas.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Financial Health Snapshot</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Curva S</h3>
+                        <span class="glossary-tag">Ingeniería</span>
+                    </div>
+                    <div class="glossary-def"><strong>Gráfico de Avance Acumulado:</strong> Representación gráfica en forma de 'S' que compara el avance físico programado vs. el avance físico real ejecutado a lo largo del tiempo.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> S-Curve / Earned Value Progress</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Tasa BCV</h3>
+                        <span class="glossary-tag">Tesorería</span>
+                    </div>
+                    <div class="glossary-def"><strong>Tipo de Cambio Oficial:</strong> Cotización oficial del Dólar estadounidense publicada por el Banco Central de Venezuela utilizada para la conversión legal de pagos.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Official Central Bank Exchange Rate</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Horómetro / Odómetro</h3>
+                        <span class="glossary-tag">Equipos</span>
+                    </div>
+                    <div class="glossary-def"><strong>Contador de Desgaste Mecánico:</strong> El horómetro mide las horas efectivas de motor (maquinaria pesada, generadores) y el odómetro mide los kilómetros recorridos (vehículos).</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Hour Meter / Odometer Tracking</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Valuación de Obra</h3>
+                        <span class="glossary-tag">Ingeniería</span>
+                    </div>
+                    <div class="glossary-def"><strong>Comprobante de Cobro por Hito:</strong> Documento técnico-financiero donde se certifican las cantidades de obra ejecutadas en un período para solicitar el pago al cliente.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Work Progress Valuation / Payment Certificate</div>
+                </div>
+
+                <div class="glossary-card">
+                    <div class="glossary-term">
+                        <h3>Blindaje de Roles</h3>
+                        <span class="glossary-tag">Seguridad</span>
+                    </div>
+                    <div class="glossary-def"><strong>Control de Acceso Basado en Roles (RBAC):</strong> Mecanismo de seguridad que impide que usuarios de obra o almacén vean información de costos o finanzas reservada a gerencia.</div>
+                    <div class="glossary-eng"><i class="fa-solid fa-globe"></i> Role-Based Access Control (RBAC)</div>
+                </div>
+
             </div>
         </div>
 
     </div>
 
+    <!-- Scripts -->
     <script>
-        function filterRole(role) {
-            const btns = document.querySelectorAll('.filter-btn');
-            btns.forEach(b => b.classList.remove('active'));
-            if (event && event.target) {
-                event.target.classList.add('active');
+        function showTab(evt, tabId) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.manual-section');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Remove active class from buttons
+            const btns = document.querySelectorAll('.role-nav-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab
+            const selectedTab = document.getElementById(tabId);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
             }
 
-            const sections = ['sec-intro', 'sec-director', 'sec-ingeniero', 'sec-administracion', 'sec-almacen', 'sec-campo'];
-            
-            if (role === 'all') {
-                sections.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = 'block';
-                });
-            } else {
-                sections.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.style.display = (id === `sec-${role}` || id === 'sec-intro') ? 'block' : 'none';
-                    }
-                });
+            // Highlight button
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('active');
             }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function filterGlossary() {
+            const input = document.getElementById('glossarySearchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.glossary-card');
+
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                if (text.includes(input)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
         }
     </script>
 </body>

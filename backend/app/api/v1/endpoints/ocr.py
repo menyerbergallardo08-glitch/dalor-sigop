@@ -63,3 +63,32 @@ async def scan_ticket(
 
     return parsed
 
+@router.post("/scan-odometer")
+async def scan_odometer(
+    file: UploadFile = File(...),
+    asset_id: int = Form(None)
+):
+    """
+    Recibe la foto del tablero/odómetro capturada en campo por el chofer o supervisor,
+    extrae el kilometraje total mediante Inteligencia Artificial de Visión (Gemini)
+    y lo devuelve con URL de respaldo para confirmación y actualización.
+    """
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    file_ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    unique_filename = f"odometer_{uuid.uuid4().hex[:8]}.{file_ext}"
+    file_path = os.path.join(settings.UPLOAD_DIR, unique_filename)
+
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    from app.services.storage import R2StorageService
+    image_url, _ = R2StorageService.upload_receipt_image(contents, unique_filename)
+
+    result = OCRReceiptParser.extract_odometer_from_image(file_path)
+    result["image_url"] = image_url
+    result["asset_id"] = asset_id
+    result["filename"] = unique_filename
+    return result
+
+

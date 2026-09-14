@@ -257,18 +257,20 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
         PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset
     )
 
-    # 1. Purgar tablas operacionales
-    db.query(Expense).delete()
-    db.query(QuotationItem).delete()
-    db.query(Quotation).delete()
-    db.query(AccountReceivable).delete()
-    db.query(AccountPayable).delete()
-    db.query(ResourceAssignmentHistory).delete()
-    db.query(PartnerWithdrawal).delete()
-    db.query(FinancialPayment).delete()
-    db.query(MaterialMovement).delete()
-    db.query(ProjectPhase).delete()
-    db.query(Project).delete()
+    # 1. Purgar tablas operacionales de manera segura
+    from sqlalchemy import text
+    try:
+        db.execute(text("TRUNCATE TABLE dispatch_items, dispatch_guides, split_expenses, expenses, quotation_items, quotations, receivable_payments, accounts_receivable, accounts_payable, advance_payments, resource_assignment_history, partner_withdrawals, financial_payments, material_movements, project_phases, projects CASCADE;"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        # Fallback delete
+        for tbl in ['dispatch_items', 'dispatch_guides', 'split_expenses', 'expenses', 'quotation_items', 'quotations', 'receivable_payments', 'accounts_receivable', 'accounts_payable', 'advance_payments', 'resource_assignment_history', 'partner_withdrawals', 'financial_payments', 'material_movements', 'project_phases', 'projects']:
+            try:
+                db.execute(text(f"DELETE FROM {tbl};"))
+                db.commit()
+            except Exception:
+                db.rollback()
 
     # 2. Resetear activos a su estado base disponible en Sede
     db.query(Asset).update({

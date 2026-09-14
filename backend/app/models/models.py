@@ -123,6 +123,8 @@ class Quotation(Base):
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
     project_title = Column(String(200), nullable=False)
     location = Column(String(200), nullable=True)
+    execution_time = Column(String(100), default="15 días hábiles")
+    currency = Column(String(10), default="USD")
     validity_days = Column(Integer, default=15)
     exchange_rate = Column(Float, default=800.0)
     subtotal_usd = Column(Float, default=0.0)
@@ -166,6 +168,8 @@ class Project(Base):
     start_date = Column(DateTime, default=datetime.utcnow)
     end_date = Column(DateTime, nullable=True)
     duration_days = Column(Integer, default=30)
+    execution_time = Column(String(100), default="15 días hábiles")
+    tracking_token = Column(String(64), unique=True, index=True, nullable=True)
     
     # Valores Financieros / Bolsas de Costo Estimado
     contract_amount_usd = Column(Float, default=0.0)
@@ -225,6 +229,12 @@ class Asset(Base):
     service_interval_km = Column(Float, default=5000.0)
     last_service_odometer = Column(Float, default=0.0)
     
+    # Condición de propiedad & Alquiler
+    ownership_type = Column(String(50), default="propio") # propio, alquilado_a_tercero, prestado_de_tercero, alquilado_a_cliente, prestado_a_cliente
+    external_entity_name = Column(String(150), nullable=True)
+    rental_rate_usd = Column(Float, default=0.0)
+    return_due_date = Column(DateTime, nullable=True)
+
     status = Column(String(50), default="disponible_base")
     current_location = Column(String(150), default="Sede Central")
     current_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
@@ -260,14 +270,18 @@ class ResourceAssignmentHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    transfer_code = Column(String(50), nullable=True)
     resource_type = Column(String(50), nullable=False)
     resource_id = Column(Integer, nullable=False)
     resource_code = Column(String(50), nullable=True)
     resource_name = Column(String(150), nullable=True)
     custodian_name = Column(String(150), nullable=True)
+    driver_name = Column(String(150), nullable=True)
     start_odometer = Column(Float, nullable=True)
     origin_location = Column(String(150), default="Sede Central")
     destination_location = Column(String(150), nullable=False)
+    freight_cost_usd = Column(Float, default=0.0)
+    fuel_cost_usd = Column(Float, default=0.0)
     status = Column(String(50), default="en_obra")
     notes = Column(String(255), nullable=True)
     assigned_at = Column(DateTime, default=datetime.utcnow)
@@ -345,7 +359,16 @@ class AccountReceivable(Base):
     issue_date = Column(DateTime, default=datetime.utcnow)
     due_date = Column(DateTime, nullable=False)
     
-    amount_usd = Column(Float, default=0.0)
+    # Desglose Fiscal y Retenciones SENIAT
+    taxable_base_usd = Column(Float, default=0.0)
+    tax_amount_usd = Column(Float, default=0.0)
+    tax_withholding_rate = Column(Float, default=75.0) # 0%, 75%, 100%
+    tax_withholding_usd = Column(Float, default=0.0)
+    islr_rate = Column(Float, default=2.0) # 0%, 1%, 2%, 3%, 5%
+    islr_withholding_usd = Column(Float, default=0.0)
+    net_amount_usd = Column(Float, default=0.0)
+    
+    amount_usd = Column(Float, default=0.0) # Total bruto factura
     amount_bs = Column(Float, default=0.0)
     exchange_rate = Column(Float, default=800.0)
     tax_retained_usd = Column(Float, default=0.0)
@@ -376,6 +399,15 @@ class AccountPayable(Base):
     issue_date = Column(DateTime, default=datetime.utcnow)
     due_date = Column(DateTime, nullable=False)
     
+    # Desglose Fiscal y Retenciones SENIAT
+    taxable_base_usd = Column(Float, default=0.0)
+    tax_amount_usd = Column(Float, default=0.0)
+    tax_withholding_rate = Column(Float, default=75.0) # 0%, 75%, 100%
+    tax_withholding_usd = Column(Float, default=0.0)
+    islr_rate = Column(Float, default=2.0) # 0%, 1%, 2%, 3%, 5%
+    islr_withholding_usd = Column(Float, default=0.0)
+    net_amount_usd = Column(Float, default=0.0)
+    
     amount_usd = Column(Float, default=0.0)
     amount_bs = Column(Float, default=0.0)
     exchange_rate = Column(Float, default=800.0)
@@ -394,7 +426,8 @@ class FinancialPayment(Base):
     __tablename__ = "financial_payments"
 
     id = Column(Integer, primary_key=True, index=True)
-    payment_type = Column(String(50), nullable=False)
+    payment_type = Column(String(50), nullable=False) # transferencia, efectivo_usd, retencion_iva, retencion_islr, zelle, pago_movil
+    voucher_number = Column(String(100), nullable=True) # N° Comprobante Retención SENIAT o Ref Bancaria
     receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
     payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
     

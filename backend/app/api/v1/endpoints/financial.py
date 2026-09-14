@@ -35,6 +35,7 @@ class ReceivableCreate(BaseModel):
     tax_withholding_usd: Optional[float] = 0.0
     islr_rate: Optional[float] = 2.0 # 0, 1, 2, 3, 5
     islr_withholding_usd: Optional[float] = 0.0
+    tax_retained_usd: Optional[float] = 0.0
     net_amount_usd: Optional[float] = 0.0
     exchange_rate: float = 800.0
     notes: Optional[str] = None
@@ -54,6 +55,7 @@ class PayableCreate(BaseModel):
     tax_withholding_usd: Optional[float] = 0.0
     islr_rate: Optional[float] = 2.0
     islr_withholding_usd: Optional[float] = 0.0
+    tax_retained_usd: Optional[float] = 0.0
     net_amount_usd: Optional[float] = 0.0
     exchange_rate: float = 800.0
     notes: Optional[str] = None

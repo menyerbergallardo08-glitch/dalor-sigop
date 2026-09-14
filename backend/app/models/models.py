@@ -201,6 +201,11 @@ class ProjectPhase(Base):
     duration_days = Column(Integer, default=7)
     estimated_cost_usd = Column(Float, default=0.0)
     status = Column(String(50), default="pendiente")
+    # Castigo de Cartera e Incobrabilidad
+    is_bad_debt = Column(Boolean, default=False)
+    bad_debt_amount_usd = Column(Float, default=0.0)
+    bad_debt_reason = Column(String(255), nullable=True)
+    bad_debt_date = Column(DateTime, nullable=True)
     responsible_person = Column(String(150), nullable=True)
 
     project = relationship("Project", back_populates="phases")
@@ -483,3 +488,63 @@ class MaterialMovement(Base):
 
     material = relationship("Material", back_populates="movements")
     project = relationship("Project")
+
+
+class DispatchGuide(Base):
+    __tablename__ = "dispatch_guides"
+
+    id = Column(Integer, primary_key=True, index=True)
+    guide_number = Column(String(50), unique=True, index=True) # GD-2026-001
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
+    
+    dispatch_date = Column(DateTime, default=datetime.utcnow)
+    destination_address = Column(String(255), nullable=False)
+    destination_plant = Column(String(150), nullable=True)
+    
+    # Modalidad de Transporte (Propio DALOR vs Tercerizado Flete vs Retiro Cliente)
+    transport_type = Column(String(50), default="propio_dalor") # propio_dalor, tercerizado_flete, retiro_cliente
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
+    carrier_company = Column(String(150), nullable=True)
+    driver_name = Column(String(150), nullable=False)
+    driver_id_doc = Column(String(50), nullable=False) # C.I.
+    driver_phone = Column(String(50), nullable=True)
+    vehicle_model = Column(String(100), nullable=True)
+    vehicle_plate = Column(String(50), nullable=False)
+    
+    # Aspectos Financieros del Flete/Servicio Tercerizado
+    freight_cost_usd = Column(Float, default=0.0) # Costo del transportista (CxP)
+    freight_price_charged_usd = Column(Float, default=0.0) # Cobrado al cliente (CxC)
+    payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
+    receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
+    
+    # Control de Estado y Firmas
+    status = Column(String(50), default="en_transito") # en_preparacion, en_transito, entregado_conforme, anulado
+    quality_inspector = Column(String(150), default="Control de Calidad DALOR")
+    dispatcher_name = Column(String(150), default="Despacho Taller Guacara")
+    received_by_client_name = Column(String(150), nullable=True)
+    received_by_client_id_doc = Column(String(50), nullable=True)
+    reception_date = Column(DateTime, nullable=True)
+    
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    client = relationship("Client")
+    project = relationship("Project")
+    asset = relationship("Asset")
+    items = relationship("DispatchGuideItem", back_populates="dispatch_guide", cascade="all, delete-orphan")
+
+
+class DispatchGuideItem(Base):
+    __tablename__ = "dispatch_guide_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    dispatch_guide_id = Column(Integer, ForeignKey("dispatch_guides.id"), nullable=False)
+    item_number = Column(Integer, default=1)
+    description = Column(String(255), nullable=False)
+    quantity = Column(Float, default=1.0)
+    unit = Column(String(50), default="Pzas") # Pzas, Ejes, Tramos, Kg, Tn, Conjuntos
+    condition_status = Column(String(100), default="Reparado / Listo para Montaje")
+    approx_weight_kg = Column(Float, default=0.0)
+
+    dispatch_guide = relationship("DispatchGuide", back_populates="items")

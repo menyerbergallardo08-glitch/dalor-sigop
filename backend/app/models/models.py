@@ -190,6 +190,21 @@ class Project(Base):
     receivables = relationship("AccountReceivable", back_populates="project")
     payables = relationship("AccountPayable", back_populates="project")
 
+
+    @property
+    def total_spent_usd(self) -> float:
+        if hasattr(self, 'expenses') and self.expenses:
+            return sum(float(e.amount_usd or 0.0) for e in self.expenses)
+        return 0.0
+
+    @property
+    def progress_pct(self) -> float:
+        if hasattr(self, 'phases') and self.phases:
+            total = len(self.phases)
+            done = sum(1 for ph in self.phases if ph.status == "completado")
+            return round((done / total) * 100.0, 1) if total > 0 else 0.0
+        return 0.0
+
 class ProjectPhase(Base):
     __tablename__ = "project_phases"
 

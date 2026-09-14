@@ -1,297 +1,663 @@
 <!DOCTYPE html>
+
 <html lang="es">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
     <title>Seguimiento de Proyecto | Metalmecánica DALOR C.A.</title>
+
     <!-- Tailwind CSS CDN -->
+
     <script src="https://cdn.tailwindcss.com"></script>
+
     <!-- FontAwesome Icons -->
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <!-- Google Fonts -->
+
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
+
         body {
+
             font-family: 'Plus Jakarta Sans', sans-serif;
+
             background-color: #0f172a;
+
             color: #f8fafc;
+
         }
+
         .card-glass {
+
             background: rgba(30, 41, 59, 0.7);
+
             backdrop-filter: blur(12px);
+
             border: 1px solid rgba(255, 255, 255, 0.1);
+
         }
+
         .progress-glow {
+
             box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+
         }
+
+    
+        @media print {
+            body {
+                background: #ffffff !important;
+                color: #0f172a !important;
+                font-size: 11pt;
+            }
+            header, .print-hide, button, a {
+                display: none !important;
+            }
+            .card-glass {
+                background: #ffffff !important;
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
+                backdrop-filter: none !important;
+                color: #0f172a !important;
+                page-break-inside: avoid;
+            }
+            .text-white, .text-slate-100, .text-slate-200, .text-slate-300 {
+                color: #0f172a !important;
+            }
+            .text-slate-400, .text-slate-500 {
+                color: #475569 !important;
+            }
+            .bg-slate-900, .bg-slate-800, .bg-slate-950 {
+                background: #f8fafc !important;
+                border-color: #cbd5e1 !important;
+            }
+            .border-slate-800, .border-slate-700 {
+                border-color: #e2e8f0 !important;
+            }
+            .print-header {
+                display: block !important;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #0f172a;
+                padding-bottom: 12px;
+            }
+            .print-footer {
+                display: block !important;
+                margin-top: 30px;
+                padding-top: 10px;
+                border-top: 1px solid #cbd5e1;
+                font-size: 9pt;
+                color: #64748b;
+                text-align: center;
+            }
+        }
+        .print-header, .print-footer {
+            display: none;
+        }
+
     </style>
+
 </head>
+
 <body class="min-h-screen flex flex-col justify-between">
+
     <!-- Top Header -->
+
     <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+
         <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+
             <div class="flex items-center gap-3">
+
                 <img src="/logo_dalor.jpg" alt="DALOR Logo" class="h-10 w-auto rounded shadow-sm border border-slate-700">
+
                 <div>
+
                     <h1 class="text-sm font-bold text-white tracking-wider uppercase">Metalmecánica DALOR</h1>
+
                     <p class="text-xs text-emerald-400 font-medium flex items-center gap-1">
+
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+
                         Portal Oficial de Seguimiento | Metalmecánica DALOR C.A.
+
                     </p>
+
                 </div>
+
             </div>
-            <div class="text-right">
+
+                        <div class="flex items-center gap-3 print-hide">
+                <button type="button" onclick="window.print()" class="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow transition-all cursor-pointer">
+                    <i class="fa-solid fa-file-pdf"></i> Exportar Informe PDF
+                </button>
                 <span id="headerDate" class="text-xs text-slate-400 font-medium"></span>
             </div>
+
         </div>
+
     </header>
 
+
+
     <!-- Main Content Container -->
-    <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full">
-        <!-- Loading State -->
-        <div id="loadingState" class="text-center py-20">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent mb-4"></div>
-            <p class="text-slate-400 font-medium text-sm">Consultando estado del proyecto en tiempo real...</p>
+
+    
+    <!-- Print Only Header -->
+    <div class="print-header max-w-6xl mx-auto px-4">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h1 style="font-size: 18pt; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase;">METALMECÁNICA DALOR, C.A.</h1>
+                <p style="font-size: 9pt; font-weight: 700; color: #2563eb; margin: 2px 0;">RIF: J-31601195-0 • Registro Nacional de Contratistas (RNC)</p>
+                <p style="font-size: 8pt; color: #64748b; margin: 2px 0;">Sede & Taller Principal: Guacara, Estado Carabobo, Venezuela</p>
+                <p style="font-size: 8.5pt; font-weight: 700; color: #059669; margin-top: 4px;">INFORME OFICIAL DE SEGUIMIENTO Y AVANCE DE OBRA</p>
+            </div>
+            <div style="text-align: right; border: 1.5px solid #0f172a; padding: 6px 12px; border-radius: 4px;">
+                <div style="font-size: 8pt; font-weight: 700;">FECHA DE EMISIÓN</div>
+                <div style="font-size: 9.5pt; font-weight: 800; color: #0f172a;" id="printDate">${new Date().toLocaleDateString("es-VE")}</div>
+            </div>
         </div>
+    </div>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full">
+
+        <!-- Loading State -->
+
+        <div id="loadingState" class="text-center py-20">
+
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent mb-4"></div>
+
+            <p class="text-slate-400 font-medium text-sm">Consultando estado del proyecto en tiempo real...</p>
+
+        </div>
+
+
 
         <!-- Error State -->
+
         <div id="errorState" class="hidden text-center py-16 card-glass rounded-2xl p-8 max-w-lg mx-auto">
+
             <div class="w-16 h-16 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+
                 <i class="fa-solid fa-triangle-exclamation"></i>
+
             </div>
+
             <h2 class="text-xl font-bold text-white mb-2">Proyecto no encontrado</h2>
+
             <p class="text-slate-400 text-sm mb-6">El enlace de seguimiento suministrado no es válido o el proyecto no está disponible.</p>
+
             <a href="/" class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-all">
+
                 <i class="fa-solid fa-arrow-left"></i> Volver a la página principal
+
             </a>
+
         </div>
+
+
 
         <!-- Project Overview Card -->
+
         <div id="projectContent" class="hidden space-y-6">
+
             <!-- Header Hero -->
+
             <div class="card-glass rounded-2xl p-6 sm:p-8 relative overflow-hidden">
+
                 <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-700/60 pb-6 mb-6">
+
                     <div>
+
                         <div class="flex items-center gap-2 mb-2">
+
                             <span id="projCode" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">PRJ-2026-001</span>
+
                             <span id="projStatusBadge" class="px-3 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+
                                 <i class="fa-solid fa-circle-check"></i> En Ejecución
+
                             </span>
+
                         </div>
+
                         <h2 id="projTitle" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Fabricación y Montaje de Estructura</h2>
+
                         <p class="text-sm text-slate-400 mt-1 flex items-center gap-2">
+
                             <i class="fa-solid fa-building text-slate-500"></i> Cliente: <span id="projClient" class="text-slate-200 font-semibold">Empresa Cliente</span>
+
                             <span class="text-slate-600">•</span>
+
                             <i class="fa-solid fa-location-dot text-slate-500"></i> <span id="projLocation" class="text-slate-300">Taller Central</span>
+
                         </p>
+
                     </div>
+
                     <!-- Overall Progress Dial -->
+
                     <div class="bg-slate-900/90 border border-slate-700 rounded-xl p-4 text-center min-w-[160px] shadow-lg">
+
                         <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Avance Físico Global</span>
+
                         <span id="projProgressText" class="text-3xl sm:text-4xl font-black text-emerald-400 mt-1 block">0%</span>
+
                         <span class="text-[11px] text-slate-500">Certificado por Calidad</span>
+
                     </div>
+
                 </div>
+
+
 
                 <!-- Progress Bar -->
+
                 <div class="space-y-2">
+
                     <div class="flex justify-between text-xs text-slate-400 font-medium">
+
                         <span>Progreso de Fabricación e Instalación</span>
+
                         <span id="projProgressBarLabel">0% completado</span>
+
                     </div>
+
                     <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-700">
+
                         <div id="projProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full progress-glow transition-all duration-1000" style="width: 0%"></div>
+
                     </div>
+
                 </div>
+
+
 
                 <!-- Key Project Details Grid -->
+
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-700/60 text-xs">
+
                     <div>
+
                         <span class="text-slate-400 block font-medium">Fecha de Inicio:</span>
+
                         <span id="projStartDate" class="text-white font-bold text-sm mt-0.5 block">-</span>
+
                     </div>
+
                     <div>
+
                         <span class="text-slate-400 block font-medium">Fecha Estimada de Entrega:</span>
+
                         <span id="projEndDate" class="text-white font-bold text-sm mt-0.5 block">-</span>
+
                     </div>
+
                     <div>
+
                         <span class="text-slate-400 block font-medium">Tiempo de Ejecución:</span>
+
                         <span id="projExecutionTime" class="text-white font-bold text-sm mt-0.5 block">-</span>
+
                     </div>
+
                     <div>
+
                         <span class="text-slate-400 block font-medium">Normativa Aplicada:</span>
+
                         <span class="text-emerald-400 font-bold text-sm mt-0.5 block">ASME / AWS D1.1</span>
+
                     </div>
+
                 </div>
+
             </div>
+
+
 
             <!-- Scope of Work -->
+
             <div class="card-glass rounded-2xl p-6 sm:p-8">
+
                 <h3 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
+
                     <i class="fa-solid fa-list-check text-emerald-400"></i> Alcance General de los Trabajos
+
                 </h3>
+
                 <p id="projScope" class="text-slate-300 text-sm leading-relaxed whitespace-pre-line bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+
                     Detalle del alcance del proyecto...
+
                 </p>
+
             </div>
+
+
 
             <!-- Project Phases & Tasks -->
+
             <div class="card-glass rounded-2xl p-6 sm:p-8">
+
                 <div class="flex justify-between items-center mb-6">
+
                     <h3 class="text-lg font-bold text-white flex items-center gap-2">
+
                         <i class="fa-solid fa-diagram-project text-emerald-400"></i> Cronograma de Fases & Tareas de Campo
+
                     </h3>
+
                     <span class="text-xs text-slate-400 font-medium">Actualizado en vivo</span>
+
                 </div>
+
+
 
                 <div id="phasesList" class="space-y-4">
+
                     <!-- Dynamic Phases Inserted Here -->
+
                 </div>
+
             </div>
+
+
 
             <!-- Technical Quality & Standards Assurance -->
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
                 <div class="card-glass rounded-xl p-5 border border-slate-800">
+
                     <div class="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-lg mb-3">
+
                         <i class="fa-solid fa-microscope"></i>
+
                     </div>
+
                     <h4 class="font-bold text-sm text-white mb-1">Control de Ensayos NDT</h4>
+
                     <p class="text-xs text-slate-400 leading-relaxed">Inspección de soldadura por Ultrasonido (USM 36L) y análisis PMI Rigaku calibrado.</p>
+
                 </div>
+
                 <div class="card-glass rounded-xl p-5 border border-slate-800">
+
                     <div class="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg mb-3">
+
                         <i class="fa-solid fa-shield-halved"></i>
+
                     </div>
+
                     <h4 class="font-bold text-sm text-white mb-1">Soldadura Calificada</h4>
+
                     <p class="text-xs text-slate-400 leading-relaxed">Procedimientos WPS/PQR bajo norma ASME IX y AWS D1.1 con electrodos certificados.</p>
+
                 </div>
+
                 <div class="card-glass rounded-xl p-5 border border-slate-800">
+
                     <div class="w-10 h-10 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-lg mb-3">
+
                         <i class="fa-solid fa-file-signature"></i>
+
                     </div>
+
                     <h4 class="font-bold text-sm text-white mb-1">Dossier de Calidad</h4>
+
                     <p class="text-xs text-slate-400 leading-relaxed">Emisión de certificados de materiales, registros dimensionales y pruebas hidrostáticas.</p>
+
                 </div>
+
             </div>
+
         </div>
+
     </main>
 
+
+
     <!-- Corporate Footer -->
+
     <footer class="border-t border-slate-800 bg-slate-900 py-6 text-center text-xs text-slate-500">
+
         <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+
             <p>&copy; 2026 METALMECÁNICA DALOR, C.A. • RIF J-31601195-0 • Av. Cámara de las Industrias, Galpón 10, Z.I. El Tigre, Guacara, Edo. Carabobo</p>
+
             <p class="text-emerald-400/80 font-medium">Plataforma SIGO-P Enterprise • Metalmecánica DALOR C.A.</p>
+
         </div>
+
     </footer>
 
+
+
     <!-- Logic Script -->
+
     <script>
+
         document.getElementById('headerDate').innerText = new Date().toLocaleDateString('es-VE', {
+
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+
         });
 
+
+
         function getTrackingToken() {
+
             const pathParts = window.location.pathname.split('/').filter(p => p.length > 0);
+
             if (pathParts.length >= 2 && (pathParts[0] === 'seguimiento' || pathParts[0] === 'tracking')) {
+
                 return pathParts[1];
+
             }
+
             const urlParams = new URLSearchParams(window.location.search);
+
             return urlParams.get('token') || urlParams.get('code') || '';
+
         }
+
+
 
         async function loadProjectTracking() {
+
             const token = getTrackingToken();
+
             if (!token) {
+
                 document.getElementById('loadingState').classList.add('hidden');
+
                 document.getElementById('errorState').classList.remove('hidden');
+
                 return;
+
             }
+
+
 
             try {
+
                 const res = await fetch('/api/v1/projects/public-tracking/' + encodeURIComponent(token));
+
                 if (!res.ok) throw new Error('Proyecto no encontrado');
+
                 const data = await res.json();
+
                 renderTrackingView(data);
+
             } catch (err) {
+
                 console.error(err);
+
                 document.getElementById('loadingState').classList.add('hidden');
+
                 document.getElementById('errorState').classList.remove('hidden');
+
             }
+
         }
+
+
 
         function renderTrackingView(d) {
+
             document.getElementById('loadingState').classList.add('hidden');
+
             document.getElementById('projectContent').classList.remove('hidden');
 
+
+
             document.getElementById('projCode').innerText = d.project_code || 'PRJ-2026';
+
             document.getElementById('projTitle').innerText = d.project_name || 'Sin Título';
+
             document.getElementById('projClient').innerText = d.client_name || 'Cliente';
+
             document.getElementById('projLocation').innerText = d.location || 'Sede';
+
             document.getElementById('projStartDate').innerText = d.start_date || 'En Definición';
+
             document.getElementById('projEndDate').innerText = d.end_date || 'En Definición';
+
             document.getElementById('projExecutionTime').innerText = d.execution_time || (d.duration_days + ' días');
+
             document.getElementById('projScope').innerText = d.scope_of_work || 'Alcance no especificado formalmente.';
 
+
+
             const pct = d.progress_pct || 0;
+
             document.getElementById('projProgressText').innerText = pct + '%';
+
             document.getElementById('projProgressBarLabel').innerText = pct + '% completado';
+
             setTimeout(function() {
+
                 document.getElementById('projProgressBar').style.width = pct + '%';
+
             }, 100);
 
+
+
             const phasesContainer = document.getElementById('phasesList');
+
             phasesContainer.innerHTML = '';
 
+
+
             if (!d.phases || d.phases.length === 0) {
+
                 phasesContainer.innerHTML = '<p class="text-sm text-slate-400">No hay etapas registradas para este proyecto.</p>';
+
                 return;
+
             }
 
+
+
             d.phases.forEach(function(ph, idx) {
+
                 const isCompleted = ph.status === 'completado';
+
                 const isInProgress = ph.status === 'en_progreso';
 
+
+
                 let statusBadge = '<span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">Pendiente</span>';
+
                 if (isCompleted) {
+
                     statusBadge = '<span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1"><i class="fa-solid fa-check"></i> Completada</span>';
+
                 } else if (isInProgress) {
+
                     statusBadge = '<span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1"><i class="fa-solid fa-spinner animate-spin"></i> En Progreso</span>';
+
                 }
+
+
 
                 let tasksHtml = '';
+
                 if (ph.tasks && ph.tasks.length > 0) {
+
                     const taskItems = ph.tasks.map(function(t) {
+
                         return '<div class="flex items-center gap-2 text-xs ' + (t.completed ? 'text-emerald-300 font-medium' : 'text-slate-400') + '">' +
+
                             '<i class="fa-solid ' + (t.completed ? 'fa-square-check text-emerald-400' : 'fa-square text-slate-600') + '"></i>' +
+
                             '<span class="' + (t.completed ? 'line-through text-slate-400' : '') + '">' + t.title + '</span>' +
+
                         '</div>';
+
                     }).join('');
+
                     tasksHtml = '<div class="mt-3 pt-3 border-t border-slate-800/80 space-y-1.5">' + taskItems + '</div>';
+
                 }
 
+
+
                 const phaseCard = document.createElement('div');
+
                 phaseCard.className = 'p-4 sm:p-5 rounded-xl border ' + (isCompleted ? 'border-emerald-500/30 bg-emerald-950/10' : (isInProgress ? 'border-amber-500/30 bg-amber-950/10' : 'border-slate-800 bg-slate-900/40'));
+
                 phaseCard.innerHTML = 
+
                     '<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">' +
+
                         '<div>' +
+
                             '<div class="flex items-center gap-2">' +
+
                                 '<span class="text-xs font-bold text-slate-400">Etapa ' + (ph.phase_number || (idx + 1)) + '</span>' +
+
                                 '<h4 class="font-bold text-sm text-white">' + ph.name + '</h4>' +
+
                             '</div>' +
+
                             '<p class="text-xs text-slate-400 mt-0.5"><i class="fa-solid fa-user-gear text-slate-500"></i> Responsable: ' + (ph.responsible_person || 'Operaciones') + '</p>' +
+
                         '</div>' +
+
                         '<div class="flex items-center gap-3">' +
+
                             '<span class="text-xs text-slate-400 font-medium"><i class="fa-regular fa-clock"></i> ' + ph.duration_days + ' días</span>' +
+
                             statusBadge +
+
                         '</div>' +
+
                     '</div>' +
+
                     tasksHtml;
+
                 phasesContainer.appendChild(phaseCard);
+
             });
+
         }
 
+
+
         window.addEventListener('DOMContentLoaded', loadProjectTracking);
+
     </script>
+
 </body>
+
 </html>
+

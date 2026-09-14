@@ -470,7 +470,7 @@ def get_public_project_tracking(token_or_code: str, db: Session = Depends(get_db
         "phases": phases_out,
         "company_info": {
             "name": "METALMECÁNICA DALOR C.A.",
-            "rif": "J-40540441-2",
+            "rif": "J-31601195-0",
             "partner": "METALMECÁNICA DALOR C.A.",
             "tagline": "Ingeniería, Fabricación y Mantenimiento Industrial Especializado"
         }

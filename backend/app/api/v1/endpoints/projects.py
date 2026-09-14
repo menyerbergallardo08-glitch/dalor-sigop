@@ -146,7 +146,7 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
         ]
     }
 
-@router.post("/", response_model=ProjectOut)
+@router.post("/")
 def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
     existing = db.query(Project).filter(Project.code == project_in.code).first()
     if existing:
@@ -267,7 +267,41 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(new_project)
-    return new_project
+    
+    return {
+        "id": new_project.id,
+        "code": new_project.code,
+        "name": new_project.name,
+        "client_id": new_project.client_id,
+        "client_name": new_project.client_name,
+        "location": new_project.location,
+        "status": new_project.status,
+        "scope_of_work": new_project.scope_of_work,
+        "duration_days": new_project.duration_days,
+        "execution_time": new_project.execution_time,
+        "tracking_token": new_project.tracking_token,
+        "contract_amount_usd": new_project.contract_amount_usd,
+        "estimated_labor_usd": new_project.estimated_labor_usd,
+        "estimated_fuel_usd": new_project.estimated_fuel_usd,
+        "estimated_materials_usd": new_project.estimated_materials_usd,
+        "estimated_tools_usd": new_project.estimated_tools_usd,
+        "estimated_services_usd": new_project.estimated_services_usd,
+        "budget_limit_usd": new_project.budget_limit_usd,
+        "total_spent_usd": 0.0,
+        "progress_pct": 0.0,
+        "is_active": new_project.is_active,
+        "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
+        "phases": [{
+            "id": ph.id,
+            "phase_number": ph.phase_number,
+            "name": ph.name,
+            "description": ph.description,
+            "duration_days": ph.duration_days,
+            "estimated_cost_usd": ph.estimated_cost_usd,
+            "status": ph.status,
+            "responsible_person": ph.responsible_person
+        } for ph in new_project.phases]
+    }
 
 @router.put("/{project_id}/phases/{phase_id}/status")
 def update_phase_status(project_id: int, phase_id: int, update_in: PhaseStatusUpdate, db: Session = Depends(get_db)):

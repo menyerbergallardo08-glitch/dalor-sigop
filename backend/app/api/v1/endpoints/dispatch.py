@@ -14,6 +14,7 @@ from app.models.models import (
     AccountPayable,
     AccountReceivable,
     Expense,
+    ExpenseCategory,
     AuditLog
 )
 
@@ -255,13 +256,16 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
 
         # Si está asociado a un proyecto, imputar a gastos del proyecto
         if g_in.project_id:
+            cat = db.query(ExpenseCategory).filter(ExpenseCategory.code == "20.0").first() or db.query(ExpenseCategory).first()
             exp = Expense(
+                category_id=cat.id if cat else 1,
                 project_id=g_in.project_id,
-                description=f"Servicio Flete Tercerizado ({guide_num})",
+                description=f"Servicio Flete Tercerizado ({guide_num}) - {carrier_name}",
+                supplier_vendor=carrier_name,
                 amount_usd=f_cost,
-                category="Equipos/Fletes",
-                supplier_name=carrier_name,
-                invoice_number=f"FLT-{guide_num}"
+                amount_bs=f_cost * 800.0,
+                exchange_rate=800.0,
+                status="aprobado"
             )
             db.add(exp)
 

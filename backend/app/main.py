@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 from datetime import datetime
+from typing import Optional
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.init_db import init_db

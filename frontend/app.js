@@ -2725,28 +2725,135 @@ async function printQuotation(quoteId) {
         const q = await res.json();
 
         const rate = q.exchange_rate || EXCHANGE_RATE || 800.0;
-        const curr = q.currency || 'USD';
-        const currSymbol = curr === 'VES' ? 'Bs.' : (curr === 'EUR' ? '€' : '$');
+        const curr = (q.currency || 'USD').toUpperCase();
         
-        const subtotalBs = (q.subtotal_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const taxBs = (q.tax_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const totalBs = (q.total_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let currSymbol = '$';
+        let currLabel = 'USD';
+        let currencyNotesHtml = '';
+        let totalsBoxHtml = '';
+        let tablePriceHeader = 'P. Unit ($)';
+        let tableTotalHeader = 'Total ($)';
 
-        const subtotalFormatted = `$${q.subtotal_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        const taxFormatted = q.tax_usd === 0 ? 'EXENTO (0%)' : `$${q.tax_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        const totalFormatted = `$${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (curr === 'USD') {
+            currSymbol = '$';
+            currLabel = 'USD';
+            tablePriceHeader = 'P. Unit ($ USD)';
+            tableTotalHeader = 'Total ($ USD)';
+            
+            const subtotalFormatted = `$${q.subtotal_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const taxFormatted = q.tax_usd === 0 ? 'EXENTO (0%)' : `$${q.tax_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const totalFormatted = `$${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-        const itemsRows = (q.items || []).map((item, idx) => `
+            totalsBoxHtml = `
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px;">
+                    <span style="color: #475569;">Subtotal:</span>
+                    <span style="font-weight: 700; color: #1e293b;">${subtotalFormatted}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                    <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
+                    <span style="font-weight: 700; color: ${q.tax_usd === 0 ? '#10b981' : '#d97706'};">${taxFormatted}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #002B49;">
+                    <span>TOTAL USD:</span>
+                    <span style="color: #0072B8;">${totalFormatted}</span>
+                </div>
+            `;
+
+            currencyNotesHtml = `
+                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
+                    <p style="margin: 0;"><b>Condición de Pago & Cláusula Cambiaria:</b> Precios expresados en Dólares Americanos (USD). En caso de liquidación o pago en Bolívares (VES), los importes se calcularán a la tasa oficial de cambio publicada por el Banco Central de Venezuela (BCV) vigente a la fecha efectiva del pago.</p>
+                </div>
+            `;
+        } else if (curr === 'VES') {
+            currSymbol = 'Bs.';
+            currLabel = 'VES';
+            tablePriceHeader = 'P. Unit (Bs.)';
+            tableTotalHeader = 'Total (Bs.)';
+
+            const subBs = q.subtotal_usd * rate;
+            const taxBs = q.tax_usd * rate;
+            const totBs = q.total_usd * rate;
+
+            const subtotalFormatted = `Bs. ${subBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const taxFormatted = taxBs === 0 ? 'EXENTO (0%)' : `Bs. ${taxBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const totalFormatted = `Bs. ${totBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            totalsBoxHtml = `
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px;">
+                    <span style="color: #475569;">Subtotal:</span>
+                    <span style="font-weight: 700; color: #1e293b;">${subtotalFormatted}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                    <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
+                    <span style="font-weight: 700; color: ${taxBs === 0 ? '#10b981' : '#d97706'};">${taxFormatted}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #002B49;">
+                    <span>TOTAL BS:</span>
+                    <span style="color: #0072B8;">${totalFormatted}</span>
+                </div>
+            `;
+
+            currencyNotesHtml = `
+                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
+                    <p style="margin: 0;"><b>Condición de Facturación:</b> Precios expresados en Bolívares (VES). Facturación oficial sujeta a comprobantes de retención de IVA e ISLR según normativa SENIAT vigente.</p>
+                </div>
+            `;
+        } else {
+            // EUR
+            currSymbol = '€';
+            currLabel = 'EUR';
+            tablePriceHeader = 'P. Unit (€ EUR)';
+            tableTotalHeader = 'Total (€ EUR)';
+
+            const subtotalFormatted = `€ ${q.subtotal_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const taxFormatted = q.tax_usd === 0 ? 'EXENTO (0%)' : `€ ${q.tax_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const totalFormatted = `€ ${q.total_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            totalsBoxHtml = `
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px;">
+                    <span style="color: #475569;">Subtotal:</span>
+                    <span style="font-weight: 700; color: #1e293b;">${subtotalFormatted}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                    <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
+                    <span style="font-weight: 700; color: ${q.tax_usd === 0 ? '#10b981' : '#d97706'};">${taxFormatted}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #002B49;">
+                    <span>TOTAL EUR:</span>
+                    <span style="color: #0072B8;">${totalFormatted}</span>
+                </div>
+            `;
+
+            currencyNotesHtml = `
+                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
+                    <p style="margin: 0;"><b>Condición de Pago & Cláusula Cambiaria:</b> Precios expresados en Euros (EUR). Pagaderos en Bolívares (VES) a la tasa oficial BCV vigente a la fecha efectiva del pago.</p>
+                </div>
+            `;
+        }
+
+        const itemsRows = (q.items || []).map((item, idx) => {
+            let unitPriceDisplay = `$${item.unit_price_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            let totalLineDisplay = `$${item.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            
+            if (curr === 'VES') {
+                unitPriceDisplay = `Bs. ${(item.unit_price_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                totalLineDisplay = `Bs. ${(item.total_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            } else if (curr === 'EUR') {
+                unitPriceDisplay = `€ ${item.unit_price_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                totalLineDisplay = `€ ${item.total_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            return `
             <tr style="page-break-inside: avoid;">
                 <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${idx + 1}</td>
                 <td style="text-align: center; color: #0284c7; font-weight: 800; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.item_code || ('SER-' + (idx+1))}</td>
                 <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-weight: 600; font-size: 11px; line-height: 1.35;">${item.description}</td>
                 <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.unit_measure || 'Global'}</td>
                 <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.quantity}</td>
-                <td style="text-align: right; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px;">$${item.unit_price_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="text-align: right; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; color: #002B49;">$${item.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            </tr>
-        `).join('');
+                <td style="text-align: right; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px;">${unitPriceDisplay}</td>
+                <td style="text-align: right; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; color: #002B49;">${totalLineDisplay}</td>
+            </tr>`;
+        }).join('');
 
         const sheetHtml = `
             <!-- Membrete DALOR -->
@@ -2779,7 +2886,7 @@ async function printQuotation(quoteId) {
                     <p style="font-size: 12.5px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${q.project_title}</p>
                     <p style="font-size: 10.5px; color: #334155; margin: 2px 0 0 0;">Lugar de Ejecución: <b>${q.location || 'Sede Central'}</b></p>
                     <p style="font-size: 10.5px; color: #0284c7; margin: 2px 0 0 0;">Tiempo de Ejecución: <b>${q.execution_time || '15 días hábiles a partir del anticipo'}</b></p>
-                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Moneda Base: <b>${curr}</b> &bull; Tasa BCV: <b>${rate.toFixed(2)} Bs/$</b></p>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Moneda de Emisión: <b>${curr === 'USD' ? 'Dólares Americanos (USD $)' : (curr === 'VES' ? 'Bolívares (VES Bs.)' : 'Euros (EUR €)')}</b></p>
                 </div>
             </div>
 
@@ -2792,8 +2899,8 @@ async function printQuotation(quoteId) {
                         <th style="padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: left;">Descripción del Servicio / Partida APU</th>
                         <th style="width: 55px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">Unidad</th>
                         <th style="width: 45px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">Cant.</th>
-                        <th style="width: 85px; padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: right;">P. Unit ($)</th>
-                        <th style="width: 95px; padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: right;">Total ($)</th>
+                        <th style="width: 95px; padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: right;">${tablePriceHeader}</th>
+                        <th style="width: 105px; padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: right;">${tableTotalHeader}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2801,38 +2908,18 @@ async function printQuotation(quoteId) {
                 </tbody>
             </table>
 
-            <!-- Bloque de Totales y Liquidación -->
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 25px; page-break-inside: avoid;">
-                <div style="width: 320px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-                        <span style="color: #475569;">Subtotal:</span>
-                        <span style="font-weight: 700;">${subtotalFormatted}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-bottom: 4px;">
-                        <span>Subtotal en Bs:</span>
-                        <span>Bs. ${subtotalBs}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-                        <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
-                        <span style="font-weight: 700; color: #d97706;">${taxFormatted}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
-                        <span>IVA en Bs:</span>
-                        <span>Bs. ${taxBs}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 900; color: #002B49;">
-                        <span>TOTAL (${curr}):</span>
-                        <span style="color: #0072B8;">${totalFormatted}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #475569; margin-top: 2px;">
-                        <span>TOTAL EN BS:</span>
-                        <span>Bs. ${totalBs}</span>
-                    </div>
+            <!-- Bloque de Totales -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px; page-break-inside: avoid;">
+                <div style="width: 310px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px;">
+                    ${totalsBoxHtml}
                 </div>
             </div>
 
+            <!-- Coletilla de Condiciones Comerciales -->
+            ${currencyNotesHtml}
+
             <!-- Firmas de Aprobación Formal -->
-            <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid;">
+            <div style="margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid;">
                 <div>
                     <div style="border-bottom: 1px solid #1e293b; margin-bottom: 5px;"></div>
                     <p style="font-size: 10.5px; font-weight: 800; margin: 0; color: #002B49;">Por Metalmecánica Dalor C.A.</p>

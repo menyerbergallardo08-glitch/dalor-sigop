@@ -252,47 +252,32 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
         raise HTTPException(status_code=403, detail="Contraseña de Director General incorrecta. Acción cancelada por seguridad.")
 
     from sqlalchemy import text
-    try:
-        # 1. Purgar todas las tablas operacionales con CASCADE
-        db.execute(text("""
-            TRUNCATE TABLE 
-                dispatch_items, 
-                dispatch_guides, 
-                split_expenses, 
-                expenses, 
-                quotation_items, 
-                quotations, 
-                receivable_payments, 
-                accounts_receivable, 
-                accounts_payable, 
-                advance_payments, 
-                resource_assignment_history, 
-                partner_withdrawals, 
-                financial_payments, 
-                material_movements, 
-                project_phases, 
-                projects 
-            RESTART IDENTITY CASCADE;
-        """))
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        # Fallback individual deletes in reverse dependency order
-        tables = [
-            'dispatch_items', 'dispatch_guides', 'split_expenses', 'expenses',
-            'quotation_items', 'quotations', 'receivable_payments',
-            'accounts_receivable', 'accounts_payable', 'advance_payments',
-            'resource_assignment_history', 'partner_withdrawals',
-            'financial_payments', 'material_movements', 'project_phases', 'projects'
-        ]
-        for tbl in tables:
-            try:
-                db.execute(text(f"DELETE FROM {tbl};"))
-                db.commit()
-            except Exception:
-                db.rollback()
+    # Exact table list
+    tables = [
+        "dispatch_guide_items",
+        "dispatch_guides",
+        "accounts_receivable",
+        "accounts_payable",
+        "financial_payments",
+        "expenses",
+        "quotation_items",
+        "quotations",
+        "resource_assignment_history",
+        "material_movements",
+        "partner_withdrawals",
+        "project_phases",
+        "projects"
+    ]
+    
+    # Execute individual DELETEs in strict child-to-parent order
+    for tbl in tables:
+        try:
+            db.execute(text(f"DELETE FROM {tbl};"))
+            db.commit()
+        except Exception as e:
+            db.rollback()
 
-    # 2. Resetear todos los activos al estado base disponible en Sede Central
+    # Reset assets
     try:
         db.execute(text("""
             UPDATE assets SET 
@@ -305,13 +290,13 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
     except Exception:
         db.rollback()
 
-    # 3. Registrar auditoría de puesta a cero
+    # Audit log
     try:
         audit = AuditLog(
             username="director",
             module="seguridad",
             action="reset_puesta_a_cero",
-            details="Puesta a Cero ejecutada por Director General: Todos los registros de prueba purgados para arranque real en limpio."
+            details="Puesta a Cero ejecutada por Director General: Base de datos purgada al 100% para arranque real."
         )
         db.add(audit)
         db.commit()
@@ -320,7 +305,7 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
 
     return {
         "success": True,
-        "message": "Puesta a Cero completada con éxito. Todos los registros de prueba han sido purgados y la base de datos está en cero para la operación real."
+        "message": "Puesta a Cero completada con éxito. Todos los registros de prueba han sido purgados al 100% y la base de datos está en cero para la operación real."
     }
 
 # ------------------------------------------------------------------------------

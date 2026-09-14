@@ -1,3 +1,53 @@
+
+// ====================================================================
+// GESTIÓN DE SUBPESTAÑAS Y FILTRADO DEL MÓDULO DE PROYECTOS (UX ENHANCEMENT)
+// ====================================================================
+function switchProjectSubtab(subtabName) {
+    const isList = (subtabName === 'list');
+    const subtabList = document.getElementById('subtab-proj-list');
+    const subtabForm = document.getElementById('subtab-proj-form');
+    const btnList = document.getElementById('tabbtn-proj-list');
+    const btnForm = document.getElementById('tabbtn-proj-form');
+
+    if (subtabList) subtabList.classList.toggle('hidden', !isList);
+    if (subtabForm) subtabForm.classList.toggle('hidden', isList);
+
+    if (btnList) {
+        btnList.className = isList ? 'btn-primary' : 'btn-secondary';
+    }
+    if (btnForm) {
+        btnForm.className = !isList ? 'btn-primary' : 'btn-secondary';
+    }
+
+    if (isList) {
+        loadProjectsList();
+    }
+}
+
+function filterProjectsList(query) {
+    if (!allProjects || allProjects.length === 0) return;
+    const q = (query || '').toLowerCase().trim();
+    const container = document.getElementById("projectsCardsContainer");
+    if (!container) return;
+
+    const cards = container.querySelectorAll(".project-card");
+    let visibleCount = 0;
+    cards.forEach(card => {
+        const text = (card.innerText || '').toLowerCase();
+        if (!q || text.includes(q)) {
+            card.style.display = "";
+            visibleCount++;
+        } else {
+            card.style.display = "none";
+        }
+    });
+
+    const badge = document.getElementById("projects_count_badge");
+    if (badge) {
+        badge.innerText = q ? `${visibleCount} de ${allProjects.length} obra(s)` : `${allProjects.length} obra(s) registradas`;
+    }
+}
+
 let currentViewingProjectId = null;
 
 // ==============================================================================
@@ -687,6 +737,7 @@ function populateSelectDropdowns() {
 // 1. PLANIFICACIÓN & ARMADO INTEGRAL DE PROYECTOS
 // ----------------------------------------------------
 function initProjectPlanningView() {
+    switchProjectSubtab('list');
     loadProjectsList();
     populatePlanDropdownSelectors();
     renderAssignedTags();
@@ -2610,6 +2661,9 @@ function cancelQuotationConversion() {
     if (convInput) convInput.value = "";
     const banner = document.getElementById("quote_conversion_banner");
     if (banner) banner.classList.add("hidden");
+    const form = document.getElementById("projectCreateForm");
+    if (form) form.reset();
+    switchProjectSubtab('list');
 }
 
 // Convertir cotización en Proyecto con pre-llenado interactivo y edición completa
@@ -2621,6 +2675,7 @@ async function convertQuoteToProject(quoteId) {
 
         // 1. Cambiar a vista de Proyectos
         switchView('projects', 'proyectos');
+        switchProjectSubtab('form');
 
         // 2. Mostrar banner de conversión
         const convInput = document.getElementById("converting_quotation_id");

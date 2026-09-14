@@ -303,44 +303,49 @@ def get_receivables(db: Session = Depends(get_db)):
 
 @router.post("/cxc")
 def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
-    existing = db.query(AccountReceivable).filter(AccountReceivable.invoice_number == r_in.invoice_number).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="El número de factura/valuación ya existe.")
+    try:
+        existing = db.query(AccountReceivable).filter(AccountReceivable.invoice_number == r_in.invoice_number).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="El número de factura/valuación ya existe.")
 
-    # Las retenciones NO se predeterminan obligatoriamente; sólo se registran si el usuario o cliente las especifica explícitamente (> 0)
-    base_usd = r_in.taxable_base_usd if (r_in.taxable_base_usd and r_in.taxable_base_usd > 0) else round(r_in.amount_usd / 1.16, 2)
-    tax_usd = r_in.tax_amount_usd if (r_in.tax_amount_usd and r_in.tax_amount_usd > 0) else round(r_in.amount_usd - base_usd, 2)
-    ret_iva_usd = r_in.tax_withholding_usd if (r_in.tax_withholding_usd and r_in.tax_withholding_usd > 0) else 0.0
-    ret_islr_usd = r_in.islr_withholding_usd if (r_in.islr_withholding_usd and r_in.islr_withholding_usd > 0) else 0.0
-    tot_ret_usd = r_in.tax_retained_usd if (r_in.tax_retained_usd and r_in.tax_retained_usd > 0) else (ret_iva_usd + ret_islr_usd)
-    net_usd = r_in.net_amount_usd if (r_in.net_amount_usd and r_in.net_amount_usd > 0) else round(r_in.amount_usd - tot_ret_usd, 2)
+        # Las retenciones NO se predeterminan obligatoriamente; sólo se registran si el usuario o cliente las especifica explícitamente (> 0)
+        base_usd = r_in.taxable_base_usd if (r_in.taxable_base_usd and r_in.taxable_base_usd > 0) else round(r_in.amount_usd / 1.16, 2)
+        tax_usd = r_in.tax_amount_usd if (r_in.tax_amount_usd and r_in.tax_amount_usd > 0) else round(r_in.amount_usd - base_usd, 2)
+        ret_iva_usd = r_in.tax_withholding_usd if (r_in.tax_withholding_usd and r_in.tax_withholding_usd > 0) else 0.0
+        ret_islr_usd = r_in.islr_withholding_usd if (r_in.islr_withholding_usd and r_in.islr_withholding_usd > 0) else 0.0
+        tot_ret_usd = r_in.tax_retained_usd if (r_in.tax_retained_usd and r_in.tax_retained_usd > 0) else (ret_iva_usd + ret_islr_usd)
+        net_usd = r_in.net_amount_usd if (r_in.net_amount_usd and r_in.net_amount_usd > 0) else round(r_in.amount_usd - tot_ret_usd, 2)
 
-    amount_bs = r_in.amount_usd * r_in.exchange_rate
-    new_r = AccountReceivable(
-        invoice_number=r_in.invoice_number.strip(),
-        client_id=r_in.client_id,
-        project_id=r_in.project_id,
-        description=r_in.description.strip(),
-        due_date=r_in.due_date,
-        taxable_base_usd=base_usd,
-        tax_amount_usd=tax_usd,
-        tax_withholding_rate=r_in.tax_withholding_rate or 75.0,
-        tax_withholding_usd=ret_iva_usd,
-        islr_rate=r_in.islr_rate or 2.0,
-        islr_withholding_usd=ret_islr_usd,
-        net_amount_usd=net_usd,
-        amount_usd=r_in.amount_usd,
-        amount_bs=amount_bs,
-        exchange_rate=r_in.exchange_rate,
-        tax_retained_usd=ret_iva_usd + ret_islr_usd,
-        balance_usd=r_in.amount_usd,
-        status="pendiente",
-        notes=r_in.notes
-    )
-    db.add(new_r)
-    db.commit()
-    db.refresh(new_r)
-    return {"success": True, "message": "Factura CxC registrada con éxito con retenciones SENIAT.", "id": new_r.id}
+        amount_bs = r_in.amount_usd * r_in.exchange_rate
+        new_r = AccountReceivable(
+            invoice_number=r_in.invoice_number.strip(),
+            client_id=r_in.client_id,
+            project_id=r_in.project_id,
+            description=r_in.description.strip(),
+            due_date=r_in.due_date,
+            taxable_base_usd=base_usd,
+            tax_amount_usd=tax_usd,
+            tax_withholding_rate=r_in.tax_withholding_rate or 75.0,
+            tax_withholding_usd=ret_iva_usd,
+            islr_rate=r_in.islr_rate or 2.0,
+            islr_withholding_usd=ret_islr_usd,
+            net_amount_usd=net_usd,
+            amount_usd=r_in.amount_usd,
+            amount_bs=amount_bs,
+            exchange_rate=r_in.exchange_rate,
+            tax_retained_usd=ret_iva_usd + ret_islr_usd,
+            balance_usd=r_in.amount_usd,
+            status="pendiente",
+            notes=r_in.notes
+        )
+        db.add(new_r)
+        db.commit()
+        db.refresh(new_r)
+        return {"success": True, "message": "Factura CxC registrada con éxito con retenciones SENIAT.", "id": new_r.id}
+    except Exception as e:
+        import traceback
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error en create_receivable: {str(e)} -> {traceback.format_exc()}")
 
 @router.post("/cxc/{receivable_id}/payment")
 def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = Depends(get_db)):

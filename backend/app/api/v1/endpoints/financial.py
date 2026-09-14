@@ -305,11 +305,13 @@ def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="El número de factura/valuación ya existe.")
 
-    base_usd = r_in.taxable_base_usd if r_in.taxable_base_usd > 0 else round(r_in.amount_usd / 1.16, 2)
-    tax_usd = r_in.tax_amount_usd if r_in.tax_amount_usd > 0 else round(r_in.amount_usd - base_usd, 2)
-    ret_iva_usd = r_in.tax_withholding_usd if r_in.tax_withholding_usd > 0 else round(tax_usd * ((r_in.tax_withholding_rate or 75.0) / 100.0), 2)
-    ret_islr_usd = r_in.islr_withholding_usd if r_in.islr_withholding_usd > 0 else round(base_usd * ((r_in.islr_rate or 2.0) / 100.0), 2)
-    net_usd = r_in.net_amount_usd if r_in.net_amount_usd > 0 else round(r_in.amount_usd - ret_iva_usd - ret_islr_usd, 2)
+    # Las retenciones NO se predeterminan obligatoriamente; sólo se registran si el usuario o cliente las especifica explícitamente (> 0)
+    base_usd = r_in.taxable_base_usd if (r_in.taxable_base_usd and r_in.taxable_base_usd > 0) else round(r_in.amount_usd / 1.16, 2)
+    tax_usd = r_in.tax_amount_usd if (r_in.tax_amount_usd and r_in.tax_amount_usd > 0) else round(r_in.amount_usd - base_usd, 2)
+    ret_iva_usd = r_in.tax_withholding_usd if (r_in.tax_withholding_usd and r_in.tax_withholding_usd > 0) else 0.0
+    ret_islr_usd = r_in.islr_withholding_usd if (r_in.islr_withholding_usd and r_in.islr_withholding_usd > 0) else 0.0
+    tot_ret_usd = r_in.tax_retained_usd if (r_in.tax_retained_usd and r_in.tax_retained_usd > 0) else (ret_iva_usd + ret_islr_usd)
+    net_usd = r_in.net_amount_usd if (r_in.net_amount_usd and r_in.net_amount_usd > 0) else round(r_in.amount_usd - tot_ret_usd, 2)
 
     amount_bs = r_in.amount_usd * r_in.exchange_rate
     new_r = AccountReceivable(

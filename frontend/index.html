@@ -3298,7 +3298,12 @@
                     <h3 id="detail_proj_name" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">Nombre del Proyecto</h3>
                     <p id="detail_proj_subtitle" style="font-size: 12px; color: #64748b;">Cliente | Ubicación</p>
                 </div>
-                <button onclick="closeModal('modalProjectDetail')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" onclick="copyProjectClientTrackingLink()" class="btn-primary" style="background: #059669; font-size: 11px; padding: 5px 10px;">
+                        <i class="fa-solid fa-share-nodes"></i> Enlace para Cliente (Ciego a Costos)
+                    </button>
+                    <button onclick="closeModal('modalProjectDetail')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+                </div>
             </div>
 
             <div id="detail_proj_financial_box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; text-align: center;">
@@ -3385,14 +3390,22 @@
                     </div>
                 </div>
 
-                <div class="grid-3" style="margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <div>
                         <label class="form-label">Ubicación de la Obra</label>
                         <input type="text" id="quote_location" placeholder="Ciudad / Planta" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">Validez de Oferta (Días)</label>
-                        <input type="number" id="quote_validity" value="15" class="form-input">
+                        <label class="form-label">Tiempo de Ejecución *</label>
+                        <input type="text" id="quote_execution_time" value="15 días hábiles a partir del anticipo" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Moneda de Emisión *</label>
+                        <select id="quote_currency" class="form-select" onchange="onQuotationCurrencyChanged()">
+                            <option value="USD">Dólares (USD $)</option>
+                            <option value="VES">Bolívares (Bs. BCV)</option>
+                            <option value="EUR">Euros (EUR €)</option>
+                        </select>
                     </div>
                     <div>
                         <label class="form-label">Tratamiento de IVA</label>
@@ -3990,6 +4003,17 @@
                     </div>
                 </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Costo de Flete / Grúa ($ Imputable a Obra)</label>
+                        <input type="number" step="0.01" id="tg_freight_cost" value="0.00" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Combustible de Traslado ($ Imputable)</label>
+                        <input type="number" step="0.01" id="tg_fuel_cost" value="0.00" class="form-input">
+                    </div>
+                </div>
+
                 <div>
                     <label class="form-label">Observaciones / Condiciones de Entrega</label>
                     <input type="text" id="tg_notes" placeholder="Equipos revisados y operativos para inicio de faena." class="form-input">
@@ -4029,6 +4053,23 @@
                     <div>
                         <label class="form-label">Código de Activo *</label>
                         <input type="text" id="nass_code" placeholder="Ej: EQ-SOL-05 / VEH-10" class="form-input" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Condición de Propiedad *</label>
+                        <select id="nass_ownership" class="form-select">
+                            <option value="propio">Propio (Activo Fijo DALOR)</option>
+                            <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
+                            <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
+                            <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
+                            <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Empresa / Propietario / Cliente</label>
+                        <input type="text" id="nass_entity_name" placeholder="Ej: Arrendadora X / Aliado Y" class="form-input">
                     </div>
                 </div>
 
@@ -4593,6 +4634,6 @@
     </style>
 
     <!-- 🚀 LÓGICA CORE SPA JAVASCRIPT -->
-    <script src="/app.js?v=2026.09.14.v35"></script>
+    <script src="/app.js?v=2026.09.14.v36"></script>
 </body>
 </html>

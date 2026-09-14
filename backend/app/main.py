@@ -16,7 +16,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
-    description="Sistema Integral de Gestión Operativa, Activos, Job Costing y Captura OCR para DALOR & Alianza NEPTUNIA."
+    description="Sistema Integral de Gestión Operativa, Activos, Job Costing y Captura OCR para METALMECÁNICA DALOR C.A.."
 )
 
 @app.on_event("startup")
@@ -61,7 +61,7 @@ def serve_frontend_root():
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         return response
-    return {"status": "online", "company": "DALOR", "partner": "NEPTUNIA"}
+    return {"status": "online", "company": "DALOR", "partner": "DALOR"}
 
 @app.get("/app.js")
 def serve_frontend_js():

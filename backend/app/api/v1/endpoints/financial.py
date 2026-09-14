@@ -28,9 +28,15 @@ class ReceivableCreate(BaseModel):
     project_id: Optional[int] = None
     description: str
     due_date: datetime
-    amount_usd: float
+    amount_usd: float # Total Factura
+    taxable_base_usd: Optional[float] = 0.0
+    tax_amount_usd: Optional[float] = 0.0
+    tax_withholding_rate: Optional[float] = 75.0 # 0, 75, 100
+    tax_withholding_usd: Optional[float] = 0.0
+    islr_rate: Optional[float] = 2.0 # 0, 1, 2, 3, 5
+    islr_withholding_usd: Optional[float] = 0.0
+    net_amount_usd: Optional[float] = 0.0
     exchange_rate: float = 800.0
-    tax_retained_usd: float = 0.0
     notes: Optional[str] = None
 
 class PayableCreate(BaseModel):
@@ -41,7 +47,14 @@ class PayableCreate(BaseModel):
     payable_type: str = "costo_material_obra" # costo_material_obra, gasto_fijo_sede, stock_almacen
     description: str
     due_date: datetime
-    amount_usd: float
+    amount_usd: float # Total Factura
+    taxable_base_usd: Optional[float] = 0.0
+    tax_amount_usd: Optional[float] = 0.0
+    tax_withholding_rate: Optional[float] = 75.0
+    tax_withholding_usd: Optional[float] = 0.0
+    islr_rate: Optional[float] = 2.0
+    islr_withholding_usd: Optional[float] = 0.0
+    net_amount_usd: Optional[float] = 0.0
     exchange_rate: float = 800.0
     notes: Optional[str] = None
 
@@ -49,7 +62,8 @@ class PaymentCreate(BaseModel):
     payment_type: Optional[str] = "cxc_cobro" # cxc_cobro, cxp_pago
     target_id: Optional[int] = None # receivable_id o payable_id
     amount_usd: float
-    payment_method: str = "transferencia"
+    payment_method: str = "transferencia" # transferencia, efectivo_usd, retencion_iva, retencion_islr, zelle, pago_movil
+    voucher_number: Optional[str] = None # N° comprobante de retención o referencia
     reference_number: Optional[str] = None
     exchange_rate: float = 800.0
     notes: Optional[str] = None
@@ -262,10 +276,26 @@ def get_receivables(db: Session = Depends(get_db)):
         "issue_date": r.issue_date.strftime("%Y-%m-%d"),
         "due_date": r.due_date.strftime("%Y-%m-%d"),
         "amount_usd": r.amount_usd,
+        "taxable_base_usd": r.taxable_base_usd,
+        "tax_amount_usd": r.tax_amount_usd,
+        "tax_withholding_rate": r.tax_withholding_rate,
+        "tax_withholding_usd": r.tax_withholding_usd,
+        "islr_rate": r.islr_rate,
+        "islr_withholding_usd": r.islr_withholding_usd,
+        "net_amount_usd": r.net_amount_usd,
         "paid_amount_usd": r.paid_amount_usd,
         "balance_usd": r.balance_usd,
         "status": r.status,
-        "tax_retained_usd": r.tax_retained_usd
+        "tax_retained_usd": r.tax_retained_usd,
+        "payments": [{
+            "id": p.id,
+            "payment_type": p.payment_type,
+            "payment_method": p.payment_method,
+            "amount_usd": p.amount_usd,
+            "voucher_number": p.voucher_number or p.reference_number,
+            "payment_date": p.payment_date.strftime("%d/%m/%Y"),
+            "notes": p.notes
+        } for p in r.payments]
     } for r in rows]
 
 @router.post("/cxc")
@@ -274,6 +304,12 @@ def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="El número de factura/valuación ya existe.")
 
+    base_usd = r_in.taxable_base_usd if r_in.taxable_base_usd > 0 else round(r_in.amount_usd / 1.16, 2)
+    tax_usd = r_in.tax_amount_usd if r_in.tax_amount_usd > 0 else round(r_in.amount_usd - base_usd, 2)
+    ret_iva_usd = r_in.tax_withholding_usd if r_in.tax_withholding_usd > 0 else round(tax_usd * ((r_in.tax_withholding_rate or 75.0) / 100.0), 2)
+    ret_islr_usd = r_in.islr_withholding_usd if r_in.islr_withholding_usd > 0 else round(base_usd * ((r_in.islr_rate or 2.0) / 100.0), 2)
+    net_usd = r_in.net_amount_usd if r_in.net_amount_usd > 0 else round(r_in.amount_usd - ret_iva_usd - ret_islr_usd, 2)
+
     amount_bs = r_in.amount_usd * r_in.exchange_rate
     new_r = AccountReceivable(
         invoice_number=r_in.invoice_number.strip(),
@@ -281,18 +317,25 @@ def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
         project_id=r_in.project_id,
         description=r_in.description.strip(),
         due_date=r_in.due_date,
+        taxable_base_usd=base_usd,
+        tax_amount_usd=tax_usd,
+        tax_withholding_rate=r_in.tax_withholding_rate or 75.0,
+        tax_withholding_usd=ret_iva_usd,
+        islr_rate=r_in.islr_rate or 2.0,
+        islr_withholding_usd=ret_islr_usd,
+        net_amount_usd=net_usd,
         amount_usd=r_in.amount_usd,
         amount_bs=amount_bs,
         exchange_rate=r_in.exchange_rate,
-        tax_retained_usd=r_in.tax_retained_usd,
-        balance_usd=r_in.amount_usd - r_in.tax_retained_usd,
+        tax_retained_usd=ret_iva_usd + ret_islr_usd,
+        balance_usd=r_in.amount_usd,
         status="pendiente",
         notes=r_in.notes
     )
     db.add(new_r)
     db.commit()
     db.refresh(new_r)
-    return {"success": True, "message": "Factura CxC registrada con éxito.", "id": new_r.id}
+    return {"success": True, "message": "Factura CxC registrada con éxito con retenciones SENIAT.", "id": new_r.id}
 
 @router.post("/cxc/{receivable_id}/payment")
 def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = Depends(get_db)):
@@ -303,81 +346,31 @@ def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = De
     if p_in.amount_usd <= 0:
         raise HTTPException(status_code=400, detail="El monto del cobro debe ser mayor a cero.")
 
-    if p_in.amount_usd > r.balance_usd:
+    if p_in.amount_usd > (r.balance_usd + 0.05):
         raise HTTPException(status_code=400, detail=f"El cobro (${p_in.amount_usd}) supera el saldo pendiente (${r.balance_usd}).")
 
     payment = FinancialPayment(
-        payment_type="cxc_cobro",
+        payment_type=p_in.payment_type or "cxc_cobro",
         receivable_id=r.id,
         amount_usd=p_in.amount_usd,
         amount_bs=p_in.amount_usd * p_in.exchange_rate,
         exchange_rate=p_in.exchange_rate,
         payment_method=p_in.payment_method,
+        voucher_number=p_in.voucher_number or p_in.reference_number,
         reference_number=p_in.reference_number,
         notes=p_in.notes
     )
     db.add(payment)
 
     r.paid_amount_usd += p_in.amount_usd
-    r.balance_usd -= p_in.amount_usd
-    if r.balance_usd <= 0:
+    r.balance_usd = max(0.0, round(r.balance_usd - p_in.amount_usd, 2))
+    if r.balance_usd <= 0.01:
         r.status = "cobrado_total"
     else:
         r.status = "abono_parcial"
 
     db.commit()
-    return {"success": True, "message": "Cobro aplicado con éxito.", "new_balance_usd": r.balance_usd, "status": r.status}
-
-@router.post("/direct-collection")
-def record_direct_client_collection(c_in: DirectCollectionCreate, db: Session = Depends(get_db)):
-    client = db.query(Client).filter(Client.id == c_in.client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
-
-    if c_in.amount_usd <= 0:
-        raise HTTPException(status_code=400, detail="El monto del cobro debe ser mayor a cero.")
-
-    amount_bs = c_in.amount_usd * c_in.exchange_rate
-    inv_num = f"REC-{datetime.utcnow().strftime('%y%m%d%H%M%S')}"
-
-    # 1. Crear documento CxC ya saldado
-    rec = AccountReceivable(
-        invoice_number=inv_num,
-        client_id=client.id,
-        project_id=c_in.project_id,
-        description=c_in.concept or "Anticipo / Abono Directo de Cliente",
-        due_date=datetime.utcnow(),
-        amount_usd=c_in.amount_usd,
-        amount_bs=amount_bs,
-        exchange_rate=c_in.exchange_rate,
-        paid_amount_usd=c_in.amount_usd,
-        balance_usd=0.0,
-        status="cobrado_total",
-        notes=c_in.notes
-    )
-    db.add(rec)
-    db.flush()
-
-    # 2. Registrar cobro en Tesorería
-    payment = FinancialPayment(
-        payment_type="cxc_cobro",
-        receivable_id=rec.id,
-        amount_usd=c_in.amount_usd,
-        amount_bs=amount_bs,
-        exchange_rate=c_in.exchange_rate,
-        payment_method=c_in.payment_method,
-        reference_number=c_in.reference_number or f"TRANS-{datetime.utcnow().strftime('%H%M%S')}",
-        notes=f"Cobro directo de cliente: {client.name}. {c_in.notes or ''}"
-    )
-    db.add(payment)
-    db.commit()
-
-    return {
-        "success": True,
-        "message": f"Cobro directo de ${c_in.amount_usd:.2f} registrado exitosamente para {client.name}.",
-        "receipt_number": inv_num,
-        "payment_id": payment.id
-    }
+    return {"success": True, "message": "Cobro / Comprobante aplicado con éxito.", "new_balance_usd": r.balance_usd, "status": r.status}
 
 # ------------------------------------------------------------------------------
 # 4. ENDPOINTS DE CUENTAS POR PAGAR (CxP PROVEEDORES)
@@ -395,13 +388,35 @@ def get_payables(db: Session = Depends(get_db)):
         "issue_date": p.issue_date.strftime("%Y-%m-%d"),
         "due_date": p.due_date.strftime("%Y-%m-%d"),
         "amount_usd": p.amount_usd,
+        "taxable_base_usd": p.taxable_base_usd,
+        "tax_amount_usd": p.tax_amount_usd,
+        "tax_withholding_rate": p.tax_withholding_rate,
+        "tax_withholding_usd": p.tax_withholding_usd,
+        "islr_rate": p.islr_rate,
+        "islr_withholding_usd": p.islr_withholding_usd,
+        "net_amount_usd": p.net_amount_usd,
         "paid_amount_usd": p.paid_amount_usd,
         "balance_usd": p.balance_usd,
-        "status": p.status
+        "status": p.status,
+        "payments": [{
+            "id": pm.id,
+            "payment_type": pm.payment_type,
+            "payment_method": pm.payment_method,
+            "amount_usd": pm.amount_usd,
+            "voucher_number": pm.voucher_number or pm.reference_number,
+            "payment_date": pm.payment_date.strftime("%d/%m/%Y"),
+            "notes": pm.notes
+        } for pm in p.payments]
     } for p in rows]
 
 @router.post("/cxp")
 def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
+    base_usd = p_in.taxable_base_usd if p_in.taxable_base_usd > 0 else round(p_in.amount_usd / 1.16, 2)
+    tax_usd = p_in.tax_amount_usd if p_in.tax_amount_usd > 0 else round(p_in.amount_usd - base_usd, 2)
+    ret_iva_usd = p_in.tax_withholding_usd if p_in.tax_withholding_usd > 0 else round(tax_usd * ((p_in.tax_withholding_rate or 75.0) / 100.0), 2)
+    ret_islr_usd = p_in.islr_withholding_usd if p_in.islr_withholding_usd > 0 else round(base_usd * ((p_in.islr_rate or 2.0) / 100.0), 2)
+    net_usd = p_in.net_amount_usd if p_in.net_amount_usd > 0 else round(p_in.amount_usd - ret_iva_usd - ret_islr_usd, 2)
+
     amount_bs = p_in.amount_usd * p_in.exchange_rate
     new_p = AccountPayable(
         invoice_number=p_in.invoice_number.strip(),
@@ -411,6 +426,13 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
         payable_type=p_in.payable_type,
         description=p_in.description.strip(),
         due_date=p_in.due_date,
+        taxable_base_usd=base_usd,
+        tax_amount_usd=tax_usd,
+        tax_withholding_rate=p_in.tax_withholding_rate or 75.0,
+        tax_withholding_usd=ret_iva_usd,
+        islr_rate=p_in.islr_rate or 2.0,
+        islr_withholding_usd=ret_islr_usd,
+        net_amount_usd=net_usd,
         amount_usd=p_in.amount_usd,
         amount_bs=amount_bs,
         exchange_rate=p_in.exchange_rate,
@@ -421,7 +443,7 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
     db.add(new_p)
     db.commit()
     db.refresh(new_p)
-    return {"success": True, "message": "Cuenta por pagar registrada con éxito.", "id": new_p.id}
+    return {"success": True, "message": "Cuenta por pagar registrada con éxito con retenciones SENIAT.", "id": new_p.id}
 
 @router.post("/cxp/{payable_id}/payment")
 def record_cxp_payment(payable_id: int, p_in: PaymentCreate, db: Session = Depends(get_db)):
@@ -432,30 +454,31 @@ def record_cxp_payment(payable_id: int, p_in: PaymentCreate, db: Session = Depen
     if p_in.amount_usd <= 0:
         raise HTTPException(status_code=400, detail="El monto del pago debe ser mayor a cero.")
 
-    if p_in.amount_usd > p.balance_usd:
+    if p_in.amount_usd > (p.balance_usd + 0.05):
         raise HTTPException(status_code=400, detail=f"El pago (${p_in.amount_usd}) supera la deuda (${p.balance_usd}).")
 
     payment = FinancialPayment(
-        payment_type="cxp_pago",
+        payment_type=p_in.payment_type or "cxp_pago",
         payable_id=p.id,
         amount_usd=p_in.amount_usd,
         amount_bs=p_in.amount_usd * p_in.exchange_rate,
         exchange_rate=p_in.exchange_rate,
         payment_method=p_in.payment_method,
+        voucher_number=p_in.voucher_number or p_in.reference_number,
         reference_number=p_in.reference_number,
         notes=p_in.notes
     )
     db.add(payment)
 
     p.paid_amount_usd += p_in.amount_usd
-    p.balance_usd -= p_in.amount_usd
-    if p.balance_usd <= 0:
+    p.balance_usd = max(0.0, round(p.balance_usd - p_in.amount_usd, 2))
+    if p.balance_usd <= 0.01:
         p.status = "pagado_total"
     else:
         p.status = "abono_parcial"
 
     db.commit()
-    return {"success": True, "message": "Pago aplicado con éxito.", "new_balance_usd": p.balance_usd, "status": p.status}
+    return {"success": True, "message": "Pago / Comprobante de retención aplicado con éxito.", "new_balance_usd": p.balance_usd, "status": p.status}
 
 # ------------------------------------------------------------------------------
 # 5. COTIZACIÓN OFICIAL BCV (SCRAPING AUTOMATIZADO CON FAIL-SAFE)

@@ -586,7 +586,7 @@ function switchView(viewName, moduleCategory) {
     const allViews = [
         'executive', 'financial', 'maintenance',
         'quotations', 'clients', 'services', 
-        'projects', 'dashboard', 
+        'projects', 'dispatch', 'dashboard', 
         'resources', 
         'pwa', 'manual', 'tree', 'inbox', 'expenses-log'
     ];
@@ -610,6 +610,7 @@ function switchView(viewName, moduleCategory) {
     if (viewName === 'clients') loadClients();
     if (viewName === 'services') loadServices();
     if (viewName === 'projects') initProjectPlanningView();
+    if (viewName === 'dispatch') initDispatchView();
     if (viewName === 'dashboard') loadComparisonDashboard();
     if (viewName === 'resources') switchResourceSubtab('dashboard');
     if (viewName === 'inbox') loadPendingExpensesInbox();
@@ -4008,9 +4009,14 @@ async function loadReceivablesList() {
         }
 
         tbody.innerHTML = list.map(r => {
+            const isIncobrable = r.status === 'incobrable' || r.is_bad_debt;
+            const isPaid = r.status === 'cobrado' || (r.balance_usd <= 0.05 && !isIncobrable);
+            const isOverdue = !isPaid && !isIncobrable && new Date(r.due_date) < new Date();
             let badgeBg = '#fef3c7', badgeColor = '#92400e', statusLabel = 'Pendiente';
-            if (r.status === 'cobrado') { badgeBg = '#d1fae5'; badgeColor = '#065f46'; statusLabel = 'Cobrado Total'; }
-            if (r.status === 'parcial') { badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; statusLabel = 'Abono Parcial'; }
+            if (r.status === 'cobrado' || (r.balance_usd <= 0.05 && r.status !== 'incobrable')) { badgeBg = '#d1fae5'; badgeColor = '#065f46'; statusLabel = 'Cobrado Total'; }
+            else if (r.status === 'incobrable' || r.is_bad_debt) { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '🛑 Incobrable / Castigado'; }
+            else if (new Date(r.due_date) < new Date()) { badgeBg = '#fee2e2'; badgeColor = '#dc2626'; statusLabel = '⚠️ En Mora / Vencido'; }
+            else if (r.status === 'parcial') { badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; statusLabel = 'Abono Parcial'; }
             if (r.status === 'vencido') { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '⚠️ Vencida'; }
 
             return `
@@ -7163,5 +7169,618 @@ async function deleteReceivable(cxcId, invoiceNum) {
         }
     } catch(err) {
         alert("Error al anular CxC: " + err.message);
+    }
+}
+
+
+// ==============================================================================
+// 📦 MÓDULO DE GUÍAS DE DESPACHO, TRASLADO & ENTREGA DE PRODUCTOS / EJES
+// ==============================================================================
+let allDispatchGuides = [];
+
+function switchDispatchSubtab(subtabName) {
+    const isList = (subtabName === 'list');
+    const subtabList = document.getElementById('subtab-disp-list');
+    const subtabForm = document.getElementById('subtab-disp-form');
+    const btnList = document.getElementById('tabbtn-disp-list');
+    const btnForm = document.getElementById('tabbtn-disp-form');
+
+    if (subtabList) subtabList.classList.toggle('hidden', !isList);
+    if (subtabForm) subtabForm.classList.toggle('hidden', isList);
+
+    if (btnList) btnList.className = isList ? 'btn-primary' : 'btn-secondary';
+    if (btnForm) btnForm.className = !isList ? 'btn-primary' : 'btn-secondary';
+
+    if (isList) {
+        loadDispatchGuidesList();
+    } else {
+        initDispatchForm();
+    }
+}
+
+async function initDispatchView() {
+    switchDispatchSubtab('list');
+    await loadDispatchGuidesList();
+}
+
+async function initDispatchForm() {
+    // Asegurar clientes, proyectos y flota
+    if (!allClients || allClients.length === 0) {
+        try {
+            const res = await fetch(`${API_BASE}/clients/`);
+            if (res.ok) allClients = await res.json();
+        } catch(e) {}
+    }
+    if (!allProjects || allProjects.length === 0) {
+        try {
+            const res = await fetch(`${API_BASE}/projects/`);
+            if (res.ok) allProjects = await res.json();
+        } catch(e) {}
+    }
+    if (!allAssets || allAssets.length === 0) {
+        try {
+            const res = await fetch(`${API_BASE}/assets/`);
+            if (res.ok) allAssets = await res.json();
+        } catch(e) {}
+    }
+
+    // Poblar selectores
+    populateSelect("disp_client_id", allClients || [], c => `<option value="${c.id}">${c.name} (${c.rif || 'S/R'})</option>`);
+    populateSelect("disp_project_id", [{id: '', code: 'Sin Obra / Servicio Directo de Taller'}, ...(allProjects || [])], p => `<option value="${p.id || ''}">${p.code ? '['+p.code+'] ' : ''}${p.name || ''}</option>`);
+    
+    // Poblar vehículos propios
+    const vehicles = (allAssets || []).filter(a => a.asset_type === 'vehiculo' || a.category === 'Flota' || (a.code && a.code.startsWith('FLT-')));
+    populateSelect("disp_select_asset", [{id: '', name: '-- Seleccionar Vehículo Flota --'}, ...vehicles], a => `<option value="${a.id}" data-driver="${a.assigned_to_name || ''}" data-plate="${a.plate_number || a.code}">${a.code} - ${a.name} (${a.plate_number || 'Sin Placa'})</option>`);
+
+    // Reset modo a propio
+    setDispatchTransportMode('propio_dalor');
+
+    // Inicializar con al menos 1 ítem de carga
+    const container = document.getElementById("dispatchItemsTableBody");
+    if (container && container.children.length === 0) {
+        addDispatchItemRow("Reparación y Rectificación de Ejes de Transmisión Ø 4\" x 2.20m", 2, "Ejes", "Reparado / 100% Operativo", 350);
+    }
+}
+
+function setDispatchTransportMode(mode) {
+    document.getElementById("disp_transport_type").value = mode;
+
+    const btnP = document.getElementById("btn_mode_propio");
+    const btnT = document.getElementById("btn_mode_tercerizado");
+    const btnR = document.getElementById("btn_mode_retiro");
+
+    if (btnP) btnP.className = (mode === 'propio_dalor') ? 'btn-primary' : 'btn-secondary';
+    if (btnT) btnT.className = (mode === 'tercerizado_flete') ? 'btn-primary' : 'btn-secondary';
+    if (btnR) btnR.className = (mode === 'retiro_cliente') ? 'btn-primary' : 'btn-secondary';
+
+    const secP = document.getElementById("disp_sec_propio");
+    const secT = document.getElementById("disp_sec_tercerizado");
+    const secR = document.getElementById("disp_sec_retiro");
+
+    if (secP) secP.classList.toggle("hidden", mode !== 'propio_dalor');
+    if (secT) secT.classList.toggle("hidden", mode !== 'tercerizado_flete');
+    if (secR) secR.classList.toggle("hidden", mode !== 'retiro_cliente');
+}
+
+function onDispatchClientChanged() {
+    const cId = parseInt(document.getElementById("disp_client_id")?.value);
+    const client = (allClients || []).find(c => c.id === cId);
+    if (client) {
+        if (client.address && document.getElementById("disp_destination_address")) {
+            document.getElementById("disp_destination_address").value = client.address;
+        }
+        if (client.industry && document.getElementById("disp_destination_plant")) {
+            document.getElementById("disp_destination_plant").value = `Planta ${client.name}`;
+        }
+    }
+}
+
+function onDispatchAssetChanged() {
+    const sel = document.getElementById("disp_select_asset");
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) {
+        const driver = opt.getAttribute("data-driver") || "";
+        const plate = opt.getAttribute("data-plate") || "";
+        if (driver && document.getElementById("disp_driver_name_propio")) {
+            document.getElementById("disp_driver_name_propio").value = driver;
+        }
+        if (plate && document.getElementById("disp_plate_propio")) {
+            document.getElementById("disp_plate_propio").value = plate;
+        }
+        if (document.getElementById("disp_driver_id_propio") && !document.getElementById("disp_driver_id_propio").value) {
+            document.getElementById("disp_driver_id_propio").value = "V-18.450.210";
+        }
+    }
+}
+
+function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Reparado / Listo para Montaje", weight = 0) {
+    const tbody = document.getElementById("dispatchItemsTableBody");
+    if (!tbody) return;
+    const rowIdx = tbody.children.length + 1;
+    const tr = document.createElement("tr");
+    tr.className = "dispatch-item-row";
+    tr.style.borderBottom = "1px solid #f1f5f9";
+    tr.innerHTML = `
+        <td style="padding: 8px; text-align: center; font-weight: 800; color: var(--dalor-navy);">${rowIdx}</td>
+        <td style="padding: 8px;">
+            <input type="text" class="disp-it-desc form-input" required value="${desc}" placeholder="Ej: Ejes rectificados..." style="width: 100%; font-size: 12px; padding: 5px 8px;">
+        </td>
+        <td style="padding: 8px; text-align: center;">
+            <input type="number" step="0.1" class="disp-it-qty form-input" required value="${qty}" min="0.1" style="width: 100%; font-size: 12px; padding: 5px; text-align: center;">
+        </td>
+        <td style="padding: 8px;">
+            <select class="disp-it-unit form-select" style="width: 100%; font-size: 12px; padding: 5px;">
+                <option value="Pzas" ${unit === 'Pzas' ? 'selected' : ''}>Pzas</option>
+                <option value="Ejes" ${unit === 'Ejes' ? 'selected' : ''}>Ejes</option>
+                <option value="Tramos" ${unit === 'Tramos' ? 'selected' : ''}>Tramos</option>
+                <option value="Kg" ${unit === 'Kg' ? 'selected' : ''}>Kg</option>
+                <option value="Tn" ${unit === 'Tn' ? 'selected' : ''}>Tn</option>
+                <option value="Conjuntos" ${unit === 'Conjuntos' ? 'selected' : ''}>Conjuntos</option>
+                <option value="Servicios" ${unit === 'Servicios' ? 'selected' : ''}>Servicios</option>
+            </select>
+        </td>
+        <td style="padding: 8px;">
+            <input type="text" class="disp-it-cond form-input" value="${cond}" placeholder="Condición" style="width: 100%; font-size: 12px; padding: 5px 8px;">
+        </td>
+        <td style="padding: 8px; text-align: right;">
+            <input type="number" step="0.01" class="disp-it-weight form-input" value="${weight}" style="width: 100%; font-size: 12px; padding: 5px; text-align: right;">
+        </td>
+        <td style="padding: 8px; text-align: center;">
+            <button type="button" onclick="removeDispatchItemRow(this)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px;" title="Quitar ítem">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function removeDispatchItemRow(btn) {
+    const tr = btn.closest("tr");
+    if (tr) {
+        tr.remove();
+        // Renumerar
+        const tbody = document.getElementById("dispatchItemsTableBody");
+        if (tbody) {
+            Array.from(tbody.children).forEach((row, i) => {
+                const numTd = row.querySelector("td:first-child");
+                if (numTd) numTd.innerText = i + 1;
+            });
+        }
+    }
+}
+
+async function submitCreateDispatchGuide(event) {
+    event.preventDefault();
+    const mode = document.getElementById("disp_transport_type").value;
+    const clientId = parseInt(document.getElementById("disp_client_id").value);
+    const projIdVal = document.getElementById("disp_project_id").value;
+    const projId = projIdVal ? parseInt(projIdVal) : null;
+    const destAddr = document.getElementById("disp_destination_address").value.trim();
+    const destPlant = document.getElementById("disp_destination_plant").value.trim();
+
+    let driverName = "", driverDoc = "", plate = "", carrierComp = null, assetId = null;
+    let freightCost = 0.0, freightCharged = 0.0;
+
+    if (mode === 'propio_dalor') {
+        const assetVal = document.getElementById("disp_select_asset").value;
+        assetId = assetVal ? parseInt(assetVal) : null;
+        driverName = document.getElementById("disp_driver_name_propio").value.trim();
+        driverDoc = document.getElementById("disp_driver_id_propio").value.trim();
+        plate = document.getElementById("disp_plate_propio").value.trim();
+        if (!driverName || !driverDoc || !plate) {
+            alert("Por favor completa los datos del chofer y vehículo propio de DALOR.");
+            return;
+        }
+    } else if (mode === 'tercerizado_flete') {
+        carrierComp = document.getElementById("disp_carrier_company").value.trim();
+        driverName = document.getElementById("disp_driver_name_ext").value.trim();
+        driverDoc = document.getElementById("disp_driver_id_ext").value.trim();
+        plate = document.getElementById("disp_plate_ext").value.trim();
+        freightCost = parseFloat(document.getElementById("disp_freight_cost_usd").value) || 0.0;
+        freightCharged = parseFloat(document.getElementById("disp_freight_price_charged_usd").value) || 0.0;
+        if (!carrierComp || !driverName || !driverDoc || !plate) {
+            alert("Por favor completa los datos de la empresa de transporte y chofer tercerizado.");
+            return;
+        }
+    } else {
+        driverName = document.getElementById("disp_driver_name_ret").value.trim();
+        driverDoc = document.getElementById("disp_driver_id_ret").value.trim();
+        plate = document.getElementById("disp_plate_ret").value.trim() || "RETIRO-PLANTA";
+        if (!driverName || !driverDoc) {
+            alert("Por favor indica la persona autorizada y su cédula.");
+            return;
+        }
+    }
+
+    // Recoger ítems
+    const itemRows = document.querySelectorAll("#dispatchItemsTableBody .dispatch-item-row");
+    if (itemRows.length === 0) {
+        alert("Debes agregar al menos un ítem de carga para despachar.");
+        return;
+    }
+
+    const items = [];
+    itemRows.forEach((row, idx) => {
+        items.push({
+            description: row.querySelector(".disp-it-desc").value.trim(),
+            quantity: parseFloat(row.querySelector(".disp-it-qty").value) || 1.0,
+            unit: row.querySelector(".disp-it-unit").value,
+            condition_status: row.querySelector(".disp-it-cond").value.trim() || "Reparado / Conforme",
+            approx_weight_kg: parseFloat(row.querySelector(".disp-it-weight").value) || 0.0
+        });
+    });
+
+    const payload = {
+        client_id: clientId,
+        project_id: projId,
+        destination_address: destAddr,
+        destination_plant: destPlant,
+        transport_type: mode,
+        asset_id: assetId,
+        carrier_company: carrierComp,
+        driver_name: driverName,
+        driver_id_doc: driverDoc,
+        vehicle_plate: plate,
+        freight_cost_usd: freightCost,
+        freight_price_charged_usd: freightCharged,
+        dispatcher_name: document.getElementById("disp_dispatcher_name").value.trim(),
+        quality_inspector: document.getElementById("disp_quality_inspector").value.trim(),
+        notes: document.getElementById("disp_notes").value.trim(),
+        items: items
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/dispatch/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al emitir guía de despacho");
+        }
+        const data = await res.json();
+
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(`✅ Guía de Despacho [${data.guide_number}] emitida con éxito.`, 'success');
+        } else {
+            alert(`✅ Guía de Despacho [${data.guide_number}] emitida exitosamente.`);
+        }
+
+        switchDispatchSubtab('list');
+        await loadDispatchGuidesList();
+        
+        // Preguntar si desea imprimir la guía de inmediato
+        if (data.id && confirm(`¿Deseas visualizar e imprimir la Guía Oficial [${data.guide_number}] en este momento?`)) {
+            printOfficialDispatchGuide(data.id);
+        }
+    } catch(err) {
+        alert("Error al guardar guía de despacho: " + err.message);
+    }
+}
+
+async function loadDispatchGuidesList() {
+    const tbody = document.getElementById("dispatchTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando despachos...</td></tr>`;
+
+    try {
+        const res = await fetch(`${API_BASE}/dispatch/`);
+        if (!res.ok) throw new Error("Error en servidor");
+        allDispatchGuides = await res.json();
+
+        const badge = document.getElementById("dispatch_count_badge");
+        if (badge) badge.innerText = `${allDispatchGuides.length} despacho(s) registrado(s)`;
+
+        if (allDispatchGuides.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;">No hay guías de despacho emitidas. Pulsa "➕ Emitir Despacho" para registrar la primera.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = allDispatchGuides.map(g => {
+            let statusBadge = `<span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px;"><i class="fa-solid fa-truck"></i> En Tránsito</span>`;
+            if (g.status === 'entregado_conforme') {
+                statusBadge = `<span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px;"><i class="fa-solid fa-check-double"></i> Entregado Conforme</span>`;
+            }
+
+            let modeLabel = `<span style="color: #0369a1; font-weight: 700;">Propio DALOR</span>`;
+            if (g.transport_type === 'tercerizado_flete') modeLabel = `<span style="color: #d97706; font-weight: 700;">Flete Tercerizado</span>`;
+            if (g.transport_type === 'retiro_cliente') modeLabel = `<span style="color: #64748b; font-weight: 700;">Retiro en Planta</span>`;
+
+            return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px; font-weight: 800; color: var(--dalor-navy);">${g.guide_number}</td>
+                <td style="padding: 10px; color: #475569;">${g.dispatch_date || '-'}</td>
+                <td style="padding: 10px;">
+                    <b style="color: var(--dalor-navy);">${g.client_name}</b>
+                    <small style="display: block; color: #64748b;">${g.destination_plant ? g.destination_plant + ' - ' : ''}${g.destination_address}</small>
+                </td>
+                <td style="padding: 10px;">
+                    <span style="font-weight: 700; color: var(--dalor-blue);">${g.project_code}</span>
+                    <small style="display: block; color: #64748b;">${g.project_name}</small>
+                </td>
+                <td style="padding: 10px;">
+                    <div>${modeLabel} &bull; <b>${g.vehicle_plate}</b></div>
+                    <small style="color: #64748b;">Chofer: ${g.driver_name} (${g.driver_id_doc})</small>
+                </td>
+                <td style="padding: 10px; text-align: center;">
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 6px; font-weight: 800; color: #334155;">
+                        ${g.items_count} ítem(s)
+                    </span>
+                </td>
+                <td style="padding: 10px; text-align: right; font-weight: 700; color: ${g.freight_cost_usd > 0 ? '#dc2626' : '#64748b'};">
+                    ${g.freight_cost_usd > 0 ? '$' + g.freight_cost_usd.toFixed(2) : '$0.00'}
+                </td>
+                <td style="padding: 10px; text-align: center;">${statusBadge}</td>
+                <td style="padding: 10px; text-align: center;">
+                    <div style="display: flex; gap: 4px; justify-content: center;">
+                        <button type="button" onclick="printOfficialDispatchGuide(${g.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Imprimir Guía de Despacho">
+                            <i class="fa-solid fa-print"></i>
+                        </button>
+                        ${g.status !== 'entregado_conforme' ? `
+                        <button type="button" onclick="openConfirmDeliveryModal(${g.id}, '${g.guide_number}')" class="btn-primary" style="padding: 4px 8px; font-size: 11px; background: #059669;" title="Confirmar Recepción Cliente">
+                            <i class="fa-solid fa-check"></i>
+                        </button>` : ''}
+                        <button type="button" onclick="deleteDispatchGuide(${g.id}, '${g.guide_number}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px; padding: 4px;" title="Eliminar Guía">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #ef4444; padding: 16px;">Error al cargar despachos: ${e.message}</td></tr>`;
+    }
+}
+
+function filterDispatchList(query) {
+    if (!allDispatchGuides || allDispatchGuides.length === 0) return;
+    const q = (query || '').toLowerCase().trim();
+    const tbody = document.getElementById("dispatchTableBody");
+    if (!tbody) return;
+
+    const rows = tbody.querySelectorAll("tr");
+    let visible = 0;
+    rows.forEach(r => {
+        const text = (r.innerText || '').toLowerCase();
+        if (!q || text.includes(q)) {
+            r.style.display = "";
+            visible++;
+        } else {
+            r.style.display = "none";
+        }
+    });
+
+    const badge = document.getElementById("dispatch_count_badge");
+    if (badge) badge.innerText = q ? `${visible} de ${allDispatchGuides.length} despacho(s)` : `${allDispatchGuides.length} despacho(s) registrado(s)`;
+}
+
+function openConfirmDeliveryModal(guideId, guideNum) {
+    document.getElementById("conf_disp_id").value = guideId;
+    document.getElementById("conf_disp_guide_text").innerText = `Confirmando recepción formal para Guía de Despacho [${guideNum}]:`;
+    document.getElementById("confirmDeliveryForm").reset();
+    openModal("modalConfirmDelivery");
+}
+
+async function submitConfirmDelivery(e) {
+    e.preventDefault();
+    const guideId = document.getElementById("conf_disp_id").value;
+    const recBy = document.getElementById("conf_received_by").value.trim();
+    const recDoc = document.getElementById("conf_received_id_doc").value.trim();
+    const notes = document.getElementById("conf_notes").value.trim();
+
+    try {
+        const res = await fetch(`${API_BASE}/dispatch/${guideId}/confirm-delivery`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                received_by_client_name: recBy,
+                received_by_client_id_doc: recDoc,
+                notes: notes
+            })
+        });
+        if (!res.ok) throw new Error("Error al confirmar entrega");
+        closeModal("modalConfirmDelivery");
+        await loadDispatchGuidesList();
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(`✅ Guía confirmada como Entregada Conforme por ${recBy}.`, 'success');
+        } else {
+            alert(`✅ Guía confirmada como Entregada Conforme por ${recBy}.`);
+        }
+    } catch(err) {
+        alert("Error: " + err.message);
+    }
+}
+
+async function deleteDispatchGuide(guideId, guideNum) {
+    if (!confirm(`¿Estás seguro de anular / eliminar la Guía de Despacho [${guideNum}]?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/dispatch/${guideId}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Error al anular guía");
+        await loadDispatchGuidesList();
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(`🗑️ Guía [${guideNum}] eliminada con éxito.`, 'success');
+        }
+    } catch(e) {
+        alert("Error: " + e.message);
+    }
+}
+
+async function printOfficialDispatchGuide(guideId) {
+    try {
+        const res = await fetch(`${API_BASE}/dispatch/${guideId}`);
+        if (!res.ok) throw new Error("No se pudo cargar la información del despacho.");
+        const g = await res.json();
+
+        let modeText = "Transporte Propio (Flota DALOR)";
+        if (g.transport_type === 'tercerizado_flete') modeText = `Flete Tercerizado (${g.carrier_company || 'Línea de Transporte'})`;
+        if (g.transport_type === 'retiro_cliente') modeText = "Retiro en Taller por Personal Autorizado del Cliente";
+
+        const printHtml = `
+        <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 800px; margin: auto; padding: 20px; border: 1px solid #cbd5e1; background: #fff;">
+            <!-- Membrete Oficial DALOR -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <h1 style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase;">Metalmecánica Dalor, C.A.</h1>
+                    <p style="font-size: 11px; font-weight: 700; color: #3b82f6; margin: 2px 0;">RIF: J-31601195-0 &bull; Registro Nacional de Contratistas (RNC)</p>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0;">Sede & Taller Principal: Guacara, Estado Carabobo, Venezuela</p>
+                    <p style="font-size: 10px; color: #64748b; margin: 0;">Especialistas en Mecanizado, Fabricación y Mantenimiento Mayor Industrial</p>
+                </div>
+                <div style="text-align: right; border: 2px solid #0f172a; padding: 8px 14px; border-radius: 6px; background: #f8fafc;">
+                    <div style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase;">GUÍA DE DESPACHO / TRASLADO</div>
+                    <div style="font-size: 16px; font-weight: 900; color: #dc2626; margin-top: 2px;">N° ${g.guide_number}</div>
+                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Fecha: ${g.dispatch_date || new Date().toLocaleString()}</div>
+                </div>
+            </div>
+
+            <!-- Datos del Cliente y Destino -->
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 14px; font-size: 11px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <div>
+                    <div style="font-weight: 800; color: #0f172a; font-size: 12px; margin-bottom: 4px;">DATOS DEL CLIENTE / DESTINATARIO:</div>
+                    <div><b>Razón Social:</b> ${g.client_name}</div>
+                    <div><b>RIF:</b> ${g.client_rif}</div>
+                    <div><b>Destino / Planta:</b> ${g.destination_plant ? g.destination_plant + ' - ' : ''}${g.destination_address}</div>
+                    <div><b>Obra / Servicio:</b> [${g.project_code}] ${g.project_name}</div>
+                </div>
+                <div>
+                    <div style="font-weight: 800; color: #0f172a; font-size: 12px; margin-bottom: 4px;">DATOS DE TRANSPORTE & LOGÍSTICA:</div>
+                    <div><b>Modalidad:</b> ${modeText}</div>
+                    <div><b>Vehículo / Placa:</b> ${g.vehicle_model ? g.vehicle_model + ' - ' : ''}<b>${g.vehicle_plate}</b></div>
+                    <div><b>Chofer Asignado:</b> ${g.driver_name} (C.I. ${g.driver_id_doc})</div>
+                    ${g.driver_phone ? `<div><b>Teléfono:</b> ${g.driver_phone}</div>` : ''}
+                </div>
+            </div>
+
+            <!-- Tabla de Carga y Piezas Despachadas -->
+            <div style="margin-bottom: 14px;">
+                <div style="font-weight: 800; color: #0f172a; font-size: 12px; margin-bottom: 6px; text-transform: uppercase;">
+                    Detalle de Piezas, Equipos & Materiales Despachados:
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #cbd5e1;">
+                    <thead style="background: #0f172a; color: #ffffff;">
+                        <tr>
+                            <th style="padding: 6px 8px; width: 30px; text-align: center;">#</th>
+                            <th style="padding: 6px 8px; text-align: left;">Descripción de la Pieza / Trabajo Mecánico</th>
+                            <th style="padding: 6px 8px; width: 60px; text-align: center;">Cant.</th>
+                            <th style="padding: 6px 8px; width: 60px; text-align: center;">Unidad</th>
+                            <th style="padding: 6px 8px; width: 140px; text-align: left;">Condición / Estado</th>
+                            <th style="padding: 6px 8px; width: 70px; text-align: right;">Peso Aprox</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${g.items.map((it, idx) => `
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                            <td style="padding: 6px 8px; text-align: center; font-weight: 700;">${idx + 1}</td>
+                            <td style="padding: 6px 8px; font-weight: 600;">${it.description}</td>
+                            <td style="padding: 6px 8px; text-align: center; font-weight: 800;">${it.quantity}</td>
+                            <td style="padding: 6px 8px; text-align: center;">${it.unit}</td>
+                            <td style="padding: 6px 8px;">${it.condition_status}</td>
+                            <td style="padding: 6px 8px; text-align: right;">${it.approx_weight_kg > 0 ? it.approx_weight_kg + ' Kg' : '-'}</td>
+                        </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            ${g.notes ? `
+            <div style="font-size: 10px; color: #475569; margin-bottom: 16px; background: #fffbeb; border: 1px solid #fef3c7; padding: 6px 10px; border-radius: 4px;">
+                <b>Observaciones / Precintos:</b> ${g.notes}
+            </div>` : ''}
+
+            <!-- Cuadro de 3 Firmas Legales -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 24px; font-size: 10px; text-align: center;">
+                <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
+                    <div style="font-weight: 800; color: #0f172a;">DESPACHADO POR DALOR</div>
+                    <div style="color: #475569; margin-top: 2px;">${g.dispatcher_name || 'Taller Guacara'}</div>
+                    <div style="color: #64748b; font-size: 9px;">QA/QC: ${g.quality_inspector || 'Conforme'}</div>
+                </div>
+                <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
+                    <div style="font-weight: 800; color: #0f172a;">TRANSPORTADO POR</div>
+                    <div style="color: #475569; margin-top: 2px;">${g.driver_name}</div>
+                    <div style="color: #64748b; font-size: 9px;">C.I. ${g.driver_id_doc} &bull; Placa: ${g.vehicle_plate}</div>
+                </div>
+                <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
+                    <div style="font-weight: 800; color: #0f172a;">RECIBIDO CONFORME CLIENTE</div>
+                    <div style="color: #475569; margin-top: 2px;">${g.received_by_client_name || 'Firma / Sello de Recepción'}</div>
+                    <div style="color: #64748b; font-size: 9px;">${g.received_by_client_id_doc ? 'C.I. ' + g.received_by_client_id_doc : 'Nombre, C.I. y Sello Planta'}</div>
+                </div>
+            </div>
+
+            <!-- Coletilla Legal de Transporte SENIAT -->
+            <div style="margin-top: 18px; border-top: 1px dashed #cbd5e1; padding-top: 6px; font-size: 9px; color: #94a3b8; text-align: justify; line-height: 1.2;">
+                Esta Guía de Despacho y Traslado ampara la movilización de las piezas, maquinarias y materiales aquí descritos en estricto cumplimiento con la normativa legal y tributaria venezolana vigente. La mercancía viaja por cuenta y riesgo del destinatario una vez entregada al transportista.
+            </div>
+        </div>
+        `;
+
+        const win = window.open('', '_blank');
+        win.document.write(`
+            <html>
+                <head>
+                    <title>Guía de Despacho N° ${g.guide_number} - DALOR, C.A.</title>
+                    <style>
+                        body { margin: 0; padding: 20px; background: #f1f5f9; }
+                        @media print {
+                            body { background: #fff; padding: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${printHtml}
+                    <script>
+                        window.onload = function() { window.print(); }
+                    </script>
+                </body>
+            </html>
+        `);
+        win.document.close();
+    } catch(err) {
+        alert("Error al preparar impresión de guía: " + err.message);
+    }
+}
+
+
+// ==============================================================================
+// 🛑 CASTIGO DE CARTERA & GESTIÓN DE DEUDAS INCOBRABLES EN FINANZAS
+// ==============================================================================
+function openBadDebtModal(recId, invoiceNum, balanceUsd) {
+    document.getElementById("bad_debt_cxc_id").value = recId;
+    document.getElementById("bad_debt_invoice_title").innerText = `Factura [${invoiceNum}] &bull; Saldo a Castigar: $${parseFloat(balanceUsd).toFixed(2)}`;
+    document.getElementById("badDebtForm").reset();
+    openModal("modalBadDebt");
+}
+
+async function submitBadDebtWriteOff(event) {
+    event.preventDefault();
+    const cxcId = document.getElementById("bad_debt_cxc_id").value;
+    const reason = document.getElementById("bad_debt_reason").value;
+    const notes = document.getElementById("bad_debt_notes").value.trim();
+
+    if (!confirm(`¿Confirmas que deseas declarar este saldo como INCOBRABLE / Castigo de Cartera?\n\nEsta acción retirará el saldo vivo de tesorería y lo registrará formalmente como pérdida operativa.`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/financial/cxc/${cxcId}/write-off`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason: reason, notes: notes })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al castigar deuda");
+        }
+        const data = await res.json();
+        closeModal("modalBadDebt");
+        await loadReceivablesList();
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(`🛑 Factura [${data.invoice_number}] declarada como Incobrable. Saldo castigado.`, 'success');
+        } else {
+            alert(`🛑 Factura [${data.invoice_number}] declarada como Incobrable por $${data.bad_debt_amount_usd.toFixed(2)}.`);
+        }
+    } catch(err) {
+        alert("Error al castigar saldo: " + err.message);
     }
 }

@@ -822,6 +822,21 @@
            ESTILOS DE IMPRESIÓN LIMPIA DE COTIZACIONES MEMBRETADAS (IN-APP)
            ================================================================== */
         @media print {
+            @page {
+                size: letter portrait;
+                margin: 8mm 10mm 8mm 10mm;
+            }
+            html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             body * {
                 visibility: hidden !important;
             }
@@ -830,37 +845,61 @@
                 visibility: visible !important;
             }
             #modalPrintPreview {
+                display: block !important;
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
+                min-height: 0 !important;
                 height: auto !important;
-                background: white !important;
+                background: transparent !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                z-index: 99999 !important;
+                z-index: 999999 !important;
+                align-items: stretch !important;
+                justify-content: flex-start !important;
             }
             #modalPrintPreview .modal-content {
+                display: block !important;
                 box-shadow: none !important;
                 border: none !important;
                 width: 100% !important;
                 max-width: 100% !important;
+                max-height: none !important;
+                height: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
-            }
-            #modalPrintPreview > .modal-content > div:first-child {
-                display: none !important; /* Ocultar controles de la cabecera */
-            }
-            #printPreviewScrollArea {
-                padding: 0 !important;
-                background: white !important;
+                background: transparent !important;
+                border-radius: 0 !important;
                 overflow: visible !important;
             }
-            .printable-sheet {
+            #modalPrintPreview > .modal-content > div:first-child {
+                display: none !important; /* Ocultar barra de botones superior */
+            }
+            #printPreviewScrollArea {
+                display: block !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: transparent !important;
+                overflow: visible !important;
+                height: auto !important;
+                max-height: none !important;
+            }
+            .printable-sheet,
+            #modalPrintPreviewContent {
+                display: block !important;
                 box-shadow: none !important;
                 border: none !important;
                 padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
                 max-width: 100% !important;
+                background: #ffffff !important;
+                border-radius: 0 !important;
+            }
+            .page-break-avoid {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
             }
         }
 

@@ -14,7 +14,8 @@ from app.models.models import (
     Expense,
     Client,
     PartnerWithdrawal,
-    FixedExpenseSetting
+    FixedExpenseSetting,
+    AuditLog
 )
 
 router = APIRouter()

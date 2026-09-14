@@ -347,10 +347,10 @@ def create_dispatch_guide(guide_in: DispatchGuideCreate, db: Session = Depends(g
                 description=f"Logística de Traslado de Equipos (Guía {guide_number}) - Chofer: {guide_in.driver_name}",
                 supplier_vendor=f"Transporte / {guide_in.driver_name}",
                 amount_usd=total_logistics_usd,
-                amount_bs=total_logistics_usd * 850.0,
-                exchange_rate=850.0,
+                amount_bs=total_logistics_usd * 800.0,
+                exchange_rate=800.0,
                 status="aprobado",
-                notes=f"Flete: ${guide_in.freight_cost_usd or 0.0} | Combustible: ${guide_in.fuel_cost_usd or 0.0}"
+                alert_notes=f"Flete: ${guide_in.freight_cost_usd or 0.0} | Combustible: ${guide_in.fuel_cost_usd or 0.0}"
             )
             db.add(logistics_expense)
 

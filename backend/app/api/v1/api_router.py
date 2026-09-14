@@ -13,7 +13,8 @@ from app.api.v1.endpoints import (
     financial,
     auth,
     maintenance,
-    materials
+    materials,
+    dispatch
 )
 
 api_router = APIRouter()
@@ -24,6 +25,7 @@ api_router.include_router(clients.router, prefix="/clients", tags=["Clientes"])
 api_router.include_router(services.router, prefix="/services", tags=["Catálogo de Servicios"])
 api_router.include_router(quotations.router, prefix="/quotations", tags=["Presupuestos & APU"])
 api_router.include_router(projects.router, prefix="/projects", tags=["Proyectos"])
+api_router.include_router(dispatch.router, prefix="/dispatch", tags=["Guías de Despacho & Salida"])
 api_router.include_router(resources.router, prefix="/resources", tags=["Matriz de Recursos"])
 api_router.include_router(materials.router, prefix="/materials", tags=["Inventario de Materiales"])
 api_router.include_router(expenses.router, prefix="/expenses", tags=["Gastos & Imputación"])

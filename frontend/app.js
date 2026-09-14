@@ -2304,6 +2304,9 @@ async function loadQuotations() {
                     </span>
                 </td>
                 <td style="text-align: center; white-space: nowrap;">
+                    <button onclick="editQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px; color: #0284c7; font-weight: 700;" title="Re-editar Cotización">
+                        <i class="fa-solid fa-pen-to-square"></i> Re-editar
+                    </button>
                     <button onclick="printQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Imprimir / Exportar Cotización">
                         <i class="fa-solid fa-print"></i>
                     </button>
@@ -2322,13 +2325,25 @@ async function loadQuotations() {
 
 function openNewQuotationModal() {
     quoteRowsCount = 0;
+    const editInput = document.getElementById("edit_quotation_id");
+    if (editInput) editInput.value = "";
+    
+    const titleEl = document.getElementById("modalQuotationTitle");
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-calculator" style="color: var(--dalor-blue);"></i> Armar Presupuesto / Cotización Formal (APU)`;
+    
+    const btnSubmit = document.getElementById("btnSubmitQuotation");
+    if (btnSubmit) btnSubmit.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Presupuesto`;
+
     document.getElementById("quoteForm").reset();
     document.getElementById("quoteItemsList").innerHTML = "";
     document.getElementById("quote_tax_type").value = "16";
     document.getElementById("quote_tax_percent").value = "16";
+    document.getElementById("quote_execution_time").value = "15 días hábiles a partir del anticipo";
+    document.getElementById("quote_currency").value = "USD";
     addQuotationRow();
     addQuotationRow();
     recalcQuotationTotals();
+    onQuotationCurrencyChanged();
     openModal("modalQuotation");
 }
 
@@ -2338,13 +2353,19 @@ function onTaxTypeChanged() {
     recalcQuotationTotals();
 }
 
-function addQuotationRow() {
+function addQuotationRow(itemData = null) {
     quoteRowsCount++;
     const container = document.getElementById("quoteItemsList");
     const rowId = `quote_row_${quoteRowsCount}`;
 
     const srvOptions = `<option value="">-- Partida del Catálogo --</option>` + 
-        allServices.map(s => `<option value="${s.id}" data-code="${s.code}" data-unit="${s.unit_measure}" data-price="${s.unit_price_usd}">[${s.code}] ${s.name} ($${s.unit_price_usd}/${s.unit_measure})</option>`).join('');
+        allServices.map(s => `<option value="${s.id}" data-code="${s.code}" data-unit="${s.unit_measure}" data-price="${s.unit_price_usd}" ${itemData && (itemData.service_id == s.id || itemData.item_code == s.code) ? 'selected' : ''}>[${s.code}] ${s.name} ($${s.unit_price_usd}/${s.unit_measure})</option>`).join('');
+
+    const descVal = itemData ? (itemData.description || '').replace(/"/g, '&quot;') : '';
+    const unitVal = itemData ? (itemData.unit_measure || 'Global') : 'Global';
+    const qtyVal = itemData ? (itemData.quantity !== undefined ? itemData.quantity : 1) : 1;
+    const priceVal = itemData ? (itemData.unit_price_usd !== undefined ? itemData.unit_price_usd : 0.00) : 0.00;
+    const totVal = (qtyVal * priceVal).toFixed(2);
 
     const div = document.createElement("div");
     div.id = rowId;
@@ -2354,27 +2375,27 @@ function addQuotationRow() {
             <select class="form-select q-srv-select" style="font-size: 11px; padding: 5px;" onchange="onServiceSelected('${rowId}')">
                 ${srvOptions}
             </select>
-            <input type="text" class="form-input q-desc" placeholder="Descripción detallada de la partida / APU" style="font-size: 11px; padding: 4px 6px; margin-top: 4px;" required>
+            <input type="text" class="form-input q-desc" placeholder="Descripción detallada de la partida / APU" value="${descVal}" style="font-size: 11px; padding: 4px 6px; margin-top: 4px;" required>
         </div>
         <div>
             <select class="form-select q-unit" style="font-size: 11px; padding: 5px;">
-                <option value="Global">Global</option>
-                <option value="Ton">Ton</option>
-                <option value="m²">m²</option>
-                <option value="ml">ml</option>
-                <option value="Und">Und</option>
-                <option value="Horas">Horas</option>
-                <option value="Días">Días</option>
+                <option value="Global" ${unitVal === 'Global' ? 'selected' : ''}>Global</option>
+                <option value="Ton" ${unitVal === 'Ton' ? 'selected' : ''}>Ton</option>
+                <option value="m²" ${unitVal === 'm²' ? 'selected' : ''}>m²</option>
+                <option value="ml" ${unitVal === 'ml' ? 'selected' : ''}>ml</option>
+                <option value="Und" ${unitVal === 'Und' ? 'selected' : ''}>Und</option>
+                <option value="Horas" ${unitVal === 'Horas' ? 'selected' : ''}>Horas</option>
+                <option value="Días" ${unitVal === 'Días' ? 'selected' : ''}>Días</option>
             </select>
         </div>
         <div>
-            <input type="number" step="0.01" class="form-input q-qty" placeholder="Cant" value="1" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
+            <input type="number" step="0.01" class="form-input q-qty" placeholder="Cant" value="${qtyVal}" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
         </div>
         <div>
-            <input type="number" step="0.01" class="form-input q-price" placeholder="P. Unit ($)" value="0.00" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold; color: var(--dalor-blue);" required>
+            <input type="number" step="0.01" class="form-input q-price" placeholder="P. Unit ($)" value="${priceVal}" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold; color: var(--dalor-blue);" required>
         </div>
         <div>
-            <input type="text" class="form-input q-total" placeholder="Total ($)" value="$0.00" style="font-size: 11px; padding: 5px; font-weight: 800;" readonly>
+            <input type="text" class="form-input q-total" placeholder="Total ($)" value="$${totVal}" style="font-size: 11px; padding: 5px; font-weight: 800;" readonly>
         </div>
         <div style="text-align: center;">
             <button type="button" onclick="removeQuotationRow('${rowId}')" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer;">&times;</button>

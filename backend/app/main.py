@@ -1,4 +1,4 @@
-from app.api.v1.endpoints import dispatch\nfrom fastapi import FastAPI, Response
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -47,82 +47,30 @@ def healthcheck():
     return {
         "status": "healthy",
         "system": "DALOR SIGO-P ERP",
-        "version": "2026.09.09.v28",
-        "database": "Neon PostgreSQL (Connected)",
+        "version": "2026.09.14.v50",
         "timestamp": datetime.utcnow().isoformat()
     }
 
-@app.get("/")
-@app.get("/index.html")
-def serve_frontend_root():
-    index_path = os.path.join(FRONTEND_DIR, "index.html")
-    if os.path.exists(index_path):
-        response = FileResponse(index_path)
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
-    return {"status": "online", "company": "DALOR", "partner": "DALOR"}
+# Servir Frontend SPA y archivos estáticos
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
-@app.get("/app.js")
-def serve_frontend_js():
-    js_path = os.path.join(FRONTEND_DIR, "app.js")
-    response = FileResponse(js_path)
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+    @app.get("/")
+    def serve_frontend():
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
-@app.get("/logo_dalor.jpg")
-def serve_logo():
-    logo_path = os.path.join(FRONTEND_DIR, "logo_dalor.jpg")
-    return FileResponse(logo_path)
+    @app.get("/seguimiento/{token}")
+    @app.get("/tracking/{token}")
+    @app.get("/tracking.html")
+    def serve_tracking(token: Optional[str] = None):
+        track_path = os.path.join(FRONTEND_DIR, "tracking.html")
+        if os.path.exists(track_path):
+            return FileResponse(track_path)
+        return {"status": "Tracking Portal not found"}
 
-@app.get("/simulador")
-@app.get("/simulador.html")
-def serve_simulator():
-    sim_path = os.path.join(FRONTEND_DIR, "simulador.html")
-    if os.path.exists(sim_path):
-        return FileResponse(sim_path)
-    return {"status": "Simulator not found"}
-
-@app.get("/presentacion")
-@app.get("/presentacion.html")
-def serve_presentation():
-    pres_path = os.path.join(FRONTEND_DIR, "presentacion.html")
-    if os.path.exists(pres_path):
-        return FileResponse(pres_path)
-    return {"status": "Presentation not found"}
-
-@app.get("/manual")
-@app.get("/manual.html")
-def serve_manual():
-    man_path = os.path.join(FRONTEND_DIR, "manual.html")
-    if os.path.exists(man_path):
-        return FileResponse(man_path)
-    return {"status": "Manual not found"}
-
-@app.get("/dossier")
-@app.get("/dossier.html")
-def serve_dossier():
-    dos_path = os.path.join(FRONTEND_DIR, "dossier.html")
-    if os.path.exists(dos_path):
-        return FileResponse(dos_path)
-    return {"status": "Dossier not found"}
-
-@app.get("/seguimiento/{token}")
-@app.get("/tracking/{token}")
-@app.get("/seguimiento")
-@app.get("/tracking.html")
-def serve_tracking(token: Optional[str] = None):
-    track_path = os.path.join(FRONTEND_DIR, "tracking.html")
-    if os.path.exists(track_path):
-        response = FileResponse(track_path)
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        return response
-    return {"status": "Tracking Portal not found"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
-\napp.include_router(dispatch.router, prefix=f"{settings.API_V1_STR}/dispatch", tags=["dispatch"])\n
+    @app.get("/{full_path:path}")
+    def serve_spa_fallback(full_path: str):
+        target_file = os.path.join(FRONTEND_DIR, full_path)
+        if os.path.exists(target_file) and os.path.isfile(target_file):
+            return FileResponse(target_file)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))

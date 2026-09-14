@@ -7204,41 +7204,59 @@ async function initDispatchView() {
 }
 
 async function initDispatchForm() {
-    // Asegurar clientes, proyectos y flota
-    if (!allClients || allClients.length === 0) {
-        try {
-            const res = await fetch(`${API_BASE}/clients/`);
-            if (res.ok) allClients = await res.json();
-        } catch(e) {}
-    }
-    if (!allProjects || allProjects.length === 0) {
-        try {
-            const res = await fetch(`${API_BASE}/projects/`);
-            if (res.ok) allProjects = await res.json();
-        } catch(e) {}
-    }
-    if (!allAssets || allAssets.length === 0) {
-        try {
-            const res = await fetch(`${API_BASE}/assets/`);
-            if (res.ok) allAssets = await res.json();
-        } catch(e) {}
+    // Asegurar carga fresca de clientes, proyectos y flota DALOR
+    try {
+        const [resC, resP, resA] = await Promise.all([
+            fetch(`${API_BASE}/clients/`),
+            fetch(`${API_BASE}/projects/`),
+            fetch(`${API_BASE}/assets/`)
+        ]);
+        if (resC.ok) allClients = await resC.json();
+        if (resP.ok) allProjects = await resP.json();
+        if (resA.ok) allAssets = await resA.json();
+    } catch(e) {}
+
+    // Poblar Selector de Clientes
+    const clientSelect = document.getElementById("disp_client_id");
+    if (clientSelect) {
+        clientSelect.innerHTML = `<option value="">-- Seleccionar Cliente Destinatario --</option>` + 
+            (allClients || []).map(c => `<option value="${c.id}">${c.name} ${c.rif ? '(' + c.rif + ')' : ''}</option>`).join('');
     }
 
-    // Poblar selectores
-    populateSelect("disp_client_id", allClients || [], c => `<option value="${c.id}">${c.name} (${c.rif || 'S/R'})</option>`);
-    populateSelect("disp_project_id", [{id: '', code: 'Sin Obra / Servicio Directo de Taller'}, ...(allProjects || [])], p => `<option value="${p.id || ''}">${p.code ? '['+p.code+'] ' : ''}${p.name || ''}</option>`);
-    
-    // Poblar vehículos propios
-    const vehicles = (allAssets || []).filter(a => a.asset_type === 'vehiculo' || a.category === 'Flota' || (a.code && a.code.startsWith('FLT-')));
-    populateSelect("disp_select_asset", [{id: '', name: '-- Seleccionar Vehículo Flota --'}, ...vehicles], a => `<option value="${a.id}" data-driver="${a.assigned_to_name || ''}" data-plate="${a.plate_number || a.code}">${a.code} - ${a.name} (${a.plate_number || 'Sin Placa'})</option>`);
+    // Poblar Selector de Proyectos
+    const projSelect = document.getElementById("disp_project_id");
+    if (projSelect) {
+        projSelect.innerHTML = `<option value="">[Sin Obra / Servicio Directo de Taller]</option>` + 
+            (allProjects || []).map(p => `<option value="${p.id}">[${p.code || 'PRJ'}] ${p.name}</option>`).join('');
+    }
+
+    // Poblar Vehículos Flota DALOR (8 Unidades Oficiales)
+    const vehicles = (allAssets || []).filter(a => 
+        a.asset_type === 'vehiculo' || 
+        a.category === 'vehiculo' || 
+        (a.license_plate && a.license_plate !== 'N/A' && a.license_plate !== '') ||
+        (a.code && a.code.includes('-V-')) ||
+        (a.asset_code && a.asset_code.includes('-V-'))
+    );
+
+    const assetSelect = document.getElementById("disp_select_asset");
+    if (assetSelect) {
+        assetSelect.innerHTML = `<option value="">-- Seleccionar Vehículo Flota DALOR --</option>` + 
+            vehicles.map(v => {
+                const code = v.asset_code || v.code || 'VEH';
+                const plate = v.license_plate || v.plate_number || 'S/P';
+                const brandModel = (v.brand ? v.brand + ' ' : '') + (v.model || '');
+                return `<option value="${v.id}" data-driver="${v.current_custodian_name || ''}" data-plate="${plate}" data-model="${brandModel}">[${code}] ${v.name} (Placa: ${plate})</option>`;
+            }).join('');
+    }
 
     // Reset modo a propio
     setDispatchTransportMode('propio_dalor');
 
-    // Inicializar con al menos 1 ítem de carga
+    // Inicializar tabla de ítems de carga limpia sin textos de prueba
     const container = document.getElementById("dispatchItemsTableBody");
     if (container && container.children.length === 0) {
-        addDispatchItemRow("Reparación y Rectificación de Ejes de Transmisión Ø 4\" x 2.20m", 2, "Ejes", "Reparado / 100% Operativo", 350);
+        addDispatchItemRow("", 1, "PZA", "Nuevo Fabricado", 0);
     }
 }
 

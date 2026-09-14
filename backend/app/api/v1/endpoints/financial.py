@@ -272,6 +272,7 @@ def get_receivables(db: Session = Depends(get_db)):
         "client_name": r.client.name if r.client else "General",
         "client_rif": r.client.rif if r.client else "-",
         "project_name": r.project.name if r.project else "Sede Central",
+        "project_code": r.project.code if r.project else "GEN",
         "description": r.description,
         "issue_date": r.issue_date.strftime("%Y-%m-%d"),
         "due_date": r.due_date.strftime("%Y-%m-%d"),

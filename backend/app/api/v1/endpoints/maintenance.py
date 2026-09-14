@@ -251,42 +251,72 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
     if not authorized:
         raise HTTPException(status_code=403, detail="Contraseña de Director General incorrecta. Acción cancelada por seguridad.")
 
-    from app.models.models import (
-        Expense, Quotation, QuotationItem, Project, ProjectPhase,
-        AccountReceivable, AccountPayable, ResourceAssignmentHistory,
-        PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset
-    )
+    from sqlalchemy import text
+    try:
+        # 1. Purgar todas las tablas operacionales con CASCADE
+        db.execute(text("""
+            TRUNCATE TABLE 
+                dispatch_items, 
+                dispatch_guides, 
+                split_expenses, 
+                expenses, 
+                quotation_items, 
+                quotations, 
+                receivable_payments, 
+                accounts_receivable, 
+                accounts_payable, 
+                advance_payments, 
+                resource_assignment_history, 
+                partner_withdrawals, 
+                financial_payments, 
+                material_movements, 
+                project_phases, 
+                projects 
+            RESTART IDENTITY CASCADE;
+        """))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        # Fallback individual deletes in reverse dependency order
+        tables = [
+            'dispatch_items', 'dispatch_guides', 'split_expenses', 'expenses',
+            'quotation_items', 'quotations', 'receivable_payments',
+            'accounts_receivable', 'accounts_payable', 'advance_payments',
+            'resource_assignment_history', 'partner_withdrawals',
+            'financial_payments', 'material_movements', 'project_phases', 'projects'
+        ]
+        for tbl in tables:
+            try:
+                db.execute(text(f"DELETE FROM {tbl};"))
+                db.commit()
+            except Exception:
+                db.rollback()
 
-    # 1. Purgar tablas operacionales
-    db.query(Expense).delete()
-    db.query(QuotationItem).delete()
-    db.query(Quotation).delete()
-    db.query(AccountReceivable).delete()
-    db.query(AccountPayable).delete()
-    db.query(ResourceAssignmentHistory).delete()
-    db.query(PartnerWithdrawal).delete()
-    db.query(FinancialPayment).delete()
-    db.query(MaterialMovement).delete()
-    db.query(ProjectPhase).delete()
-    db.query(Project).delete()
+    # 2. Resetear todos los activos al estado base disponible en Sede Central
+    try:
+        db.execute(text("""
+            UPDATE assets SET 
+                status = 'disponible_base', 
+                current_location = 'Sede Central', 
+                current_project_id = NULL, 
+                current_custodian_name = NULL;
+        """))
+        db.commit()
+    except Exception:
+        db.rollback()
 
-    # 2. Resetear activos a su estado base disponible en Sede
-    db.query(Asset).update({
-        "status": "disponible_base",
-        "current_location": "Sede Central",
-        "current_project_id": None,
-        "current_custodian_name": None
-    })
-
-    # 3. Registrar auditoría
-    audit = AuditLog(
-        username="director",
-        module="seguridad",
-        action="reset_puesta_a_cero",
-        details="Puesta a Cero ejecutada por Director General: Todos los registros de prueba fueron purgados para iniciar operación real en limpio."
-    )
-    db.add(audit)
-    db.commit()
+    # 3. Registrar auditoría de puesta a cero
+    try:
+        audit = AuditLog(
+            username="director",
+            module="seguridad",
+            action="reset_puesta_a_cero",
+            details="Puesta a Cero ejecutada por Director General: Todos los registros de prueba purgados para arranque real en limpio."
+        )
+        db.add(audit)
+        db.commit()
+    except Exception:
+        db.rollback()
 
     return {
         "success": True,

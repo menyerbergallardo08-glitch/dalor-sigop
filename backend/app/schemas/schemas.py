@@ -70,6 +70,8 @@ class QuotationCreate(BaseModel):
     client_id: int
     project_title: str
     location: Optional[str] = "Sede Central"
+    execution_time: Optional[str] = "15 días hábiles"
+    currency: Optional[str] = "USD"
     validity_days: int = 15
     exchange_rate: float = 800.0
     tax_percent: float = 16.0
@@ -82,6 +84,8 @@ class QuotationOut(BaseModel):
     client_id: int
     project_title: str
     location: Optional[str]
+    execution_time: Optional[str] = "15 días hábiles"
+    currency: Optional[str] = "USD"
     validity_days: int
     exchange_rate: float
     subtotal_usd: float
@@ -130,6 +134,7 @@ class ProjectCreate(BaseModel):
     status: str = "activo"
     scope_of_work: Optional[str] = None
     duration_days: int = 30
+    execution_time: Optional[str] = "15 días hábiles"
     contract_amount_usd: float = 0.0
     estimated_labor_usd: float = 0.0
     estimated_fuel_usd: float = 0.0
@@ -147,10 +152,12 @@ class ProjectOut(BaseModel):
     name: str
     client_id: Optional[int]
     client_name: Optional[str]
-    location: str
+    location: Optional[str]
     status: str
     scope_of_work: Optional[str]
     duration_days: int
+    execution_time: Optional[str] = "15 días hábiles"
+    tracking_token: Optional[str] = None
     contract_amount_usd: float
     estimated_labor_usd: float
     estimated_fuel_usd: float

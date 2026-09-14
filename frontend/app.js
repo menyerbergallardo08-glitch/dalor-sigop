@@ -2552,67 +2552,75 @@ async function printQuotation(quoteId) {
         const q = await res.json();
 
         const rate = q.exchange_rate || EXCHANGE_RATE || 800.0;
-        const subtotalBs = (q.subtotal_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2 });
-        const taxBs = (q.tax_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2 });
-        const totalBs = (q.total_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+        const curr = q.currency || 'USD';
+        const currSymbol = curr === 'VES' ? 'Bs.' : (curr === 'EUR' ? '€' : '$');
+        
+        const subtotalBs = (q.subtotal_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const taxBs = (q.tax_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const totalBs = (q.total_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const subtotalFormatted = `$${q.subtotal_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const taxFormatted = q.tax_usd === 0 ? 'EXENTO (0%)' : `$${q.tax_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const totalFormatted = `$${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
         const itemsRows = (q.items || []).map((item, idx) => `
-            <tr>
-                <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">${idx + 1}</td>
-                <td style="text-align: center; color: #0284c7; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">${item.item_code || ('SER-' + (idx+1))}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 7px; font-weight: 600;">${item.description}</td>
-                <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px;">${item.unit_measure || 'Global'}</td>
-                <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">${item.quantity}</td>
-                <td style="text-align: right; border: 1px solid #cbd5e1; padding: 7px;">$${item.unit_price_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td style="text-align: right; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px; color: #002B49;">$${item.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            <tr style="page-break-inside: avoid;">
+                <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${idx + 1}</td>
+                <td style="text-align: center; color: #0284c7; font-weight: 800; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.item_code || ('SER-' + (idx+1))}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-weight: 600; font-size: 11px; line-height: 1.35;">${item.description}</td>
+                <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.unit_measure || 'Global'}</td>
+                <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.quantity}</td>
+                <td style="text-align: right; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px;">$${item.unit_price_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="text-align: right; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; color: #002B49;">$${item.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             </tr>
         `).join('');
 
         const sheetHtml = `
-            <!-- Membrete -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F5B800; padding-bottom: 12px;">
+            <!-- Membrete DALOR -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F5B800; padding-bottom: 10px; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <img src="logo_dalor.jpg" alt="DALOR" style="height: 48px; display: block; border-radius: 4px;">
                     <div>
-                        <h1 style="font-size: 16px; font-weight: 900; color: #002B49; margin: 0;">METALMECÁNICA DALOR C.A.</h1>
-                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">RIF: J-40540441-2 &bull; ALIANZA NEPTUNIA &bull; Especialistas en Ingeniería, Electricidad & Montajes</p>
-                        <p style="font-size: 11px; color: #64748b; margin: 1px 0 0 0;">Zona Industrial Valencia, Edo. Carabobo &bull; Correo: operaciones@dalor.com</p>
+                        <h1 style="font-size: 17px; font-weight: 900; color: #002B49; margin: 0; letter-spacing: 0.3px;">METALMECÁNICA DALOR C.A.</h1>
+                        <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0; font-weight: 600;">RIF: <b>J-40540441-2</b> &bull; ALIANZA NEPTUNIA &bull; Especialistas en Ingeniería, Metalmecánica & Montajes</p>
+                        <p style="font-size: 10.5px; color: #64748b; margin: 1px 0 0 0;">Zona Industrial Valencia, Edo. Carabobo &bull; Correo: operaciones@dalor.com</p>
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <span style="background: #002B49; color: #F5B800; padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">${q.quote_number}</span>
-                    <p style="font-size: 11px; color: #64748b; margin: 6px 0 0 0;">Fecha: <b>${new Date(q.created_at).toLocaleDateString('es-VE')}</b></p>
-                    <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Validez: <b>${q.validity_days || 15} Días</b></p>
+                    <span style="background: #002B49; color: #F5B800; padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px; display: inline-block;">${q.quote_number}</span>
+                    <p style="font-size: 10.5px; color: #475569; margin: 4px 0 0 0;">Fecha: <b>${new Date(q.created_at).toLocaleDateString('es-VE')}</b></p>
+                    <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0;">Validez: <b>${q.validity_days || 15} Días</b></p>
                 </div>
             </div>
 
-            <!-- Datos del Cliente y Obra -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px;">
+            <!-- Ficha de Datos: Cliente, Obra y Condiciones -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 12px; border-radius: 6px;">
                 <div>
-                    <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Datos del Cliente:</span>
-                    <p style="font-size: 13px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${(q.client && q.client.name) || 'Cliente General'}</p>
-                    <p style="font-size: 11px; color: #475569; margin: 2px 0 0 0;">RIF: <b>${(q.client && q.client.rif) || '-'}</b></p>
-                    <p style="font-size: 11px; color: #475569; margin: 2px 0 0 0;">Contacto: ${(q.client && q.client.contact_name) || '-'} | Tel: ${(q.client && q.client.contact_phone) || '-'}</p>
+                    <span style="font-size: 9.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">Datos del Cliente:</span>
+                    <p style="font-size: 12.5px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${(q.client && q.client.name) || 'Cliente General'}</p>
+                    <p style="font-size: 10.5px; color: #334155; margin: 2px 0 0 0;">RIF: <b>${(q.client && q.client.rif) || '-'}</b></p>
+                    <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0;">Contacto: ${(q.client && q.client.contact_name) || '-'} | Tel: ${(q.client && q.client.contact_phone) || '-'}</p>
                 </div>
                 <div>
-                    <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Proyecto / Ubicación:</span>
-                    <p style="font-size: 13px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${q.project_title}</p>
-                    <p style="font-size: 11px; color: #475569; margin: 2px 0 0 0;">Lugar: <b>${q.location || 'Sede Central'}</b></p>
-                    <p style="font-size: 11px; color: #0284c7; margin: 2px 0 0 0;">Tasa Referencial: <b>${rate.toFixed(2)} Bs/$</b></p>
+                    <span style="font-size: 9.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">Proyecto & Condiciones:</span>
+                    <p style="font-size: 12.5px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${q.project_title}</p>
+                    <p style="font-size: 10.5px; color: #334155; margin: 2px 0 0 0;">Lugar de Ejecución: <b>${q.location || 'Sede Central'}</b></p>
+                    <p style="font-size: 10.5px; color: #0284c7; margin: 2px 0 0 0;">Tiempo de Ejecución: <b>${q.execution_time || '15 días hábiles a partir del anticipo'}</b></p>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Moneda Base: <b>${curr}</b> &bull; Tasa BCV: <b>${rate.toFixed(2)} Bs/$</b></p>
                 </div>
             </div>
 
-            <!-- Tabla de Partidas -->
-            <table style="width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px;">
+            <!-- Tabla de Partidas / APU -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px;">
                 <thead>
                     <tr style="background: #002B49; color: white;">
-                        <th style="width: 30px; padding: 8px; border: 1px solid #002B49; font-size: 11px;">#</th>
-                        <th style="width: 85px; padding: 8px; border: 1px solid #002B49; font-size: 11px;">Código</th>
-                        <th style="padding: 8px; border: 1px solid #002B49; font-size: 11px; text-align: left;">Descripción del Servicio / Partida APU</th>
-                        <th style="width: 60px; padding: 8px; border: 1px solid #002B49; font-size: 11px;">Unidad</th>
-                        <th style="width: 50px; padding: 8px; border: 1px solid #002B49; font-size: 11px;">Cant.</th>
-                        <th style="width: 90px; padding: 8px; border: 1px solid #002B49; font-size: 11px; text-align: right;">P. Unit ($)</th>
-                        <th style="width: 100px; padding: 8px; border: 1px solid #002B49; font-size: 11px; text-align: right;">Total ($)</th>
+                        <th style="width: 25px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">#</th>
+                        <th style="width: 75px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">Código</th>
+                        <th style="padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: left;">Descripción del Servicio / Partida APU</th>
+                        <th style="width: 55px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">Unidad</th>
+                        <th style="width: 45px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">Cant.</th>
+                        <th style="width: 85px; padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: right;">P. Unit ($)</th>
+                        <th style="width: 95px; padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: right;">Total ($)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2620,47 +2628,47 @@ async function printQuotation(quoteId) {
                 </tbody>
             </table>
 
-            <!-- Bloque de Totales -->
-            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
-                <div style="width: 300px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+            <!-- Bloque de Totales y Liquidación -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 25px; page-break-inside: avoid;">
+                <div style="width: 320px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
                         <span style="color: #475569;">Subtotal:</span>
-                        <span style="font-weight: 700;">$${q.subtotal_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        <span style="font-weight: 700;">${subtotalFormatted}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-bottom: 4px;">
                         <span>Subtotal en Bs:</span>
                         <span>Bs. ${subtotalBs}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
                         <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
-                        <span style="font-weight: 700; color: #d97706;">$${q.tax_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        <span style="font-weight: 700; color: #d97706;">${taxFormatted}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
                         <span>IVA en Bs:</span>
                         <span>Bs. ${taxBs}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #002B49;">
-                        <span>TOTAL USD:</span>
-                        <span style="color: #0072B8;">$${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 900; color: #002B49;">
+                        <span>TOTAL (${curr}):</span>
+                        <span style="color: #0072B8;">${totalFormatted}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; color: #475569; margin-top: 2px;">
-                        <span>TOTAL BS:</span>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #475569; margin-top: 2px;">
+                        <span>TOTAL EN BS:</span>
                         <span>Bs. ${totalBs}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Firmas y Términos -->
-            <div style="margin-top: 35px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center;">
+            <!-- Firmas de Aprobación Formal -->
+            <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid;">
                 <div>
-                    <div style="border-bottom: 1px solid #000; margin-bottom: 6px;"></div>
-                    <p style="font-size: 11px; font-weight: 800; margin: 0; color: #002B49;">Por Metalmecánica Dalor C.A.</p>
-                    <p style="font-size: 10px; color: #64748b; margin: 0;">Gerencia de Proyectos / Estimación</p>
+                    <div style="border-bottom: 1px solid #1e293b; margin-bottom: 5px;"></div>
+                    <p style="font-size: 10.5px; font-weight: 800; margin: 0; color: #002B49;">Por Metalmecánica Dalor C.A.</p>
+                    <p style="font-size: 9.5px; color: #64748b; margin: 0;">Gerencia de Proyectos / Estimación</p>
                 </div>
                 <div>
-                    <div style="border-bottom: 1px solid #000; margin-bottom: 6px;"></div>
-                    <p style="font-size: 11px; font-weight: 800; margin: 0; color: #002B49;">Aceptado y Conforme por el Cliente</p>
-                    <p style="font-size: 10px; color: #64748b; margin: 0;">Firma y Sello de Aprobación</p>
+                    <div style="border-bottom: 1px solid #1e293b; margin-bottom: 5px;"></div>
+                    <p style="font-size: 10.5px; font-weight: 800; margin: 0; color: #002B49;">Aceptado y Conforme por el Cliente</p>
+                    <p style="font-size: 9.5px; color: #64748b; margin: 0;">Firma y Sello de Aprobación</p>
                 </div>
             </div>
         `;

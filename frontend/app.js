@@ -1046,6 +1046,22 @@ async function submitCreateProject(event) {
         });
         if (res.ok) {
             const data = await res.json();
+            
+            // Si proviene de un presupuesto, marcar la cotización como 'aprobado'
+            const convQuoteId = document.getElementById("converting_quotation_id") ? document.getElementById("converting_quotation_id").value : "";
+            if (convQuoteId) {
+                try {
+                    await fetch(`${API_BASE}/quotations/${convQuoteId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "aprobado" })
+                    });
+                } catch (errQ) {
+                    console.error("Error actualizando status de cotización vinculada:", errQ);
+                }
+                cancelQuotationConversion();
+            }
+
             alert(`¡Proyecto ${data.code} planificado, estructurado y activado con éxito!`);
             document.getElementById("projectCreateForm").reset();
             selectedPersonnelIds = [];
@@ -1054,6 +1070,7 @@ async function submitCreateProject(event) {
             renderAssignedTags();
             await loadInitialMasterData();
             loadProjectsList();
+            loadQuotations();
         } else {
             const err = await res.json();
             alert("Error: " + (err.detail || JSON.stringify(err)));
@@ -2509,39 +2526,120 @@ async function submitCreateQuotation(event) {
     }
 }
 
+// Cancelar vinculación de presupuesto al crear proyecto
+function cancelQuotationConversion() {
+    const convInput = document.getElementById("converting_quotation_id");
+    if (convInput) convInput.value = "";
+    const banner = document.getElementById("quote_conversion_banner");
+    if (banner) banner.classList.add("hidden");
+}
+
+// Convertir cotización en Proyecto con pre-llenado interactivo y edición completa
 async function convertQuoteToProject(quoteId) {
-    const isPlanta = confirm("¿Deseas aprobar esta cotización y convertirla en Proyecto?\n\nPresiona [ACEPTAR] si se ejecutará en Taller/Planta Guacara.\nPresiona [CANCELAR] si se ejecutará como Obra en Sitio (con asignación de Recursos y Traslado).");
-    const executionType = isPlanta ? "Planta Guacara" : "Obra en Sitio";
-    
     try {
-        const res = await fetch(`${API_BASE}/quotations/${quoteId}/convert-to-project`, { method: "POST" });
-        if (res.ok) {
-            const data = await res.json();
-            alert(`✅ Cotización Aprobada exitosamente como ${executionType}.\n\nProyecto en ejecución: [${data.project_code || ''}] ${data.project_name || ''}.`);
-            await loadInitialMasterData();
-            loadQuotations();
-            switchView('projects', 'proyectos');
-            if (data.project_id) {
-                setTimeout(() => {
-                    viewProjectDetails(data.project_id);
-                    if (!isPlanta) {
-                        if (confirm("¿Deseas emitir la Guía de Traslado de Equipos y Herramientas para esta obra ahora mismo?")) {
-                            openTransferGuideModal();
-                            const sel = document.getElementById("tg_project_id");
-                            if (sel) {
-                                sel.value = data.project_id;
-                                onTransferGuideProjectChanged();
-                            }
-                        }
-                    }
-                }, 350);
-            }
-        } else {
-            const err = await res.json();
-            alert("Error: " + (err.detail || "No se pudo convertir la cotización."));
+        const res = await fetch(`${API_BASE}/quotations/${quoteId}`);
+        if (!res.ok) throw new Error('No se pudo cargar la información del presupuesto.');
+        const q = await res.json();
+
+        // 1. Cambiar a vista de Proyectos
+        switchView('projects', 'proyectos');
+
+        // 2. Mostrar banner de conversión
+        const convInput = document.getElementById("converting_quotation_id");
+        if (convInput) convInput.value = q.id;
+
+        const banner = document.getElementById("quote_conversion_banner");
+        const bannerText = document.getElementById("quote_conversion_text");
+        if (banner) banner.classList.remove("hidden");
+        if (bannerText) {
+            bannerText.innerText = `Presupuesto [${q.quote_number}] para ${q.client ? q.client.name : 'Cliente'}. Monto: $${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}. Revisa y completa los campos a continuación:`;
         }
+
+        // 3. Generar código correlativo de proyecto
+        const projNum = (allProjects ? allProjects.length : 0) + 1;
+        const codeInput = document.getElementById("new_proj_code");
+        if (codeInput) codeInput.value = `PRJ-2026-${String(projNum).padStart(3, '0')}`;
+
+        // 4. Pre-llenar datos principales
+        if (document.getElementById("new_proj_name")) document.getElementById("new_proj_name").value = q.project_title || "";
+        if (document.getElementById("new_proj_client_id")) document.getElementById("new_proj_client_id").value = q.client_id;
+        if (document.getElementById("new_proj_location")) document.getElementById("new_proj_location").value = q.location || "Sede Central";
+        
+        // Calcular días de duración
+        let durDays = 30;
+        if (q.execution_time) {
+            const match = q.execution_time.match(/\d+/);
+            if (match) durDays = parseInt(match[0]);
+        }
+        if (document.getElementById("new_proj_duration")) document.getElementById("new_proj_duration").value = durDays;
+        if (document.getElementById("new_proj_contract")) document.getElementById("new_proj_contract").value = q.total_usd.toFixed(2);
+
+        // Alcance técnico con desglose de partidas del presupuesto
+        let itemsScope = `Obra adjudicada bajo Presupuesto ${q.quote_number}.\nPartidas y APU contratadas:\n`;
+        if (q.items && q.items.length > 0) {
+            itemsScope += q.items.map((it, idx) => `${idx + 1}. [${it.item_code || 'SER'}] ${it.description} (Cant: ${it.quantity} ${it.unit_measure || 'Global'})`).join('\n');
+        } else {
+            itemsScope += q.project_title;
+        }
+        if (document.getElementById("new_proj_scope")) document.getElementById("new_proj_scope").value = itemsScope;
+
+        // 5. Pre-calcular bolsas estimadas (Job Costing)
+        const subtotal = q.subtotal_usd || q.total_usd || 0;
+        const estLabor = Math.round(subtotal * 0.30 * 100) / 100;
+        const estFuel = Math.round(subtotal * 0.08 * 100) / 100;
+        const estMaterials = Math.round(subtotal * 0.20 * 100) / 100;
+        const estTools = Math.round(subtotal * 0.04 * 100) / 100;
+        const estServices = Math.round(subtotal * 0.03 * 100) / 100;
+
+        if (document.getElementById("new_proj_labor")) document.getElementById("new_proj_labor").value = estLabor.toFixed(2);
+        if (document.getElementById("new_proj_fuel")) document.getElementById("new_proj_fuel").value = estFuel.toFixed(2);
+        if (document.getElementById("new_proj_materials")) document.getElementById("new_proj_materials").value = estMaterials.toFixed(2);
+        if (document.getElementById("new_proj_tools")) document.getElementById("new_proj_tools").value = estTools.toFixed(2);
+        if (document.getElementById("new_proj_services")) document.getElementById("new_proj_services").value = estServices.toFixed(2);
+
+        // 6. Pre-poblar Etapas / Fases del Proyecto sugeridas
+        const phasesContainer = document.getElementById("projectPhasesContainer");
+        if (phasesContainer) {
+            phasesContainer.innerHTML = "";
+            phaseCounter = 0;
+            
+            // Fase 1: Logística y Preparación
+            addProjectPhaseRow();
+            // Fase 2: Ejecución Técnica
+            addProjectPhaseRow();
+            // Fase 3: Pruebas y Entrega
+            addProjectPhaseRow();
+
+            const phaseCards = phasesContainer.querySelectorAll(".project-phase-card");
+            if (phaseCards.length >= 3) {
+                // Configurar Fase 1
+                phaseCards[0].querySelector(".ph-name").value = "Fase 1: Logística, Procura & Habilitación de Equipos";
+                phaseCards[0].querySelector(".ph-days").value = Math.max(3, Math.round(durDays * 0.2));
+                phaseCards[0].querySelector(".ph-cost").value = (estMaterials * 0.5 + estFuel).toFixed(2);
+
+                // Configurar Fase 2
+                phaseCards[1].querySelector(".ph-name").value = "Fase 2: Ejecución Técnica, Montaje & Servicios en Sitio";
+                phaseCards[1].querySelector(".ph-days").value = Math.max(5, Math.round(durDays * 0.6));
+                phaseCards[1].querySelector(".ph-cost").value = (estLabor + estTools).toFixed(2);
+
+                // Configurar Fase 3
+                phaseCards[2].querySelector(".ph-name").value = "Fase 3: Pruebas Operativas, Protocolo de Calidad & Entrega Conforme";
+                phaseCards[2].querySelector(".ph-days").value = Math.max(2, Math.round(durDays * 0.2));
+                phaseCards[2].querySelector(".ph-cost").value = (estServices + estLabor * 0.2).toFixed(2);
+            }
+        }
+
+        // 7. Recalcular márgenes
+        recalcProjectBudgetPreview();
+
+        // 8. Scroll suave al formulario
+        setTimeout(() => {
+            const formEl = document.getElementById("projectCreateForm");
+            if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+
     } catch (e) {
-        alert("Error de conexión al procesar la aprobación.");
+        alert("Error al transferir presupuesto a proyecto: " + e.message);
     }
 }
 
@@ -2582,7 +2680,7 @@ async function printQuotation(quoteId) {
                     <img src="logo_dalor.jpg" alt="DALOR" style="height: 48px; display: block; border-radius: 4px;">
                     <div>
                         <h1 style="font-size: 17px; font-weight: 900; color: #002B49; margin: 0; letter-spacing: 0.3px;">METALMECÁNICA DALOR C.A.</h1>
-                        <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0; font-weight: 600;">RIF: <b>J-40540441-2</b> &bull; ALIANZA NEPTUNIA &bull; Especialistas en Ingeniería, Metalmecánica & Montajes</p>
+                        <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0; font-weight: 600;">RIF: <b>J-40540441-2</b> &bull; METALMECÁNICA DALOR C.A. &bull; Especialistas en Ingeniería, Metalmecánica & Montajes</p>
                         <p style="font-size: 10.5px; color: #64748b; margin: 1px 0 0 0;">Zona Industrial Valencia, Edo. Carabobo &bull; Correo: operaciones@dalor.com</p>
                     </div>
                 </div>

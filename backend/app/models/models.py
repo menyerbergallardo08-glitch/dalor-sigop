@@ -216,11 +216,6 @@ class ProjectPhase(Base):
     duration_days = Column(Integer, default=7)
     estimated_cost_usd = Column(Float, default=0.0)
     status = Column(String(50), default="pendiente")
-    # Castigo de Cartera e Incobrabilidad
-    is_bad_debt = Column(Boolean, default=False)
-    bad_debt_amount_usd = Column(Float, default=0.0)
-    bad_debt_reason = Column(String(255), nullable=True)
-    bad_debt_date = Column(DateTime, nullable=True)
     responsible_person = Column(String(150), nullable=True)
 
     project = relationship("Project", back_populates="phases")
@@ -396,6 +391,12 @@ class AccountReceivable(Base):
     paid_amount_usd = Column(Float, default=0.0)
     balance_usd = Column(Float, default=0.0)
     status = Column(String(50), default="pendiente")
+    # Castigo de Cartera e Incobrabilidad
+    is_bad_debt = Column(Boolean, default=False)
+    bad_debt_amount_usd = Column(Float, default=0.0)
+    bad_debt_reason = Column(String(255), nullable=True)
+    bad_debt_date = Column(DateTime, nullable=True)
+    
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

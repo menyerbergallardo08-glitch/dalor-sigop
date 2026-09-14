@@ -20,9 +20,32 @@ class AssetCreate(BaseModel):
     license_plate: Optional[str] = None
     current_odometer: Optional[float] = 0.0
     service_interval_km: Optional[float] = 5000.0
+    ownership_type: Optional[str] = "propio" # propio, alquilado_a_tercero, prestado_de_tercero, alquilado_a_cliente, prestado_a_cliente
+    external_entity_name: Optional[str] = None
+    rental_rate_usd: Optional[float] = 0.0
+    return_due_date: Optional[datetime] = None
     current_location: Optional[str] = "Sede Central"
     current_custodian_name: Optional[str] = "Disponible en Base"
     is_exclusive: bool = True
+    is_active: bool = True
+
+class AssetUpdate(BaseModel):
+    name: Optional[str] = None
+    asset_type: Optional[str] = None
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    license_plate: Optional[str] = None
+    current_odometer: Optional[float] = None
+    service_interval_km: Optional[float] = None
+    ownership_type: Optional[str] = None
+    external_entity_name: Optional[str] = None
+    rental_rate_usd: Optional[float] = None
+    return_due_date: Optional[datetime] = None
+    current_location: Optional[str] = None
+    current_custodian_name: Optional[str] = None
+    status: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class DispatchGuideItem(BaseModel):
     asset_id: int
@@ -39,14 +62,25 @@ class DispatchGuideCreate(BaseModel):
     driver_name: str
     vehicle_plate: str
     receiver_custodian_name: str
+    freight_cost_usd: Optional[float] = 0.0
+    fuel_cost_usd: Optional[float] = 0.0
     observations: Optional[str] = None
     items: List[DispatchGuideItem]
 
 @router.get("/")
-def get_assets(asset_type: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Asset).filter(Asset.is_active == True)
+def get_assets(
+    asset_type: Optional[str] = None,
+    ownership_type: Optional[str] = None,
+    include_inactive: bool = False,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Asset)
+    if not include_inactive:
+        query = query.filter(Asset.is_active == True)
     if asset_type:
         query = query.filter(Asset.asset_type == asset_type)
+    if ownership_type:
+        query = query.filter(Asset.ownership_type == ownership_type)
     return query.order_by(Asset.asset_code.asc()).all()
 
 @router.post("/")
@@ -66,16 +100,47 @@ def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
         current_odometer=asset_in.current_odometer or 0.0,
         service_interval_km=asset_in.service_interval_km or 5000.0,
         last_service_odometer=asset_in.current_odometer or 0.0,
+        ownership_type=asset_in.ownership_type or "propio",
+        external_entity_name=asset_in.external_entity_name,
+        rental_rate_usd=asset_in.rental_rate_usd or 0.0,
+        return_due_date=asset_in.return_due_date,
         status="disponible_base",
         current_location=asset_in.current_location or "Sede Central",
         current_custodian_name=asset_in.current_custodian_name or "Disponible en Base",
         is_exclusive=asset_in.is_exclusive,
-        is_active=True
+        is_active=asset_in.is_active
     )
     db.add(new_asset)
     db.commit()
     db.refresh(new_asset)
     return new_asset
+
+@router.put("/{asset_id}")
+def update_asset(asset_id: int, asset_in: AssetUpdate, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Activo no encontrado.")
+    
+    for field, val in asset_in.dict(exclude_unset=True).items():
+        setattr(asset, field, val)
+        
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+@router.post("/{asset_id}/toggle-active")
+def toggle_asset_active(asset_id: int, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Activo no encontrado.")
+    asset.is_active = not asset.is_active
+    db.commit()
+    return {
+        "success": True,
+        "id": asset.id,
+        "is_active": asset.is_active,
+        "status_label": "Activo" if asset.is_active else "Inactivo / Devuelto"
+    }
 
 @router.delete("/{asset_id}")
 def delete_asset(asset_id: int, db: Session = Depends(get_db)):
@@ -249,18 +314,45 @@ def create_dispatch_guide(guide_in: DispatchGuideCreate, db: Session = Depends(g
 
         history_record = ResourceAssignmentHistory(
             project_id=proj.id,
+            transfer_code=guide_number,
             resource_type="herramienta_equipo",
             resource_id=item.asset_id,
             resource_code=item.asset_code,
             resource_name=item.name,
             custodian_name=guide_in.receiver_custodian_name,
+            driver_name=guide_in.driver_name,
             origin_location=guide_in.origin_location,
             destination_location=guide_in.destination_location,
+            freight_cost_usd=guide_in.freight_cost_usd or 0.0,
+            fuel_cost_usd=guide_in.fuel_cost_usd or 0.0,
             status="en_obra",
             notes=f"Guía {guide_number} | Chofer: {guide_in.driver_name} (Placa: {guide_in.vehicle_plate}) | {item.condition_notes or ''}"
         )
         db.add(history_record)
         created_records.append(history_record)
+
+    # Registrar gasto logístico de traslado si hubo flete o combustible
+    total_logistics_usd = (guide_in.freight_cost_usd or 0.0) + (guide_in.fuel_cost_usd or 0.0)
+    if total_logistics_usd > 0:
+        from app.models.models import ExpenseCategory
+        cat = db.query(ExpenseCategory).filter(ExpenseCategory.code == "FLETES_LOGISTICA").first()
+        if not cat:
+            cat = db.query(ExpenseCategory).first()
+        if cat:
+            logistics_expense = Expense(
+                category_id=cat.id,
+                project_id=proj.id,
+                expense_type="costo_obra",
+                expense_date=datetime.utcnow(),
+                description=f"Logística de Traslado de Equipos (Guía {guide_number}) - Chofer: {guide_in.driver_name}",
+                supplier_vendor=f"Transporte / {guide_in.driver_name}",
+                amount_usd=total_logistics_usd,
+                amount_bs=total_logistics_usd * 850.0,
+                exchange_rate=850.0,
+                status="aprobado",
+                notes=f"Flete: ${guide_in.freight_cost_usd or 0.0} | Combustible: ${guide_in.fuel_cost_usd or 0.0}"
+            )
+            db.add(logistics_expense)
 
     db.commit()
 
@@ -268,7 +360,7 @@ def create_dispatch_guide(guide_in: DispatchGuideCreate, db: Session = Depends(g
         username="almacen",
         module="recursos_obra",
         action="emitir_guia_traslado",
-        details=f"Guía de Traslado {guide_number} emitida con {len(guide_in.items)} equipos para obra '{proj.code}'"
+        details=f"Guía de Traslado {guide_number} emitida con {len(guide_in.items)} equipos para obra '{proj.code}' (Costo Logístico: ${total_logistics_usd:.2f})"
     )
     db.add(audit)
     db.commit()
@@ -277,6 +369,8 @@ def create_dispatch_guide(guide_in: DispatchGuideCreate, db: Session = Depends(g
         "success": True,
         "guide_number": guide_number,
         "items_count": len(guide_in.items),
+        "freight_cost_usd": guide_in.freight_cost_usd or 0.0,
+        "fuel_cost_usd": guide_in.fuel_cost_usd or 0.0,
         "message": f"Guía de Traslado {guide_number} generada con éxito."
     }
 

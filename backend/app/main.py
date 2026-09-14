@@ -109,6 +109,18 @@ def serve_dossier():
         return FileResponse(dos_path)
     return {"status": "Dossier not found"}
 
+@app.get("/seguimiento/{token}")
+@app.get("/tracking/{token}")
+@app.get("/seguimiento")
+@app.get("/tracking.html")
+def serve_tracking(token: Optional[str] = None):
+    track_path = os.path.join(FRONTEND_DIR, "tracking.html")
+    if os.path.exists(track_path):
+        response = FileResponse(track_path)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return response
+    return {"status": "Tracking Portal not found"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

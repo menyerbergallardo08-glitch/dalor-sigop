@@ -2353,10 +2353,10 @@ function openNewQuotationModal() {
 
     document.getElementById("quoteForm").reset();
     document.getElementById("quoteItemsList").innerHTML = "";
-    document.getElementById("quote_tax_type").value = "16";
-    document.getElementById("quote_tax_percent").value = "16";
-    document.getElementById("quote_execution_time").value = "15 días hábiles a partir del anticipo";
-    document.getElementById("quote_currency").value = "USD";
+    if (document.getElementById("quote_tax_type")) document.getElementById("quote_tax_type").value = "16";
+    if (document.getElementById("quote_tax_percent")) document.getElementById("quote_tax_percent").value = "16";
+    if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "15 días hábiles a partir del anticipo";
+    if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = "USD";
     addQuotationRow();
     addQuotationRow();
     recalcQuotationTotals();
@@ -2373,10 +2373,14 @@ function onTaxTypeChanged() {
 function addQuotationRow(itemData = null) {
     quoteRowsCount++;
     const container = document.getElementById("quoteItemsList");
+    if (!container) return;
     const rowId = `quote_row_${quoteRowsCount}`;
 
     const srvOptions = `<option value="">-- Partida del Catálogo --</option>` + 
-        allServices.map(s => `<option value="${s.id}" data-code="${s.code}" data-unit="${s.unit_measure}" data-price="${s.unit_price_usd}" ${itemData && (itemData.service_id == s.id || itemData.item_code == s.code) ? 'selected' : ''}>[${s.code}] ${s.name} ($${s.unit_price_usd}/${s.unit_measure})</option>`).join('');
+        (allServices || []).map(s => {
+            const isSel = itemData && (String(itemData.service_id) === String(s.id) || String(itemData.item_code) === String(s.code));
+            return `<option value="${s.id}" data-code="${s.code}" data-unit="${s.unit_measure}" data-price="${s.unit_price_usd}" ${isSel ? 'selected' : ''}>[${s.code}] ${s.name} ($${s.unit_price_usd}/${s.unit_measure})</option>`;
+        }).join('');
 
     const descVal = itemData ? (itemData.description || '').replace(/"/g, '&quot;') : '';
     const unitVal = itemData ? (itemData.unit_measure || 'Global') : 'Global';
@@ -2429,8 +2433,9 @@ function removeQuotationRow(rowId) {
 
 function onServiceSelected(rowId) {
     const row = document.getElementById(rowId);
+    if (!row) return;
     const select = row.querySelector(".q-srv-select");
-    const opt = select.options[select.selectedIndex];
+    const opt = select ? select.options[select.selectedIndex] : null;
     if (opt && opt.value) {
         row.querySelector(".q-desc").value = opt.text.replace(/\[.*?\]\s*/, '').split(' ($')[0];
         row.querySelector(".q-unit").value = opt.getAttribute("data-unit") || "Global";
@@ -2443,20 +2448,81 @@ function recalcQuotationTotals() {
     const rows = document.querySelectorAll("#quoteItemsList > div");
     let subtotal = 0;
     rows.forEach(r => {
-        const qty = parseFloat(r.querySelector(".q-qty").value) || 0;
-        const price = parseFloat(r.querySelector(".q-price").value) || 0;
+        const qtyInp = r.querySelector(".q-qty");
+        const priceInp = r.querySelector(".q-price");
+        const totInp = r.querySelector(".q-total");
+        const qty = parseFloat(qtyInp ? qtyInp.value : 0) || 0;
+        const price = parseFloat(priceInp ? priceInp.value : 0) || 0;
         const lineTot = qty * price;
-        r.querySelector(".q-total").value = `$${lineTot.toFixed(2)}`;
+        if (totInp) totInp.value = `$${lineTot.toFixed(2)}`;
         subtotal += lineTot;
     });
 
-    const taxPercent = parseFloat(document.getElementById("quote_tax_percent").value) || 0.0;
+    const taxPercent = parseFloat(document.getElementById("quote_tax_percent") ? document.getElementById("quote_tax_percent").value : 16) || 0.0;
     const taxUsd = subtotal * (taxPercent / 100.0);
     const grandTotal = subtotal + taxUsd;
 
-    document.getElementById("quote_subtotal_display").innerText = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    document.getElementById("quote_tax_display").innerText = taxPercent === 0 ? "EXENTO (0%)" : `$${taxUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    document.getElementById("quote_total_display").innerText = `$${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const subEl = document.getElementById("quote_subtotal_display");
+    const taxEl = document.getElementById("quote_tax_display");
+    const totEl = document.getElementById("quote_total_display");
+
+    if (subEl) subEl.innerText = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (taxEl) taxEl.innerText = taxPercent === 0 ? "EXENTO (0%)" : `$${taxUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (totEl) totEl.innerText = `$${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Función interactiva para Re-editar Cotizaciones / Presupuestos
+async function editQuotation(quoteId) {
+    try {
+        const res = await fetch(`${API_BASE}/quotations/${quoteId}`);
+        if (!res.ok) throw new Error('No se pudo cargar la cotización para edición.');
+        const q = await res.json();
+
+        // 1. Configurar ID de edición y título del Modal
+        const editInput = document.getElementById("edit_quotation_id");
+        if (editInput) editInput.value = q.id;
+
+        const titleEl = document.getElementById("modalQuotationTitle");
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square" style="color: var(--dalor-gold);"></i> Re-editar Presupuesto / Cotización [${q.quote_number}]`;
+
+        const btnSubmit = document.getElementById("btnSubmitQuotation");
+        if (btnSubmit) btnSubmit.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Presupuesto`;
+
+        // 2. Poblar campos cabecera
+        if (document.getElementById("quote_client_id")) document.getElementById("quote_client_id").value = q.client_id;
+        if (document.getElementById("quote_title")) document.getElementById("quote_title").value = q.project_title || "";
+        if (document.getElementById("quote_location")) document.getElementById("quote_location").value = q.location || "";
+        if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = q.execution_time || "15 días hábiles a partir del anticipo";
+        if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = q.currency || "USD";
+        
+        const taxRate = Math.round(q.tax_percent !== undefined ? q.tax_percent : 16);
+        if (document.getElementById("quote_tax_type")) document.getElementById("quote_tax_type").value = String(taxRate);
+        if (document.getElementById("quote_tax_percent")) document.getElementById("quote_tax_percent").value = taxRate;
+
+        // 3. Poblar Renglones / Partidas
+        quoteRowsCount = 0;
+        const container = document.getElementById("quoteItemsList");
+        if (container) {
+            container.innerHTML = "";
+            if (q.items && q.items.length > 0) {
+                q.items.forEach(it => {
+                    addQuotationRow(it);
+                });
+            } else {
+                addQuotationRow();
+            }
+        }
+
+        // 4. Recalcular Totales y Actualizar Moneda
+        recalcQuotationTotals();
+        onQuotationCurrencyChanged();
+
+        // 5. Abrir Modal
+        openModal("modalQuotation");
+
+    } catch (e) {
+        alert("Error al abrir cotización para re-editar: " + e.message);
+    }
 }
 
 async function submitCreateQuotation(event) {
@@ -2471,13 +2537,13 @@ async function submitCreateQuotation(event) {
     let items = [];
     rows.forEach(r => {
         const srvSelect = r.querySelector(".q-srv-select");
-        const srvId = srvSelect.value ? parseInt(srvSelect.value) : null;
-        const srvOpt = srvSelect.options[srvSelect.selectedIndex];
+        const srvId = srvSelect && srvSelect.value ? parseInt(srvSelect.value) : null;
+        const srvOpt = srvSelect ? srvSelect.options[srvSelect.selectedIndex] : null;
         const itemCode = srvOpt ? srvOpt.getAttribute("data-code") : null;
-        const desc = r.querySelector(".q-desc").value;
-        const unit = r.querySelector(".q-unit").value;
-        const qty = parseFloat(r.querySelector(".q-qty").value) || 1;
-        const price = parseFloat(r.querySelector(".q-price").value) || 0;
+        const desc = r.querySelector(".q-desc") ? r.querySelector(".q-desc").value : "";
+        const unit = r.querySelector(".q-unit") ? r.querySelector(".q-unit").value : "Global";
+        const qty = parseFloat(r.querySelector(".q-qty") ? r.querySelector(".q-qty").value : 1) || 1;
+        const price = parseFloat(r.querySelector(".q-price") ? r.querySelector(".q-price").value : 0) || 0;
 
         items.push({
             service_id: srvId,
@@ -2495,34 +2561,43 @@ async function submitCreateQuotation(event) {
         return;
     }
 
+    const editId = document.getElementById("edit_quotation_id") ? document.getElementById("edit_quotation_id").value : "";
+    const isEdit = Boolean(editId);
+
     const payload = {
         client_id: clientId,
         project_title: document.getElementById("quote_title").value,
         location: document.getElementById("quote_location").value || "Sede Central",
-        validity_days: parseInt(document.getElementById("quote_validity").value) || 15,
+        execution_time: document.getElementById("quote_execution_time").value || "15 días hábiles a partir del anticipo",
+        currency: document.getElementById("quote_currency").value || "USD",
+        validity_days: parseInt(document.getElementById("quote_validity") ? document.getElementById("quote_validity").value : 15) || 15,
         tax_percent: parseFloat(document.getElementById("quote_tax_percent").value) || 0.0,
         exchange_rate: EXCHANGE_RATE,
         items: items
     };
 
     try {
-        const res = await fetch(`${API_BASE}/quotations/`, {
-            method: "POST",
+        const url = isEdit ? `${API_BASE}/quotations/${editId}` : `${API_BASE}/quotations/`;
+        const method = isEdit ? "PUT" : "POST";
+
+        const res = await fetch(url, {
+            method: method,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
 
         if (res.ok) {
             const data = await res.json();
-            alert(`¡Presupuesto ${data.quote_number} generado exitosamente!`);
+            const msg = isEdit ? `¡Presupuesto ${data.quote_number} re-editado y actualizado exitosamente!` : `¡Presupuesto ${data.quote_number} generado exitosamente!`;
+            alert(msg);
             closeModal("modalQuotation");
             loadQuotations();
         } else {
             const err = await res.json();
-            alert("Error: " + (err.detail || JSON.stringify(err)));
+            alert("Error al guardar presupuesto: " + (err.detail || "Verifica los campos."));
         }
     } catch (e) {
-        alert("Error al guardar presupuesto.");
+        alert("Error de conexión al guardar presupuesto.");
     }
 }
 

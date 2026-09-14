@@ -519,3 +519,43 @@ def delete_receivable(cxc_id: int, db: Session = Depends(get_db)):
     db.delete(rec)
     db.commit()
     return {"success": True, "message": f"Cuenta por cobrar [{rec.invoice_number}] eliminada con éxito."}
+
+class BadDebtWriteOff(BaseModel):
+    reason: str
+    notes: Optional[str] = None
+
+@router.post("/cxc/{receivable_id}/write-off")
+def write_off_bad_debt(receivable_id: int, w_in: BadDebtWriteOff, db: Session = Depends(get_db)):
+    rec = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Cuenta por cobrar no encontrada.")
+
+    if rec.balance_usd <= 0:
+        raise HTTPException(status_code=400, detail="Esta cuenta no tiene saldo pendiente por castigar.")
+
+    castigo_amount = rec.balance_usd
+    rec.is_bad_debt = True
+    rec.bad_debt_amount_usd = castigo_amount
+    rec.bad_debt_reason = w_in.reason.strip()
+    rec.bad_debt_date = datetime.utcnow()
+    rec.status = "incobrable"
+    rec.balance_usd = 0.0
+    if w_in.notes:
+        rec.notes = (rec.notes or "") + f"\n[Castigo Cartera: {w_in.reason} - {w_in.notes}]"
+
+    # Si está vinculada a un proyecto, registrar auditoría
+    audit = AuditLog(
+        username="administracion",
+        module="finanzas_cxc",
+        action="castigo_cartera_incobrable",
+        details=f"Castigo de cartera por ${castigo_amount:.2f} en factura [{rec.invoice_number}] de '{rec.client.name if rec.client else 'General'}'. Motivo: {w_in.reason}"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "invoice_number": rec.invoice_number,
+        "bad_debt_amount_usd": castigo_amount,
+        "message": f"Factura [{rec.invoice_number}] declarada Incobrable por ${castigo_amount:.2f}. Saldo vivo retirado de tesorería."
+    }

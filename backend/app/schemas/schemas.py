@@ -78,6 +78,19 @@ class QuotationCreate(BaseModel):
     notes: Optional[str] = None
     items: List[QuotationItemCreate]
 
+class QuotationUpdate(BaseModel):
+    client_id: Optional[int] = None
+    project_title: Optional[str] = None
+    location: Optional[str] = None
+    execution_time: Optional[str] = None
+    currency: Optional[str] = None
+    validity_days: Optional[int] = None
+    exchange_rate: Optional[float] = None
+    tax_percent: Optional[float] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+    items: Optional[List[QuotationItemCreate]] = None
+
 class QuotationOut(BaseModel):
     id: int
     quote_number: str

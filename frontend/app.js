@@ -1,3 +1,4 @@
+let currentViewingProjectId = null;
 
 // ==============================================================================
 // 📷 COMPRESIÓN DE IMÁGENES CLIENTE PARA OCR INSTANTÁNEO (<1s EN CELULARES)
@@ -1293,8 +1294,10 @@ async function loadProjectsList() {
 
 async function viewProjectDetails(projectId) {
     try {
+        currentViewingProjectId = projectId;
         const res = await fetch(`${API_BASE}/projects/${projectId}/details`);
         const data = await res.json();
+        currentViewingProjectId = data.id;
 
         // Determinar permisos de rol para modal
         const savedUserStr = sessionStorage.getItem('dalor_user') || localStorage.getItem('dalor_user');
@@ -3999,14 +4002,27 @@ function openNewReceivableModal() {
 
 async function submitCreateReceivable(e) {
     e.preventDefault();
+    const invoiceNum = document.getElementById("cxc_invoice_number").value.trim();
+    const clientId = parseInt(document.getElementById("cxc_client_id").value);
+    const projId = document.getElementById("cxc_project_id").value ? parseInt(document.getElementById("cxc_project_id").value) : null;
+    const desc = document.getElementById("cxc_description").value.trim();
+    const dueDateVal = document.getElementById("cxc_due_date").value;
+    const amountVal = parseFloat(document.getElementById("cxc_amount_usd").value);
+    const taxRetained = parseFloat(document.getElementById("cxc_tax_retained").value) || 0.0;
+
+    if (!invoiceNum || !clientId || !dueDateVal || isNaN(amountVal)) {
+        alert("Por favor completa todos los campos requeridos (*).");
+        return;
+    }
+
     const payload = {
-        invoice_number: document.getElementById("cxc_invoice_number").value.trim(),
-        client_id: parseInt(document.getElementById("cxc_client_id").value),
-        project_id: document.getElementById("cxc_project_id").value ? parseInt(document.getElementById("cxc_project_id").value) : null,
-        description: document.getElementById("cxc_description").value.trim(),
-        due_date: new Date(document.getElementById("cxc_due_date").value).toISOString(),
-        amount_usd: parseFloat(document.getElementById("cxc_amount_usd").value),
-        tax_retained_usd: parseFloat(document.getElementById("cxc_tax_retained").value) || 0.0,
+        invoice_number: invoiceNum,
+        client_id: clientId,
+        project_id: projId,
+        description: desc,
+        due_date: new Date(dueDateVal).toISOString(),
+        amount_usd: amountVal,
+        tax_retained_usd: taxRetained,
         exchange_rate: EXCHANGE_RATE
     };
 
@@ -4016,13 +4032,22 @@ async function submitCreateReceivable(e) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error("Error al emitir factura");
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al emitir factura");
+        }
+        
         closeModal("modalReceivable");
         document.getElementById("receivableForm").reset();
-        loadReceivablesList();
-        alert("✅ Factura / Valuación por cobrar registrada exitosamente.");
+        
+        // Asegurar que el usuario esté en el módulo financiero y refrescar lista
+        switchView('financial', 'finanzas');
+        switchFinancialSubtab('cxc');
+        await loadReceivablesList();
+        
+        alert(`✅ Factura / Valuación [${invoiceNum}] registrada exitosamente y cargada en el Módulo Financiero.`);
     } catch (err) {
-        alert("Error: " + err.message);
+        alert("Error al guardar cuenta por cobrar: " + err.message);
     }
 }
 
@@ -6683,31 +6708,39 @@ async function submitResetToCleanSlate(event) {
 // 📄 FACTURACIÓN RÁPIDA 1-CLIC DESDE PROYECTO HACIA CxC
 // ==============================================================================
 function openCreateCxCForProject(projId) {
-    const proj = allProjects.find(p => p.id === projId);
-    if (!proj) return;
+    const pId = projId || currentViewingProjectId;
+    const proj = allProjects ? allProjects.find(p => p.id == pId) : null;
+    
+    // Cerrar modal de detalle de proyecto si estaba abierto
+    closeModal('modalProjectDetail');
 
+    // Cambiar a vista de finanzas y subpestaña de CxC
     switchView('financial', 'finanzas');
     switchFinancialSubtab('cxc');
+
+    // Abrir modal de nueva cuenta por cobrar
     openNewReceivableModal();
 
     setTimeout(() => {
-        if (proj.client_id && document.getElementById("cxc_client_id")) {
-            document.getElementById("cxc_client_id").value = proj.client_id;
+        if (proj) {
+            if (proj.client_id && document.getElementById("cxc_client_id")) {
+                document.getElementById("cxc_client_id").value = proj.client_id;
+            }
+            if (document.getElementById("cxc_project_id")) {
+                document.getElementById("cxc_project_id").value = proj.id;
+            }
+            if (document.getElementById("cxc_description")) {
+                document.getElementById("cxc_description").value = `Valuación / Facturación de Obra - [${proj.code}] ${proj.name}`;
+            }
+            if (document.getElementById("cxc_amount_usd") && proj.contract_amount_usd) {
+                document.getElementById("cxc_amount_usd").value = parseFloat(proj.contract_amount_usd).toFixed(2);
+            }
+            if (document.getElementById("cxc_invoice_number")) {
+                const randNum = Math.floor(1000 + Math.random() * 9000);
+                document.getElementById("cxc_invoice_number").value = `VAL-${proj.code}-${randNum}`;
+            }
         }
-        if (document.getElementById("cxc_project_id")) {
-            document.getElementById("cxc_project_id").value = proj.id;
-        }
-        if (document.getElementById("cxc_description")) {
-            document.getElementById("cxc_description").value = `Valuación / Facturación de Obra - [${proj.code}] ${proj.name}`;
-        }
-        if (document.getElementById("cxc_amount_usd") && proj.contract_amount_usd) {
-            document.getElementById("cxc_amount_usd").value = proj.contract_amount_usd;
-        }
-        if (document.getElementById("cxc_invoice_number")) {
-            const randNum = Math.floor(1000 + Math.random() * 9000);
-            document.getElementById("cxc_invoice_number").value = `VAL-${proj.code}-${randNum}`;
-        }
-    }, 60);
+    }, 120);
 }
 
 // ==============================================================================

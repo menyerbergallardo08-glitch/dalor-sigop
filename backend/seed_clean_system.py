@@ -133,19 +133,19 @@ def seed_database():
 
         print("--- 3. SEEDING AUTHENTIC DALOR PERSONNEL (13 TRABAJADORES REALES) ---")
         authentic_personnel = [
-            {"code": "PERS-001", "full_name": "Paola Garay", "identification_id": "V-19874521", "role_title": "Administración y Finanzas", "phone": "0414-1234501", "current_location": "Sede Central (Guacara)", "roster_type": "guacara_fijo", "monthly_salary_usd": 500.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-002", "full_name": "Robert Rodriguez", "identification_id": "V-14562890", "role_title": "Gerente de Operaciones", "phone": "0414-1234502", "current_location": "Sede Central (Guacara)", "roster_type": "guacara_fijo", "monthly_salary_usd": 650.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-003", "full_name": "Julio Saavedra", "identification_id": "V-16789452", "role_title": "Técnico Especialista Mecánico", "phone": "0414-1234503", "current_location": "Sede Central (Guacara)", "roster_type": "guacara_fijo", "monthly_salary_usd": 450.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-004", "full_name": "Vicente Rodriguez", "identification_id": "V-13456789", "role_title": "Técnico Metalmecánico", "phone": "0414-1234504", "current_location": "Sede Central (Guacara)", "roster_type": "guacara_fijo", "monthly_salary_usd": 450.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-005", "full_name": "Carlos Hurtado", "identification_id": "V-14890123", "role_title": "Custodio y Almacenista Central", "phone": "0414-1234505", "current_location": "Sede Central (Guacara)", "roster_type": "guacara_fijo", "monthly_salary_usd": 400.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-006", "full_name": "Geraldine Paez", "identification_id": "V-21345678", "role_title": "Asistente Administrativa", "phone": "0414-1234506", "current_location": "Sede Central (Guacara)", "roster_type": "guacara_fijo", "monthly_salary_usd": 350.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-007", "full_name": "Eleonora Galetti", "identification_id": "V-18765432", "role_title": "Administración y Compras", "phone": "0414-1234507", "current_location": "Sede Central (Guacara)", "roster_type": "guacara_fijo", "monthly_salary_usd": 400.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-008", "full_name": "Hender Rodriguez", "identification_id": "V-15890456", "role_title": "Supervisor de Obra / Campo", "phone": "0412-9876501", "current_location": "Sede Central (Guacara)", "roster_type": "proyecto_campo", "daily_rate_usd": 25.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-009", "full_name": "Herby Rodriguez", "identification_id": "V-12607524", "role_title": "Chofer de Carga Pesada & Logística", "phone": "0412-9876502", "current_location": "Sede Central (Guacara)", "roster_type": "proyecto_campo", "daily_rate_usd": 20.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-010", "full_name": "Eliu Suarez", "identification_id": "V-17890123", "role_title": "Soldador Especialista CWI", "phone": "0412-9876503", "current_location": "Sede Central (Guacara)", "roster_type": "proyecto_campo", "daily_rate_usd": 22.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-011", "full_name": "Danny Chaparro", "identification_id": "V-19012345", "role_title": "Técnico Montador de Estructuras", "phone": "0412-9876504", "current_location": "Sede Central (Guacara)", "roster_type": "proyecto_campo", "daily_rate_usd": 18.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-012", "full_name": "Ernesto Chaparro", "identification_id": "V-16789012", "role_title": "Técnico Montador de Estructuras", "phone": "0412-9876505", "current_location": "Sede Central (Guacara)", "roster_type": "proyecto_campo", "daily_rate_usd": 18.0, "status": "disponible_base", "is_active": True},
-            {"code": "PERS-013", "full_name": "Mervis Parra", "identification_id": "V-18456789", "role_title": "Técnico Montador de Estructuras", "phone": "0412-9876506", "current_location": "Sede Central (Guacara)", "roster_type": "proyecto_campo", "daily_rate_usd": 18.0, "status": "disponible_base", "is_active": True}
+            {"code": "PERS-001", "full_name": "Paola Garay", "identification_id": "V-19874521", "role_title": "Administración y Finanzas", "phone": "0414-1234501", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-002", "full_name": "Robert Rodriguez", "identification_id": "V-14562890", "role_title": "Gerente de Operaciones", "phone": "0414-1234502", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-003", "full_name": "Julio Saavedra", "identification_id": "V-16789452", "role_title": "Técnico Especialista Mecánico", "phone": "0414-1234503", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-004", "full_name": "Vicente Rodriguez", "identification_id": "V-13456789", "role_title": "Técnico Metalmecánico", "phone": "0414-1234504", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-005", "full_name": "Carlos Hurtado", "identification_id": "V-14890123", "role_title": "Custodio y Almacenista Central", "phone": "0414-1234505", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-006", "full_name": "Geraldine Paez", "identification_id": "V-21345678", "role_title": "Asistente Administrativa", "phone": "0414-1234506", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-007", "full_name": "Eleonora Galetti", "identification_id": "V-18765432", "role_title": "Administración y Compras", "phone": "0414-1234507", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-008", "full_name": "Hender Rodriguez", "identification_id": "V-15890456", "role_title": "Supervisor de Obra / Campo", "phone": "0412-9876501", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-009", "full_name": "Herby Rodriguez", "identification_id": "V-12607524", "role_title": "Chofer de Carga Pesada & Logística", "phone": "0412-9876502", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-010", "full_name": "Eliu Suarez", "identification_id": "V-17890123", "role_title": "Soldador Especialista CWI", "phone": "0412-9876503", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-011", "full_name": "Danny Chaparro", "identification_id": "V-19012345", "role_title": "Técnico Montador de Estructuras", "phone": "0412-9876504", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-012", "full_name": "Ernesto Chaparro", "identification_id": "V-16789012", "role_title": "Técnico Montador de Estructuras", "phone": "0412-9876505", "current_location": "Sede Central (Guacara)"},
+            {"code": "PERS-013", "full_name": "Mervis Parra", "identification_id": "V-18456789", "role_title": "Técnico Montador de Estructuras", "phone": "0412-9876506", "current_location": "Sede Central (Guacara)"}
         ]
         for p in authentic_personnel:
             db.add(Personnel(
@@ -208,8 +208,6 @@ def seed_database():
                 "current_odometer": 241400.0,
                 "service_interval_km": 5000.0,
                 "last_service_odometer": 239400.0,
-                "ownership_type": "propio",
-                "rental_rate_usd": 0.0,
                 "is_exclusive": True,
                 "is_active": True
             },
@@ -226,8 +224,6 @@ def seed_database():
                 "current_odometer": 311736.0,
                 "service_interval_km": 5000.0,
                 "last_service_odometer": 310000.0,
-                "ownership_type": "propio",
-                "rental_rate_usd": 0.0,
                 "is_exclusive": True,
                 "is_active": True
             },
@@ -244,8 +240,6 @@ def seed_database():
                 "current_odometer": 487742.0,
                 "service_interval_km": 5000.0,
                 "last_service_odometer": 485000.0,
-                "ownership_type": "propio",
-                "rental_rate_usd": 0.0,
                 "is_exclusive": True,
                 "is_active": True
             },
@@ -262,8 +256,6 @@ def seed_database():
                 "current_odometer": 185000.0,
                 "service_interval_km": 5000.0,
                 "last_service_odometer": 180000.0,
-                "ownership_type": "propio",
-                "rental_rate_usd": 0.0,
                 "is_exclusive": True,
                 "is_active": True
             },
@@ -280,8 +272,6 @@ def seed_database():
                 "current_odometer": 12500.0,
                 "service_interval_km": 500.0,
                 "last_service_odometer": 12000.0,
-                "ownership_type": "propio",
-                "rental_rate_usd": 0.0,
                 "is_exclusive": True,
                 "is_active": True
             },
@@ -298,8 +288,6 @@ def seed_database():
                 "current_odometer": 198000.0,
                 "service_interval_km": 5000.0,
                 "last_service_odometer": 195000.0,
-                "ownership_type": "propio",
-                "rental_rate_usd": 0.0,
                 "is_exclusive": True,
                 "is_active": True
             },
@@ -316,8 +304,6 @@ def seed_database():
                 "current_odometer": 142000.0,
                 "service_interval_km": 5000.0,
                 "last_service_odometer": 140000.0,
-                "ownership_type": "propio",
-                "rental_rate_usd": 0.0,
                 "is_exclusive": True,
                 "is_active": True
             },
@@ -334,9 +320,6 @@ def seed_database():
                 "current_odometer": 115000.0,
                 "service_interval_km": 5000.0,
                 "last_service_odometer": 112000.0,
-                "ownership_type": "alquilado",
-                "external_entity_name": "Neptunia C.A.",
-                "rental_rate_usd": 0.0,
                 "is_exclusive": True,
                 "is_active": True
             }
@@ -355,8 +338,6 @@ def seed_database():
                 current_odometer=v["current_odometer"],
                 service_interval_km=v["service_interval_km"],
                 last_service_odometer=v["last_service_odometer"],
-                ownership_type=v["ownership_type"],
-                external_entity_name=v.get("external_entity_name"),
                 current_custodian_name="Chofer / Logística Dalor",
                 is_active=True
             ))

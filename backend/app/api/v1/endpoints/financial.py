@@ -500,3 +500,20 @@ def sync_bcv_rate():
         "data": rate_info
     }
 
+
+
+
+@router.delete("/cxc/{cxc_id}")
+def delete_receivable(cxc_id: int, db: Session = Depends(get_db)):
+    rec = db.query(AccountReceivable).filter(AccountReceivable.id == cxc_id).first()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Cuenta por cobrar no encontrada.")
+    # Eliminar pagos asociados primero si existen
+    db.query(FinancialPayment).filter(
+        (FinancialPayment.receivable_id == cxc_id) | 
+        ((FinancialPayment.payment_type == "cxc_cobro") & (FinancialPayment.reference_number == rec.invoice_number))
+    ).delete(synchronize_session=False)
+    
+    db.delete(rec)
+    db.commit()
+    return {"success": True, "message": f"Cuenta por cobrar [{rec.invoice_number}] eliminada con éxito."}

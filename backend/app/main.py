@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response
+from app.api.v1.endpoints import dispatch\nfrom fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -125,3 +125,4 @@ def serve_tracking(token: Optional[str] = None):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+\napp.include_router(dispatch.router, prefix=f"{settings.API_V1_STR}/dispatch", tags=["dispatch"])\n

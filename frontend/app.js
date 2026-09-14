@@ -271,7 +271,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-window.APP_BUILD_VERSION = "2026.09.14.v35";
+window.APP_BUILD_VERSION = "2026.09.14.v36";
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
@@ -2554,7 +2554,7 @@ async function printQuotation(quoteId) {
                     <img src="logo_dalor.jpg" alt="DALOR" style="height: 48px; display: block; border-radius: 4px;">
                     <div>
                         <h1 style="font-size: 16px; font-weight: 900; color: #002B49; margin: 0;">METALMECÁNICA DALOR C.A.</h1>
-                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">RIF: J-30123456-1 &bull; Especialistas en Ingeniería, Electricidad & Montajes</p>
+                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">RIF: J-40540441-2 &bull; ALIANZA NEPTUNIA &bull; Especialistas en Ingeniería, Electricidad & Montajes</p>
                         <p style="font-size: 11px; color: #64748b; margin: 1px 0 0 0;">Zona Industrial Valencia, Edo. Carabobo &bull; Correo: operaciones@dalor.com</p>
                     </div>
                 </div>
@@ -6638,3 +6638,57 @@ updateSoundToggleUI();
 setInterval(() => {
     fetch('/healthz').catch(() => {});
 }, 300000); // Cada 5 minutos
+
+
+// ==============================================================================
+// 🌟 MÓDULOS MAESTROS DALOR: SEGUIMIENTO PÚBLICO, MULTIMONEDA & RETENCIONES SENIAT
+// ==============================================================================
+
+// Copiar Enlace de Seguimiento Público de Proyecto para Clientes
+window.copyProjectClientTrackingLink = async function(projCodeOrToken) {
+    let token = projCodeOrToken;
+    if (!token && window.currentViewingProjectId) {
+        try {
+            const res = await fetch(`${API_BASE}/projects/${window.currentViewingProjectId}/tracking-token`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                token = data.tracking_token || data.project_code;
+            }
+        } catch(e) {
+            console.error('Error generating token:', e);
+        }
+    }
+    
+    const url = window.location.origin + '/seguimiento/' + (token || 'PRJ-2026-001');
+    if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+    }
+    
+    showToastNotification(`🔗 Enlace copiado al portapapeles: ${url}`, 'success');
+    window.open(url, '_blank');
+};
+
+// Toggle Activo / Inactivo en Activos y Equipos
+window.toggleAssetActive = async function(assetId) {
+    try {
+        const res = await fetch(`${API_BASE}/assets/${assetId}/toggle-active`, { method: 'POST' });
+        if (!res.ok) throw new Error('No se pudo cambiar el estado del activo.');
+        const data = await res.json();
+        showToastNotification(`Activo actualizado: ${data.status_label}`, 'success');
+        if (typeof loadAssetsList === 'function') loadAssetsList();
+        if (typeof loadFleetView === 'function') loadFleetView();
+    } catch(err) {
+        showToastNotification(`Error: ${err.message}`, 'error');
+    }
+};
+
+// Cambio dinámico de moneda en cotización
+window.onQuotationCurrencyChanged = function() {
+    const cur = document.getElementById("quote_currency")?.value || "USD";
+    const symbol = cur === "VES" ? "Bs." : (cur === "EUR" ? "€" : "$");
+    const labelSub = document.querySelector("#quote_subtotal_display")?.previousElementSibling;
+    const labelTot = document.querySelector("#quote_total_display")?.previousElementSibling;
+    if (labelSub) labelSub.innerText = `Subtotal (${symbol})`;
+    if (labelTot) labelTot.innerText = `Total Cotizado (${symbol})`;
+    if (typeof recalcQuotationTotals === 'function') recalcQuotationTotals();
+};

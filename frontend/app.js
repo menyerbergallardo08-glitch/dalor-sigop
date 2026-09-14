@@ -4084,12 +4084,12 @@ async function submitCreateReceivable(e) {
         return;
     }
 
-    // Calcular desglose SENIAT
+    // Desglose fiscal limpio: Sólo aplicar retención si el usuario introdujo un valor explícito mayor a 0
     const baseUsd = parseFloat((amountVal / 1.16).toFixed(2));
     const taxUsd = parseFloat((amountVal - baseUsd).toFixed(2));
-    const retIvaUsd = parseFloat((taxUsd * 0.75).toFixed(2));
-    const retIslrUsd = parseFloat((baseUsd * 0.02).toFixed(2));
-    const netUsd = parseFloat((amountVal - retIvaUsd - retIslrUsd).toFixed(2));
+    const retIvaUsd = taxRetained > 0 ? parseFloat((taxRetained * 0.75).toFixed(2)) : 0.0;
+    const retIslrUsd = taxRetained > 0 ? parseFloat((taxRetained * 0.25).toFixed(2)) : 0.0;
+    const netUsd = parseFloat((amountVal - taxRetained).toFixed(2));
 
     const payload = {
         invoice_number: invoiceNum,
@@ -6841,14 +6841,9 @@ async function openCreateCxCForProject(projId) {
             const amt = parseFloat(proj.contract_amount_usd) || 0;
             document.getElementById("cxc_amount_usd").value = amt.toFixed(2);
             
-            // Calcular retenciones estimadas (IVA 75% e ISLR 2%)
-            const base = amt / 1.16;
-            const iva = amt - base;
-            const retIva = iva * 0.75;
-            const retIslr = base * 0.02;
-            const totRet = retIva + retIslr;
+            // Retenciones en 0.00 por defecto (el cliente debe el 100% hasta que consigne comprobantes de retención)
             if (document.getElementById("cxc_tax_retained")) {
-                document.getElementById("cxc_tax_retained").value = totRet.toFixed(2);
+                document.getElementById("cxc_tax_retained").value = "0.00";
             }
         }
         if (document.getElementById("cxc_invoice_number")) {

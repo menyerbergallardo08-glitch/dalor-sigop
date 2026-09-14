@@ -7022,11 +7022,21 @@ setInterval(() => {
 // ==============================================================================
 
 // Copiar Enlace de Seguimiento Público de Proyecto para Clientes
-window.copyProjectClientTrackingLink = async function(projCodeOrToken) {
-    let token = projCodeOrToken;
-    if (!token && window.currentViewingProjectId) {
+// Enlace de Seguimiento Público de Proyecto para Clientes (Portal Ciego a Costos)
+window.copyProjectClientTrackingLink = async function(projIdOrCode) {
+    let token = null;
+    let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
+    
+    // Si se pasa un código de proyecto string que no sea número
+    if (typeof projIdOrCode === 'string' && isNaN(parseInt(projIdOrCode))) {
+        token = projIdOrCode;
+    } else if (projIdOrCode && !isNaN(parseInt(projIdOrCode))) {
+        projId = parseInt(projIdOrCode);
+    }
+
+    if (projId) {
         try {
-            const res = await fetch(`${API_BASE}/projects/${window.currentViewingProjectId}/tracking-token`, { method: 'POST' });
+            const res = await fetch(`${API_BASE}/projects/${projId}/tracking-token`, { method: 'POST' });
             if (res.ok) {
                 const data = await res.json();
                 token = data.tracking_token || data.project_code;
@@ -7035,13 +7045,24 @@ window.copyProjectClientTrackingLink = async function(projCodeOrToken) {
             console.error('Error generating token:', e);
         }
     }
+
+    if (!token && window.allProjects && projId) {
+        const p = window.allProjects.find(x => x.id == projId);
+        if (p) token = p.tracking_token || p.code;
+    }
     
     const url = window.location.origin + '/seguimiento/' + (token || 'PRJ-2026-001');
     if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
     }
     
-    showToastNotification(`🔗 Enlace copiado al portapapeles: ${url}`, 'success');
+    if (typeof showToastNotification === 'function') {
+        showToastNotification(`🔗 Enlace copiado al portapapeles: ${url}`, 'success');
+    } else {
+        alert(`🔗 Enlace de Seguimiento para Cliente copiado al portapapeles:
+
+${url}`);
+    }
     window.open(url, '_blank');
 };
 

@@ -570,4 +570,4 @@ def write_off_bad_debt(receivable_id: int, w_in: BadDebtWriteOff, db: Session = 
     except Exception as e:
         import traceback
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error en write_off_bad_debt: {str(e)} -> {traceback.format_exc()}")
+        return {"error": str(e), "traceback": traceback.format_exc()}

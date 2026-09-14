@@ -3409,8 +3409,11 @@
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end;">
-                <button onclick="closeModal('modalProjectDetail')" class="btn-secondary">Cerrar Ficha</button>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" onclick="openCreateCxCForProject(currentViewingProjectId)" class="btn-primary" style="background: #059669; font-size: 12px; padding: 6px 14px;">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Facturar / Emitir CxC
+                </button>
+                <button type="button" onclick="closeModal('modalProjectDetail')" class="btn-secondary">Cerrar Ficha</button>
             </div>
         </div>
     </div>
@@ -4682,6 +4685,6 @@
     </style>
 
     <!-- 🚀 LÓGICA CORE SPA JAVASCRIPT -->
-    <script src="/app.js?v=2026.09.14.v44"></script>
+    <script src="/app.js?v=2026.09.14.v45"></script>
 </body>
 </html>

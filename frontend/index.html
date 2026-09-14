@@ -2058,6 +2058,14 @@
                 </div>
 
                 <form id="projectCreateForm" onsubmit="submitCreateProject(event)">
+                    <input type="hidden" id="converting_quotation_id" value="">
+                    <div id="quote_conversion_banner" class="hidden" style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-weight: 800; color: #92400e; font-size: 13px;"><i class="fa-solid fa-file-circle-check"></i> Convirtiendo Presupuesto a Proyecto Activo</span>
+                            <p id="quote_conversion_text" style="font-size: 11px; color: #78350f; margin: 2px 0 0 0;">Los datos del presupuesto han sido cargados. Puedes ajustar bolsas de costo, fases o recursos antes de guardar.</p>
+                        </div>
+                        <button type="button" onclick="cancelQuotationConversion()" style="background: none; border: 1px solid #d97706; color: #b45309; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer;">Descartar Vinculación</button>
+                    </div>
                     
                     <!-- PASO 1: DATOS BÁSICOS & ALCANCE -->
                     <div style="margin-bottom: 16px;">

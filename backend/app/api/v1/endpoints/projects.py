@@ -471,7 +471,7 @@ def get_public_project_tracking(token_or_code: str, db: Session = Depends(get_db
         "company_info": {
             "name": "METALMECÁNICA DALOR C.A.",
             "rif": "J-40540441-2",
-            "partner": "ALIANZA NEPTUNIA",
+            "partner": "METALMECÁNICA DALOR C.A.",
             "tagline": "Ingeniería, Fabricación y Mantenimiento Industrial Especializado"
         }
     }

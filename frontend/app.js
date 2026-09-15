@@ -648,6 +648,12 @@ function switchView(viewName, moduleCategory) {
 // Carga Inicial de Datos Maestros
 async function loadInitialMasterData() {
     try {
+        // Auto-sincronización de catálogo DALOR si faltan datos
+        try {
+            await fetch(`${API_BASE}/maintenance/sync-dalor-catalog`, { method: "POST" });
+        } catch(e) {}
+
+    try {
         const [resCli, resSrv, resProj, resCat, resAss, resPers, resMat] = await Promise.all([
             fetch(`${API_BASE}/clients/`),
             fetch(`${API_BASE}/services/`),

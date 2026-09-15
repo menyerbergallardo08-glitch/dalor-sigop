@@ -158,6 +158,7 @@ class ProjectCreate(BaseModel):
     assigned_personnel_ids: Optional[List[int]] = []
     assigned_vehicle_ids: Optional[List[int]] = []
     assigned_tool_ids: Optional[List[int]] = []
+    origin_quotation_id: Optional[int] = None
 
 class ProjectOut(BaseModel):
     id: int

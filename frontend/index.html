@@ -38,6 +38,10 @@
 
     <!-- Estilos Nativos Modulares Tipo ERP (Profit Plus & PowerBI Style) -->
     <style>
+        .hidden {
+            display: none !important;
+        }
+
         :root {
             --dalor-navy: #002B49;
             --dalor-blue: #0072B8;
@@ -1061,6 +1065,157 @@
     </style>
 </head>
 <body>
+
+    <!-- ⚡ MOTOR INMEDIATO DE AUTENTICACIÓN Y ACCESO RÁPIDO (SIN DEPENDENCIAS) -->
+    <script>
+        window.quickFillAndLogin = async function(username, password) {
+            const uIn = document.getElementById('portal_username');
+            const pIn = document.getElementById('portal_password');
+            if (uIn) uIn.value = username;
+            if (pIn) pIn.value = password;
+            await window.executePortalLogin(username, password);
+        };
+
+        window.handlePortalLogin = async function(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const u = document.getElementById('portal_username')?.value?.trim();
+            const p = document.getElementById('portal_password')?.value;
+            await window.executePortalLogin(u, p);
+        };
+
+        window.executePortalLogin = async function(username, password) {
+            if (!username || !password) {
+                window.showLoginError('Por favor ingresa usuario y contraseña');
+                return;
+            }
+            const errBox = document.getElementById('loginErrorMessage');
+            const btnSubmit = document.getElementById('btnSubmitPortalLogin');
+            if (errBox) errBox.style.display = 'none';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Accediendo...';
+            }
+
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username.toLowerCase().trim(), password: password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || 'Usuario o contraseña incorrectos');
+                }
+
+                window.currentUser = data.user;
+                window.authToken = data.access_token;
+                if (window.State) {
+                    window.State.currentUser = data.user;
+                    window.State.authToken = data.access_token;
+                }
+                localStorage.setItem('dalor_user', JSON.stringify(data.user));
+                localStorage.setItem('dalor_token', data.access_token);
+                sessionStorage.setItem('dalor_session_active', 'true');
+                sessionStorage.setItem('dalor_user', JSON.stringify(data.user));
+                sessionStorage.setItem('dalor_token', data.access_token);
+
+                document.body.classList.add('authenticated');
+                const loginScreen = document.getElementById('app-login-screen');
+                if (loginScreen) {
+                    loginScreen.style.setProperty('display', 'none', 'important');
+                }
+
+                // Render user badge
+                const nameEl = document.getElementById('userFullNameDisplay');
+                const roleEl = document.getElementById('userRoleDisplay');
+                if (nameEl) nameEl.textContent = data.user.full_name || data.user.username;
+                if (roleEl) {
+                    const r = (data.user.role_name || '').toLowerCase();
+                    if (r.includes('director') || r.includes('admin')) roleEl.textContent = '👑 Director General';
+                    else if (r.includes('finanzas') || r.includes('administracion')) roleEl.textContent = '💼 Administración';
+                    else if (r.includes('ingeniero') || r.includes('obra')) roleEl.textContent = '👷 Ing. Residente';
+                    else if (r.includes('campo') || r.includes('supervisor')) roleEl.textContent = '📱 Supervisor Campo';
+                    else if (r.includes('almacen')) roleEl.textContent = '📦 Almacén Central';
+                    else roleEl.textContent = data.user.role_name;
+                }
+
+                // Route by role
+                const role = (data.user.role_name || data.user.username || '').toLowerCase();
+                if (role.includes('almacen')) {
+                    if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('materials');
+                    else if (typeof window.switchView === 'function') window.switchView('resources', 'recursos');
+                } else if (role.includes('supervisor') || role.includes('campo')) {
+                    if (typeof window.switchView === 'function') window.switchView('pwa', 'gastos');
+                } else if (role.includes('admin') || role.includes('finanzas')) {
+                    if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab('cxc');
+                    else if (typeof window.switchView === 'function') window.switchView('financial', 'finanzas');
+                } else if (role.includes('ingeniero') || role.includes('obra')) {
+                    if (typeof window.switchView === 'function') window.switchView('projects', 'proyectos');
+                    if (typeof window.loadProjectsList === 'function') window.loadProjectsList();
+                } else {
+                    if (typeof window.switchView === 'function') window.switchView('executive', 'gerencia');
+                    if (typeof window.loadExecutiveDashboard === 'function') window.loadExecutiveDashboard();
+                }
+
+                if (typeof window.showToast === 'function') {
+                    window.showToast(`Bienvenido, ${data.user.full_name || data.user.username}`, 'success');
+                }
+            } catch (err) {
+                window.showLoginError(err.message || 'Usuario o contraseña incorrectos');
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión Manual';
+                }
+            }
+        };
+
+        window.showLoginError = function(msg) {
+            const errBox = document.getElementById('loginErrorMessage');
+            const errTxt = document.getElementById('loginErrorText');
+            if (errTxt) errTxt.textContent = msg;
+            if (errBox) errBox.style.display = 'block';
+        };
+
+        window.handleLogout = function() {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload();
+        };
+
+        window.togglePasswordVisibility = function(id, btn) {
+            const input = document.getElementById(id);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+            } else {
+                input.type = 'password';
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+            }
+        };
+
+        // Auto-login si ya existe sesión previa en localStorage/sessionStorage
+        document.addEventListener("DOMContentLoaded", function() {
+            const savedUser = localStorage.getItem('dalor_user') || sessionStorage.getItem('dalor_user');
+            const savedToken = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token');
+            if (savedUser && savedToken) {
+                try {
+                    const u = JSON.parse(savedUser);
+                    window.currentUser = u;
+                    window.authToken = savedToken;
+                    document.body.classList.add('authenticated');
+                    const loginScreen = document.getElementById('app-login-screen');
+                    if (loginScreen) loginScreen.style.setProperty('display', 'none', 'important');
+                    
+                    const nameEl = document.getElementById('userFullNameDisplay');
+                    const roleEl = document.getElementById('userRoleDisplay');
+                    if (nameEl) nameEl.textContent = u.full_name || u.username;
+                    if (roleEl) roleEl.textContent = u.role_name || 'Usuario';
+                } catch(e) {}
+            }
+        });
+    </script>
 
     <!-- ====================================================================
          PORTAL DE ACCESO CORPORATIVO DALOR SIGO-P (ESTÁNDAR DE PRODUCCIÓN)

@@ -68,6 +68,22 @@ if os.path.exists(FRONTEND_DIR):
             return FileResponse(track_path)
         return {"status": "Tracking Portal not found"}
 
+    @app.get("/flujogramas.html")
+    @app.get("/flujogramas")
+    def serve_flujogramas():
+        fpath = os.path.join(FRONTEND_DIR, "flujogramas.html")
+        if os.path.exists(fpath):
+            return FileResponse(fpath)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+    @app.get("/FLUJOGRAMAS_OFICIALES_DALOR_SIGOP.pdf")
+    @app.get("/MANUAL_LOGICA_Y_FLUJOGRAMAS_DALOR_SIGOP.pdf")
+    def serve_dossier_pdf():
+        ppath = os.path.join(FRONTEND_DIR, "MANUAL_LOGICA_Y_FLUJOGRAMAS_DALOR_SIGOP.pdf")
+        if os.path.exists(ppath):
+            return FileResponse(ppath, media_type="application/pdf", filename="MANUAL_LOGICA_Y_FLUJOGRAMAS_DALOR_SIGOP.pdf")
+        return {"error": "PDF not found"}
+
     @app.get("/{full_path:path}")
     def serve_spa_fallback(full_path: str):
         target_file = os.path.join(FRONTEND_DIR, full_path)

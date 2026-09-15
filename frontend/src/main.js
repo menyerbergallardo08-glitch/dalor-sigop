@@ -38,6 +38,11 @@ window.fetchAndApplyBcvRate = fetchAndApplyBcvRate;
 
 // Router de Navegación de Vistas
 window.switchView = function(viewName, moduleCategory) {
+    if (typeof window.appSwitchView === 'function') {
+        window.appSwitchView(viewName, moduleCategory);
+        return;
+    }
+
     const allViews = [
         'executive', 'financial', 'maintenance',
         'quotations', 'clients', 'services', 
@@ -58,7 +63,20 @@ window.switchView = function(viewName, moduleCategory) {
     const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`);
     if (activeDropdown) activeDropdown.classList.add("active");
 
-    // Despachar evento de carga para el submódulo activo
+    if (viewName === 'executive' && typeof window.loadExecutiveDashboard === 'function') window.loadExecutiveDashboard();
+    if (viewName === 'financial' && typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab('cxc');
+    if (viewName === 'maintenance' && typeof window.openMaintenanceSubtab === 'function') window.openMaintenanceSubtab('users');
+    if (viewName === 'quotations' && typeof window.loadQuotations === 'function') window.loadQuotations();
+    if (viewName === 'clients' && typeof window.loadClients === 'function') window.loadClients();
+    if (viewName === 'services' && typeof window.loadServices === 'function') window.loadServices();
+    if (viewName === 'projects' && typeof window.initProjectPlanningView === 'function') window.initProjectPlanningView();
+    if (viewName === 'dispatch' && typeof window.initDispatchView === 'function') window.initDispatchView();
+    if (viewName === 'dashboard' && typeof window.loadComparisonDashboard === 'function') window.loadComparisonDashboard();
+    if (viewName === 'resources' && typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab('dashboard');
+    if (viewName === 'inbox' && typeof window.loadPendingExpensesInbox === 'function') window.loadPendingExpensesInbox();
+    if (viewName === 'tree' && typeof window.loadCategoriesTree === 'function') window.loadCategoriesTree();
+    if (viewName === 'expenses-log' && typeof window.loadExpensesLog === 'function') window.loadExpensesLog();
+
     if (window.onViewSwitched) {
         window.onViewSwitched(viewName);
     }

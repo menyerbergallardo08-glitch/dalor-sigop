@@ -695,11 +695,11 @@
                     <i class="fa-solid fa-bolt"></i> Carga Rápida en 3 Toques
                 </button>
                 <div class="tasa-editor-box" style="display: flex; align-items: center; gap: 6px; background: #001a2e; border: 1px solid #334155; padding: 4px 10px; border-radius: 8px;" title="Tasa oficial de cambio en Bs/$">
-                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;" title="Conexión BCV activa"></span>
-                    <span style="color: #cbd5e1; font-weight: 700; font-size: 11px;">BCV:</span>
-                    <input type="number" step="0.01" id="globalExchangeRateInput" class="tasa-input" value="832.49" onchange="updateGlobalExchangeRate(this.value)" title="Edita la tasa manualmente y presiona Enter">
+                    <span id="bcvStatusDot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;" title="Conexión BCV activa"></span>
+                    <span style="color: #cbd5e1; font-weight: 700; font-size: 11px;">Tasa:</span>
+                    <input type="number" step="0.01" id="globalExchangeRateInput" class="tasa-input" value="842.20" oninput="updateGlobalExchangeRate(this.value)" onchange="updateGlobalExchangeRate(this.value)" title="Escribe cualquier tasa personalizada">
                     <span style="color: #cbd5e1; font-weight: 700; font-size: 11px;">Bs/$</span>
-                    <button type="button" onclick="refreshLiveBCVRate(true)" style="background: none; border: none; color: var(--dalor-gold); cursor: pointer; padding: 1px 4px; font-size: 12px;" title="Actualizar tasa oficial BCV en vivo">
+                    <button type="button" onclick="refreshLiveBCVRate(true)" style="background: none; border: none; color: var(--dalor-gold); cursor: pointer; padding: 1px 4px; font-size: 12px;" title="Consultar tasa BCV en vivo">
                         <i id="bcvRefreshIcon" class="fa-solid fa-arrows-rotate"></i>
                     </button>
                 </div>

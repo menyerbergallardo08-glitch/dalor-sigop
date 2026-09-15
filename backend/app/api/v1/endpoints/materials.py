@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -45,30 +45,31 @@ def get_materials(category: Optional[str] = None, db: Session = Depends(get_db))
         query = query.filter(Material.category == category)
     materials = query.order_by(Material.category.asc(), Material.name.asc()).all()
 
-    total_inventory_value = sum(m.current_stock * m.unit_cost_usd for m in materials)
+    total_inventory_value = sum((m.current_stock or 0.0) * (m.unit_cost_usd or 0.0) for m in materials)
 
     return {
         "summary": {
             "total_items": len(materials),
             "total_inventory_value_usd": round(total_inventory_value, 2),
-            "low_stock_count": len([m for m in materials if m.current_stock <= m.minimum_stock])
+            "low_stock_count": len([m for m in materials if (m.current_stock or 0.0) <= (m.minimum_stock or 5.0)])
         },
         "materials": [
             {
                 "id": m.id,
                 "code": m.code,
                 "name": m.name,
-                "category": m.category,
-                "unit_of_measure": m.unit_of_measure,
-                "current_stock": m.current_stock,
-                "minimum_stock": m.minimum_stock,
-                "unit_cost_usd": m.unit_cost_usd,
-                "total_value_usd": round(m.current_stock * m.unit_cost_usd, 2),
-                "location": m.location,
-                "status": "critico" if m.current_stock <= 0 else ("bajo" if m.current_stock <= m.minimum_stock else "optimo")
+                "category": m.category or "General",
+                "unit_of_measure": m.unit_of_measure or "Unidad",
+                "current_stock": m.current_stock or 0.0,
+                "minimum_stock": m.minimum_stock or 5.0,
+                "unit_cost_usd": m.unit_cost_usd or 0.0,
+                "total_value_usd": round((m.current_stock or 0.0) * (m.unit_cost_usd or 0.0), 2),
+                "location": m.location or "Almacén Central Dalor",
+                "status": "critico" if (m.current_stock or 0.0) <= 0 else ("bajo" if (m.current_stock or 0.0) <= (m.minimum_stock or 5.0) else "optimo")
             } for m in materials
         ]
     }
+
 
 @router.post("/")
 def create_material(mat_in: MaterialCreate, db: Session = Depends(get_db)):

@@ -20,9 +20,32 @@ app = FastAPI(
     description="Sistema Integral de Gestión Operativa, Activos, Job Costing y Captura OCR para METALMECÁNICA DALOR C.A.."
 )
 
+import asyncio
+import threading
+import requests
+
 @app.on_event("startup")
 def on_startup():
     init_db()
+
+    # Worker Anti-Suspensión 24/7 (Keep-Alive Heartbeat)
+    def keep_alive_heartbeat():
+        import time
+        # Esperar 2 minutos iniciales para arranque suave
+        time.sleep(120)
+        while True:
+            try:
+                # Auto-consulta de salud para mantener caliente la instancia en Render
+                target_url = os.getenv("RENDER_EXTERNAL_URL", "https://dalor-sigop.onrender.com")
+                res = requests.get(f"{target_url}/healthz", timeout=15)
+                if res.status_code == 200:
+                    print(f"[HEARTBEAT 24/7] Servidor DALOR activo y caliente: {res.status_code} OK")
+            except Exception as e:
+                print(f"[HEARTBEAT ERROR] Pulso falló temporalmente: {e}")
+            time.sleep(420) # Cada 7 minutos (Render se duerme a los 15 min)
+
+    t = threading.Thread(target=keep_alive_heartbeat, daemon=True)
+    t.start()
 
 # Habilitar CORS
 app.add_middleware(
@@ -47,7 +70,7 @@ def healthcheck():
     return {
         "status": "healthy",
         "system": "DALOR SIGO-P ERP",
-        "version": "2026.09.14.v50",
+        "version": "2026.09.15.v55-hardened",
         "timestamp": datetime.utcnow().isoformat()
     }
 

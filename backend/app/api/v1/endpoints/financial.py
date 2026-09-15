@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -18,6 +19,31 @@ from app.models.models import (
 )
 
 router = APIRouter()
+
+@router.get("/exchange-rate")
+def get_live_exchange_rate():
+    """Retorna la tasa oficial BCV en vivo para interoperabilidad cambiaria."""
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "https://ve.dolarapi.com/v1/dolares/oficial",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            rate = float(data.get("promedio", 832.49))
+            return {
+                "source": "BCV Oficial",
+                "rate": round(rate, 2),
+                "date": data.get("fechaActualizacion", datetime.now().isoformat())
+            }
+    except Exception:
+        return {
+            "source": "Referencial Local",
+            "rate": 832.49,
+            "date": datetime.now().isoformat()
+        }
+
 
 # ------------------------------------------------------------------------------
 # PYDANTIC SCHEMAS

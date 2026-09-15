@@ -10,6 +10,9 @@ export class ApiClient {
 
     static async request(endpoint, options = {}) {
         const url = `${API_BASE}${endpoint}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s Timeout
+
         const headers = {
             'Content-Type': 'application/json',
             ...(options.headers || {})
@@ -22,11 +25,31 @@ export class ApiClient {
 
         const config = {
             ...options,
-            headers
+            headers,
+            signal: controller.signal
         };
 
         try {
             const response = await fetch(url, config);
+            clearTimeout(timeoutId);
+
+            // Interceptor de expiración de sesión (401 / 403)
+            if ((response.status === 401 || response.status === 403) && !endpoint.includes('/auth/login')) {
+                console.warn("[AUTH] Sesión expirada o no autorizada. Limpiando almacenamiento y redirigiendo a login.");
+                sessionStorage.removeItem('dalor_token');
+                sessionStorage.removeItem('dalor_user');
+                sessionStorage.removeItem('dalor_session_active');
+                localStorage.removeItem('dalor_token');
+                localStorage.removeItem('dalor_user');
+                document.body.classList.remove('authenticated');
+                const loginScreen = document.getElementById('app-login-screen');
+                const authShell = document.getElementById('app-authenticated-shell');
+                if (loginScreen) loginScreen.style.setProperty('display', 'flex', 'important');
+                if (authShell) authShell.style.setProperty('display', 'none', 'important');
+                window.location.href = '/';
+                return null;
+            }
+
             const data = await response.json().catch(() => ({}));
             
             if (!response.ok) {
@@ -36,6 +59,12 @@ export class ApiClient {
 
             return data;
         } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                const timeoutMsg = "Tiempo de espera agotado (Timeout de 30s). Por favor verifica tu conexión a internet o el estado del servidor.";
+                console.error(`[API TIMEOUT] ${options.method || 'GET'} ${endpoint}:`, timeoutMsg);
+                throw new Error(timeoutMsg);
+            }
             console.error(`[API ERROR] ${options.method || 'GET'} ${endpoint}:`, error);
             throw error;
         }

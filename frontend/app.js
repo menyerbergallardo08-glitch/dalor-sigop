@@ -1,4 +1,6 @@
 
+const API_BASE = window.location.origin + "/api/v1";
+
 function setProjectType(type) {
     const hiddenInp = document.getElementById("new_proj_type");
     if (hiddenInp) hiddenInp.value = type;
@@ -348,7 +350,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 // ==============================================================================
 // 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
 // ==============================================================================
-window.APP_BUILD_VERSION = "2026.09.14.v36";
+window.APP_BUILD_VERSION = "2026.09.15.v70";
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 // Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
 if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
@@ -358,7 +360,6 @@ if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
     localStorage.setItem("dalor_exchange_rate", "850.0");
 }
 
-const API_BASE = window.location.origin + "/api/v1";
 let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 850.0;
 
 let allClients = [];

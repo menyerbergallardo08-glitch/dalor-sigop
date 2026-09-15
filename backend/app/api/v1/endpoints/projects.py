@@ -171,6 +171,11 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
         duration_days=project_in.duration_days,
         execution_time=f"{project_in.duration_days} dias calendario",
         contract_amount_usd=project_in.contract_amount_usd or 0.0,
+        estimated_labor_usd=project_in.estimated_labor_usd or 0.0,
+        estimated_fuel_usd=project_in.estimated_fuel_usd or 0.0,
+        estimated_materials_usd=project_in.estimated_materials_usd or 0.0,
+        estimated_tools_usd=project_in.estimated_tools_usd or 0.0,
+        estimated_services_usd=project_in.estimated_services_usd or 0.0,
         budget_limit_usd=total_budget,
         scope_of_work=project_in.scope_of_work,
         tracking_token=tracking_token,
@@ -293,23 +298,7 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
 
         db.commit()
         db.refresh(new_project)
-
-        return {
-            "id": new_project.id,
-            "code": new_project.code,
-            "name": new_project.name,
-            "client_id": new_project.client_id,
-            "client_name": new_project.client_name,
-            "location": new_project.location,
-            "status": new_project.status,
-            "scope_of_work": new_project.scope_of_work,
-            "duration_days": new_project.duration_days,
-            "execution_time": new_project.execution_time,
-            "tracking_token": new_project.tracking_token,
-            "contract_amount_usd": new_project.contract_amount_usd or 0.0,
-            "budget_limit_usd": new_project.budget_limit_usd or 0.0,
-            "created_at": new_project.created_at
-        }
+        return new_project
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error en creacion de proyecto y asignacion de recursos: {str(e)}")

@@ -1,3 +1,10 @@
+// Global Helper: roundNumber
+function roundNumber(num, decimals = 2) {
+    const factor = Math.pow(10, decimals);
+    return Math.round((Number(num) || 0) * factor) / factor;
+}
+window.roundNumber = roundNumber;
+
 
 // --------------------------------------------------------------------------
 // DALOR PARSER NUMERICO UNIVERSAL PARA MULTIMONEDA (USD / VES / EUR)
@@ -761,7 +768,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ==============================================================================
 
-window.APP_BUILD_VERSION = "2026.09.15.v89-dropdown-fix";
+window.APP_BUILD_VERSION = "2026.09.15.v90-production-clean";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
@@ -5457,7 +5464,7 @@ async function editQuotation(quoteId) {
 
 async function submitCreateQuotation(event) {
     if (event && event.preventDefault) event.preventDefault();
-
+    try {
     const clientSelect = document.getElementById("quote_client_id");
     const clientId = clientSelect ? parseInt(clientSelect.value) : null;
     if (!clientId) {
@@ -5486,7 +5493,7 @@ async function submitCreateQuotation(event) {
             unit_measure: unit,
             quantity: qty,
             unit_price_usd: price,
-            total_usd: roundNumber(qty * price, 2)
+            total_usd: Number((qty * price).toFixed(2))
         });
     });
 
@@ -5545,6 +5552,9 @@ async function submitCreateQuotation(event) {
 
         await loadQuotations();
     } catch(err) {
+        console.error("Error al guardar presupuesto:", err);
+        alert("Error al guardar presupuesto: " + err.message);
+    } finally {
         console.error("Error al guardar presupuesto:", err);
         alert("Error al guardar presupuesto: " + err.message);
     } finally {

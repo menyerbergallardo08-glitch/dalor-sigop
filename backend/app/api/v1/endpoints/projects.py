@@ -268,21 +268,21 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
 
         # 5. Generar Automáticamente la Cuenta por Cobrar (CxC)
         if new_project.contract_amount_usd and new_project.contract_amount_usd > 0:
-            from datetime import timedelta
             from app.models.models import AccountReceivable
             cxc_entry = AccountReceivable(
                 project_id=new_project.id,
                 client_id=new_project.client_id,
                 invoice_number=f"VAL-{new_project.code}-01",
+                description=f"Contrato / Valuación Inicial: {new_project.name}",
                 issue_date=datetime.utcnow(),
                 due_date=datetime.utcnow() + timedelta(days=new_project.duration_days or 30),
                 taxable_base_usd=new_project.contract_amount_usd,
                 tax_amount_usd=0.0,
-                total_amount_usd=new_project.contract_amount_usd,
-                amount_paid_usd=0.0,
+                amount_usd=new_project.contract_amount_usd,
+                paid_amount_usd=0.0,
+                balance_usd=new_project.contract_amount_usd,
                 net_amount_usd=new_project.contract_amount_usd,
-                status="pendiente",
-                concept=f"Contrato / Valuación Inicial: {new_project.name}"
+                status="pendiente"
             )
             db.add(cxc_entry)
 

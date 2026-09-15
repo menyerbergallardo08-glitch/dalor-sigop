@@ -768,7 +768,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ==============================================================================
 
-window.APP_BUILD_VERSION = "2026.09.15.v91-perfect";
+window.APP_BUILD_VERSION = "2026.09.15.v92-clean-production";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
@@ -5453,7 +5453,7 @@ async function editQuotation(quoteId) {
         }
 
         recalcQuotationTotals();
-        openModal("modalNewQuotation");
+        openModal("modalQuotation");
     } catch(err) {
         console.error("Error al re-editar presupuesto:", err);
         alert("Error cargando presupuesto: " + err.message);
@@ -5538,7 +5538,7 @@ async function submitCreateQuotation(event) {
         }
 
         const data = await res.json();
-        closeModal("modalNewQuotation");
+        closeModal("modalQuotation");
         const qForm = document.getElementById("quoteForm") || document.getElementById("quotationForm");
         if (qForm) qForm.reset();
         if (document.getElementById("edit_quotation_id")) document.getElementById("edit_quotation_id").value = "";
@@ -8016,6 +8016,7 @@ async function loadCategoriesTree() {
 // ----------------------------------------------------
 
 function openModal(modalId) {
+    if (modalId === 'modalNewQuotation') modalId = 'modalQuotation';
     const el = document.getElementById(modalId);
 
     if (el) el.classList.remove("hidden");

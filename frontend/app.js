@@ -30,7 +30,7 @@ function setProjectType(type) {
 // ====================================================================
 // GESTIÓN DE SUBPESTAÑAS Y FILTRADO DEL MÓDULO DE PROYECTOS (UX ENHANCEMENT)
 // ====================================================================
-function switchProjectSubtab(subtabName) {
+async function switchProjectSubtab(subtabName) {
     const isList = (subtabName === 'list');
     const subtabList = document.getElementById('subtab-proj-list');
     const subtabForm = document.getElementById('subtab-proj-form');
@@ -49,6 +49,25 @@ function switchProjectSubtab(subtabName) {
 
     if (isList) {
         loadProjectsList();
+    } else {
+        // Garantizar carga fresca de personal, flota, herramientas y clientes
+        try {
+            if (!allPersonnel || allPersonnel.length === 0 || !allAssets || allAssets.length === 0 || !allClients || allClients.length === 0) {
+                const [resPers, resAss, resCli] = await Promise.all([
+                    fetch(`${API_BASE}/personnel/`),
+                    fetch(`${API_BASE}/assets/`),
+                    fetch(`${API_BASE}/clients/`)
+                ]);
+                if (resPers.ok) allPersonnel = await resPers.json();
+                if (resAss.ok) allAssets = await resAss.json();
+                if (resCli.ok) allClients = await resCli.json();
+            }
+        } catch (e) {
+            console.warn("Error cargando recursos para planificación:", e);
+        }
+        populateSelectDropdowns();
+        populatePlanDropdownSelectors();
+        renderAssignedTags();
     }
 }
 
@@ -2750,8 +2769,10 @@ async function submitCreateQuotation(event) {
         const itemCode = srvOpt ? srvOpt.getAttribute("data-code") : null;
         const desc = r.querySelector(".q-desc") ? r.querySelector(".q-desc").value : "";
         const unit = r.querySelector(".q-unit") ? r.querySelector(".q-unit").value : "Global";
-        const qty = parseFloat(r.querySelector(".q-qty") ? r.querySelector(".q-qty").value : 1) || 1;
-        const price = parseFloat(r.querySelector(".q-price") ? r.querySelector(".q-price").value : 0) || 0;
+        const rawQty = r.querySelector(".q-qty") ? r.querySelector(".q-qty").value : "1";
+        const rawPrice = r.querySelector(".q-price") ? r.querySelector(".q-price").value : "0";
+        const qty = parseFloat(String(rawQty).replace(',', '.')) || 1;
+        const price = parseFloat(String(rawPrice).replace(',', '.')) || 0;
 
         items.push({
             service_id: srvId,
@@ -2760,7 +2781,7 @@ async function submitCreateQuotation(event) {
             unit_measure: unit,
             quantity: qty,
             unit_price_usd: price,
-            total_usd: qty * price
+            total_usd: roundNumber(qty * price, 2)
         });
     });
 
@@ -4107,6 +4128,12 @@ async function loadCategoriesTree() {
 // UTILIDADES MODALES
 // ----------------------------------------------------
 function openModal(modalId) {
+    if (typeof populateSelectDropdowns === 'function') {
+        try { populateSelectDropdowns(); } catch (e) {}
+    }
+    if (typeof populatePlanDropdownSelectors === 'function') {
+        try { populatePlanDropdownSelectors(); } catch (e) {}
+    }
     const el = document.getElementById(modalId);
     if (el) el.classList.remove("hidden");
 }

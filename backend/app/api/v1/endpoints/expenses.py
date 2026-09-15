@@ -96,19 +96,35 @@ def get_categories_tree(db: Session = Depends(get_db)):
     
     spent_map = {e.category_id: float(e.total_usd or 0.0) for e in expenses}
     
-    parents = [c for c in all_cats if c.parent_id is None]
-    subcats = [c for c in all_cats if c.parent_id is not None]
+    # Filtrar padres canónicos: códigos enteros únicos (1, 2, ... 20), sin duplicados
+    canonical_parents = []
+    seen_codes = set()
+    for c in all_cats:
+        code_str = str(c.code).strip()
+        base_code = code_str.split(".")[0] if code_str.endswith(".0") else code_str
+        if ("." not in code_str or code_str.endswith(".0")) and base_code not in seen_codes:
+            seen_codes.add(base_code)
+            # Asegurar código canónico entero
+            c.code = base_code
+            canonical_parents.append(c)
+            
+    # Subcategorías reales (1.1, 1.2, 2.1, etc., excluyendo .0)
+    subcats = [c for c in all_cats if "." in str(c.code) and not str(c.code).endswith(".0")]
     
     tree = []
-    for p in parents:
-        subs = [s for s in subcats if s.parent_id == p.id]
-        if not subs:
-            subs = [s for s in subcats if s.code.startswith(f"{p.code}.")]
-            
+    for p in sorted(canonical_parents, key=lambda x: int(x.code) if str(x.code).isdigit() else 999):
+        p_code = str(p.code)
+        subs = [s for s in subcats if (s.parent_id == p.id) or str(s.code).startswith(f"{p_code}.")]
+        
+        # Deduplicar subcategorías por código
+        seen_sub_codes = set()
         sub_list = []
         total_parent_spent = spent_map.get(p.id, 0.0)
         
         for s in subs:
+            if s.code in seen_sub_codes:
+                continue
+            seen_sub_codes.add(s.code)
             s_spent = spent_map.get(s.id, 0.0)
             total_parent_spent += s_spent
             sub_list.append({
@@ -131,6 +147,7 @@ def get_categories_tree(db: Session = Depends(get_db)):
         })
         
     return tree
+
 
 @router.post("/categories")
 def create_category(cat_in: CategoryCreateInput, db: Session = Depends(get_db)):

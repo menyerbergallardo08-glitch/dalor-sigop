@@ -37,38 +37,51 @@ class MaterialConsumeRequest(BaseModel):
     performed_by: Optional[str] = "Custodio de Almacén"
     notes: Optional[str] = None
 
+from sqlalchemy import or_
+
 @router.get("/")
 def get_materials(category: Optional[str] = None, db: Session = Depends(get_db)):
     """Retorna todo el catálogo de materiales con stock disponible y valorización."""
-    query = db.query(Material).filter(Material.is_active == True)
-    if category and category != "todos":
-        query = query.filter(Material.category == category)
-    materials = query.order_by(Material.category.asc(), Material.name.asc()).all()
+    try:
+        query = db.query(Material).filter(or_(Material.is_active == True, Material.is_active == None))
+        if category and category != "todos":
+            query = query.filter(Material.category == category)
+        materials = query.order_by(Material.category.asc(), Material.name.asc()).all()
 
-    total_inventory_value = sum((m.current_stock or 0.0) * (m.unit_cost_usd or 0.0) for m in materials)
+        total_inventory_value = sum((m.current_stock or 0.0) * (m.unit_cost_usd or 0.0) for m in materials)
 
-    return {
-        "summary": {
-            "total_items": len(materials),
-            "total_inventory_value_usd": round(total_inventory_value, 2),
-            "low_stock_count": len([m for m in materials if (m.current_stock or 0.0) <= (m.minimum_stock or 5.0)])
-        },
-        "materials": [
-            {
-                "id": m.id,
-                "code": m.code,
-                "name": m.name,
-                "category": m.category or "General",
-                "unit_of_measure": m.unit_of_measure or "Unidad",
-                "current_stock": m.current_stock or 0.0,
-                "minimum_stock": m.minimum_stock or 5.0,
-                "unit_cost_usd": m.unit_cost_usd or 0.0,
-                "total_value_usd": round((m.current_stock or 0.0) * (m.unit_cost_usd or 0.0), 2),
-                "location": m.location or "Almacén Central Dalor",
-                "status": "critico" if (m.current_stock or 0.0) <= 0 else ("bajo" if (m.current_stock or 0.0) <= (m.minimum_stock or 5.0) else "optimo")
-            } for m in materials
-        ]
-    }
+        return {
+            "summary": {
+                "total_items": len(materials),
+                "total_inventory_value_usd": round(total_inventory_value, 2),
+                "low_stock_count": len([m for m in materials if (m.current_stock or 0.0) <= (m.minimum_stock or 5.0)])
+            },
+            "materials": [
+                {
+                    "id": m.id,
+                    "code": m.code,
+                    "name": m.name,
+                    "category": m.category or "General",
+                    "unit_of_measure": m.unit_of_measure or "Unidad",
+                    "current_stock": m.current_stock or 0.0,
+                    "minimum_stock": m.minimum_stock or 5.0,
+                    "unit_cost_usd": m.unit_cost_usd or 0.0,
+                    "total_value_usd": round((m.current_stock or 0.0) * (m.unit_cost_usd or 0.0), 2),
+                    "location": m.location or "Almacén Central Dalor",
+                    "status": "critico" if (m.current_stock or 0.0) <= 0 else ("bajo" if (m.current_stock or 0.0) <= (m.minimum_stock or 5.0) else "optimo")
+                } for m in materials
+            ]
+        }
+    except Exception as e:
+        return {
+            "summary": {
+                "total_items": 0,
+                "total_inventory_value_usd": 0.0,
+                "low_stock_count": 0
+            },
+            "materials": [],
+            "warning": str(e)
+        }
 
 
 @router.post("/")

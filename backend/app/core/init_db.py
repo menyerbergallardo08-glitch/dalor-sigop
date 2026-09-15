@@ -175,11 +175,37 @@ def init_db():
             db.add(almacen_usr)
             db.commit()
 
-        # 2. Clean Personnel Roster (Purge legacy test names like 'Carlos Hurtado' or 'Herby')
-        legacy_pers = db.query(Personnel).filter(Personnel.full_name.like("%Hurtado%")).first()
-        if legacy_pers or db.query(Personnel).count() == 0:
-            print("--> Cleaning legacy personnel and seeding clean operational roles...")
-            db.query(Personnel).delete()
+                # 2. Clean Personnel Roster (15 Official Operational DALOR Members)
+        if db.query(Personnel).count() < 15:
+            print("--> Synchronizing complete 15-member operational personnel roster...")
+            # Keep existing IDs or clean and insert full roster
+            existing_codes = {p.code for p in db.query(Personnel.code).all()}
+            full_roster = [
+                Personnel(code="PERS-001", full_name="Robert Rodríguez", role_title="Ingeniero Residente de Proyecto", identification_id="V-18450123", phone="0414-1234567", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-002", full_name="Carlos Hurtado", role_title="Supervisor de Soldadura y Montaje CWI", identification_id="V-16982341", phone="0412-9876543", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-003", full_name="Julio Saavedra", role_title="Custodio de Almacén & Pañol Central", identification_id="V-20114562", phone="0414-5558899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-004", full_name="Vicente Rodríguez", role_title="Conductor de Carga Pesada & Equipos", identification_id="V-15332901", phone="0424-7778899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-005", full_name="Hender Rodríguez", role_title="Soldador Especialista 6G / TIG-ASME", identification_id="V-19345612", phone="0414-3334455", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-006", full_name="Herby Rodríguez", role_title="Soldador Estructural & Calderería", identification_id="V-21098432", phone="0412-6667788", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-007", full_name="Eliú Suárez", role_title="Pailero / Calderero Especialista A36-Hardox", identification_id="V-17849201", phone="0424-1112233", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-008", full_name="Danny Chaparro", role_title="Montador Mecánico / Armador de Estructuras", identification_id="V-22119045", phone="0416-9990011", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-009", full_name="Ernesto Chaparro", role_title="Oxicortista / Ayudante Técnico Especializado", identification_id="V-24558912", phone="0414-8889900", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-010", full_name="Mervis Parra", role_title="Operador de Sandblasting & Pintura Airless", identification_id="V-18776234", phone="0412-4445566", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-011", full_name="Paola Garay", role_title="Administradora de Obra & Costos", identification_id="V-20334891", phone="0414-2223344", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-012", full_name="Geraldine Páez", role_title="Procura & Compras de Materiales", identification_id="V-23450912", phone="0424-5556677", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-013", full_name="Eleonora Galetti", role_title="Inspectora de Seguridad Industrial SHA", identification_id="V-19882314", phone="0412-1110099", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-014", full_name="José Gregorio Mendoza", role_title="Tornero & Mecánico Ajustador Taller", identification_id="V-14998231", phone="0416-3332211", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-015", full_name="Wilmer Albornoz", role_title="Electricista Industrial & Generadores", identification_id="V-16773412", phone="0414-7776655", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo")
+            ]
+            for p in full_roster:
+                if p.code not in existing_codes:
+                    db.add(p)
+                else:
+                    existing = db.query(Personnel).filter(Personnel.code == p.code).first()
+                    if existing:
+                        existing.full_name = p.full_name
+                        existing.role_title = p.role_title
+                        existing.current_location = p.current_location
             db.commit()
             personnel = [
                 Personnel(code="PERS-001", full_name="Ingeniero Residente de Proyecto", role_title="Ingeniero Residente", identification_id="V-18450123", phone="0414-1234567", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
@@ -232,27 +258,30 @@ def init_db():
             db.add_all(tools)
             db.commit()
 
-        # 4. Materials & Consumables Catalog (Ensure 15 materials exist)
-        if db.query(Material).count() == 0:
-            print("--> Seeding 15 authentic raw materials & consumables...")
-            materials = [
+                # 4. Materials & Consumables Catalog (Ensure 15 materials exist)
+        if db.query(Material).count() < 15:
+            print("--> Seeding/Syncing 15 authentic raw materials & consumables...")
+            existing_mats = {m.code for m in db.query(Material.code).all()}
+            materials_list = [
                 Material(code="MAT-PLA-01", name="Plancha de Acero ASTM A36 12mm x 2.44m x 6.00m", category="Planchas de Acero", unit_measure="Planchas", stock_quantity=18.0, min_stock_alert=5.0, unit_cost_usd=480.0, total_cost_usd=8640.0),
                 Material(code="MAT-PLA-02", name="Plancha de Acero ASTM A36 6mm x 2.44m x 6.00m", category="Planchas de Acero", unit_measure="Planchas", stock_quantity=24.0, min_stock_alert=6.0, unit_cost_usd=245.0, total_cost_usd=5880.0),
                 Material(code="MAT-PLA-03", name="Plancha Antidesgaste Hardox 450 10mm x 2m x 6m", category="Planchas de Acero", unit_measure="Planchas", stock_quantity=8.0, min_stock_alert=2.0, unit_cost_usd=1350.0, total_cost_usd=10800.0),
                 Material(code="MAT-VIG-01", name="Viga Estructural IPE 200 x 12 metros", category="Perfiles y Vigas", unit_measure="Barras", stock_quantity=32.0, min_stock_alert=10.0, unit_cost_usd=310.0, total_cost_usd=9920.0),
                 Material(code="MAT-VIG-02", name="Viga Estructural HEA 240 x 12 metros", category="Perfiles y Vigas", unit_measure="Barras", stock_quantity=14.0, min_stock_alert=4.0, unit_cost_usd=590.0, total_cost_usd=8260.0),
-                Material(code="MAT-TUB-01", name="Tubo de Acero al Carbono Sin Costura ASTM A106 Gr.B 4\" SCH 40 (6m)", category="Tuberías y Bridas", unit_measure="Tubos", stock_quantity=45.0, min_stock_alert=15.0, unit_cost_usd=145.0, total_cost_usd=6525.0),
-                Material(code="MAT-TUB-02", name="Tubo de Acero al Carbono ASTM A53 6\" SCH 80 (6m)", category="Tuberías y Bridas", unit_measure="Tubos", stock_quantity=20.0, min_stock_alert=8.0, unit_cost_usd=260.0, total_cost_usd=5200.0),
-                Material(code="MAT-SOL-01", name="Electrodos de Soldadura E-7018 1/8\" (Caja 20 Kg)", category="Soldadura y Gases", unit_measure="Cajas", stock_quantity=65.0, min_stock_alert=20.0, unit_cost_usd=55.0, total_cost_usd=3575.0),
-                Material(code="MAT-SOL-02", name="Electrodos de Soldadura E-6010 / E-6013 1/8\" (Caja 20 Kg)", category="Soldadura y Gases", unit_measure="Cajas", stock_quantity=40.0, min_stock_alert=15.0, unit_cost_usd=48.0, total_cost_usd=1920.0),
-                Material(code="MAT-SOL-03", name="Alambre Tubular para Soldadura MIG/FCAW E71T-1 0.045\" (Rollo 15 Kg)", category="Soldadura y Gases", unit_measure="Rollos", stock_quantity=28.0, min_stock_alert=10.0, unit_cost_usd=62.0, total_cost_usd=1736.0),
-                Material(code="MAT-ABR-01", name="Discos de Corte Abrasivo 9\" x 1/8\" x 7/8\" para Acero (Caja 25 Und)", category="Abrasivos y Discos", unit_measure="Cajas", stock_quantity=35.0, min_stock_alert=10.0, unit_cost_usd=42.0, total_cost_usd=1470.0),
-                Material(code="MAT-ABR-02", name="Discos de Desbaste 7\" x 1/4\" x 7/8\" (Caja 20 Und)", category="Abrasivos y Discos", unit_measure="Cajas", stock_quantity=25.0, min_stock_alert=8.0, unit_cost_usd=38.0, total_cost_usd=950.0),
+                Material(code="MAT-TUB-01", name="Tubo de Acero al Carbono Sin Costura ASTM A106 Gr.B 4" SCH 40 (6m)", category="Tuberías y Bridas", unit_measure="Tubos", stock_quantity=45.0, min_stock_alert=15.0, unit_cost_usd=145.0, total_cost_usd=6525.0),
+                Material(code="MAT-TUB-02", name="Tubo de Acero al Carbono ASTM A53 6" SCH 80 (6m)", category="Tuberías y Bridas", unit_measure="Tubos", stock_quantity=20.0, min_stock_alert=8.0, unit_cost_usd=260.0, total_cost_usd=5200.0),
+                Material(code="MAT-SOL-01", name="Electrodos de Soldadura E-7018 1/8" (Caja 20 Kg)", category="Soldadura y Gases", unit_measure="Cajas", stock_quantity=65.0, min_stock_alert=20.0, unit_cost_usd=55.0, total_cost_usd=3575.0),
+                Material(code="MAT-SOL-02", name="Electrodos de Soldadura E-6010 / E-6013 1/8" (Caja 20 Kg)", category="Soldadura y Gases", unit_measure="Cajas", stock_quantity=40.0, min_stock_alert=15.0, unit_cost_usd=48.0, total_cost_usd=1920.0),
+                Material(code="MAT-SOL-03", name="Alambre Tubular para Soldadura MIG/FCAW E71T-1 0.045" (Rollo 15 Kg)", category="Soldadura y Gases", unit_measure="Rollos", stock_quantity=28.0, min_stock_alert=10.0, unit_cost_usd=62.0, total_cost_usd=1736.0),
+                Material(code="MAT-ABR-01", name="Discos de Corte Abrasivo 9" x 1/8" x 7/8" para Acero (Caja 25 Und)", category="Abrasivos y Discos", unit_measure="Cajas", stock_quantity=35.0, min_stock_alert=10.0, unit_cost_usd=42.0, total_cost_usd=1470.0),
+                Material(code="MAT-ABR-02", name="Discos de Desbaste 7" x 1/4" x 7/8" (Caja 20 Und)", category="Abrasivos y Discos", unit_measure="Cajas", stock_quantity=25.0, min_stock_alert=8.0, unit_cost_usd=38.0, total_cost_usd=950.0),
                 Material(code="MAT-REC-01", name="Pintura Anticorrosiva Epóxica Poliamida Grís (Kit Galón A+B)", category="Pinturas y Recubrimientos", unit_measure="Kits", stock_quantity=42.0, min_stock_alert=12.0, unit_cost_usd=58.0, total_cost_usd=2436.0),
                 Material(code="MAT-REC-02", name="Esmalte Poliuretano de Alto Brillo Blanco/Seguridad (Kit Galón)", category="Pinturas y Recubrimientos", unit_measure="Kits", stock_quantity=30.0, min_stock_alert=10.0, unit_cost_usd=72.0, total_cost_usd=2160.0),
                 Material(code="MAT-ABR-03", name="Granalla de Acero / Abrasivo para Sandblasting G-40 (Saco 25 Kg)", category="Abrasivos y Discos", unit_measure="Sacos", stock_quantity=80.0, min_stock_alert=25.0, unit_cost_usd=28.0, total_cost_usd=2240.0),
             ]
-            db.add_all(materials)
+            for m in materials_list:
+                if m.code not in existing_mats:
+                    db.add(m)
             db.commit()
 
         # 5. Categories and Cost Centers (Estructura Original Dalor 20 Categorías + Subcuentas)

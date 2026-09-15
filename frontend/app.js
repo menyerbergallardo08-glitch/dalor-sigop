@@ -761,7 +761,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ==============================================================================
 
-window.APP_BUILD_VERSION = "2026.09.15.v70";
+window.APP_BUILD_VERSION = "2026.09.15.v85-buttons-restored";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
@@ -5707,7 +5707,7 @@ function cancelQuotationConversion() {
 
 // Convertir cotización en Proyecto con pre-llenado interactivo y edición completa
 
-async async function convertQuoteToProject(quoteId) {
+async function convertQuoteToProject(quoteId) {
     try {
         if (!allClients || allClients.length === 0) {
             try {

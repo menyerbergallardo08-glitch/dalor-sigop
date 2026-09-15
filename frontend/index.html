@@ -1066,74 +1066,86 @@
          PORTAL DE ACCESO CORPORATIVO DALOR SIGO-P (ESTÁNDAR DE PRODUCCIÓN)
          ==================================================================== -->
     <div id="app-login-screen" style="position: fixed; inset: 0; width: 100%; height: 100%; z-index: 100000; background: linear-gradient(135deg, #001a2e 0%, #002b49 60%, #0a3d62 100%); display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; overflow-y: auto;">
-        <div style="background: #ffffff; width: 100%; max-width: 360px; border-radius: 18px; padding: 24px 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); border: 2px solid #f5b800; box-sizing: border-box; margin: auto;">
+        <div style="background: #ffffff; width: 100%; max-width: 390px; border-radius: 20px; padding: 24px 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); border: 2px solid #f5b800; box-sizing: border-box; margin: auto;">
             <!-- Logo Corporativo -->
-            <div style="text-align: center; margin-bottom: 22px;">
-                <div style="background: #ffffff; display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06); margin-bottom: 12px;">
+            <div style="text-align: center; margin-bottom: 18px;">
+                <div style="background: #ffffff; display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06); margin-bottom: 10px;">
                     <img src="logo_dalor.jpg" alt="Metalmecánica DALOR C.A." style="height: 48px; max-width: 100%; object-fit: contain; display: block;">
                 </div>
-                <h2 style="font-size: 20px; font-weight: 900; color: #002b49; margin-bottom: 3px; letter-spacing: -0.3px;">Portal Corporativo</h2>
-                <p style="font-size: 13px; color: #64748b; font-weight: 600;">Ingreso Seguro al Sistema ERP SIGO-P</p>
+                <h2 style="font-size: 20px; font-weight: 900; color: #002b49; margin-bottom: 2px; letter-spacing: -0.3px;">Portal Corporativo</h2>
+                <p style="font-size: 12px; color: #64748b; font-weight: 600;">Ingreso Seguro al ERP DALOR SIGO-P</p>
+            </div>
+
+            <!-- Botón de Acceso Directo 1-Clic para Director General -->
+            <div style="margin-bottom: 16px;">
+                <button type="button" onclick="quickFillAndLogin('director', 'dalor2026')"
+                    style="width: 100%; background: linear-gradient(135deg, #002b49 0%, #004d7a 100%); color: #ffffff; border: 2px solid #f5b800; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(245, 184, 0, 0.35); transition: transform 0.1s;">
+                    <span style="font-size: 18px;">👑</span> <span>Entrar como <strong>Director General</strong> (1 Clic)</span>
+                </button>
+            </div>
+
+            <!-- Separador -->
+            <div style="display: flex; align-items: center; text-align: center; margin-bottom: 14px; color: #94a3b8; font-size: 11px; font-weight: 700;">
+                <div style="flex: 1; border-bottom: 1px solid #e2e8f0;"></div>
+                <span style="padding: 0 8px; text-transform: uppercase;">O ingresa manualmente</span>
+                <div style="flex: 1; border-bottom: 1px solid #e2e8f0;"></div>
             </div>
 
             <!-- Caja de Error -->
-            <div id="loginErrorMessage" style="display: none; background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 10px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; margin-bottom: 16px; text-align: center;">
+            <div id="loginErrorMessage" style="display: none; background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 10px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; margin-bottom: 14px; text-align: center;">
                 <i class="fa-solid fa-triangle-exclamation"></i> <span id="loginErrorText">Usuario o contraseña incorrectos</span>
             </div>
 
             <!-- Formulario de Acceso Oficial -->
-            <form id="portalLoginForm" onsubmit="handlePortalLogin(event); return false;" action="javascript:void(0);" style="display: flex; flex-direction: column; gap: 16px;">
+            <form id="portalLoginForm" onsubmit="handlePortalLogin(event); return false;" action="javascript:void(0);" style="display: flex; flex-direction: column; gap: 12px;">
                 <div>
-                    <label style="display: block; font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        <i class="fa-solid fa-user" style="color: #0072b8; margin-right: 4px;"></i> Usuario / Login *
+                    <label style="display: block; font-size: 11px; font-weight: 800; color: #334155; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-user" style="color: #0072b8; margin-right: 4px;"></i> Usuario o Correo *
                     </label>
-                    <input type="text" id="portal_username" placeholder="director / administracion / ingeniero / campo" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
+                    <input type="text" id="portal_username" value="director" placeholder="director / admin / administracion" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
                         onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
-                        style="width: 100%; padding: 14px 16px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 12px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
+                        style="width: 100%; padding: 12px 14px; font-size: 15px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
                         onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
                 </div>
 
                 <div>
-                    <label style="display: block; font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <label style="display: block; font-size: 11px; font-weight: 800; color: #334155; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fa-solid fa-lock" style="color: #0072b8; margin-right: 4px;"></i> Contraseña *
                     </label>
                     <div style="position: relative; width: 100%;">
-                        <input type="password" id="portal_password" placeholder="••••••••" required autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false"
+                        <input type="password" id="portal_password" value="dalor2026" placeholder="••••••••" required autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false"
                             onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
-                            style="width: 100%; padding: 14px 44px 14px 16px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 12px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
+                            style="width: 100%; padding: 12px 42px 12px 14px; font-size: 15px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
                             onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
-                        <button type="button" onclick="togglePasswordVisibility('portal_password', this)" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; font-size: 16px; padding: 4px;">
+                        <button type="button" onclick="togglePasswordVisibility('portal_password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; font-size: 15px; padding: 4px;">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
                 </div>
 
                 <button type="button" id="btnSubmitPortalLogin" onclick="handlePortalLogin(event)"
-                    style="width: 100%; background: #002b49; color: #ffffff; padding: 16px; font-size: 16px; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35);">
+                    style="width: 100%; background: #002b49; color: #ffffff; padding: 14px; font-size: 15px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35);">
                     <i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión
                 </button>
             </form>
 
-            <!-- Atajos de Demostración para Presentación -->
-            <div style="margin-top: 22px; padding-top: 16px; border-top: 1px dashed #cbd5e1; text-align: center;">
-                <button type="button" onclick="toggleDemoProfiles()" style="background: none; border: none; color: #64748b; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: underline;">
-                    <i class="fa-solid fa-bolt" style="color: #f5b800;"></i> Atajos Rápidos para Pruebas
-                </button>
-                <div id="demoProfilesGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
-                    <button type="button" onclick="quickFillAndLogin('director', 'dalor2026')" style="background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left;">
-                        👑 Director
-                    </button>
-                    <button type="button" onclick="quickFillAndLogin('administracion', 'admin2026')" style="background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left;">
+            <!-- Otros Perfiles Operativos -->
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed #cbd5e1;">
+                <div style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; text-align: center;">
+                    <i class="fa-solid fa-users" style="color: #0072b8;"></i> Otros Perfiles de Demostración:
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button type="button" onclick="quickFillAndLogin('administracion', 'admin2026')" style="background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center;">
                         💼 Administración
                     </button>
-                    <button type="button" onclick="quickFillAndLogin('ingeniero', 'obra2026')" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left;">
+                    <button type="button" onclick="quickFillAndLogin('ingeniero', 'obra2026')" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center;">
                         👷 Ing. Obra
                     </button>
-                    <button type="button" onclick="quickFillAndLogin('campo', 'campo2026')" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left;">
+                    <button type="button" onclick="quickFillAndLogin('campo', 'campo2026')" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center;">
                         📱 Campo OCR
                     </button>
-                    <button type="button" onclick="quickFillAndLogin('almacen', 'almacen2026')" style="background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left; grid-column: span 2;">
-                        📦 Almacén & Pañol Central (almacen / almacen2026)
+                    <button type="button" onclick="quickFillAndLogin('almacen', 'almacen2026')" style="background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center;">
+                        📦 Almacén & Pañol
                     </button>
                 </div>
             </div>
@@ -5069,7 +5081,7 @@
     </style>
 
     <!-- 🚀 LÓGICA CORE SPA JAVASCRIPT -->
-    <script src="/app.js?v=2026.09.14.v50"></script>
+    <script src="/app.js?v=2026.09.15.v70"></script>
 
     <!-- MODAL: CONFIRMAR ENTREGA DE GUÍA DE DESPACHO -->
     <div id="modalConfirmDelivery" class="modal-overlay hidden">

@@ -643,16 +643,16 @@ function switchView(viewName, moduleCategory) {
     if (viewName === 'inbox') loadPendingExpensesInbox();
     if (viewName === 'tree') loadCategoriesTree();
     if (viewName === 'expenses-log') loadExpensesLog();
-    
 }
+window.switchView = switchView;
+window.appSwitchView = switchView;
 
 // Carga Inicial de Datos Maestros
 async function loadInitialMasterData() {
+    // Auto-sincronización de catálogo DALOR si faltan datos
     try {
-        // Auto-sincronización de catálogo DALOR si faltan datos
-        try {
-            await fetch(`${API_BASE}/maintenance/sync-dalor-catalog`, { method: "POST" });
-        } catch(e) {}
+        await fetch(`${API_BASE}/maintenance/sync-dalor-catalog`, { method: "POST" });
+    } catch(e) {}
 
     try {
         const [resCli, resSrv, resProj, resCat, resAss, resPers, resMat] = await Promise.all([

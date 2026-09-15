@@ -50,16 +50,27 @@ class OCRReceiptParser:
             import json
             import io
 
+            from PIL import ImageEnhance
+
             with Image.open(file_path) as img:
                 img = ImageOps.exif_transpose(img)
                 img = img.convert("RGB")
+                
+                # Pre-procesamiento de contraste y nitidez para recibos de campo
+                try:
+                    img = ImageOps.autocontrast(img, cutoff=0.5)
+                    enhancer = ImageEnhance.Sharpness(img)
+                    img = enhancer.enhance(1.3)
+                except Exception:
+                    pass
+
                 max_dim = max(img.width, img.height)
                 if max_dim > 1600:
                     scale = 1600 / max_dim
                     img = img.resize((int(img.width * scale), int(img.height * scale)), Image.Resampling.LANCZOS)
                 
                 buffer = io.BytesIO()
-                img.save(buffer, format="JPEG", quality=85)
+                img.save(buffer, format="JPEG", quality=90)
                 b64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
             prompt = f"""Actúa como auditor contable experto en comprobantes de gasto y facturación venezolana (facturas SENIAT, máquinas fiscales térmicas, tickets de venta, notas de entrega y talonarios manuscritos a bolígrafo/lápiz).

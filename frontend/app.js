@@ -30,14 +30,8 @@ let currentUser = null;
 let authToken = localStorage.getItem('dalor_token') || null;
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const rateInput = document.getElementById("globalExchangeRateInput");
-    const savedRate = localStorage.getItem('dalor_exchange_rate');
-    if (savedRate) {
-        EXCHANGE_RATE = parseFloat(savedRate);
-        if (rateInput) rateInput.value = EXCHANGE_RATE.toFixed(2);
-    } else {
-        await refreshLiveBCVRate(false);
-    }
+    // 1. Carga automática en tiempo real de la tasa oficial del BCV
+    await refreshLiveBCVRate(false);
 
     document.addEventListener("click", (e) => {
         if (!e.target.closest(".nav-dropdown")) {

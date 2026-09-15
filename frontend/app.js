@@ -2446,8 +2446,24 @@ async function loadQuotations() {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cotizaciones...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}/quotations/`);
-        const quotes = await res.json();
+        // Carga fresca paralela de cotizaciones, clientes y servicios
+        const [resQuotes, resCli, resSrv] = await Promise.all([
+            fetch(`${API_BASE}/quotations/`),
+            fetch(`${API_BASE}/clients/`),
+            fetch(`${API_BASE}/services/`)
+        ]);
+
+        if (resCli.ok) {
+            const cData = await resCli.json();
+            allClients = Array.isArray(cData) ? cData : [];
+        }
+        if (resSrv.ok) {
+            const sData = await resSrv.json();
+            allServices = Array.isArray(sData) ? sData : [];
+        }
+        populateSelectDropdowns();
+
+        const quotes = await resQuotes.json();
 
         if (quotes.length === 0) {
             tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;">No hay cotizaciones emitidas. Haz clic en '+ Nueva Cotización' para armar una.</td></tr>`;
@@ -2493,7 +2509,7 @@ async function loadQuotations() {
     }
 }
 
-function openNewQuotationModal() {
+async function openNewQuotationModal() {
     quoteRowsCount = 0;
     const editInput = document.getElementById("edit_quotation_id");
     if (editInput) editInput.value = "";
@@ -2506,6 +2522,29 @@ function openNewQuotationModal() {
 
     document.getElementById("quoteForm").reset();
     document.getElementById("quoteItemsList").innerHTML = "";
+
+    // Garantizar carga fresca de clientes y servicios si no están en memoria
+    try {
+        if (!allClients || allClients.length === 0 || !allServices || allServices.length === 0) {
+            const [resCli, resSrv] = await Promise.all([
+                fetch(`${API_BASE}/clients/`),
+                fetch(`${API_BASE}/services/`)
+            ]);
+            if (resCli.ok) {
+                const cData = await resCli.json();
+                allClients = Array.isArray(cData) ? cData : [];
+            }
+            if (resSrv.ok) {
+                const sData = await resSrv.json();
+                allServices = Array.isArray(sData) ? sData : [];
+            }
+        }
+    } catch(e) {
+        console.warn("Error cargando clientes para cotización:", e);
+    }
+
+    populateSelectDropdowns();
+
     if (document.getElementById("quote_tax_type")) document.getElementById("quote_tax_type").value = "16";
     if (document.getElementById("quote_tax_percent")) document.getElementById("quote_tax_percent").value = "16";
     if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "15 días hábiles a partir del anticipo";
@@ -2627,6 +2666,22 @@ function recalcQuotationTotals() {
 // Función interactiva para Re-editar Cotizaciones / Presupuestos
 async function editQuotation(quoteId) {
     try {
+        if (!allClients || allClients.length === 0 || !allServices || allServices.length === 0) {
+            const [resCli, resSrv] = await Promise.all([
+                fetch(`${API_BASE}/clients/`),
+                fetch(`${API_BASE}/services/`)
+            ]);
+            if (resCli.ok) {
+                const cData = await resCli.json();
+                allClients = Array.isArray(cData) ? cData : [];
+            }
+            if (resSrv.ok) {
+                const sData = await resSrv.json();
+                allServices = Array.isArray(sData) ? sData : [];
+            }
+        }
+        populateSelectDropdowns();
+
         const res = await fetch(`${API_BASE}/quotations/${quoteId}`);
         if (!res.ok) throw new Error('No se pudo cargar la cotización para edición.');
         const q = await res.json();

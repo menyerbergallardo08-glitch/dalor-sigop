@@ -587,10 +587,35 @@ def create_manual_expense(exp_in: ManualExpenseCreate, db: Session = Depends(get
     amt_bs = exp_in.amount_bs if (exp_in.amount_bs and exp_in.amount_bs > 0) else round(exp_in.amount_usd * rate, 2)
     exp_type = "costo_obra" if exp_in.project_id else "gasto_sede"
     
+    # Resolver category_id válido
+    cat = None
+    if exp_in.category_id:
+        cat = db.query(ExpenseCategory).filter(ExpenseCategory.id == exp_in.category_id).first()
+    if not cat:
+        cat = db.query(ExpenseCategory).first()
+    cat_id = cat.id if cat else 1
+
+    # Resolver reported_by_id válido
+    rep_id = None
+    if exp_in.reported_by_id:
+        p = db.query(Personnel).filter(Personnel.id == exp_in.reported_by_id).first()
+        if p:
+            rep_id = p.id
+    if not rep_id:
+        p_first = db.query(Personnel).first()
+        rep_id = p_first.id if p_first else None
+
+    # Resolver project_id válido si viene
+    proj_id = None
+    if exp_in.project_id:
+        pr = db.query(Project).filter(Project.id == exp_in.project_id).first()
+        if pr:
+            proj_id = pr.id
+
     new_exp = Expense(
-        category_id=exp_in.category_id or 1,
-        project_id=exp_in.project_id,
-        reported_by_id=exp_in.reported_by_id,
+        category_id=cat_id,
+        project_id=proj_id,
+        reported_by_id=rep_id,
         expense_type=exp_type,
         expense_date=datetime.utcnow(),
         description=exp_in.description.strip(),
@@ -599,11 +624,10 @@ def create_manual_expense(exp_in: ManualExpenseCreate, db: Session = Depends(get
         exchange_rate=rate,
         amount_usd=exp_in.amount_usd,
         base_amount_usd=exp_in.amount_usd,
+        tax_amount_usd=0.0,
         payment_method=exp_in.payment_method or "efectivo_divisa",
         status="aprobado",
-        ocr_status="validado",
-        has_receipt=True,
-        notes="Registrado vía Carga Rápida / 3 Toques"
+        has_receipt=True
     )
     db.add(new_exp)
     db.commit()

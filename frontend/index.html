@@ -1206,13 +1206,55 @@
                     window.authToken = savedToken;
                     document.body.classList.add('authenticated');
                     const loginScreen = document.getElementById('app-login-screen');
-                    if (loginScreen) loginScreen.style.setProperty('display', 'none', 'important');
+                    if (loginScreen) {
+                        loginScreen.style.setProperty('display', 'none', 'important');
+                        loginScreen.classList.add('hidden');
+                    }
                     
                     const nameEl = document.getElementById('userFullNameDisplay');
                     const roleEl = document.getElementById('userRoleDisplay');
                     if (nameEl) nameEl.textContent = u.full_name || u.username;
-                    if (roleEl) roleEl.textContent = u.role_name || 'Usuario';
-                } catch(e) {}
+                    if (roleEl) {
+                        const r = (u.role_name || '').toLowerCase();
+                        if (r.includes('director') || r.includes('admin')) roleEl.textContent = '👑 Director General';
+                        else if (r.includes('finanzas') || r.includes('administracion')) roleEl.textContent = '💼 Administración';
+                        else if (r.includes('ingeniero') || r.includes('obra')) roleEl.textContent = '👷 Ing. Residente';
+                        else if (r.includes('campo') || r.includes('supervisor')) roleEl.textContent = '📱 Supervisor Campo';
+                        else if (r.includes('almacen')) roleEl.textContent = '📦 Almacén Central';
+                        else roleEl.textContent = u.role_name || 'Usuario';
+                    }
+
+                    // Aplicar permisos de visibilidad por rol
+                    const role = (u.role_name || u.username || '').toLowerCase();
+                    const isDirector = role.includes('director') || role.includes('admin') || u.is_superuser;
+                    const isAdmin = isDirector || role.includes('finanzas') || role.includes('administracion');
+                    const isIngeniero = isDirector || isAdmin || role.includes('ingeniero') || role.includes('obra');
+                    document.querySelectorAll('.role-director-only').forEach(el => el.style.display = isDirector ? '' : 'none');
+                    document.querySelectorAll('.role-admin-only').forEach(el => el.style.display = isAdmin ? '' : 'none');
+                    document.querySelectorAll('.role-eng-only').forEach(el => el.style.display = isIngeniero ? '' : 'none');
+
+                    // Enrutar a vista inicial tras 100ms
+                    setTimeout(() => {
+                        if (typeof window.loadInitialMasterData === 'function') {
+                            try { window.loadInitialMasterData(); } catch(e) {}
+                        }
+                        if (role.includes('almacen')) {
+                            if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('materials');
+                            else if (typeof window.switchView === 'function') window.switchView('resources', 'recursos');
+                        } else if (role.includes('supervisor') || role.includes('campo')) {
+                            if (typeof window.switchView === 'function') window.switchView('pwa', 'gastos');
+                        } else if (role.includes('admin') || role.includes('finanzas')) {
+                            if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab('cxc');
+                            else if (typeof window.switchView === 'function') window.switchView('financial', 'finanzas');
+                        } else if (role.includes('ingeniero') || role.includes('obra')) {
+                            if (typeof window.switchView === 'function') window.switchView('projects', 'proyectos');
+                        } else {
+                            if (typeof window.switchView === 'function') window.switchView('executive', 'gerencia');
+                        }
+                    }, 100);
+                } catch(e) {
+                    console.warn("Error reanudando sesión:", e);
+                }
             }
         });
     </script>

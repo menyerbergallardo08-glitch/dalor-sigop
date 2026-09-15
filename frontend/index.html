@@ -1087,7 +1087,7 @@
                     <label style="display: block; font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fa-solid fa-user" style="color: #0072b8; margin-right: 4px;"></i> Usuario / Login *
                     </label>
-                    <input type="text" id="portal_username" placeholder="director / administracion / ingeniero / campo" required autocomplete="username"
+                    <input type="text" id="portal_username" placeholder="director / administracion / ingeniero / campo" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
                         onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
                         style="width: 100%; padding: 14px 16px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 12px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
                         onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
@@ -1098,7 +1098,7 @@
                         <i class="fa-solid fa-lock" style="color: #0072b8; margin-right: 4px;"></i> Contraseña *
                     </label>
                     <div style="position: relative; width: 100%;">
-                        <input type="password" id="portal_password" placeholder="••••••••" required autocomplete="current-password"
+                        <input type="password" id="portal_password" placeholder="••••••••" required autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false"
                             onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
                             style="width: 100%; padding: 14px 44px 14px 16px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 12px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
                             onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">

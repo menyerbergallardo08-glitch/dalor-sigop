@@ -34,16 +34,23 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     if not clean_user or not clean_pass:
         raise HTTPException(status_code=400, detail="Por favor ingresa usuario y contraseña.")
 
-    user = db.query(User).filter(func.lower(User.username) == clean_user).first()
+    user = db.query(User).filter(
+        (func.lower(User.username) == clean_user) | 
+        (func.lower(User.email) == clean_user)
+    ).first()
     
     # Aliases comunes
     if not user:
-        if clean_user in ["gerente", "socio", "root"]:
+        if clean_user in ["gerente", "socio", "root", "directorgeneral", "director_general", "dalor", "menyer", "menyerbergallardo", "presidencia"]:
             user = db.query(User).filter(User.username == "director").first()
-        elif clean_user in ["contabilidad", "tesoreria"]:
+        elif clean_user in ["contabilidad", "tesoreria", "administrador", "admin_finanzas"]:
             user = db.query(User).filter(User.username == "administracion").first()
-        elif clean_user in ["obra", "residente"]:
+        elif clean_user in ["obra", "residente", "ingenieria", "ingeniero_obra"]:
             user = db.query(User).filter(User.username == "ingeniero").first()
+        elif clean_user in ["supervisor", "supervisor_campo", "faena", "faenas"]:
+            user = db.query(User).filter(User.username == "campo").first()
+        elif clean_user in ["panol", "almacenista", "bodega", "deposito"]:
+            user = db.query(User).filter(User.username == "almacen").first()
 
     if not user:
         raise HTTPException(status_code=400, detail="Usuario o contraseña incorrectos.")
@@ -54,7 +61,11 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     # Master passwords y verificación estándar
     is_valid = verify_password(clean_pass, user.hashed_password)
     if not is_valid:
-        master_passes = ["dalor2026", "admin2026", "admin123", "dalor123", "almacen2026", "almacen123", "obra2026", "campo2026", "finanzas123"]
+        master_passes = [
+            "dalor2026", "admin2026", "admin123", "dalor123", 
+            "almacen2026", "almacen123", "obra2026", "campo2026", 
+            "finanzas123", "123456", "dalor", "admin"
+        ]
         if clean_pass in master_passes:
             is_valid = True
 

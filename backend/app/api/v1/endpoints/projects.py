@@ -12,9 +12,69 @@ router = APIRouter()
 class PhaseStatusUpdate(BaseModel):
     status: str # pendiente, en_progreso, completado
 
-@router.get("/", response_model=List[ProjectOut])
+@router.get("/")
 def get_projects(db: Session = Depends(get_db)):
-    return db.query(Project).filter(Project.is_active == True).order_by(Project.created_at.desc()).all()
+    projects = db.query(Project).filter(Project.is_active == True).order_by(Project.created_at.desc()).all()
+    results = []
+    for proj in projects:
+        spent = sum(e.amount_usd for e in proj.expenses) if proj.expenses else 0.0
+        
+        # Calculate physical progress percentage based on tasks or completed phases
+        total_tasks = 0
+        completed_tasks = 0
+        if proj.phases:
+            for ph in proj.phases:
+                raw_tasks = [t.strip() for t in (ph.description or "").split(";") if t.strip()]
+                if not raw_tasks and (ph.description or "").strip():
+                    raw_tasks = [t.strip() for t in ph.description.split("\n") if t.strip()]
+                
+                if raw_tasks:
+                    total_tasks += len(raw_tasks)
+                    completed_tasks += sum(1 for t in raw_tasks if t.startswith("[x]") or t.startswith("[X]"))
+                else:
+                    total_tasks += 1
+                    if ph.status == "completado":
+                        completed_tasks += 1
+        
+        prog_pct = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else (100.0 if proj.status == "completado" else 0.0)
+        
+        results.append({
+            "id": proj.id,
+            "code": proj.code,
+            "name": proj.name,
+            "client_id": proj.client_id,
+            "client_name": proj.client_name or (proj.client.name if proj.client else "General"),
+            "location": proj.location,
+            "status": proj.status,
+            "scope_of_work": proj.scope_of_work,
+            "duration_days": proj.duration_days,
+            "execution_time": proj.execution_time,
+            "tracking_token": proj.tracking_token,
+            "contract_amount_usd": proj.contract_amount_usd,
+            "estimated_labor_usd": proj.estimated_labor_usd,
+            "estimated_fuel_usd": proj.estimated_fuel_usd,
+            "estimated_materials_usd": proj.estimated_materials_usd,
+            "estimated_tools_usd": proj.estimated_tools_usd,
+            "estimated_services_usd": proj.estimated_services_usd,
+            "budget_limit_usd": proj.budget_limit_usd,
+            "total_spent_usd": round(spent, 2),
+            "progress_pct": prog_pct,
+            "is_active": proj.is_active,
+            "created_at": proj.created_at.isoformat() if proj.created_at else None,
+            "phases": [
+                {
+                    "id": ph.id,
+                    "phase_number": ph.phase_number,
+                    "name": ph.name,
+                    "description": ph.description,
+                    "duration_days": ph.duration_days,
+                    "estimated_cost_usd": ph.estimated_cost_usd,
+                    "status": ph.status,
+                    "responsible_person": ph.responsible_person
+                } for ph in (proj.phases or [])
+            ]
+        })
+    return results
 
 @router.get("/{project_id}/details")
 def get_project_details(project_id: int, db: Session = Depends(get_db)):
@@ -86,7 +146,7 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
         ]
     }
 
-@router.post("/", response_model=ProjectOut)
+@router.post("/")
 def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
     existing = db.query(Project).filter(Project.code == project_in.code).first()
     if existing:
@@ -205,18 +265,146 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
                 )
                 db.add(hist)
 
+    
+    # 5. Generar Automáticamente la Cuenta por Cobrar (CxC) asociada al contrato del proyecto
+    if new_project.contract_amount_usd and new_project.contract_amount_usd > 0:
+        from datetime import timedelta
+        cxc_entry = AccountReceivable(
+            project_id=new_project.id,
+            client_id=new_project.client_id,
+            invoice_number=f"VAL-{new_project.code}-01",
+            issue_date=datetime.utcnow(),
+            due_date=datetime.utcnow() + timedelta(days=new_project.duration_days or 30),
+            taxable_base_usd=new_project.contract_amount_usd,
+            tax_amount_usd=0.0,
+            total_amount_usd=new_project.contract_amount_usd,
+            amount_paid_usd=0.0,
+            net_amount_usd=new_project.contract_amount_usd,
+            status="pendiente",
+            concept=f"Contrato / Valuación Inicial: {new_project.name}"
+        )
+        db.add(cxc_entry)
+        db.commit()
+
     db.commit()
     db.refresh(new_project)
-    return new_project
+    
+    return {
+        "id": new_project.id,
+        "code": new_project.code,
+        "name": new_project.name,
+        "client_id": new_project.client_id,
+        "client_name": new_project.client_name,
+        "location": new_project.location,
+        "status": new_project.status,
+        "scope_of_work": new_project.scope_of_work,
+        "duration_days": new_project.duration_days,
+        "execution_time": new_project.execution_time,
+        "tracking_token": new_project.tracking_token,
+        "contract_amount_usd": new_project.contract_amount_usd,
+        "estimated_labor_usd": new_project.estimated_labor_usd,
+        "estimated_fuel_usd": new_project.estimated_fuel_usd,
+        "estimated_materials_usd": new_project.estimated_materials_usd,
+        "estimated_tools_usd": new_project.estimated_tools_usd,
+        "estimated_services_usd": new_project.estimated_services_usd,
+        "budget_limit_usd": new_project.budget_limit_usd,
+        "total_spent_usd": 0.0,
+        "progress_pct": 0.0,
+        "is_active": new_project.is_active,
+        "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
+        "phases": [{
+            "id": ph.id,
+            "phase_number": ph.phase_number,
+            "name": ph.name,
+            "description": ph.description,
+            "duration_days": ph.duration_days,
+            "estimated_cost_usd": ph.estimated_cost_usd,
+            "status": ph.status,
+            "responsible_person": ph.responsible_person
+        } for ph in new_project.phases]
+    }
 
 @router.put("/{project_id}/phases/{phase_id}/status")
 def update_phase_status(project_id: int, phase_id: int, update_in: PhaseStatusUpdate, db: Session = Depends(get_db)):
     phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    # Restricción Secuencial Estricta:
+    if update_in.status in ["en_progreso", "completado"] and phase.phase_number > 1:
+        prev_phases = db.query(ProjectPhase).filter(
+            ProjectPhase.project_id == project_id,
+            ProjectPhase.phase_number < phase.phase_number
+        ).order_by(ProjectPhase.phase_number.asc()).all()
+        for p in prev_phases:
+            if p.status != "completado":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Acción Bloqueada: No puedes avanzar la Etapa {phase.phase_number} ('{phase.name}') porque la Etapa {p.phase_number} ('{p.name}') no ha sido culminada aún."
+                )
+
     phase.status = update_in.status
     db.commit()
     return {"success": True, "message": f"Etapa '{phase.name}' actualizada a {phase.status}."}
+
+class TaskToggleInput(BaseModel):
+    task_index: int
+    is_completed: bool
+
+@router.put("/{project_id}/phases/{phase_id}/toggle-task")
+def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, db: Session = Depends(get_db)):
+    phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    # Verificar si etapa anterior fue completada si se intenta avanzar
+    if task_in.is_completed and phase.phase_number > 1:
+        prev_phases = db.query(ProjectPhase).filter(
+            ProjectPhase.project_id == project_id,
+            ProjectPhase.phase_number < phase.phase_number
+        ).order_by(ProjectPhase.phase_number.asc()).all()
+        for p in prev_phases:
+            if p.status != "completado":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Acción Bloqueada: No puedes marcar tareas de la Etapa {phase.phase_number} porque la Etapa {p.phase_number} ('{p.name}') no ha sido culminada."
+                )
+
+    raw_desc = phase.description or ""
+    tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
+    if not tasks:
+        tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
+
+    if 0 <= task_in.task_index < len(tasks):
+        current_t = tasks[task_in.task_index]
+        clean_t = current_t
+        for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
+            if clean_t.startswith(pref):
+                clean_t = clean_t[len(pref):].strip()
+
+        if task_in.is_completed:
+            tasks[task_in.task_index] = f"[x] {clean_t}"
+        else:
+            tasks[task_in.task_index] = f"[ ] {clean_t}"
+
+        phase.description = "; ".join(tasks)
+        
+        all_done = all(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
+        any_done = any(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
+        if all_done:
+            phase.status = "completado"
+        elif any_done:
+            phase.status = "en_progreso"
+        elif phase.status == "completado":
+            phase.status = "en_progreso"
+
+        db.commit()
+        return {
+            "success": True,
+            "phase_status": phase.status,
+            "tasks": tasks
+        }
+    raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
 
 @router.get("/excel-template")
 def download_excel_template():
@@ -251,3 +439,94 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     proj.is_active = False
     db.commit()
     return {"message": "Proyecto inactivado exitosamente (traza histórica preservada)."}
+
+# ------------------------------------------------------------------------------
+# 🌐 PORTAL PÚBLICO DE SEGUIMIENTO PARA CLIENTES (100% CIEGO A COSTOS Y FINANZAS)
+# ------------------------------------------------------------------------------
+import secrets
+
+@router.post("/{project_id}/tracking-token")
+def generate_project_tracking_token(project_id: int, db: Session = Depends(get_db)):
+    proj = db.query(Project).filter(Project.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+    if not proj.tracking_token:
+        proj.tracking_token = secrets.token_urlsafe(16)
+        db.commit()
+    return {
+        "success": True,
+        "project_id": proj.id,
+        "project_code": proj.code,
+        "tracking_token": proj.tracking_token,
+        "tracking_url": f"/seguimiento/{proj.tracking_token}"
+    }
+
+@router.get("/public-tracking/{token_or_code}")
+def get_public_project_tracking(token_or_code: str, db: Session = Depends(get_db)):
+    # Buscar por token seguro o código de proyecto
+    proj = db.query(Project).filter(
+        (Project.tracking_token == token_or_code) | (Project.code == token_or_code),
+        Project.is_active == True
+    ).first()
+    
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto o enlace de seguimiento no encontrado.")
+
+    # Calcular progreso físico sin exponer ningún costo
+    total_tasks = 0
+    completed_tasks = 0
+    phases_out = []
+    
+    if proj.phases:
+        for ph in proj.phases:
+            raw_tasks = [t.strip() for t in (ph.description or "").split(";") if t.strip()]
+            if not raw_tasks and (ph.description or "").strip():
+                raw_tasks = [t.strip() for t in ph.description.split("\n") if t.strip()]
+            
+            phase_tasks = []
+            for t in raw_tasks:
+                is_done = t.startswith("[x]") or t.startswith("[X]") or "✅" in t
+                clean_title = t
+                for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
+                    if clean_title.startswith(pref):
+                        clean_title = clean_title[len(pref):].strip()
+                phase_tasks.append({
+                    "title": clean_title,
+                    "completed": is_done
+                })
+                total_tasks += 1
+                if is_done:
+                    completed_tasks += 1
+
+            phases_out.append({
+                "phase_number": ph.phase_number,
+                "name": ph.name,
+                "status": ph.status,
+                "duration_days": ph.duration_days,
+                "responsible_person": ph.responsible_person or "Equipo de Operaciones",
+                "tasks": phase_tasks
+            })
+
+    prog_pct = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else (100.0 if proj.status == "completado" else 0.0)
+
+    return {
+        "success": True,
+        "project_code": proj.code,
+        "project_name": proj.name,
+        "client_name": proj.client_name or (proj.client.name if proj.client else "Cliente Industrial"),
+        "location": proj.location,
+        "status": proj.status,
+        "scope_of_work": proj.scope_of_work,
+        "start_date": proj.start_date.strftime("%d/%m/%Y") if proj.start_date else "Pendiente",
+        "end_date": proj.end_date.strftime("%d/%m/%Y") if proj.end_date else "Estimada según cronograma",
+        "duration_days": proj.duration_days,
+        "execution_time": proj.execution_time or f"{proj.duration_days} días continuos",
+        "progress_pct": prog_pct,
+        "phases": phases_out,
+        "company_info": {
+            "name": "METALMECÁNICA DALOR C.A.",
+            "rif": "J-31601195-0",
+            "partner": "METALMECÁNICA DALOR C.A.",
+            "tagline": "Ingeniería, Fabricación y Mantenimiento Industrial Especializado"
+        }
+    }

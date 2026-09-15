@@ -1,4 +1,30 @@
 
+function setProjectType(type) {
+    const hiddenInp = document.getElementById("new_proj_type");
+    if (hiddenInp) hiddenInp.value = type;
+
+    const radioSede = document.getElementById("radio_type_sede");
+    const radioForaneo = document.getElementById("radio_type_foraneo");
+    const cardSede = document.getElementById("card_type_sede");
+    const cardForaneo = document.getElementById("card_type_foraneo");
+    const locInput = document.getElementById("new_proj_location");
+
+    if (type === 'sede') {
+        if (radioSede) radioSede.checked = true;
+        if (radioForaneo) radioForaneo.checked = false;
+        if (cardSede) { cardSede.style.background = "#eff6ff"; cardSede.style.borderColor = "var(--dalor-navy)"; }
+        if (cardForaneo) { cardForaneo.style.background = "#ffffff"; cardForaneo.style.borderColor = "#cbd5e1"; }
+        if (locInput && (!locInput.value || locInput.value.includes("Planta"))) locInput.value = "Taller Central Guacara";
+    } else {
+        if (radioForaneo) radioForaneo.checked = true;
+        if (radioSede) radioSede.checked = false;
+        if (cardForaneo) { cardForaneo.style.background = "#eff6ff"; cardForaneo.style.borderColor = "var(--dalor-blue)"; }
+        if (cardSede) { cardSede.style.background = "#ffffff"; cardSede.style.borderColor = "#cbd5e1"; }
+        if (locInput && locInput.value === "Taller Central Guacara") locInput.value = "";
+    }
+}
+
+
 // ====================================================================
 // GESTIÓN DE SUBPESTAÑAS Y FILTRADO DEL MÓDULO DE PROYECTOS (UX ENHANCEMENT)
 // ====================================================================
@@ -778,27 +804,36 @@ function populatePlanDropdownSelectors() {
     const safePersonnel = Array.isArray(allPersonnel) ? allPersonnel : [];
     const safeAssets = Array.isArray(allAssets) ? allAssets : [];
 
-    // 1. Desplegable de Personal
+    // 1. Desplegable de Personal (Todos los 15 integrantes DALOR)
     const persSel = document.getElementById("plan_select_personnel") || document.getElementById("plan_pers_select");
     if (persSel) {
-        persSel.innerHTML = `<option value="">-- Seleccionar Trabajador (${safePersonnel.length} disp.) --</option>` + 
+        persSel.innerHTML = `<option value="">-- Seleccionar Trabajador (${safePersonnel.length} disponibles) --</option>` + 
             safePersonnel.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name} (${p.role_title})</option>`).join('');
+        persSel.onchange = function() {
+            if (this.value) addPlanResource('personnel');
+        };
     }
 
     // 2. Desplegable de Vehículos
     const vehSel = document.getElementById("plan_select_fleet") || document.getElementById("plan_veh_select");
     const vehicles = safeAssets.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
     if (vehSel) {
-        vehSel.innerHTML = `<option value="">-- Seleccionar Unidad / Flota (${vehicles.length} disp.) --</option>` + 
-            vehicles.map(v => `<option value="${v.id}">[${v.asset_code}] ${v.name} ${v.license_plate ? `(${v.license_plate})` : ''}</option>`).join('');
+        vehSel.innerHTML = `<option value="">-- Seleccionar Unidad / Flota (${vehicles.length} disponibles) --</option>` + 
+            vehicles.map(v => `<option value="${v.id}">[${v.asset_code}] ${v.name} ${v.license_plate ? `(${v.license_plate})` : ''} - Ubic: ${v.current_location || 'Base'}</option>`).join('');
+        vehSel.onchange = function() {
+            if (this.value) addPlanResource('fleet');
+        };
     }
 
-    // 3. Desplegable de Herramientas / Maquinaria Mayor
+    // 3. Desplegable de Herramientas & Equipos (Mostrando cantidades y ubicación)
     const toolSel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
     const tools = safeAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
     if (toolSel) {
-        toolSel.innerHTML = `<option value="">-- Seleccionar Equipo Mayor (${tools.length} disp.) --</option>` + 
-            tools.map(t => `<option value="${t.id}">[${t.asset_code}] ${t.name} ${t.serial_number ? `(S/N: ${t.serial_number})` : ''}</option>`).join('');
+        toolSel.innerHTML = `<option value="">-- Seleccionar Herramienta / Equipo Mayor (${tools.length} disp.) --</option>` + 
+            tools.map(t => `<option value="${t.id}">[${t.asset_code}] ${t.name} (Cant: 1 disp. | S/N: ${t.serial_number || 'S/N'})</option>`).join('');
+        toolSel.onchange = function() {
+            if (this.value) addPlanResource('tools');
+        };
     }
 }
 
@@ -1092,6 +1127,18 @@ function recalcProjectBudgetPreview() {
 }
 
 async function submitCreateProject(event) {
+    event.preventDefault();
+
+    // Auto-capturar si hay algún recurso seleccionado en el dropdown que no fue pulsado con '+'
+    const pSelVal = parseInt(document.getElementById("plan_select_personnel")?.value);
+    if (pSelVal && !selectedPersonnelIds.includes(pSelVal)) selectedPersonnelIds.push(pSelVal);
+
+    const fSelVal = parseInt(document.getElementById("plan_select_fleet")?.value);
+    if (fSelVal && !selectedVehicleIds.includes(fSelVal)) selectedVehicleIds.push(fSelVal);
+
+    const tSelVal = parseInt(document.getElementById("plan_select_tools")?.value);
+    if (tSelVal && !selectedToolIds.includes(tSelVal)) selectedToolIds.push(tSelVal);
+
     event.preventDefault();
 
     // 1. Etapas con Sub-tareas Operativas
@@ -3584,12 +3631,10 @@ async function submitFieldExpense(event) {
                 document.getElementById("chkEnableSplit").checked = false;
                 toggleSplitMode();
             }
-            const isCampo = (currentUser?.role_name || currentUser?.username || '').toLowerCase().includes('campo');
-            if (isCampo) {
-                switchView('pwa', 'gastos');
-            } else {
-                switchView('expenses-log', 'gastos');
-            }
+            // Refrescar inbox y navegar directamente a la Bandeja de Aprobación
+            await loadPendingExpensesInbox();
+            updatePendingInboxBadge();
+            switchView('inbox', 'gastos');
         } else {
             let errorMsg = `Error del servidor (${res.status})`;
             try {

@@ -768,7 +768,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ==============================================================================
 
-window.APP_BUILD_VERSION = "2026.09.15.v90-production-clean";
+window.APP_BUILD_VERSION = "2026.09.15.v91-perfect";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
@@ -5464,7 +5464,7 @@ async function editQuotation(quoteId) {
 
 async function submitCreateQuotation(event) {
     if (event && event.preventDefault) event.preventDefault();
-    try {
+
     const clientSelect = document.getElementById("quote_client_id");
     const clientId = clientSelect ? parseInt(clientSelect.value) : null;
     if (!clientId) {
@@ -5539,8 +5539,9 @@ async function submitCreateQuotation(event) {
 
         const data = await res.json();
         closeModal("modalNewQuotation");
-        const qForm = document.getElementById("quoteForm") || document.getElementById("quotationForm"); if (qForm) qForm.reset();
-        document.getElementById("edit_quotation_id").value = "";
+        const qForm = document.getElementById("quoteForm") || document.getElementById("quotationForm");
+        if (qForm) qForm.reset();
+        if (document.getElementById("edit_quotation_id")) document.getElementById("edit_quotation_id").value = "";
 
         if (typeof showToastNotification === 'function') {
             showToastNotification(isEdit ? `Presupuesto ${data.quote_number || ''} actualizado con éxito` : `Presupuesto ${data.quote_number || ''} emitido con éxito`, 'success');
@@ -5555,9 +5556,6 @@ async function submitCreateQuotation(event) {
         console.error("Error al guardar presupuesto:", err);
         alert("Error al guardar presupuesto: " + err.message);
     } finally {
-        console.error("Error al guardar presupuesto:", err);
-        alert("Error al guardar presupuesto: " + err.message);
-    } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Presupuesto';
@@ -5566,9 +5564,7 @@ async function submitCreateQuotation(event) {
 }
 
 
-
 // Cancelar vinculación de presupuesto al crear proyecto
-
 function cancelQuotationConversion() {
 
     const convInput = document.getElementById("converting_quotation_id");

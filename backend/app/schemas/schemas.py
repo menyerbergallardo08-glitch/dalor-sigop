@@ -359,10 +359,12 @@ class FinancialPaymentCreate(BaseModel):
 
 class PartnerWithdrawalCreate(BaseModel):
     partner_name: str
+    concept: Optional[str] = "Retiro a cuenta de utilidades / Gasto personal"
     amount_usd: float
     amount_bs: Optional[float] = 0.0
     exchange_rate: Optional[float] = 800.0
     payment_method: Optional[str] = "transferencia"
+    reference_number: Optional[str] = None
     notes: Optional[str] = None
     withdrawal_date: Optional[datetime] = None
 

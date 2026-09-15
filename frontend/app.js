@@ -1,339 +1,13 @@
-
-// ====================================================================
-// GESTIÓN DE SUBPESTAÑAS Y FILTRADO DEL MÓDULO DE PROYECTOS (UX ENHANCEMENT)
-// ====================================================================
-function switchProjectSubtab(subtabName) {
-    const isList = (subtabName === 'list');
-    const subtabList = document.getElementById('subtab-proj-list');
-    const subtabForm = document.getElementById('subtab-proj-form');
-    const btnList = document.getElementById('tabbtn-proj-list');
-    const btnForm = document.getElementById('tabbtn-proj-form');
-
-    if (subtabList) subtabList.classList.toggle('hidden', !isList);
-    if (subtabForm) subtabForm.classList.toggle('hidden', isList);
-
-    if (btnList) {
-        btnList.className = isList ? 'btn-primary' : 'btn-secondary';
-    }
-    if (btnForm) {
-        btnForm.className = !isList ? 'btn-primary' : 'btn-secondary';
-    }
-
-    if (isList) {
-        loadProjectsList();
-    }
-}
-
-function filterProjectsList(query) {
-    if (!allProjects || allProjects.length === 0) return;
-    const q = (query || '').toLowerCase().trim();
-    const container = document.getElementById("projectsCardsContainer");
-    if (!container) return;
-
-    const cards = container.querySelectorAll(".project-card");
-    let visibleCount = 0;
-    cards.forEach(card => {
-        const text = (card.innerText || '').toLowerCase();
-        if (!q || text.includes(q)) {
-            card.style.display = "";
-            visibleCount++;
-        } else {
-            card.style.display = "none";
-        }
-    });
-
-    const badge = document.getElementById("projects_count_badge");
-    if (badge) {
-        badge.innerText = q ? `${visibleCount} de ${allProjects.length} obra(s)` : `${allProjects.length} obra(s) registradas`;
-    }
-}
-
-let currentViewingProjectId = null;
-
-// ==============================================================================
-// 📷 COMPRESIÓN DE IMÁGENES CLIENTE PARA OCR INSTANTÁNEO (<1s EN CELULARES)
-// ==============================================================================
-function compressImageForOCR(file, maxWidth = 1280, maxHeight = 1280, quality = 0.82) {
-    return new Promise((resolve) => {
-        if (!file || !file.type || !file.type.startsWith('image/')) {
-            return resolve(file);
-        }
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                let width = img.width;
-                let height = img.height;
-                if (width > maxWidth || height > maxHeight) {
-                    if (width > height) {
-                        height = Math.round((height * maxWidth) / width);
-                        width = maxWidth;
-                    } else {
-                        width = Math.round((width * maxHeight) / height);
-                        height = maxHeight;
-                    }
-                }
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob(function(blob) {
-                    if (blob && blob.size < file.size) {
-                        const compressed = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
-                            type: "image/jpeg",
-                            lastModified: Date.now()
-                        });
-                        resolve(compressed);
-                    } else {
-                        resolve(file);
-                    }
-                }, "image/jpeg", quality);
-            };
-            img.onerror = function() { resolve(file); };
-            img.src = e.target.result;
-        };
-        reader.onerror = function() { resolve(file); };
-        reader.readAsDataURL(file);
-    });
-}
-
-// ==============================================================================
-// 🛠️ FUNCIONES UNIVERSALES DE UTILIDAD & ORDENAMIENTO NUMÉRICO JERÁRQUICO
-// ==============================================================================
-function populateSelect(selectId, items, mapFn) {
-    const el = document.getElementById(selectId);
-    if (!el) return;
-    if (!Array.isArray(items)) {
-        el.innerHTML = '';
-        return;
-    }
-    el.innerHTML = items.map(mapFn).join('');
-}
-
-function sortCategoriesNumerically(cats) {
-    if (!Array.isArray(cats)) return [];
-    return [...cats].sort((a, b) => {
-        const partsA = String(a.code || "").split('.').map(n => parseInt(n, 10) || 0);
-        const partsB = String(b.code || "").split('.').map(n => parseInt(n, 10) || 0);
-        for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-            const valA = partsA[i] !== undefined ? partsA[i] : -1;
-            const valB = partsB[i] !== undefined ? partsB[i] : -1;
-            if (valA !== valB) return valA - valB;
-        }
-        return String(a.name || "").localeCompare(String(b.name || ""));
-    });
-}
-
-// Purga obligatoria de localStorage para garantizar que SIEMPRE aparezca la pantalla de login
-localStorage.removeItem('dalor_user');
-localStorage.removeItem('dalor_token');
-
-// ==============================================================================
-// 💵 CÁLCULOS DE MONTO & CONDICIÓN FISCAL EN FORMULARIO DE CAMPO
-// ==============================================================================
-window.calcFieldBs = function() {
-    const usd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
-    const rate = parseFloat(document.getElementById("globalExchangeRateInput")?.value) || EXCHANGE_RATE;
-    const bsEl = document.getElementById("field_amount_bs");
-    if (bsEl && !isNaN(usd)) {
-        bsEl.value = (usd * rate).toFixed(2);
-    }
-    updateFieldTaxDisplays();
-};
-
-window.calcFieldUsd = function() {
-    const bs = parseFloat(document.getElementById("field_amount_bs")?.value) || 0;
-    const rate = parseFloat(document.getElementById("globalExchangeRateInput")?.value) || EXCHANGE_RATE;
-    const usdEl = document.getElementById("field_amount_usd");
-    if (usdEl && !isNaN(bs) && rate > 0) {
-        usdEl.value = (bs / rate).toFixed(2);
-    }
-    updateFieldTaxDisplays();
-};
-
-window.onFieldTaxConditionChanged = function() {
-    updateFieldTaxDisplays();
-};
-
-function updateFieldTaxDisplays() {
-    const usd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
-    const isExempt = document.getElementById("field_is_tax_exempt")?.value === "true";
-    const base = isExempt ? usd : +(usd / 1.16).toFixed(2);
-    const tax = isExempt ? 0.0 : +(usd - base).toFixed(2);
-    const baseIn = document.getElementById("field_base_amount_usd");
-    const taxIn = document.getElementById("field_tax_amount_usd");
-    const baseDisp = document.getElementById("field_base_display");
-    const taxDisp = document.getElementById("field_tax_display");
-    if (baseIn) baseIn.value = base.toFixed(2);
-    if (taxIn) taxIn.value = tax.toFixed(2);
-    if (baseDisp) baseDisp.innerText = `$${base.toFixed(2)}`;
-    if (taxDisp) taxDisp.innerText = `$${tax.toFixed(2)}`;
-}
-
-window.onValTaxChanged = function() {
-    const usd = parseFloat(document.getElementById("val_amount_usd")?.value) || 0;
-    const isExempt = document.getElementById("val_is_tax_exempt")?.value === "true";
-    const base = isExempt ? usd : +(usd / 1.16).toFixed(2);
-    const tax = isExempt ? 0.0 : +(usd - base).toFixed(2);
-    const baseEl = document.getElementById("val_base_usd");
-    const taxEl = document.getElementById("val_tax_usd");
-    if (baseEl) baseEl.value = base.toFixed(2);
-    if (taxEl) taxEl.value = tax.toFixed(2);
-};
-
-window.APP_BUILD_VERSION = "2026.09.09.v29";
-console.log("--> DALOR SIGO-P INITIALIZED v22");
-
-// ==============================================================================
-// 🔐 CONTROLADOR CORPORATIVO DE AUTENTICACIÓN & SESIONES (PRODUCCIÓN)
-// ==============================================================================
-
-window.togglePasswordVisibility = function(inputId, btn) {
-    const el = document.getElementById(inputId);
-    if (!el) return;
-    if (el.type === 'password') {
-        el.type = 'text';
-        if (btn) btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
-    } else {
-        el.type = 'password';
-        if (btn) btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
-    }
-};
-
-window.toggleDemoProfiles = function() {
-    const grid = document.getElementById('demoProfilesGrid');
-    if (grid) {
-        grid.style.display = (grid.style.display === 'none' || !grid.style.display) ? 'grid' : 'none';
-    }
-};
-
-window.quickFillAndLogin = async function(u, p) {
-    const uIn = document.getElementById('portal_username');
-    const pIn = document.getElementById('portal_password');
-    if (uIn) uIn.value = u;
-    if (pIn) pIn.value = p;
-    await performLogin(u, p);
-};
-
-window.handlePortalLogin = async function(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    const uIn = document.getElementById('portal_username');
-    const pIn = document.getElementById('portal_password');
-    const u = uIn ? uIn.value.trim() : '';
-    const p = pIn ? pIn.value : '';
-    await performLogin(u, p);
-};
-
-window.performLogin = async function(username, password) {
-    if (!username || !password) {
-        showLoginError('Por favor ingresa usuario y contraseña');
-        return;
-    }
-
-    const errBox = document.getElementById('loginErrorMessage');
-    const errTxt = document.getElementById('loginErrorText');
-    const btnSubmit = document.getElementById('btnSubmitPortalLogin');
-
-    if (errBox) errBox.style.display = 'none';
-    if (btnSubmit) {
-        btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Accediendo...';
-    }
-
-    try {
-        const res = await fetch(`${API_BASE}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-
-        const data = await res.json();
-        if (!res.ok || !data.access_token) {
-            const msg = data.detail || 'Usuario o contraseña incorrectos';
-            showLoginError(msg);
-            if (btnSubmit) {
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión';
-            }
-            return;
-        }
-
-        // 1. Guardar sesión
-        currentUser = data.user;
-        authToken = data.access_token;
-        sessionStorage.setItem('dalor_session_active', 'true');
-        sessionStorage.setItem('dalor_user', JSON.stringify(currentUser));
-        sessionStorage.setItem('dalor_token', authToken);
-
-        // 2. Desbloquear visualmente el ERP de forma garantizada
-        document.body.classList.add('authenticated');
-        const loginScreen = document.getElementById('app-login-screen');
-        const authShell = document.getElementById('app-authenticated-shell');
-        if (loginScreen) {
-            loginScreen.style.setProperty('display', 'none', 'important');
-        }
-        if (authShell) {
-            authShell.style.setProperty('display', 'block', 'important');
-        }
-        const flLogout = document.getElementById('btnFloatingLogout');
-        if (flLogout) flLogout.style.display = 'inline-flex';
-
-        // 3. Configurar interfaz para el usuario
-        try { renderUserBadge(); } catch(e) { console.warn(e); }
-        try { applyPermissionMap(currentUser); } catch(e) { console.warn(e); }
-        try { configureMobileNav(currentUser); } catch(e) { console.warn(e); }
-        try { redirectUserByRole(currentUser); } catch(e) { console.warn(e); }
-
-        // 4. Cargar datos maestros sin bloquear la interfaz
-        setTimeout(() => {
-            try { loadInitialMasterData(); } catch(e) { console.warn(e); }
-        }, 50);
-
-        showToast(`Bienvenido, ${currentUser.full_name || currentUser.username}`, 'success');
-
-    } catch (err) {
-        showLoginError('Error al conectar con el servidor: ' + err.message);
-    } finally {
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión';
-        }
-    }
-};
-
-function showLoginError(msg) {
-    const errBox = document.getElementById('loginErrorMessage');
-    const errTxt = document.getElementById('loginErrorText');
-    if (errTxt) errTxt.textContent = msg;
-    if (errBox) errBox.style.display = 'block';
-}
-
-window.configureMobileNav = function(user) {
-    const nav = document.querySelector('.mobile-bottom-nav');
-    if (nav) nav.remove();
-};
-
-// Aliases para compatibilidad
-window.loginDirectlyAs = window.quickFillAndLogin;
-window.fillAndSubmitQuickLogin = window.quickFillAndLogin;
-window.fillQuickLogin = window.quickFillAndLogin;
-
-// ==============================================================================
-// 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
-// ==============================================================================
-window.APP_BUILD_VERSION = "2026.09.14.v36";
-var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
-// Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
-if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem("dalor_build_version", APP_BUILD_VERSION);
-    localStorage.setItem("dalor_exchange_rate", "850.0");
-}
+// Blindaje Global de Errores & Resiliencia Industrial
+window.addEventListener('error', (event) => {
+    console.warn("Manejador seguro de excepción capturado:", event.message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+    console.warn("Promesa capturada de forma segura:", event.reason);
+});
 
 const API_BASE = window.location.origin + "/api/v1";
-let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 850.0;
+let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 800.0;
 
 let allClients = [];
 let allServices = [];
@@ -341,7 +15,6 @@ let allProjects = [];
 let allCategories = [];
 let allAssets = [];
 let allPersonnel = [];
-let allMaterials = [];
 let quoteRowsCount = 0;
 let splitRowsCount = 0;
 let phaseRowsCount = 0;
@@ -350,233 +23,113 @@ let phaseRowsCount = 0;
 let selectedPersonnelIds = [];
 let selectedVehicleIds = [];
 let selectedToolIds = [];
+let lastUploadedReceiptUrl = null;
 
 // Inicialización
 let currentUser = null;
 let authToken = localStorage.getItem('dalor_token') || null;
-let lastDropdownToggleTime = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
     const rateInput = document.getElementById("globalExchangeRateInput");
     if (rateInput) rateInput.value = EXCHANGE_RATE.toFixed(2);
 
-    const handleOutsideClick = (e) => {
-        if (Date.now() - lastDropdownToggleTime < 350) return;
-        if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu") && !e.target.closest(".mobile-submenu-card")) {
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".nav-dropdown")) {
             closeAllDropdowns();
-            closeMobileSubmenu();
         }
-    };
+    });
 
-    document.addEventListener("click", handleOutsideClick);
-    document.addEventListener("touchend", handleOutsideClick);
-
-    const isAuth = await checkAuthStatus();
-    fetchAndApplyBcvRate();
+    await refreshLiveBCVRate(false);
+    await checkAuthStatus();
+    await loadInitialMasterData();
     
-    const loginScreen = document.getElementById('app-login-screen');
-    const authShell = document.getElementById('app-authenticated-shell');
-    const nav = document.querySelector('.mobile-bottom-nav');
-
-    if (isAuth && currentUser) {
-        document.body.classList.add('authenticated');
-        if (loginScreen) loginScreen.style.setProperty('display', 'none', 'important');
-        if (authShell) authShell.style.setProperty('display', 'block', 'important');
-        
-        renderUserBadge();
-        applyPermissionMap(currentUser);
-        configureMobileNav(currentUser);
-        redirectUserByRole(currentUser);
-        loadInitialMasterData();
+    // Si tiene permiso de gerencia abre BI Executive, sino abre proyectos
+    if (currentUser && currentUser.permissions && currentUser.permissions.executive_dashboard) {
+        switchView('executive', 'gerencia');
     } else {
-        document.body.classList.remove('authenticated');
-        if (loginScreen) loginScreen.style.setProperty('display', 'flex', 'important');
-        if (authShell) authShell.style.setProperty('display', 'none', 'important');
-        if (nav) nav.style.setProperty('display', 'none', 'important');
+        switchView('projects', 'proyectos');
     }
 });
 
-// Control de Tasa Oficial BCV Automatizada con Blindaje Fail-Safe
-let BCV_DATA = {
-    rate: 832.49,
-    date_value: '',
-    source: 'BCV Oficial',
-    source_tier: 'oficial_directo'
-};
-
-async function fetchAndApplyBcvRate(forceRefresh = false) {
-    const icon = document.getElementById("bcvSyncIcon");
-    if (icon) icon.classList.add("fa-spin");
-
+// Control de Tasa BCV Oficial & Editable
+async function refreshLiveBCVRate(showFeedback = false) {
+    const statusDot = document.getElementById("bcvStatusDot");
+    const rateInput = document.getElementById("globalExchangeRateInput");
+    if (statusDot) statusDot.style.background = "#fbbf24"; // Amarillo mientras consulta
+    
     try {
-        const res = await fetch(`${API_BASE}/financial/bcv-rate?force_refresh=${forceRefresh}`);
+        const res = await fetch(`${API_BASE}/financial/exchange-rate`);
         if (res.ok) {
             const data = await res.json();
-            BCV_DATA = data;
-            const val = parseFloat(data.rate);
-            if (!isNaN(val) && val > 0) {
-                EXCHANGE_RATE = val;
-                localStorage.setItem('dalor_exchange_rate', val);
-                
-                // Actualizar interfaz
-                const display = document.getElementById("bcvRateDisplay");
-                if (display) display.innerText = data.formatted_rate || val.toFixed(2);
-                
-                const srcName = document.getElementById("bcvSourceName");
-                if (srcName) srcName.innerText = data.source_tier === 'oficial_directo' ? 'BCV:' : 'BCV Espejo:';
-                
-                const dot = document.getElementById("bcvStatusDot");
-                if (dot) {
-                    dot.style.background = data.is_fallback ? '#f59e0b' : '#10b981';
-                    dot.style.boxShadow = data.is_fallback ? '0 0 5px #f59e0b' : '0 0 5px #10b981';
+            if (data && data.rate) {
+                const liveRate = parseFloat(data.rate);
+                EXCHANGE_RATE = liveRate;
+                localStorage.setItem('dalor_exchange_rate', liveRate);
+                if (rateInput) {
+                    rateInput.value = liveRate.toFixed(2);
+                    rateInput.style.color = "#34d399";
+                    setTimeout(() => { rateInput.style.color = "var(--dalor-gold)"; }, 1000);
                 }
-
-                const badge = document.getElementById("bcvTasaBadge");
-                if (badge) {
-                    badge.title = `Tasa: ${val.toFixed(2)} Bs/$ | Fuente: ${data.source} | Fecha Valor: ${data.date_value || 'Hoy'} | Actualizado: ${data.last_updated || 'Ahora'}`;
+                if (statusDot) {
+                    statusDot.style.background = "#22c55e"; // Verde conectado
+                    statusDot.title = `Tasa Oficial BCV: ${liveRate.toFixed(2)} Bs/$ (${data.date || 'Actualizado'})`;
                 }
-
-                const modalRate = document.getElementById("modalBcvCurrentRate");
-                if (modalRate) modalRate.innerText = `${val.toFixed(2)} Bs/$ (${data.source})`;
-
-                const modalDate = document.getElementById("modalBcvDateValue");
-                if (modalDate) modalDate.innerText = data.date_value || 'Vigente';
-
-                calcManualBs();
-
-                if (forceRefresh) {
-                    showRealtimeToast(`Cotización BCV Oficial: ${val.toFixed(2)} Bs/$ (${data.date_value || 'Hoy'})`, 'tasa_bcv', 'info');
+                if (showFeedback) {
+                    alert(`✅ Tasa BCV Oficial actualizada con éxito:\n1 USD = ${liveRate.toFixed(2)} Bs.`);
                 }
+                if (typeof calcManualBs === 'function') calcManualBs();
+                return;
             }
         }
     } catch (e) {
-        console.warn("No se pudo sincronizar tasa BCV, usando tasa guardada:", e);
-    } finally {
-        if (icon) {
-            setTimeout(() => icon.classList.remove("fa-spin"), 500);
-        }
+        console.warn("No se pudo conectar a la API de tasa en vivo, usando tasa guardada:", e);
+    }
+    
+    // Fallback si falla
+    if (statusDot) {
+        statusDot.style.background = "#94a3b8"; // Gris local
+        statusDot.title = `Tasa fijada manualmente: ${EXCHANGE_RATE.toFixed(2)} Bs/$`;
+    }
+    if (rateInput && !rateInput.value) {
+        rateInput.value = EXCHANGE_RATE.toFixed(2);
     }
 }
 
-function syncBcvRateFromBtn(e) {
-    if (e) e.stopPropagation();
-    fetchAndApplyBcvRate(true);
-}
-
-function openManualTasaModal(e) {
-    if (e) e.stopPropagation();
-    const input = document.getElementById("manualTasaInput");
-    if (input) input.value = EXCHANGE_RATE.toFixed(2);
-    openModal("modalManualTasa");
-}
-
-function submitManualTasa(e) {
-    e.preventDefault();
-    const input = document.getElementById("manualTasaInput");
-    const val = parseFloat(input.value);
+// Control de Tasa Editable Global
+function updateGlobalExchangeRate(newRate) {
+    const val = parseFloat(newRate);
     if (!isNaN(val) && val > 0) {
         EXCHANGE_RATE = val;
         localStorage.setItem('dalor_exchange_rate', val);
-        const display = document.getElementById("bcvRateDisplay");
-        if (display) display.innerText = val.toFixed(2);
+        if (typeof calcManualBs === 'function') calcManualBs();
         
-        const dot = document.getElementById("bcvStatusDot");
-        if (dot) {
-            dot.style.background = '#f59e0b';
-            dot.style.boxShadow = '0 0 5px #f59e0b';
+        const input = document.getElementById("globalExchangeRateInput");
+        if (input) {
+            input.style.color = "#34d399";
+            setTimeout(() => {
+                input.style.color = "var(--dalor-gold)";
+            }, 800);
         }
-        
-        const srcName = document.getElementById("bcvSourceName");
-        if (srcName) srcName.innerText = 'Manual:';
-
-        closeModal("modalManualTasa");
-        calcManualBs();
-        showRealtimeToast(`Tasa manual establecida a ${val.toFixed(2)} Bs/$ (Modo Contingencia)`, 'tasa_bcv', 'warning');
     }
 }
 
-
-// Desplegables Tipo ERP (Profit Plus Style) con Soporte Móvil Nativo Action-Sheet (iOS / iPhone / Android / Desktop)
-function isMobileViewport() {
-    return window.innerWidth <= 768 || ('ontouchstart' in window && window.innerWidth <= 1024);
-}
-
+// Desplegables Tipo ERP (Profit Plus Style)
 function toggleDropdown(event, dropdownId) {
-    if (event) {
-        if (event.stopPropagation) event.stopPropagation();
-    }
-    lastDropdownToggleTime = Date.now();
+    event.stopPropagation();
     const targetDropdown = document.getElementById(dropdownId);
-    if (!targetDropdown) return;
-
-    // Si estamos en Móvil / iPhone / iPad -> Abrir Action Sheet Nativo
-    if (isMobileViewport()) {
-        openMobileSubmenu(dropdownId);
-        return;
-    }
-
-    // Modo Desktop Estándar
     const isOpen = targetDropdown.classList.contains("open");
+
     closeAllDropdowns();
+
     if (!isOpen) {
         targetDropdown.classList.add("open");
     }
-}
-
-function openMobileSubmenu(dropdownId) {
-    const targetDropdown = document.getElementById(dropdownId);
-    if (!targetDropdown) return;
-
-    const btn = targetDropdown.querySelector(".dropdown-btn");
-    const menu = targetDropdown.querySelector(".dropdown-menu");
-    const sheet = document.getElementById("mobileSubmenuSheet");
-    const sheetTitle = document.getElementById("mobileSubmenuTitle");
-    const sheetItems = document.getElementById("mobileSubmenuItems");
-
-    if (!sheet || !sheetTitle || !sheetItems || !menu) return;
-
-    // Obtener icono y título del botón
-    const btnIcon = btn ? btn.querySelector("i") : null;
-    const btnText = btn ? btn.querySelector("span") : null;
-    const iconHtml = btnIcon ? btnIcon.outerHTML : '<i class="fa-solid fa-layer-group" style="color: var(--dalor-blue);"></i>';
-    const titleText = btnText ? btnText.innerText : 'Opciones del Módulo';
-
-    sheetTitle.innerHTML = `${iconHtml} <span>${titleText}</span>`;
-
-    // Clonar items del menu para el sheet
-    sheetItems.innerHTML = '';
-    const items = menu.querySelectorAll(".dropdown-item");
-    items.forEach(item => {
-        const clone = item.cloneNode(true);
-        // Manejador táctil seguro para iOS Safari
-        clone.onclick = (e) => {
-            if (e && e.stopPropagation) e.stopPropagation();
-            closeMobileSubmenu();
-            if (item.onclick) {
-                item.onclick(e);
-            }
-        };
-        sheetItems.appendChild(clone);
-    });
-
-    sheet.classList.add("active");
-    document.body.style.overflow = "hidden";
-}
-
-function closeMobileSubmenu(event) {
-    if (event && event.target && event.target.closest(".mobile-submenu-card") && !event.target.classList.contains("mobile-submenu-close")) return;
-    const sheet = document.getElementById("mobileSubmenuSheet");
-    if (sheet) {
-        sheet.classList.remove("active");
-    }
-    document.body.style.overflow = "";
 }
 
 function closeAllDropdowns() {
     document.querySelectorAll(".nav-dropdown").forEach(drop => {
         drop.classList.remove("open");
     });
-    closeMobileSubmenu();
 }
 
 // Navegación Modular Principal
@@ -586,9 +139,9 @@ function switchView(viewName, moduleCategory) {
     const allViews = [
         'executive', 'financial', 'maintenance',
         'quotations', 'clients', 'services', 
-        'projects', 'dispatch', 'dashboard', 
+        'projects', 'dashboard', 
         'resources', 
-        'pwa', 'manual', 'tree', 'inbox', 'expenses-log'
+        'pwa', 'manual', 'tree', 'inbox', 'expenses-ledger'
     ];
 
     allViews.forEach(v => {
@@ -603,115 +156,77 @@ function switchView(viewName, moduleCategory) {
     const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`);
     if (activeDropdown) activeDropdown.classList.add("active");
 
-    if (viewName === 'executive') loadExecutiveDashboard();
-    if (viewName === 'financial') openFinancialSubtab('cxc');
-    if (viewName === 'maintenance') openMaintenanceSubtab('users');
-    if (viewName === 'quotations') loadQuotations();
-    if (viewName === 'clients') loadClients();
-    if (viewName === 'services') loadServices();
-    if (viewName === 'projects') initProjectPlanningView();
-    if (viewName === 'dispatch') initDispatchView();
-    if (viewName === 'dashboard') loadComparisonDashboard();
-    if (viewName === 'resources') switchResourceSubtab('dashboard');
-    if (viewName === 'inbox') loadPendingExpensesInbox();
-    if (viewName === 'tree') loadCategoriesTree();
-    if (viewName === 'expenses-log') loadExpensesLog();
+    try {
+        if (viewName === 'executive') loadExecutiveDashboard();
+        else if (viewName === 'financial') switchFinancialSubtab('cxc');
+        else if (viewName === 'maintenance') switchMaintenanceSubtab('users');
+        else if (viewName === 'quotations') loadQuotations();
+        else if (viewName === 'clients') loadClients();
+        else if (viewName === 'services') loadServices();
+        else if (viewName === 'projects') initProjectPlanningView();
+        else if (viewName === 'dashboard') loadComparisonDashboard();
+        else if (viewName === 'resources') switchResourceSubtab('dashboard');
+        else if (viewName === 'tree') loadCategoriesTree();
+        else if (viewName === 'inbox') loadInboxPending();
+        else if (viewName === 'expenses-ledger') loadExpensesLedger();
+    } catch (err) {
+        console.error("Error al cargar vista:", viewName, err);
+    }
 }
 
 // Carga Inicial de Datos Maestros
 async function loadInitialMasterData() {
     try {
-        const [resCli, resSrv, resProj, resCat, resAss, resPers, resMat] = await Promise.all([
-            fetch(`${API_BASE}/clients/`),
-            fetch(`${API_BASE}/services/`),
-            fetch(`${API_BASE}/projects/`),
-            fetch(`${API_BASE}/expenses/categories`),
-            fetch(`${API_BASE}/assets/`),
-            fetch(`${API_BASE}/personnel/`),
-            fetch(`${API_BASE}/materials/`)
+        const results = await Promise.allSettled([
+            fetch(`${API_BASE}/clients/`).then(r => r.ok ? r.json() : []),
+            fetch(`${API_BASE}/services/`).then(r => r.ok ? r.json() : []),
+            fetch(`${API_BASE}/projects/`).then(r => r.ok ? r.json() : []),
+            fetch(`${API_BASE}/expenses/categories`).then(r => r.ok ? r.json() : []),
+            fetch(`${API_BASE}/assets/`).then(r => r.ok ? r.json() : []),
+            fetch(`${API_BASE}/personnel/`).then(r => r.ok ? r.json() : [])
         ]);
 
-        const cliData = await resCli.json();
-        allClients = Array.isArray(cliData) ? cliData : [];
-        const srvData = await resSrv.json();
-        allServices = Array.isArray(srvData) ? srvData : [];
-        const projData = await resProj.json();
-        allProjects = Array.isArray(projData) ? projData : [];
-        const catData = await resCat.json();
-        allCategories = Array.isArray(catData) ? catData : [];
-        const assData = await resAss.json();
-        allAssets = Array.isArray(assData) ? assData : [];
-        const persData = await resPers.json();
-        allPersonnel = Array.isArray(persData) ? persData : [];
-        const matData = await resMat.json();
-        allMaterials = Array.isArray(matData.materials) ? matData.materials : (Array.isArray(matData) ? matData : []);
+        allClients = results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value : [];
+        allServices = results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value : [];
+        allProjects = results[2].status === 'fulfilled' && Array.isArray(results[2].value) ? results[2].value : [];
+        allCategories = results[3].status === 'fulfilled' && Array.isArray(results[3].value) ? results[3].value : [];
+        allAssets = results[4].status === 'fulfilled' && Array.isArray(results[4].value) ? results[4].value : [];
+        allPersonnel = results[5].status === 'fulfilled' && Array.isArray(results[5].value) ? results[5].value : [];
 
         populateSelectDropdowns();
         populatePlanDropdownSelectors();
-        updatePendingInboxBadge();
+        loadInboxPending();
     } catch (e) {
-        console.error("Error al cargar datos maestros:", e);
+        console.error("Error al cargar datos maestros de forma resiliente:", e);
     }
 }
 
 function populateSelectDropdowns() {
-    const safeClients = Array.isArray(allClients) ? allClients : [];
-    const safeProjects = Array.isArray(allProjects) ? allProjects : [];
-    const safeCategories = Array.isArray(allCategories) ? allCategories : [];
-    const safeAssets = Array.isArray(allAssets) ? allAssets : [];
-    const safeMaterials = Array.isArray(allMaterials) ? allMaterials : [];
-    const safePersonnel = Array.isArray(allPersonnel) ? allPersonnel : [];
-
     // Clientes Selects
     const cliOptions = `<option value="">-- Seleccione Cliente --</option>` + 
-        safeClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
+        allClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
     
     if (document.getElementById("quote_client_id")) document.getElementById("quote_client_id").innerHTML = cliOptions;
     if (document.getElementById("new_proj_client_id")) document.getElementById("new_proj_client_id").innerHTML = cliOptions;
-    if (document.getElementById("cxc_client_id")) document.getElementById("cxc_client_id").innerHTML = cliOptions;
-    if (document.getElementById("rcp_client_id")) document.getElementById("rcp_client_id").innerHTML = cliOptions;
 
     // Proyectos Selects
     const projOptions = `<option value="">-- Gasto General Sede (Sin Proyecto) --</option>` + 
-        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
+        allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
     
     if (document.getElementById("field_project_id")) document.getElementById("field_project_id").innerHTML = projOptions;
     if (document.getElementById("manual_project_id")) document.getElementById("manual_project_id").innerHTML = projOptions;
-    if (document.getElementById("cxc_project_id")) document.getElementById("cxc_project_id").innerHTML = projOptions;
-    if (document.getElementById("cxp_project_id")) document.getElementById("cxp_project_id").innerHTML = projOptions;
-    if (document.getElementById("rcp_project_id")) document.getElementById("rcp_project_id").innerHTML = projOptions;
-    if (document.getElementById("mc_project_id")) document.getElementById("mc_project_id").innerHTML = 
-        `<option value="">-- Consumo Interno Taller Central (Gasto Sede) --</option>` + 
-        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
-
     if (document.getElementById("modal_target_project_id")) document.getElementById("modal_target_project_id").innerHTML = 
-        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name} (${p.location})</option>`).join('');
-    if (document.getElementById("tg_project_id")) document.getElementById("tg_project_id").innerHTML = 
-        `<option value="">-- Seleccione Proyecto Aprobado --</option>` +
-        safeProjects.map(p => `<option value="${p.id}" data-location="${p.location}">${p.code} - ${p.name} (${p.location})</option>`).join('');
+        allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name} (${p.location})</option>`).join('');
 
-    // Categorías Selects (Ordenadas numéricamente 1.0 -> 1.1 -> 2.0 -> 10.0)
-    const sortedCats = sortCategoriesNumerically(safeCategories);
-    const catOptions = sortedCats.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
+    // Categorías Selects
+    const catOptions = allCategories.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
     if (document.getElementById("field_category_id")) document.getElementById("field_category_id").innerHTML = catOptions;
     if (document.getElementById("manual_category_id")) document.getElementById("manual_category_id").innerHTML = catOptions;
 
     // Activos / Flota
     const assOptions = `<option value="">-- No Aplica --</option>` + 
-        safeAssets.map(a => `<option value="${a.id}">${a.asset_code} - ${a.name}</option>`).join('');
+        allAssets.map(a => `<option value="${a.id}">${a.asset_code} - ${a.name}</option>`).join('');
     if (document.getElementById("field_asset_id")) document.getElementById("field_asset_id").innerHTML = assOptions;
-
-    // Vehículos para Guías
-    const vehicles = allAssets.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
-    const vehOptions = `<option value="">-- Seleccione Vehículo de Transporte --</option>` + 
-        vehicles.map(v => `<option value="${v.id}">[${v.asset_code}] ${v.name} (Placa: ${v.license_plate || 'S/P'})</option>`).join('');
-    if (document.getElementById("tg_vehicle_id")) document.getElementById("tg_vehicle_id").innerHTML = vehOptions;
-
-    // Materiales Selects
-    const matOptions = `<option value="">-- Seleccione Material --</option>` + 
-        allMaterials.map(m => `<option value="${m.id}" data-cost="${m.unit_cost_usd}" data-stock="${m.stock_quantity}" data-unit="${m.unit_measure}">[${m.code}] ${m.name} (${m.stock_quantity} ${m.unit_measure} disp. - $${m.unit_cost_usd}/u)</option>`).join('');
-    if (document.getElementById("me_material_id")) document.getElementById("me_material_id").innerHTML = matOptions;
-    if (document.getElementById("mc_material_id")) document.getElementById("mc_material_id").innerHTML = matOptions;
 
     // Personal Selects
     if (allPersonnel && allPersonnel.length > 0) {
@@ -738,38 +253,17 @@ function populateSelectDropdowns() {
 // 1. PLANIFICACIÓN & ARMADO INTEGRAL DE PROYECTOS
 // ----------------------------------------------------
 function initProjectPlanningView() {
-    switchProjectSubtab('list');
     loadProjectsList();
     populatePlanDropdownSelectors();
     renderAssignedTags();
     
-    // Iniciar con 4 etapas industriales estándar y sus tareas operativas desglosadas
+    // Iniciar con 3 etapas estándar si está vacío
     const container = document.getElementById("projectPhasesContainer");
     if (container && container.children.length === 0) {
         phaseRowsCount = 0;
-        addProjectPhaseRow("Fase 1: Movilización, Permisos & Seguridad SHA", [
-            "Gestión de pases de planta PDVSA/Corpoelec",
-            "Charla de inducción y seguridad industrial SHA",
-            "Inspección de EPP y movilización de equipos y maquinaria"
-        ], 10, 15000);
-
-        addProjectPhaseRow("Fase 2: Desmontaje Mecánico & Corte con Oxicorte", [
-            "Corte de tolvas deterioradas en sitio",
-            "Retiro de vigas secundarias y soportería",
-            "Desconexión y retiro de ductos de gases calientes"
-        ], 15, 25000);
-
-        addProjectPhaseRow("Fase 3: Fabricación & Montaje de Estructuras Nuevas", [
-            "Armado y calderería de tolvas en acero A36",
-            "Soldadura calificada bajo código ASME Sección IX / AWS",
-            "Izamiento e instalación de vigas principales HEA"
-        ], 25, 45000);
-
-        addProjectPhaseRow("Fase 4: Ensayos No Destructivos (END), Pintura & Entrega", [
-            "Inspección de soldaduras por líquidos penetrantes y ultrasonido",
-            "Aplicación de recubrimiento epóxico anticorrosivo",
-            "Pruebas en frío, firma de acta de entrega y recepción definitiva"
-        ], 10, 20500);
+        addProjectPhaseRow("Fase 1: Movilización, Permisos & Seguridad", "Gestión de pases de planta, charla de inducción SHA y traslado de cuadrilla/equipos", 5, 1200);
+        addProjectPhaseRow("Fase 2: Ejecución Técnica & Montaje", "Obras civiles menores, desmontaje, tendido de cables y conexionado electromecánico", 15, 8500);
+        addProjectPhaseRow("Fase 3: Pruebas, Calibración & Entrega", "Pruebas de aislamiento, termografía, puesta en servicio y firma de acta de entrega", 5, 2000);
     }
 }
 
@@ -906,126 +400,38 @@ function renderAssignedTags() {
     }
 }
 
-// Creador Dinámico de Etapas / Fases con Sub-campos de Tareas Operativas
-function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 0) {
+// Creador Dinámico de Etapas / Fases con Membretes
+function addProjectPhaseRow(defName = "", defDesc = "", defDays = 7, defCost = 0) {
     phaseRowsCount++;
     const container = document.getElementById("projectPhasesContainer");
-    const phaseId = `phase_card_${phaseRowsCount}`;
-    const pNum = phaseRowsCount;
+    const rowId = `phase_row_${phaseRowsCount}`;
 
-    if (typeof defTasks === 'string') {
-        defTasks = defTasks.split(/[,;\.]\s+/).filter(t => t.trim().length > 0);
-    }
-    if (!Array.isArray(defTasks) || defTasks.length === 0) {
-        defTasks = ["Tarea inicial de la etapa"];
-    }
-
-    const card = document.createElement("div");
-    card.id = phaseId;
-    card.className = "project-phase-card";
-    card.style.cssText = "background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px;";
-
-    card.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="phase-number-badge" style="background: var(--dalor-navy); color: white; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 3px 8px;">
-                    Etapa ${pNum}
-                </span>
-                <span style="font-size: 12px; font-weight: 700; color: #475569;">Datos Principales del Hito</span>
-            </div>
-            <button type="button" onclick="removeProjectPhaseRow('${phaseId}')" style="background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer;" title="Eliminar Etapa">
-                <i class="fa-solid fa-trash"></i> Eliminar Etapa
-            </button>
+    const div = document.createElement("div");
+    div.id = rowId;
+    div.style.cssText = "display: grid; grid-template-columns: 2fr 3fr 1fr 1fr 30px; gap: 6px; background: white; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; align-items: center;";
+    div.innerHTML = `
+        <div>
+            <input type="text" class="form-input ph-name" placeholder="Ej: Fase 1: Movilización" value="${defName}" style="font-size: 11px; font-weight: 700;" required>
         </div>
-
-        <!-- Campos de la Fase -->
-        <div style="display: grid; grid-template-columns: 3fr 1fr 1.2fr; gap: 10px;">
-            <div>
-                <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
-                    Nombre de la Etapa / Hito
-                </label>
-                <input type="text" class="form-input ph-name" placeholder="Ej: Fase 1: Movilización & Permisos" value="${defName}" style="font-size: 12px; font-weight: 700;" required>
-            </div>
-            <div>
-                <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
-                    Duración (Días)
-                </label>
-                <input type="number" class="form-input ph-days" placeholder="Días" value="${defDays}" style="font-size: 12px; font-weight: bold;">
-            </div>
-            <div>
-                <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
-                    Presupuesto Fase ($)
-                </label>
-                <input type="number" step="0.01" class="form-input ph-cost" placeholder="Ppto ($)" value="${defCost}" style="font-size: 12px; font-weight: 800; color: var(--dalor-blue);">
-            </div>
+        <div>
+            <input type="text" class="form-input ph-desc" placeholder="Descripción de tareas y alcance" value="${defDesc}" style="font-size: 11px;">
         </div>
-
-        <!-- Sub-campo de Tareas / Actividades Asignadas a esta Fase -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <label style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); display: flex; align-items: center; gap: 6px;">
-                    <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas / Actividades Operativas de esta Etapa:
-                </label>
-                <button type="button" onclick="addProjectPhaseTask('${phaseId}')" class="btn-primary" style="font-size: 10px; padding: 3px 8px; background: #0284c7;">
-                    <i class="fa-solid fa-plus"></i> Añadir Tarea
-                </button>
-            </div>
-            
-            <div class="phase-tasks-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
+        <div>
+            <input type="number" class="form-input ph-days" placeholder="Días" value="${defDays}" style="font-size: 11px; font-weight: bold;">
+        </div>
+        <div>
+            <input type="number" step="0.01" class="form-input ph-cost" placeholder="Ppto ($)" value="${defCost}" style="font-size: 11px; font-weight: 800; color: var(--dalor-blue);">
+        </div>
+        <div style="text-align: center;">
+            <button type="button" onclick="removeProjectPhaseRow('${rowId}')" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer;" title="Eliminar Etapa">&times;</button>
         </div>
     `;
-
-    container.appendChild(card);
-    
-    // Poblar las tareas iniciales
-    const tasksContainer = card.querySelector('.phase-tasks-container');
-    defTasks.forEach((taskText) => {
-        addProjectPhaseTaskRow(tasksContainer, taskText);
-    });
-
-    renumberPhasesAndTasks();
+    container.appendChild(div);
 }
 
-function addProjectPhaseTask(phaseCardId) {
-    const card = document.getElementById(phaseCardId);
-    if (!card) return;
-    const tasksContainer = card.querySelector('.phase-tasks-container');
-    addProjectPhaseTaskRow(tasksContainer, "");
-    renumberPhasesAndTasks();
-}
-
-function addProjectPhaseTaskRow(container, textValue = "") {
-    const taskRow = document.createElement("div");
-    taskRow.className = "phase-task-row";
-    taskRow.style.cssText = "display: flex; align-items: center; gap: 6px;";
-    taskRow.innerHTML = `
-        <span class="task-number-badge" style="font-size: 10px; font-weight: 800; background: #e2e8f0; color: #334155; padding: 4px 6px; border-radius: 4px; min-width: 34px; text-align: center;">
-            -
-        </span>
-        <input type="text" class="form-input ph-task-input" placeholder="Escribe la tarea puntual (ej: Corte con oxicorte, Pases de planta...)" value="${textValue}" style="font-size: 11px; flex: 1;" required>
-        <button type="button" onclick="this.closest('.phase-task-row').remove(); renumberPhasesAndTasks();" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding: 0 4px;" title="Eliminar Tarea">&times;</button>
-    `;
-    container.appendChild(taskRow);
-}
-
-function removeProjectPhaseRow(phaseId) {
-    const el = document.getElementById(phaseId);
+function removeProjectPhaseRow(rowId) {
+    const el = document.getElementById(rowId);
     if (el) el.remove();
-    renumberPhasesAndTasks();
-}
-
-function renumberPhasesAndTasks() {
-    const phaseCards = document.querySelectorAll("#projectPhasesContainer .project-phase-card");
-    phaseCards.forEach((card, pIdx) => {
-        const badge = card.querySelector('.phase-number-badge');
-        if (badge) badge.innerText = `Etapa ${pIdx + 1}`;
-
-        const taskRows = card.querySelectorAll('.phase-task-row');
-        taskRows.forEach((tRow, tIdx) => {
-            const tBadge = tRow.querySelector('.task-number-badge');
-            if (tBadge) tBadge.innerText = `${pIdx + 1}.${tIdx + 1}`;
-        });
-    });
 }
 
 function recalcProjectBudgetPreview() {
@@ -1050,22 +456,18 @@ function recalcProjectBudgetPreview() {
 async function submitCreateProject(event) {
     event.preventDefault();
 
-    // 1. Etapas con Sub-tareas Operativas
-    const phaseCards = document.querySelectorAll("#projectPhasesContainer .project-phase-card");
+    // 1. Etapas
+    const phaseRows = document.querySelectorAll("#projectPhasesContainer > div");
     let phases = [];
-    phaseCards.forEach((card, idx) => {
-        const name = card.querySelector(".ph-name").value.trim();
-        const days = parseInt(card.querySelector(".ph-days").value) || 7;
-        const cost = parseFloat(card.querySelector(".ph-cost").value) || 0.0;
-        
-        const taskInputs = card.querySelectorAll(".ph-task-input");
-        const tasksList = Array.from(taskInputs).map(inp => inp.value.trim()).filter(Boolean);
-        const description = tasksList.length > 0 ? tasksList.join("; ") : name;
-
+    phaseRows.forEach((r, idx) => {
+        const name = r.querySelector(".ph-name").value;
+        const desc = r.querySelector(".ph-desc").value;
+        const days = parseInt(r.querySelector(".ph-days").value) || 7;
+        const cost = parseFloat(r.querySelector(".ph-cost").value) || 0.0;
         phases.push({
             phase_number: idx + 1,
             name: name,
-            description: description,
+            description: desc,
             duration_days: days,
             estimated_cost_usd: cost,
             status: "pendiente"
@@ -1099,22 +501,6 @@ async function submitCreateProject(event) {
         });
         if (res.ok) {
             const data = await res.json();
-            
-            // Si proviene de un presupuesto, marcar la cotización como 'aprobado'
-            const convQuoteId = document.getElementById("converting_quotation_id") ? document.getElementById("converting_quotation_id").value : "";
-            if (convQuoteId) {
-                try {
-                    await fetch(`${API_BASE}/quotations/${convQuoteId}`, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ status: "aprobado" })
-                    });
-                } catch (errQ) {
-                    console.error("Error actualizando status de cotización vinculada:", errQ);
-                }
-                cancelQuotationConversion();
-            }
-
             alert(`¡Proyecto ${data.code} planificado, estructurado y activado con éxito!`);
             document.getElementById("projectCreateForm").reset();
             selectedPersonnelIds = [];
@@ -1123,7 +509,6 @@ async function submitCreateProject(event) {
             renderAssignedTags();
             await loadInitialMasterData();
             loadProjectsList();
-            loadQuotations();
         } else {
             const err = await res.json();
             alert("Error: " + (err.detail || JSON.stringify(err)));
@@ -1146,196 +531,49 @@ async function loadProjectsList() {
             return;
         }
 
-        // Determinar permisos de rol para visualización financiera
-        const savedUserStr = sessionStorage.getItem('dalor_user') || localStorage.getItem('dalor_user');
-        const userObj = savedUserStr ? JSON.parse(savedUserStr) : (currentUser || {});
-        const uname = (userObj.username || '').toLowerCase();
-        const urole = (userObj.role_name || '').toLowerCase();
-        const isDirector = uname === 'director' || urole.includes('director') || userObj.is_superuser;
-        const isFinanzas = uname === 'administracion' || urole.includes('admin') || urole.includes('finanzas');
-        const canSeeFinances = isDirector || isFinanzas;
-
         container.innerHTML = allProjects.map(p => {
-            const spent = p.total_spent_usd || 0;
-            const budget = p.budget_limit_usd || 0;
-            const contract = p.contract_amount_usd || 0;
-            const balance = budget - spent;
-            const isOverBudget = spent > budget && budget > 0;
-            const burnPct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
-            const realBurnPct = budget > 0 ? (spent / budget * 100).toFixed(1) : 0;
-            
-            const marginReal = contract - spent;
-            const marginRealPct = contract > 0 ? ((marginReal / contract) * 100).toFixed(1) : 0;
-
+            const marginEst = p.contract_amount_usd - p.budget_limit_usd;
+            const marginPct = p.contract_amount_usd > 0 ? (marginEst / p.contract_amount_usd * 100).toFixed(1) : 0;
             const phasesCount = p.phases ? p.phases.length : 0;
-            const completedPhases = p.phases ? p.phases.filter(ph => ph.status === 'completado').length : 0;
-            const inProgPhases = p.phases ? p.phases.filter(ph => ph.status === 'en_progreso').length : 0;
-
-            // Calcular porcentaje de avance físico
-            let progressPct = (p.progress_pct !== undefined && p.progress_pct > 0) ? p.progress_pct : 0;
-            if (phasesCount > 0 && progressPct === 0) {
-                let totalT = 0;
-                let doneT = 0;
-                (p.phases || []).forEach(ph => {
-                    const raw = (ph.description || '').split(';').map(t => t.trim()).filter(Boolean);
-                    if (raw.length > 0) {
-                        totalT += raw.length;
-                        doneT += raw.filter(t => t.startsWith('[x]') || t.startsWith('[X]')).length;
-                    } else {
-                        totalT += 1;
-                        if (ph.status === 'completado') doneT += 1;
-                        else if (ph.status === 'en_progreso') doneT += 0.5;
-                    }
-                });
-                progressPct = totalT > 0 ? Math.round((doneT / totalT) * 100) : 0;
-            }
-
-            // Semáforo presupuestario
-            let burnColor = '#059669'; // verde
-            if (realBurnPct >= 80 && realBurnPct <= 100) burnColor = '#f59e0b'; // ámbar
-            if (realBurnPct > 100) burnColor = '#e11d48'; // rojo sobrecosto
 
             return `
-            <div class="card" style="border-left: 4px solid var(--dalor-blue); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <!-- Encabezado de la Obra -->
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                        <div>
-                            <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 8px; border-radius: 4px;">${p.code}</span>
-                            <h4 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px; line-height: 1.3;">${p.name}</h4>
-                            <p style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                                <i class="fa-solid fa-building-user"></i> Cliente: <b>${p.client_name || 'General'}</b> &bull; <i class="fa-solid fa-location-dot"></i> <b>${p.location}</b>
-                            </p>
-                        </div>
-                        <span style="font-size: 10px; background: ${p.status === 'completado' ? '#dcfce7' : '#e0f2fe'}; color: ${p.status === 'completado' ? '#166534' : '#0369a1'}; padding: 3px 10px; border-radius: 9999px; font-weight: 800; text-transform: uppercase;">
-                            ${p.status}
-                        </span>
+            <div class="card" style="border-left: 4px solid var(--dalor-blue); margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 6px; border-radius: 4px;">${p.code}</span>
+                        <h4 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">${p.name}</h4>
+                        <p style="font-size: 11px; color: #64748b;">Cliente: <b>${p.client_name || 'General'}</b> | Ubicación: <b>${p.location}</b></p>
                     </div>
-
-                    <!-- 1. BARRA DE AVANCE FÍSICO DE LA OBRA -->
-                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 800; margin-bottom: 6px;">
-                            <span style="color: var(--dalor-navy); display: flex; align-items: center; gap: 6px;">
-                                <i class="fa-solid fa-bars-progress" style="color: var(--dalor-blue);"></i> Avance Físico de Obra:
-                            </span>
-                            <span style="color: ${progressPct === 100 ? '#059669' : 'var(--dalor-blue)'}; font-size: 12px;">
-                                <b>${progressPct}%</b> (${completedPhases} de ${phasesCount} Etapas Culminadas)
-                            </span>
-                        </div>
-                        <div style="height: 10px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
-                            <div style="width: ${progressPct}%; height: 100%; background: linear-gradient(90deg, #0284c7 0%, #059669 100%); transition: width 0.4s ease;"></div>
-                        </div>
-                    </div>
-
-                    <!-- 2. CONTROL FINANCIERO & JOB COSTING (Solo Director y Administración) -->
-                    ${canSeeFinances ? `
-                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">
-                            <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fa-solid fa-chart-pie" style="color: var(--dalor-gold);"></i> Job Costing en Tiempo Real
-                            </span>
-                            <span style="font-size: 10px; font-weight: 800; color: ${isOverBudget ? '#e11d48' : '#059669'};">
-                                ${isOverBudget ? '⚠️ Sobrecosto Presupuestario' : '✅ En Presupuesto'}
-                            </span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; text-align: center; margin-bottom: 8px;">
-                            <div style="background: #f8fafc; padding: 6px 4px; border-radius: 6px; border: 1px solid #f1f5f9;">
-                                <span style="font-size: 9px; color: #64748b; text-transform: uppercase; display: block;">Contrato</span>
-                                <strong style="font-size: 12px; color: var(--dalor-navy);">$${contract.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</strong>
-                            </div>
-                            <div style="background: #f8fafc; padding: 6px 4px; border-radius: 6px; border: 1px solid #f1f5f9;">
-                                <span style="font-size: 9px; color: #64748b; text-transform: uppercase; display: block;">Ppto Techo</span>
-                                <strong style="font-size: 12px; color: #0284c7;">$${budget.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</strong>
-                            </div>
-                            <div style="background: #f8fafc; padding: 6px 4px; border-radius: 6px; border: 1px solid #f1f5f9;">
-                                <span style="font-size: 9px; color: #64748b; text-transform: uppercase; display: block;">Gasto Real</span>
-                                <strong style="font-size: 12px; color: ${isOverBudget ? '#e11d48' : '#d97706'};">$${spent.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
-                            </div>
-                            <div style="background: #f8fafc; padding: 6px 4px; border-radius: 6px; border: 1px solid #f1f5f9;">
-                                <span style="font-size: 9px; color: #64748b; text-transform: uppercase; display: block;">Saldo Disponible</span>
-                                <strong style="font-size: 12px; color: ${balance >= 0 ? '#059669' : '#e11d48'};">
-                                    ${balance >= 0 ? '+' : ''}$${balance.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
-                                </strong>
-                            </div>
-                        </div>
-
-                        <!-- Barra de Consumo de Presupuesto -->
-                        <div style="font-size: 10px; color: #64748b; margin-top: 4px;">
-                            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 2px;">
-                                <span>Consumo de Presupuesto: <b>${realBurnPct}%</b> ($${spent.toLocaleString()} / $${budget.toLocaleString()})</span>
-                                <span style="color: #059669;">Margen Proyectado: <b>${marginRealPct}%</b></span>
-                            </div>
-                            <div style="height: 6px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
-                                <div style="width: ${Math.min(100, Math.max(0, realBurnPct))}%; height: 100%; background: ${burnColor};"></div>
-                            </div>
-                        </div>
-                    </div>
-                    ` : `
-                    <!-- Vista Operativa para Ingeniero Residente (Sin montos en $) -->
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; margin-bottom: 10px;">
-                        <div>
-                            <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Duración Total</span>
-                            <p style="font-size: 13px; font-weight: 800; color: var(--dalor-navy);">${p.duration_days} días</p>
-                        </div>
-                        <div>
-                            <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Hitos WBS</span>
-                            <p style="font-size: 13px; font-weight: 800; color: #0284c7;">${phasesCount} Etapas</p>
-                        </div>
-                        <div>
-                            <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Régimen de Turno</span>
-                            <p style="font-size: 13px; font-weight: 800; color: #059669;">Operativo</p>
-                        </div>
-                    </div>
-                    `}
+                    <span style="font-size: 10px; background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 9999px; font-weight: 800;">
+                        ${p.status.toUpperCase()}
+                    </span>
                 </div>
 
-                <div>
-                    <!-- Barra de Acciones y Botones -->
-                    <div style="font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px;">
-                        <span><i class="fa-solid fa-list-ol"></i> <b>${phasesCount} Etapas</b> &bull; <b>${p.duration_days} días</b></span>
-                        <div style="display: flex; gap: 6px;">
-                            ${canSeeFinances ? `
-                            <button onclick="openCreateCxCForProject(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #059669;" title="Facturar Valuación a Cliente">
-                                <i class="fa-solid fa-file-invoice-dollar"></i> Facturar (CxC)
-                            </button>
-                            ` : ''}
-                            <button onclick="viewProjectDetails(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px;">
-                                <i class="fa-solid fa-eye"></i> Ficha & Etapas
-                            </button>
-                            ${isDirector ? `
-                            <button onclick="deleteProject(${p.id})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px;" title="Inactivar Proyecto">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                            ` : ''}
-                        </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; margin-bottom: 10px;">
+                    <div>
+                        <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Contrato ($)</span>
+                        <p style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">$${p.contract_amount_usd.toLocaleString()}</p>
                     </div>
+                    <div>
+                        <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Ppto Costo ($)</span>
+                        <p style="font-size: 14px; font-weight: 800; color: #e11d48;">$${p.budget_limit_usd.toLocaleString()}</p>
+                    </div>
+                    <div>
+                        <span style="font-size: 10px; color: #64748b; text-transform: uppercase;">Margen Est (%)</span>
+                        <p style="font-size: 14px; font-weight: 800; color: #059669;">${marginPct}%</p>
+                    </div>
+                </div>
 
-                    <!-- Desglose de Fases & Tareas Desplegable Directo -->
-                    <details style="margin-top: 8px; font-size: 11px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px;">
-                        <summary style="cursor: pointer; font-weight: 700; color: var(--dalor-navy); display: flex; justify-content: space-between; align-items: center;">
-                            <span><i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas por Fase de Obra (${phasesCount})</span>
-                            <span style="font-size: 10px; color: #0284c7; font-weight: 600;">(Ver Desglose)</span>
-                        </summary>
-                        <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
-                            ${(p.phases || []).map((ph, idx) => `
-                                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--dalor-navy);">
-                                        <span><b>Etapa ${idx + 1}:</b> ${ph.name}</span>
-                                        <span style="font-size: 10px; font-weight: 800; color: ${ph.status === 'completado' ? '#059669' : (ph.status === 'en_progreso' ? '#0284c7' : '#64748b')};">
-                                            ${ph.status === 'completado' ? '✅ Culminada' : (ph.status === 'en_progreso' ? '🔄 En Progreso' : '⏳ Pendiente')}
-                                        </span>
-                                    </div>
-                                    ${ph.description ? `
-                                        <div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1; font-size: 10px; color: #475569; display: flex; flex-direction: column; gap: 2px;">
-                                            ${ph.description.split(/[,;\.]\s+/).filter(t => t.trim().length > 2).map((t, tidx) => `
-                                                <div>&bull; <b>${idx + 1}.${tidx + 1}</b> ${t}</div>
-                                            `).join('')}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </details>
+                <div style="font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+                    <span><i class="fa-solid fa-list-ol"></i> <b>${phasesCount} Etapas</b> &bull; <b>${p.duration_days} días</b></span>
+                    <div style="display: flex; gap: 6px;">
+                        <button onclick="viewProjectDetails(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px;">
+                            <i class="fa-solid fa-eye"></i> Ficha & Etapas
+                        </button>
+                        <button onclick="deleteProject(${p.id})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px;" title="Inactivar Proyecto">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>`;
         }).join('');
@@ -1346,22 +584,8 @@ async function loadProjectsList() {
 
 async function viewProjectDetails(projectId) {
     try {
-        currentViewingProjectId = projectId;
         const res = await fetch(`${API_BASE}/projects/${projectId}/details`);
         const data = await res.json();
-        currentViewingProjectId = data.id;
-
-        // Determinar permisos de rol para modal
-        const savedUserStr = sessionStorage.getItem('dalor_user') || localStorage.getItem('dalor_user');
-        const userObj = savedUserStr ? JSON.parse(savedUserStr) : (currentUser || {});
-        const uname = (userObj.username || '').toLowerCase();
-        const urole = (userObj.role_name || '').toLowerCase();
-        const isDirector = uname === 'director' || urole.includes('director') || userObj.is_superuser;
-        const isFinanzas = uname === 'administracion' || urole.includes('admin') || urole.includes('finanzas');
-        const canSeeFinances = isDirector || isFinanzas;
-
-        const finBox = document.getElementById("detail_proj_financial_box");
-        if (finBox) finBox.style.display = canSeeFinances ? 'grid' : 'none';
 
         document.getElementById("detail_proj_code").innerText = data.code;
         document.getElementById("detail_proj_name").innerText = data.name;
@@ -1374,126 +598,30 @@ async function viewProjectDetails(projectId) {
 
         document.getElementById("detail_proj_scope").innerText = data.scope_of_work || "No se ha definido descripción técnica del alcance para este proyecto.";
 
-        // Cálculo de Avance Físico Global Exacto basado en Tareas y Etapas
-        let totalAllTasks = 0;
-        let completedAllTasks = 0;
-        if (data.phases) {
-            data.phases.forEach(ph => {
-                const rawTasks = (ph.description || "").split(";").map(t => t.trim()).filter(Boolean);
-                if (rawTasks.length > 0) {
-                    totalAllTasks += rawTasks.length;
-                    completedAllTasks += rawTasks.filter(t => t.startsWith("[x]") || t.startsWith("[X]")).length;
-                } else {
-                    totalAllTasks += 1;
-                    if (ph.status === 'completado') completedAllTasks += 1;
-                }
-            });
-        }
-        const totalPhases = data.phases ? data.phases.length : 0;
-        const completedPhases = data.phases ? data.phases.filter(p => p.status === 'completado').length : 0;
-        const physicalProgressPct = totalAllTasks > 0 ? Math.round((completedAllTasks / totalAllTasks) * 100) : 0;
-
-        // Etapas con Checklist Interactivo y Barra de Progreso Dinámica
+        // Etapas
         const phasesList = document.getElementById("detail_proj_phases_list");
         if (data.phases && data.phases.length > 0) {
-            let html = `
-            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 800; margin-bottom: 6px;">
-                    <span style="color: var(--dalor-navy);">
-                        <i class="fa-solid fa-bars-progress" style="color: var(--dalor-blue);"></i> Avance Físico Global de la Obra:
-                    </span>
-                    <span style="color: ${physicalProgressPct === 100 ? '#059669' : 'var(--dalor-blue)'}; font-size: 13px;">
-                        ${physicalProgressPct}% (${completedAllTasks} de ${totalAllTasks} Tareas Culminadas &bull; ${completedPhases} de ${totalPhases} Etapas)
-                    </span>
-                </div>
-                <div style="height: 12px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
-                    <div style="width: ${physicalProgressPct}%; height: 100%; background: linear-gradient(90deg, #0284c7 0%, #059669 100%); transition: width 0.4s ease;"></div>
-                </div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-            `;
-
-            html += data.phases.map((ph, idx) => {
-                const isDone = ph.status === 'completado';
-                const isInProg = ph.status === 'en_progreso';
-                
-                // Restricción Secuencial Estricta:
-                const prevPhases = data.phases.slice(0, idx);
-                const isUnlocked = prevPhases.every(p => p.status === 'completado');
-
-                // Tareas desglosadas por etapa con checkboxes interactivos
-                let tasksHtml = '';
-                const rawDesc = ph.description || "";
-                let tasksList = rawDesc.split(";").map(t => t.trim()).filter(Boolean);
-                if (tasksList.length === 0 && rawDesc.trim().length > 0) {
-                    tasksList = rawDesc.split("\n").map(t => t.trim()).filter(Boolean);
-                }
-
-                if (tasksList.length > 0) {
-                    const doneTasksCount = tasksList.filter(t => t.startsWith('[x]') || t.startsWith('[X]')).length;
-                    tasksHtml = `
-                    <div style="margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">
-                                <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas / Actividades Asignadas (Tilda para avanzar):
-                            </span>
-                            <span style="font-size: 10px; font-weight: 700; color: ${isDone ? '#059669' : '#0284c7'};">
-                                ${doneTasksCount} de ${tasksList.length} completadas
-                            </span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 5px;">
-                            ${tasksList.map((t, tIdx) => {
-                                const isChecked = t.startsWith("[x]") || t.startsWith("[X]");
-                                let cleanName = t;
-                                for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
-                                    if (cleanName.startsWith(pref)) cleanName = cleanName.substring(pref.length).trim();
-                                }
-                                return `
-                                <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 5px 8px; border-radius: 6px; background: ${isChecked ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isChecked ? '#bbf7d0' : '#e2e8f0'}; cursor: ${!isUnlocked && !isChecked ? 'not-allowed' : 'pointer'};">
-                                    <input type="checkbox" ${isChecked ? 'checked' : ''} ${!isUnlocked && !isChecked ? 'disabled' : ''} onchange="toggleProjectTask(${data.id}, ${ph.id}, ${tIdx}, this.checked)" style="width: 16px; height: 16px; accent-color: #059669; cursor: pointer;">
-                                    <span style="font-weight: 800; color: ${isChecked ? '#166534' : 'var(--dalor-navy)'}; font-family: monospace;">${idx + 1}.${tIdx + 1}</span>
-                                    <span style="${isChecked ? 'text-decoration: line-through; color: #15803d; font-weight: 600;' : 'color: #334155;'}">${cleanName}</span>
-                                    ${isChecked ? '<span style="margin-left: auto; font-size: 10px; font-weight: 800; color: #059669;"><i class="fa-solid fa-check"></i> Hecho</span>' : ''}
-                                </label>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>`;
-                }
+            phasesList.innerHTML = data.phases.map(ph => {
+                let statusBadge = `<span style="background: #fef3c7; color: #92400e; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800;">PENDIENTE</span>`;
+                if (ph.status === 'en_progreso') statusBadge = `<span style="background: #e0f2fe; color: #0369a1; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800;">EN PROGRESO</span>`;
+                if (ph.status === 'completado') statusBadge = `<span style="background: #dcfce7; color: #166534; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800;">COMPLETADA</span>`;
 
                 return `
-                <div style="background: ${isDone ? '#f0fdf4' : (!isUnlocked ? '#f8fafc' : '#ffffff')}; border: 1px solid ${isDone ? '#86efac' : (!isUnlocked ? '#e2e8f0' : '#cbd5e1')}; border-radius: 8px; padding: 10px 12px; ${!isUnlocked ? 'opacity: 0.8;' : ''}">
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="background: ${isDone ? '#059669' : (!isUnlocked ? '#94a3b8' : '#002B49')}; color: white; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 2px 6px;">
-                                Etapa ${idx + 1}
-                            </span>
-                            <div>
-                                <b style="font-size: 13px; color: var(--dalor-navy); ${isDone ? 'text-decoration: line-through; color: #166534;' : ''}">${ph.name}</b>
-                                <span style="font-size: 11px; color: #64748b; margin-left: 6px;">(${ph.duration_days} días &bull; Ppto: $${ph.estimated_cost_usd.toLocaleString()})</span>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            ${!isUnlocked 
-                                ? `<span style="font-size: 10px; font-weight: 800; background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px;"><i class="fa-solid fa-lock"></i> Bloqueada (Culmina Etapa ${idx})</span>`
-                                : (isDone 
-                                    ? `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'pendiente')" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #64748b;" title="Reabrir Etapa"><i class="fa-solid fa-rotate-left"></i> Reabrir</button>`
-                                    : `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'completado')" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669; font-weight: 800;"><i class="fa-solid fa-check"></i> Culminar Etapa</button>`
-                                )
-                            }
-                            <select onchange="updatePhaseStatus(${data.id}, ${ph.id}, this.value)" style="font-size: 11px; padding: 3px 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700;" ${!isUnlocked ? 'disabled' : ''}>
-                                <option value="pendiente" ${ph.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                                <option value="en_progreso" ${ph.status === 'en_progreso' ? 'selected' : ''}>🔄 En Progreso</option>
-                                <option value="completado" ${ph.status === 'completado' ? 'selected' : ''}>✅ Culminada</option>
-                            </select>
-                        </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                    <div>
+                        <b>${ph.name}</b> (${ph.duration_days} días - Ppto: $${ph.estimated_cost_usd.toLocaleString()})
+                        <p style="font-size: 11px; color: #64748b; margin-top: 1px;">${ph.description || ''}</p>
                     </div>
-                    ${tasksHtml}
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        ${statusBadge}
+                        <select onchange="updatePhaseStatus(${data.id}, ${ph.id}, this.value)" style="font-size: 10px; padding: 2px 4px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="pendiente" ${ph.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                            <option value="en_progreso" ${ph.status === 'en_progreso' ? 'selected' : ''}>En Progreso</option>
+                            <option value="completado" ${ph.status === 'completado' ? 'selected' : ''}>Completada</option>
+                        </select>
+                    </div>
                 </div>`;
             }).join('');
-
-            html += `</div>`;
-            phasesList.innerHTML = html;
         } else {
             phasesList.innerHTML = `<span style="font-size: 11px; color: #94a3b8;">No se registraron etapas para este proyecto.</span>`;
         }
@@ -1519,29 +647,6 @@ async function viewProjectDetails(projectId) {
         openModal("modalProjectDetail");
     } catch (e) {
         alert("Error al cargar la ficha del proyecto.");
-    }
-}
-
-
-async function toggleProjectTask(projectId, phaseId, taskIndex, isChecked) {
-    try {
-        const res = await fetch(`${API_BASE}/projects/${projectId}/phases/${phaseId}/toggle-task`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                task_index: taskIndex,
-                is_completed: isChecked
-            })
-        });
-        if (res.ok) {
-            await viewProjectDetails(projectId);
-        } else {
-            const err = await res.json();
-            alert("⚠️ " + (err.detail || "No se pudo actualizar la tarea."));
-            await viewProjectDetails(projectId);
-        }
-    } catch (e) {
-        alert("Error de conexión al actualizar la tarea.");
     }
 }
 
@@ -1614,7 +719,7 @@ function openResourceSubtab(subtabName) {
 }
 
 function switchResourceSubtab(subtabName) {
-    const allSubtabs = ['dashboard', 'fleet', 'machinery', 'tools', 'materials', 'personnel'];
+    const allSubtabs = ['dashboard', 'fleet', 'tools', 'personnel', 'guides'];
     allSubtabs.forEach(tab => {
         const el = document.getElementById(`subtab-res-${tab}`);
         const btn = document.getElementById(`tabbtn-res-${tab}`);
@@ -1629,10 +734,9 @@ function switchResourceSubtab(subtabName) {
 
     if (subtabName === 'dashboard') loadResourceDashboard();
     if (subtabName === 'fleet') loadFleetList();
-    if (subtabName === 'machinery') loadMachineryList();
     if (subtabName === 'tools') loadToolsList();
-    if (subtabName === 'materials') loadMaterialsList();
     if (subtabName === 'personnel') loadPersonnelTableList();
+    if (subtabName === 'guides') loadTransferGuidesList();
 }
 
 async function loadResourceDashboard() {
@@ -1750,12 +854,6 @@ async function loadFleetList() {
                 <td>${v.current_location}</td>
                 <td>${v.custodian}</td>
                 <td style="text-align: center; white-space: nowrap;">
-                    <button onclick="openOdometerOcrModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', '${v.license_plate || ''}', ${v.current_odometer})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
-                        <i class="fa-solid fa-camera"></i> Odómetro
-                    </button>
-                    <button onclick="openRecordServiceModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
-                        <i class="fa-solid fa-wrench"></i> Servicio
-                    </button>
                     ${inBase ? `
                         <button onclick="openAssignModal('asset', ${v.id}, '${v.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
                             Asignar a Obra
@@ -1776,215 +874,6 @@ async function loadFleetList() {
         }).join('');
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar flota.</td></tr>`;
-    }
-}
-
-function openRecordServiceModal(assetId, code, name, currentKm) {
-    let modal = document.getElementById("modalRecordService");
-    if (!modal) {
-        const div = document.createElement("div");
-        div.id = "modalRecordService";
-        div.className = "modal-overlay hidden";
-        div.innerHTML = `
-        <div class="modal-card" style="max-width: 460px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 style="font-size: 16px; font-weight: 800; color: #ea580c; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-wrench"></i> Registrar Mantenimiento / Servicio
-                </h3>
-                <button onclick="closeModal('modalRecordService')" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">&times;</button>
-            </div>
-            <form id="formRecordService" onsubmit="submitRecordService(event)">
-                <input type="hidden" id="srv_asset_id">
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Vehículo / Equipo:</label>
-                    <div id="srv_veh_label" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px; padding: 8px; background: #f1f5f9; border-radius: 6px;"></div>
-                </div>
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Tipo de Servicio *</label>
-                    <select id="srv_type" class="form-control" required>
-                        <option value="cambio_aceite_filtros">Cambio de Aceite y Filtros (5.000 Km)</option>
-                        <option value="mantenimiento_preventivo_mayor">Mantenimiento Preventivo Mayor (Frenos/Tren/Correas)</option>
-                        <option value="reparacion_correctiva">Reparación Mecánica Correctiva</option>
-                        <option value="cambio_cauchos_alineacion">Cambio de Cauchos y Alineación</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Nuevo Odómetro al momento del Servicio (Km) *</label>
-                    <input type="number" step="1" id="srv_odometer" class="form-control" required>
-                </div>
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Costo Total del Servicio (USD)</label>
-                    <input type="number" step="0.01" id="srv_cost" class="form-control" value="0.00">
-                </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Taller / Observaciones</label>
-                    <textarea id="srv_notes" class="form-control" rows="2" placeholder="Ej: Taller Central - Aceite 15W40 mineral"></textarea>
-                </div>
-                <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                    <button type="button" onclick="closeModal('modalRecordService')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="font-size: 12px; background: #ea580c;">
-                        <i class="fa-solid fa-check"></i> Guardar Servicio y Resetear Semáforo
-                    </button>
-                </div>
-            </form>
-        </div>`;
-        document.body.appendChild(div);
-    }
-    document.getElementById("srv_asset_id").value = assetId;
-    document.getElementById("srv_veh_label").innerText = `[${code}] ${name}`;
-    document.getElementById("srv_odometer").value = currentKm;
-    openModal("modalRecordService");
-}
-
-async function submitRecordService(event) {
-    event.preventDefault();
-    const assetId = document.getElementById("srv_asset_id").value;
-    const payload = {
-        new_odometer: parseFloat(document.getElementById("srv_odometer").value),
-        service_type: document.getElementById("srv_type").value,
-        cost_usd: parseFloat(document.getElementById("srv_cost").value) || 0.0,
-        notes: document.getElementById("srv_notes").value
-    };
-
-    try {
-        const res = await fetch(`${API_BASE}/assets/${assetId}/record-service`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-            const data = await res.json();
-            alert(data.message || "Servicio registrado exitosamente.");
-            closeModal("modalRecordService");
-            await loadFleetList();
-        } else {
-            const err = await res.json();
-            alert("Error: " + (err.detail || JSON.stringify(err)));
-        }
-    } catch (e) {
-        alert("Error al conectar con el servidor.");
-    }
-}
-
-// ----------------------------------------------------
-// 📸 CAPTURA & OCR DE ODÓMETRO VEHICULAR
-// ----------------------------------------------------
-function openOdometerOcrModal(assetId, code, name, plate, currentKm) {
-    document.getElementById("odoAssetIdHidden").value = assetId;
-    document.getElementById("odoImageUrlHidden").value = "";
-    document.getElementById("odoVehicleSubtitle").innerText = `[${code}] ${name} - Placa: ${plate || 'N/A'}`;
-    document.getElementById("odoCurrentKmDisplay").innerText = `${(currentKm || 0).toLocaleString()} Km`;
-    
-    // Resetear preview y resultados
-    const previewBox = document.getElementById("odoPreviewBox");
-    const resultBox = document.getElementById("odoResultBox");
-    const btnConfirm = document.getElementById("btnConfirmOdometer");
-    const fileInput = document.getElementById("odometerFileInput");
-    
-    if (previewBox) previewBox.style.display = "none";
-    if (resultBox) resultBox.style.display = "none";
-    if (btnConfirm) btnConfirm.style.display = "none";
-    if (fileInput) fileInput.value = "";
-
-    openModal("modalOdometerOcr");
-}
-
-async function handleOdometerImageSelected(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const previewBox = document.getElementById("odoPreviewBox");
-    const previewImg = document.getElementById("odoPreviewImg");
-    const scanningOverlay = document.getElementById("odoScanningOverlay");
-    const resultBox = document.getElementById("odoResultBox");
-    const btnConfirm = document.getElementById("btnConfirmOdometer");
-    const detectedInput = document.getElementById("odoDetectedInput");
-    const confidenceBadge = document.getElementById("odoConfidenceBadge");
-    const notesEl = document.getElementById("odoDetectedNotes");
-    const assetId = document.getElementById("odoAssetIdHidden").value;
-
-    // Mostrar preview local
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        previewImg.src = e.target.result;
-        previewBox.style.display = "block";
-        scanningOverlay.style.display = "flex";
-    };
-    reader.readAsDataURL(file);
-
-    resultBox.style.display = "none";
-    btnConfirm.style.display = "none";
-
-    // Enviar al backend para OCR
-    try {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (assetId) formData.append("asset_id", assetId);
-
-        const res = await fetch(`${API_BASE}/ocr/scan-odometer`, {
-            method: "POST",
-            body: formData
-        });
-
-        if (!res.ok) throw new Error("Error en servidor OCR");
-
-        const data = await res.json();
-        scanningOverlay.style.display = "none";
-
-        const odoVal = data.detected_odometer || 0;
-        document.getElementById("odoImageUrlHidden").value = data.image_url || "";
-        
-        detectedInput.value = odoVal > 0 ? odoVal : "";
-        confidenceBadge.innerText = data.is_ai_vision ? `IA Visión (${Math.round((data.confidence || 0.95)*100)}%)` : "Lectura OCR";
-        notesEl.innerText = data.notes || "Verifica la lectura antes de confirmar.";
-
-        resultBox.style.display = "block";
-        btnConfirm.style.display = "inline-flex";
-
-        if (odoVal > 0) {
-            showRealtimeToast(`Odómetro leído: ${odoVal.toLocaleString()} Km`, 'ocr_flota', 'info');
-        }
-    } catch (err) {
-        console.error("Error analizando odómetro:", err);
-        scanningOverlay.style.display = "none";
-        resultBox.style.display = "block";
-        detectedInput.value = "";
-        confidenceBadge.innerText = "Modo Manual";
-        notesEl.innerText = "No se pudo leer automáticamente el tablero. Ingresa el kilometraje a mano.";
-        btnConfirm.style.display = "inline-flex";
-    }
-}
-
-async function submitConfirmOdometer(event) {
-    event.preventDefault();
-    const assetId = document.getElementById("odoAssetIdHidden").value;
-    const reading = parseFloat(document.getElementById("odoDetectedInput").value);
-    const photoUrl = document.getElementById("odoImageUrlHidden").value;
-
-    if (isNaN(reading) || reading <= 0) {
-        alert("Por favor ingresa un kilometraje válido mayor a 0.");
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_BASE}/assets/${assetId}/record-odometer`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                odometer_reading: reading,
-                photo_url: photoUrl,
-                reported_by: (currentUser && currentUser.full_name) ? currentUser.full_name : "Supervisor de Campo"
-            })
-        });
-
-        if (!res.ok) throw new Error("Error al guardar odómetro");
-
-        const data = await res.json();
-        closeModal("modalOdometerOcr");
-        showRealtimeToast(`✅ Odómetro registrado: ${reading.toLocaleString()} Km (${data.traffic_light.replace('_', ' ')})`, 'flota', 'success');
-        await loadFleetList();
-    } catch (err) {
-        alert("Error al guardar odómetro: " + err.message);
     }
 }
 
@@ -2028,95 +917,170 @@ async function submitCreateVehicle(event) {
 }
 
 // ----------------------------------------------------
-// 4. CONTROL DE MAQUINARIA PESADA & PLANTAS (PESTAÑA EXCLUSIVA)
+// 4. CONTROL DE HERRAMIENTAS & EQUIPOS (PESTAÑA EXCLUSIVA)
 // ----------------------------------------------------
-async function loadMachineryList() {
-    const tbody = document.getElementById("machineryTableBody");
-    if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando maquinaria pesada y plantas...</td></tr>`;
+let toolsViewMode = 'consolidated'; // 'consolidated' | 'detailed'
+let currentToolsList = [];
 
-    try {
-        const res = await fetch(`${API_BASE}/assets/`);
-        const assets = await res.json();
-        const machinery = assets.filter(a => ['maquinaria', 'planta', 'generador', 'compresor'].includes(a.asset_type));
+function setToolsViewMode(mode) {
+    toolsViewMode = mode;
+    const btnCons = document.getElementById("btnToolViewConsolidated");
+    const btnDet = document.getElementById("btnToolViewDetailed");
+    const headerRow = document.getElementById("toolsTableHeaderRow");
 
-        if (machinery.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No hay maquinaria pesada o plantas registradas.</td></tr>`;
-            return;
+    if (mode === 'consolidated') {
+        if (btnCons) { btnCons.style.background = "var(--dalor-navy)"; btnCons.style.color = "#ffffff"; }
+        if (btnDet) { btnDet.style.background = "#ffffff"; btnDet.style.color = "#475569"; }
+        if (headerRow) {
+            headerRow.innerHTML = `
+                <th style="width: 28%;">Herramienta / Equipo</th>
+                <th style="width: 14%;">Categoría</th>
+                <th style="width: 18%;">Marca / Modelo</th>
+                <th style="text-align: center; width: 10%;">Total Stock</th>
+                <th style="text-align: center; width: 10%;">En Base</th>
+                <th style="text-align: center; width: 10%;">En Obra</th>
+                <th style="text-align: center; width: 10%;">Acción</th>
+            `;
         }
-
-        tbody.innerHTML = machinery.map(m => {
-            const inBase = m.status === 'disponible_base' || !m.current_project_id;
-            const isMaint = m.maintenance_status === 'en_mantenimiento';
-            return `
-            <tr>
-                <td style="font-weight: 800; color: #ea580c; font-family: monospace;">${m.asset_code}</td>
-                <td style="font-weight: 700; color: var(--dalor-navy);">${m.name}</td>
-                <td>${m.brand || ''} ${m.model ? `(${m.model})` : ''}</td>
-                <td style="font-family: monospace; font-size: 11px;">${m.serial_number || '-'}</td>
-                <td style="font-weight: 800; color: #0284c7;">${(m.current_odometer || 0).toLocaleString()} Hrs/Km</td>
-                <td>
-                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${isMaint ? 'background: #fee2e2; color: #991b1b;' : 'background: #dcfce7; color: #166534;'}">
-                        ${isMaint ? 'EN TALLER / MTTO' : 'OPERATIVO'}
-                    </span>
-                </td>
-                <td>
-                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
-                        ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA / FAENA'}
-                    </span>
-                </td>
-                <td>${m.current_location || 'Sede Central'}</td>
-                <td>${m.current_custodian_name || 'Disponible'}</td>
-                <td style="text-align: center; white-space: nowrap;">
-                    ${inBase ? `
-                        <button onclick="openAssignModal('asset', ${m.id}, '${m.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; background: #ea580c;">
-                            Asignar a Faena
-                        </button>
-                    ` : `
-                        <button onclick="openAssignModal('asset', ${m.id}, '${m.name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
-                            <i class="fa-solid fa-arrows-split-up-and-left"></i>
-                        </button>
-                        <button onclick="returnResourceToBase('asset', ${m.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
-                            <i class="fa-solid fa-warehouse"></i>
-                        </button>
-                    `}
-                    <button onclick="deleteAssetItem(${m.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Maquinaria">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-            </tr>`;
-        }).join('');
-    } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar maquinaria pesada.</td></tr>`;
+    } else {
+        if (btnDet) { btnDet.style.background = "var(--dalor-navy)"; btnDet.style.color = "#ffffff"; }
+        if (btnCons) { btnCons.style.background = "#ffffff"; btnCons.style.color = "#475569"; }
+        if (headerRow) {
+            headerRow.innerHTML = `
+                <th>Código</th>
+                <th>Herramienta / Equipo</th>
+                <th>Tipo</th>
+                <th>Marca / Modelo</th>
+                <th>Serial / S/N</th>
+                <th>Estado</th>
+                <th>Ubicación</th>
+                <th>Custodio</th>
+                <th style="text-align: center;">Acciones</th>
+            `;
+        }
     }
+    renderToolsTable(currentToolsList);
 }
 
-// ----------------------------------------------------
-// 5. CONTROL DE HERRAMIENTAS & EQUIPOS (PESTAÑA EXCLUSIVA)
-// ----------------------------------------------------
+function filterToolsTable(query) {
+    const q = (query || '').toLowerCase().trim();
+    if (!q) {
+        renderToolsTable(currentToolsList);
+        return;
+    }
+    const filtered = currentToolsList.filter(t => 
+        (t.name && t.name.toLowerCase().includes(q)) ||
+        (t.asset_code && t.asset_code.toLowerCase().includes(q)) ||
+        (t.brand && t.brand.toLowerCase().includes(q)) ||
+        (t.model && t.model.toLowerCase().includes(q)) ||
+        (t.serial_number && t.serial_number.toLowerCase().includes(q)) ||
+        (t.current_location && t.current_location.toLowerCase().includes(q))
+    );
+    renderToolsTable(filtered);
+}
+
 async function loadToolsList() {
     const tbody = document.getElementById("toolsTableBody");
-    if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de herramientas...</td></tr>`;
 
     try {
         const res = await fetch(`${API_BASE}/assets/`);
         const assets = await res.json();
-        const nonTools = ['vehiculo', 'camioneta', 'camion', 'remolque', 'maquinaria', 'planta', 'generador', 'compresor'];
-        const tools = assets.filter(a => !nonTools.includes(a.asset_type));
+        currentToolsList = assets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
 
-        if (tools.length === 0) {
+        if (currentToolsList.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;">No hay herramientas registradas.</td></tr>`;
             return;
         }
 
+        renderToolsTable(currentToolsList);
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48;">Error al cargar herramientas.</td></tr>`;
+    }
+}
+
+function renderToolsTable(tools) {
+    const tbody = document.getElementById("toolsTableBody");
+    if (!tools || tools.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;">No se encontraron resultados con ese criterio.</td></tr>`;
+        return;
+    }
+
+    if (toolsViewMode === 'consolidated') {
+        // Agrupación inteligente por nombre normalizado y marca
+        const groups = {};
+        tools.forEach(t => {
+            const key = (t.name || '').trim().toUpperCase() + '___' + ((t.brand || '').trim().toUpperCase());
+            if (!groups[key]) {
+                groups[key] = {
+                    name: t.name,
+                    asset_type: t.asset_type,
+                    brand: t.brand || '',
+                    model: t.model || '',
+                    total: 0,
+                    in_base: 0,
+                    in_obra: 0,
+                    sample_item: t,
+                    items: []
+                };
+            }
+            groups[key].total++;
+            groups[key].items.push(t);
+            const inBase = t.status === 'disponible_base' || !t.current_project_id;
+            if (inBase) groups[key].in_base++;
+            else groups[key].in_obra++;
+        });
+
+        const sortedGroups = Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+
+        tbody.innerHTML = sortedGroups.map(g => {
+            const sample = g.items.find(i => i.status === 'disponible_base' || !i.current_project_id) || g.items[0];
+            const inBaseAvailable = g.in_base > 0;
+            return `
+            <tr>
+                <td style="font-weight: 700; color: var(--dalor-navy);">
+                    <i class="fa-solid fa-toolbox" style="color: var(--dalor-blue); margin-right: 6px;"></i>
+                    ${g.name}
+                </td>
+                <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #475569;">${(g.asset_type || 'HERRAMIENTA').toUpperCase()}</span></td>
+                <td style="color: #64748b; font-size: 11px;">${g.brand || '-'} ${g.model ? `(${g.model})` : ''}</td>
+                <td style="text-align: center;">
+                    <span style="display: inline-block; font-size: 12px; font-weight: 800; background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 9999px;">
+                        ${g.total} un.
+                    </span>
+                </td>
+                <td style="text-align: center;">
+                    <span style="display: inline-block; font-size: 11px; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 9999px;">
+                        ${g.in_base}
+                    </span>
+                </td>
+                <td style="text-align: center;">
+                    <span style="display: inline-block; font-size: 11px; font-weight: 800; ${g.in_obra > 0 ? 'background: #fee2e2; color: #991b1b;' : 'background: #f1f5f9; color: #94a3b8;'} padding: 2px 8px; border-radius: 9999px;">
+                        ${g.in_obra}
+                    </span>
+                </td>
+                <td style="text-align: center; white-space: nowrap;">
+                    ${inBaseAvailable ? `
+                        <button onclick="openAssignModal('asset', ${sample.id}, '${sample.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
+                            <i class="fa-solid fa-share"></i> Asignar
+                        </button>
+                    ` : `
+                        <button onclick="setToolsViewMode('detailed'); filterToolsTable('${g.name.replace(/'/g, "\\'")}');" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;">
+                            <i class="fa-solid fa-list-ul"></i> Ver Detalle
+                        </button>
+                    `}
+                </td>
+            </tr>`;
+        }).join('');
+    } else {
+        // Modo Detallado (1 a 1)
         tbody.innerHTML = tools.map(t => {
             const inBase = t.status === 'disponible_base' || !t.current_project_id;
             return `
             <tr>
-                <td style="font-weight: 800; color: var(--dalor-blue);">${t.asset_code}</td>
+                <td style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">${t.asset_code}</td>
                 <td style="font-weight: 700; color: var(--dalor-navy);">${t.name}</td>
-                <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${(t.asset_type || 'HERRAMIENTA').toUpperCase().replace('_', ' ')}</span></td>
+                <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${(t.asset_type || 'HERRAMIENTA').toUpperCase()}</span></td>
                 <td>${t.brand || ''} ${t.model ? `(${t.model})` : ''}</td>
                 <td style="font-family: monospace; font-size: 11px;">${t.serial_number || '-'}</td>
                 <td>
@@ -2145,8 +1109,6 @@ async function loadToolsList() {
                 </td>
             </tr>`;
         }).join('');
-    } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48;">Error al cargar herramientas.</td></tr>`;
     }
 }
 
@@ -2204,20 +1166,31 @@ async function deleteAssetItem(assetId) {
 // ----------------------------------------------------
 async function loadPersonnelTableList() {
     const tbody = document.getElementById("matrixPersonnelTableBody");
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando personal...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando personal...</td></tr>`;
 
     try {
         const res = await fetch(`${API_BASE}/personnel/`);
         allPersonnel = await res.json();
 
+        if (allPersonnel.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;">No hay trabajadores registrados.</td></tr>`;
+            return;
+        }
+
         tbody.innerHTML = allPersonnel.map(p => {
             const inBase = p.status === 'disponible_base' || !p.current_project_id;
             return `
             <tr>
-                <td style="font-weight: 800; color: var(--dalor-blue);">${p.code}</td>
+                <td style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">${p.code}</td>
+                <td style="font-family: monospace; font-size: 11px; font-weight: 600; color: #475569;">${p.identification_id || '-'}</td>
                 <td style="font-weight: 700; color: var(--dalor-navy);">${p.full_name}</td>
                 <td><span style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${p.role_title}</span></td>
                 <td>${p.phone || '-'}</td>
+                <td>
+                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155;">
+                        ${p.roster_type === 'proyecto_campo' ? 'Nómina Proyecto' : 'Nómina Guacara'}
+                    </span>
+                </td>
                 <td>
                     <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
                         ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA'}
@@ -2225,23 +1198,122 @@ async function loadPersonnelTableList() {
                 </td>
                 <td>${p.current_location || 'Sede Central'}</td>
                 <td style="text-align: center; white-space: nowrap;">
+                    <button onclick="openEditPersonnelModal(${p.id})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; color: #0284c7;" title="Editar Datos">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
                     ${inBase ? `
-                        <button onclick="openAssignModal('personnel', ${p.id}, '${p.full_name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
+                        <button onclick="openAssignModal('personnel', ${p.id}, '${p.full_name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-left: 3px;">
                             Asignar a Obra
                         </button>
                     ` : `
-                        <button onclick="openAssignModal('personnel', ${p.id}, '${p.full_name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
+                        <button onclick="openAssignModal('personnel', ${p.id}, '${p.full_name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-left: 3px;" title="Transferir a otra obra">
                             <i class="fa-solid fa-arrows-split-up-and-left"></i>
                         </button>
-                        <button onclick="returnResourceToBase('personnel', ${p.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
+                        <button onclick="returnResourceToBase('personnel', ${p.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 3px; background: #059669;" title="Devolver a Sede Central">
                             <i class="fa-solid fa-warehouse"></i>
                         </button>
                     `}
+                    <button onclick="deletePersonnelItem(${p.id}, '${p.full_name}')" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 3px;" title="Desactivar Trabajador">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </td>
             </tr>`;
         }).join('');
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48;">Error al cargar personal.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48;">Error al cargar personal.</td></tr>`;
+    }
+}
+
+function openNewPersonnelModal() {
+    const form = document.getElementById("personnelEditForm");
+    if (form) form.reset();
+    document.getElementById("pers_edit_id").value = "";
+    document.getElementById("modalPersonnelTitle").innerHTML = `<i class="fa-solid fa-user-plus" style="color: #10b981;"></i> Registrar Nuevo Trabajador`;
+    
+    // Auto-generar sugerencia de código
+    const count = (allPersonnel ? allPersonnel.length : 0) + 1;
+    document.getElementById("pers_code").value = `PERS-${String(count).padStart(3, '0')}`;
+    document.getElementById("pers_location").value = "Sede Central (Guacara)";
+    
+    openModal("modalPersonnelEdit");
+}
+
+async function openEditPersonnelModal(personnelId) {
+    const p = allPersonnel.find(x => x.id === personnelId);
+    if (!p) {
+        alert("Trabajador no encontrado");
+        return;
+    }
+
+    document.getElementById("pers_edit_id").value = p.id;
+    document.getElementById("pers_code").value = p.code || "";
+    document.getElementById("pers_ci").value = p.identification_id || "";
+    document.getElementById("pers_name").value = p.full_name || "";
+    document.getElementById("pers_role").value = p.role_title || "";
+    document.getElementById("pers_phone").value = p.phone || "";
+    document.getElementById("pers_location").value = p.current_location || "Sede Central (Guacara)";
+    document.getElementById("pers_status").value = p.status || "disponible_base";
+    
+    document.getElementById("modalPersonnelTitle").innerHTML = `<i class="fa-solid fa-user-pen" style="color: #0284c7;"></i> Editar Trabajador: ${p.full_name}`;
+    openModal("modalPersonnelEdit");
+}
+
+async function submitSavePersonnel(event) {
+    event.preventDefault();
+    const editId = document.getElementById("pers_edit_id").value;
+    const isEdit = Boolean(editId);
+
+    const payload = {
+        code: document.getElementById("pers_code").value.trim(),
+        identification_id: document.getElementById("pers_ci").value.trim(),
+        full_name: document.getElementById("pers_name").value.trim(),
+        role_title: document.getElementById("pers_role").value.trim(),
+        phone: document.getElementById("pers_phone").value.trim() || null,
+        current_location: document.getElementById("pers_location").value.trim() || "Sede Central (Guacara)",
+        status: document.getElementById("pers_status").value || "disponible_base"
+    };
+
+    try {
+        let url = `${API_BASE}/personnel/`;
+        let method = "POST";
+        if (isEdit) {
+            url = `${API_BASE}/personnel/${editId}`;
+            method = "PUT";
+        }
+
+        const res = await fetch(url, {
+            method: method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            alert(isEdit ? "✅ Datos del trabajador actualizados con éxito." : "✅ Trabajador registrado con éxito.");
+            closeModal("modalPersonnelEdit");
+            await loadInitialMasterData();
+            loadPersonnelTableList();
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        alert("Error de conexión al guardar trabajador.");
+    }
+}
+
+async function deletePersonnelItem(personnelId, name) {
+    if (!confirm(`¿Estás seguro de desactivar a "${name}" de la plantilla activa?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/personnel/${personnelId}`, { method: "DELETE" });
+        if (res.ok) {
+            alert("Trabajador desactivado.");
+            await loadInitialMasterData();
+            loadPersonnelTableList();
+        } else {
+            alert("Error al desactivar trabajador.");
+        }
+    } catch (e) {
+        alert("Error de conexión al eliminar.");
     }
 }
 
@@ -2376,9 +1448,6 @@ async function loadQuotations() {
                     </span>
                 </td>
                 <td style="text-align: center; white-space: nowrap;">
-                    <button onclick="editQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px; color: #0284c7; font-weight: 700;" title="Re-editar Cotización">
-                        <i class="fa-solid fa-pen-to-square"></i> Re-editar
-                    </button>
                     <button onclick="printQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Imprimir / Exportar Cotización">
                         <i class="fa-solid fa-print"></i>
                     </button>
@@ -2397,25 +1466,13 @@ async function loadQuotations() {
 
 function openNewQuotationModal() {
     quoteRowsCount = 0;
-    const editInput = document.getElementById("edit_quotation_id");
-    if (editInput) editInput.value = "";
-    
-    const titleEl = document.getElementById("modalQuotationTitle");
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-calculator" style="color: var(--dalor-blue);"></i> Armar Presupuesto / Cotización Formal (APU)`;
-    
-    const btnSubmit = document.getElementById("btnSubmitQuotation");
-    if (btnSubmit) btnSubmit.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Presupuesto`;
-
     document.getElementById("quoteForm").reset();
     document.getElementById("quoteItemsList").innerHTML = "";
-    if (document.getElementById("quote_tax_type")) document.getElementById("quote_tax_type").value = "16";
-    if (document.getElementById("quote_tax_percent")) document.getElementById("quote_tax_percent").value = "16";
-    if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "15 días hábiles a partir del anticipo";
-    if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = "USD";
+    document.getElementById("quote_tax_type").value = "16";
+    document.getElementById("quote_tax_percent").value = "16";
     addQuotationRow();
     addQuotationRow();
     recalcQuotationTotals();
-    onQuotationCurrencyChanged();
     openModal("modalQuotation");
 }
 
@@ -2425,23 +1482,13 @@ function onTaxTypeChanged() {
     recalcQuotationTotals();
 }
 
-function addQuotationRow(itemData = null) {
+function addQuotationRow() {
     quoteRowsCount++;
     const container = document.getElementById("quoteItemsList");
-    if (!container) return;
     const rowId = `quote_row_${quoteRowsCount}`;
 
     const srvOptions = `<option value="">-- Partida del Catálogo --</option>` + 
-        (allServices || []).map(s => {
-            const isSel = itemData && (String(itemData.service_id) === String(s.id) || String(itemData.item_code) === String(s.code));
-            return `<option value="${s.id}" data-code="${s.code}" data-unit="${s.unit_measure}" data-price="${s.unit_price_usd}" ${isSel ? 'selected' : ''}>[${s.code}] ${s.name} ($${s.unit_price_usd}/${s.unit_measure})</option>`;
-        }).join('');
-
-    const descVal = itemData ? (itemData.description || '').replace(/"/g, '&quot;') : '';
-    const unitVal = itemData ? (itemData.unit_measure || 'Global') : 'Global';
-    const qtyVal = itemData ? (itemData.quantity !== undefined ? itemData.quantity : 1) : 1;
-    const priceVal = itemData ? (itemData.unit_price_usd !== undefined ? itemData.unit_price_usd : 0.00) : 0.00;
-    const totVal = (qtyVal * priceVal).toFixed(2);
+        allServices.map(s => `<option value="${s.id}" data-code="${s.code}" data-unit="${s.unit_measure}" data-price="${s.unit_price_usd}">[${s.code}] ${s.name} ($${s.unit_price_usd}/${s.unit_measure})</option>`).join('');
 
     const div = document.createElement("div");
     div.id = rowId;
@@ -2451,27 +1498,19 @@ function addQuotationRow(itemData = null) {
             <select class="form-select q-srv-select" style="font-size: 11px; padding: 5px;" onchange="onServiceSelected('${rowId}')">
                 ${srvOptions}
             </select>
-            <input type="text" class="form-input q-desc" placeholder="Descripción detallada de la partida / APU" value="${descVal}" style="font-size: 11px; padding: 4px 6px; margin-top: 4px;" required>
+            <input type="text" class="form-input q-desc" placeholder="Descripción detallada de la partida / APU" style="font-size: 11px; padding: 4px 6px; margin-top: 4px;" required>
         </div>
         <div>
-            <select class="form-select q-unit" style="font-size: 11px; padding: 5px;">
-                <option value="Global" ${unitVal === 'Global' ? 'selected' : ''}>Global</option>
-                <option value="Ton" ${unitVal === 'Ton' ? 'selected' : ''}>Ton</option>
-                <option value="m²" ${unitVal === 'm²' ? 'selected' : ''}>m²</option>
-                <option value="ml" ${unitVal === 'ml' ? 'selected' : ''}>ml</option>
-                <option value="Und" ${unitVal === 'Und' ? 'selected' : ''}>Und</option>
-                <option value="Horas" ${unitVal === 'Horas' ? 'selected' : ''}>Horas</option>
-                <option value="Días" ${unitVal === 'Días' ? 'selected' : ''}>Días</option>
-            </select>
+            <input type="text" class="form-input q-unit" placeholder="Unidad" value="Global" style="font-size: 11px; padding: 5px;" readonly>
         </div>
         <div>
-            <input type="number" step="0.01" class="form-input q-qty" placeholder="Cant" value="${qtyVal}" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
+            <input type="number" step="0.01" class="form-input q-qty" placeholder="Cant" value="1" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
         </div>
         <div>
-            <input type="number" step="0.01" class="form-input q-price" placeholder="P. Unit ($)" value="${priceVal}" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold; color: var(--dalor-blue);" required>
+            <input type="number" step="0.01" class="form-input q-price" placeholder="P. Unit ($)" value="0.00" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold; color: var(--dalor-blue);" required>
         </div>
         <div>
-            <input type="text" class="form-input q-total" placeholder="Total ($)" value="$${totVal}" style="font-size: 11px; padding: 5px; font-weight: 800;" readonly>
+            <input type="text" class="form-input q-total" placeholder="Total ($)" value="$0.00" style="font-size: 11px; padding: 5px; font-weight: 800;" readonly>
         </div>
         <div style="text-align: center;">
             <button type="button" onclick="removeQuotationRow('${rowId}')" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer;">&times;</button>
@@ -2488,9 +1527,8 @@ function removeQuotationRow(rowId) {
 
 function onServiceSelected(rowId) {
     const row = document.getElementById(rowId);
-    if (!row) return;
     const select = row.querySelector(".q-srv-select");
-    const opt = select ? select.options[select.selectedIndex] : null;
+    const opt = select.options[select.selectedIndex];
     if (opt && opt.value) {
         row.querySelector(".q-desc").value = opt.text.replace(/\[.*?\]\s*/, '').split(' ($')[0];
         row.querySelector(".q-unit").value = opt.getAttribute("data-unit") || "Global";
@@ -2503,81 +1541,20 @@ function recalcQuotationTotals() {
     const rows = document.querySelectorAll("#quoteItemsList > div");
     let subtotal = 0;
     rows.forEach(r => {
-        const qtyInp = r.querySelector(".q-qty");
-        const priceInp = r.querySelector(".q-price");
-        const totInp = r.querySelector(".q-total");
-        const qty = parseFloat(qtyInp ? qtyInp.value : 0) || 0;
-        const price = parseFloat(priceInp ? priceInp.value : 0) || 0;
+        const qty = parseFloat(r.querySelector(".q-qty").value) || 0;
+        const price = parseFloat(r.querySelector(".q-price").value) || 0;
         const lineTot = qty * price;
-        if (totInp) totInp.value = `$${lineTot.toFixed(2)}`;
+        r.querySelector(".q-total").value = `$${lineTot.toFixed(2)}`;
         subtotal += lineTot;
     });
 
-    const taxPercent = parseFloat(document.getElementById("quote_tax_percent") ? document.getElementById("quote_tax_percent").value : 16) || 0.0;
+    const taxPercent = parseFloat(document.getElementById("quote_tax_percent").value) || 0.0;
     const taxUsd = subtotal * (taxPercent / 100.0);
     const grandTotal = subtotal + taxUsd;
 
-    const subEl = document.getElementById("quote_subtotal_display");
-    const taxEl = document.getElementById("quote_tax_display");
-    const totEl = document.getElementById("quote_total_display");
-
-    if (subEl) subEl.innerText = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (taxEl) taxEl.innerText = taxPercent === 0 ? "EXENTO (0%)" : `$${taxUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (totEl) totEl.innerText = `$${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-// Función interactiva para Re-editar Cotizaciones / Presupuestos
-async function editQuotation(quoteId) {
-    try {
-        const res = await fetch(`${API_BASE}/quotations/${quoteId}`);
-        if (!res.ok) throw new Error('No se pudo cargar la cotización para edición.');
-        const q = await res.json();
-
-        // 1. Configurar ID de edición y título del Modal
-        const editInput = document.getElementById("edit_quotation_id");
-        if (editInput) editInput.value = q.id;
-
-        const titleEl = document.getElementById("modalQuotationTitle");
-        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square" style="color: var(--dalor-gold);"></i> Re-editar Presupuesto / Cotización [${q.quote_number}]`;
-
-        const btnSubmit = document.getElementById("btnSubmitQuotation");
-        if (btnSubmit) btnSubmit.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Presupuesto`;
-
-        // 2. Poblar campos cabecera
-        if (document.getElementById("quote_client_id")) document.getElementById("quote_client_id").value = q.client_id;
-        if (document.getElementById("quote_title")) document.getElementById("quote_title").value = q.project_title || "";
-        if (document.getElementById("quote_location")) document.getElementById("quote_location").value = q.location || "";
-        if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = q.execution_time || "15 días hábiles a partir del anticipo";
-        if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = q.currency || "USD";
-        
-        const taxRate = Math.round(q.tax_percent !== undefined ? q.tax_percent : 16);
-        if (document.getElementById("quote_tax_type")) document.getElementById("quote_tax_type").value = String(taxRate);
-        if (document.getElementById("quote_tax_percent")) document.getElementById("quote_tax_percent").value = taxRate;
-
-        // 3. Poblar Renglones / Partidas
-        quoteRowsCount = 0;
-        const container = document.getElementById("quoteItemsList");
-        if (container) {
-            container.innerHTML = "";
-            if (q.items && q.items.length > 0) {
-                q.items.forEach(it => {
-                    addQuotationRow(it);
-                });
-            } else {
-                addQuotationRow();
-            }
-        }
-
-        // 4. Recalcular Totales y Actualizar Moneda
-        recalcQuotationTotals();
-        onQuotationCurrencyChanged();
-
-        // 5. Abrir Modal
-        openModal("modalQuotation");
-
-    } catch (e) {
-        alert("Error al abrir cotización para re-editar: " + e.message);
-    }
+    document.getElementById("quote_subtotal_display").innerText = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    document.getElementById("quote_tax_display").innerText = taxPercent === 0 ? "EXENTO (0%)" : `$${taxUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    document.getElementById("quote_total_display").innerText = `$${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 async function submitCreateQuotation(event) {
@@ -2592,13 +1569,13 @@ async function submitCreateQuotation(event) {
     let items = [];
     rows.forEach(r => {
         const srvSelect = r.querySelector(".q-srv-select");
-        const srvId = srvSelect && srvSelect.value ? parseInt(srvSelect.value) : null;
-        const srvOpt = srvSelect ? srvSelect.options[srvSelect.selectedIndex] : null;
+        const srvId = srvSelect.value ? parseInt(srvSelect.value) : null;
+        const srvOpt = srvSelect.options[srvSelect.selectedIndex];
         const itemCode = srvOpt ? srvOpt.getAttribute("data-code") : null;
-        const desc = r.querySelector(".q-desc") ? r.querySelector(".q-desc").value : "";
-        const unit = r.querySelector(".q-unit") ? r.querySelector(".q-unit").value : "Global";
-        const qty = parseFloat(r.querySelector(".q-qty") ? r.querySelector(".q-qty").value : 1) || 1;
-        const price = parseFloat(r.querySelector(".q-price") ? r.querySelector(".q-price").value : 0) || 0;
+        const desc = r.querySelector(".q-desc").value;
+        const unit = r.querySelector(".q-unit").value;
+        const qty = parseFloat(r.querySelector(".q-qty").value) || 1;
+        const price = parseFloat(r.querySelector(".q-price").value) || 0;
 
         items.push({
             service_id: srvId,
@@ -2616,164 +1593,53 @@ async function submitCreateQuotation(event) {
         return;
     }
 
-    const editId = document.getElementById("edit_quotation_id") ? document.getElementById("edit_quotation_id").value : "";
-    const isEdit = Boolean(editId);
-
     const payload = {
         client_id: clientId,
         project_title: document.getElementById("quote_title").value,
         location: document.getElementById("quote_location").value || "Sede Central",
-        execution_time: document.getElementById("quote_execution_time").value || "15 días hábiles a partir del anticipo",
-        currency: document.getElementById("quote_currency").value || "USD",
-        validity_days: parseInt(document.getElementById("quote_validity") ? document.getElementById("quote_validity").value : 15) || 15,
+        validity_days: parseInt(document.getElementById("quote_validity").value) || 15,
         tax_percent: parseFloat(document.getElementById("quote_tax_percent").value) || 0.0,
         exchange_rate: EXCHANGE_RATE,
         items: items
     };
 
     try {
-        const url = isEdit ? `${API_BASE}/quotations/${editId}` : `${API_BASE}/quotations/`;
-        const method = isEdit ? "PUT" : "POST";
-
-        const res = await fetch(url, {
-            method: method,
+        const res = await fetch(`${API_BASE}/quotations/`, {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
 
         if (res.ok) {
             const data = await res.json();
-            const msg = isEdit ? `¡Presupuesto ${data.quote_number} re-editado y actualizado exitosamente!` : `¡Presupuesto ${data.quote_number} generado exitosamente!`;
-            alert(msg);
+            alert(`¡Presupuesto ${data.quote_number} generado exitosamente!`);
             closeModal("modalQuotation");
             loadQuotations();
         } else {
             const err = await res.json();
-            alert("Error al guardar presupuesto: " + (err.detail || "Verifica los campos."));
+            alert("Error: " + (err.detail || JSON.stringify(err)));
         }
     } catch (e) {
-        alert("Error de conexión al guardar presupuesto.");
+        alert("Error al guardar presupuesto.");
     }
 }
 
-// Cancelar vinculación de presupuesto al crear proyecto
-function cancelQuotationConversion() {
-    const convInput = document.getElementById("converting_quotation_id");
-    if (convInput) convInput.value = "";
-    const banner = document.getElementById("quote_conversion_banner");
-    if (banner) banner.classList.add("hidden");
-    const form = document.getElementById("projectCreateForm");
-    if (form) form.reset();
-    switchProjectSubtab('list');
-}
-
-// Convertir cotización en Proyecto con pre-llenado interactivo y edición completa
 async function convertQuoteToProject(quoteId) {
+    if (!confirm("¿Deseas aprobar esta cotización y convertirla en un Proyecto Activo en ejecución?")) return;
+
     try {
-        const res = await fetch(`${API_BASE}/quotations/${quoteId}`);
-        if (!res.ok) throw new Error('No se pudo cargar la información del presupuesto.');
-        const q = await res.json();
-
-        // 1. Cambiar a vista de Proyectos
-        switchView('projects', 'proyectos');
-        switchProjectSubtab('form');
-
-        // 2. Mostrar banner de conversión
-        const convInput = document.getElementById("converting_quotation_id");
-        if (convInput) convInput.value = q.id;
-
-        const banner = document.getElementById("quote_conversion_banner");
-        const bannerText = document.getElementById("quote_conversion_text");
-        if (banner) banner.classList.remove("hidden");
-        if (bannerText) {
-            bannerText.innerText = `Presupuesto [${q.quote_number}] para ${q.client ? q.client.name : 'Cliente'}. Monto: $${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}. Revisa y completa los campos a continuación:`;
-        }
-
-        // 3. Generar código correlativo de proyecto
-        const projNum = (allProjects ? allProjects.length : 0) + 1;
-        const codeInput = document.getElementById("new_proj_code");
-        if (codeInput) codeInput.value = `PRJ-2026-${String(projNum).padStart(3, '0')}`;
-
-        // 4. Pre-llenar datos principales
-        if (document.getElementById("new_proj_name")) document.getElementById("new_proj_name").value = q.project_title || "";
-        if (document.getElementById("new_proj_client_id")) document.getElementById("new_proj_client_id").value = q.client_id;
-        if (document.getElementById("new_proj_location")) document.getElementById("new_proj_location").value = q.location || "Sede Central";
-        
-        // Calcular días de duración
-        let durDays = 30;
-        if (q.execution_time) {
-            const match = q.execution_time.match(/\d+/);
-            if (match) durDays = parseInt(match[0]);
-        }
-        if (document.getElementById("new_proj_duration")) document.getElementById("new_proj_duration").value = durDays;
-        if (document.getElementById("new_proj_contract")) document.getElementById("new_proj_contract").value = q.total_usd.toFixed(2);
-
-        // Alcance técnico con desglose de partidas del presupuesto
-        let itemsScope = `Obra adjudicada bajo Presupuesto ${q.quote_number}.\nPartidas y APU contratadas:\n`;
-        if (q.items && q.items.length > 0) {
-            itemsScope += q.items.map((it, idx) => `${idx + 1}. [${it.item_code || 'SER'}] ${it.description} (Cant: ${it.quantity} ${it.unit_measure || 'Global'})`).join('\n');
+        const res = await fetch(`${API_BASE}/quotations/${quoteId}/convert-to-project`, { method: "POST" });
+        if (res.ok) {
+            const data = await res.json();
+            alert(data.message);
+            await loadInitialMasterData();
+            loadQuotations();
+            switchView('projects', 'proyectos');
         } else {
-            itemsScope += q.project_title;
+            alert("Error al convertir cotización en proyecto.");
         }
-        if (document.getElementById("new_proj_scope")) document.getElementById("new_proj_scope").value = itemsScope;
-
-        // 5. Pre-calcular bolsas estimadas (Job Costing)
-        const subtotal = q.subtotal_usd || q.total_usd || 0;
-        const estLabor = Math.round(subtotal * 0.30 * 100) / 100;
-        const estFuel = Math.round(subtotal * 0.08 * 100) / 100;
-        const estMaterials = Math.round(subtotal * 0.20 * 100) / 100;
-        const estTools = Math.round(subtotal * 0.04 * 100) / 100;
-        const estServices = Math.round(subtotal * 0.03 * 100) / 100;
-
-        if (document.getElementById("new_proj_labor")) document.getElementById("new_proj_labor").value = estLabor.toFixed(2);
-        if (document.getElementById("new_proj_fuel")) document.getElementById("new_proj_fuel").value = estFuel.toFixed(2);
-        if (document.getElementById("new_proj_materials")) document.getElementById("new_proj_materials").value = estMaterials.toFixed(2);
-        if (document.getElementById("new_proj_tools")) document.getElementById("new_proj_tools").value = estTools.toFixed(2);
-        if (document.getElementById("new_proj_services")) document.getElementById("new_proj_services").value = estServices.toFixed(2);
-
-        // 6. Pre-poblar Etapas / Fases del Proyecto sugeridas
-        const phasesContainer = document.getElementById("projectPhasesContainer");
-        if (phasesContainer) {
-            phasesContainer.innerHTML = "";
-            phaseCounter = 0;
-            
-            // Fase 1: Logística y Preparación
-            addProjectPhaseRow();
-            // Fase 2: Ejecución Técnica
-            addProjectPhaseRow();
-            // Fase 3: Pruebas y Entrega
-            addProjectPhaseRow();
-
-            const phaseCards = phasesContainer.querySelectorAll(".project-phase-card");
-            if (phaseCards.length >= 3) {
-                // Configurar Fase 1
-                phaseCards[0].querySelector(".ph-name").value = "Fase 1: Logística, Procura & Habilitación de Equipos";
-                phaseCards[0].querySelector(".ph-days").value = Math.max(3, Math.round(durDays * 0.2));
-                phaseCards[0].querySelector(".ph-cost").value = (estMaterials * 0.5 + estFuel).toFixed(2);
-
-                // Configurar Fase 2
-                phaseCards[1].querySelector(".ph-name").value = "Fase 2: Ejecución Técnica, Montaje & Servicios en Sitio";
-                phaseCards[1].querySelector(".ph-days").value = Math.max(5, Math.round(durDays * 0.6));
-                phaseCards[1].querySelector(".ph-cost").value = (estLabor + estTools).toFixed(2);
-
-                // Configurar Fase 3
-                phaseCards[2].querySelector(".ph-name").value = "Fase 3: Pruebas Operativas, Protocolo de Calidad & Entrega Conforme";
-                phaseCards[2].querySelector(".ph-days").value = Math.max(2, Math.round(durDays * 0.2));
-                phaseCards[2].querySelector(".ph-cost").value = (estServices + estLabor * 0.2).toFixed(2);
-            }
-        }
-
-        // 7. Recalcular márgenes
-        recalcProjectBudgetPreview();
-
-        // 8. Scroll suave al formulario
-        setTimeout(() => {
-            const formEl = document.getElementById("projectCreateForm");
-            if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
-
     } catch (e) {
-        alert("Error al transferir presupuesto a proyecto: " + e.message);
+        alert("Error de conexión.");
     }
 }
 
@@ -2784,182 +1650,67 @@ async function printQuotation(quoteId) {
         const q = await res.json();
 
         const rate = q.exchange_rate || EXCHANGE_RATE || 800.0;
-        const curr = (q.currency || 'USD').toUpperCase();
-        
-        let currSymbol = '$';
-        let currLabel = 'USD';
-        let currencyNotesHtml = '';
-        let totalsBoxHtml = '';
-        let tablePriceHeader = 'P. Unit ($)';
-        let tableTotalHeader = 'Total ($)';
+        const subtotalBs = (q.subtotal_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+        const taxBs = (q.tax_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+        const totalBs = (q.total_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2 });
 
-        if (curr === 'USD') {
-            currSymbol = '$';
-            currLabel = 'USD';
-            tablePriceHeader = 'P. Unit ($ USD)';
-            tableTotalHeader = 'Total ($ USD)';
-            
-            const subtotalFormatted = `$${q.subtotal_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const taxFormatted = q.tax_usd === 0 ? 'EXENTO (0%)' : `$${q.tax_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const totalFormatted = `$${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-            totalsBoxHtml = `
-                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px;">
-                    <span style="color: #475569;">Subtotal:</span>
-                    <span style="font-weight: 700; color: #1e293b;">${subtotalFormatted}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
-                    <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
-                    <span style="font-weight: 700; color: ${q.tax_usd === 0 ? '#10b981' : '#d97706'};">${taxFormatted}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #002B49;">
-                    <span>TOTAL USD:</span>
-                    <span style="color: #0072B8;">${totalFormatted}</span>
-                </div>
-            `;
-
-            currencyNotesHtml = `
-                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
-                    <p style="margin: 0;"><b>Condición de Pago & Cláusula Cambiaria:</b> Precios expresados en Dólares Americanos (USD). En caso de liquidación o pago en Bolívares (VES), los importes se calcularán a la tasa oficial de cambio publicada por el Banco Central de Venezuela (BCV) vigente a la fecha efectiva del pago.</p>
-                </div>
-            `;
-        } else if (curr === 'VES') {
-            currSymbol = 'Bs.';
-            currLabel = 'VES';
-            tablePriceHeader = 'P. Unit (Bs.)';
-            tableTotalHeader = 'Total (Bs.)';
-
-            const subBs = q.subtotal_usd * rate;
-            const taxBs = q.tax_usd * rate;
-            const totBs = q.total_usd * rate;
-
-            const subtotalFormatted = `Bs. ${subBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const taxFormatted = taxBs === 0 ? 'EXENTO (0%)' : `Bs. ${taxBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const totalFormatted = `Bs. ${totBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-            totalsBoxHtml = `
-                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px;">
-                    <span style="color: #475569;">Subtotal:</span>
-                    <span style="font-weight: 700; color: #1e293b;">${subtotalFormatted}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
-                    <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
-                    <span style="font-weight: 700; color: ${taxBs === 0 ? '#10b981' : '#d97706'};">${taxFormatted}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #002B49;">
-                    <span>TOTAL BS:</span>
-                    <span style="color: #0072B8;">${totalFormatted}</span>
-                </div>
-            `;
-
-            currencyNotesHtml = `
-                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
-                    <p style="margin: 0;"><b>Condición de Facturación:</b> Precios expresados en Bolívares (VES). Facturación oficial sujeta a comprobantes de retención de IVA e ISLR según normativa SENIAT vigente.</p>
-                </div>
-            `;
-        } else {
-            // EUR
-            currSymbol = '€';
-            currLabel = 'EUR';
-            tablePriceHeader = 'P. Unit (€ EUR)';
-            tableTotalHeader = 'Total (€ EUR)';
-
-            const subtotalFormatted = `€ ${q.subtotal_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const taxFormatted = q.tax_usd === 0 ? 'EXENTO (0%)' : `€ ${q.tax_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const totalFormatted = `€ ${q.total_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-            totalsBoxHtml = `
-                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px;">
-                    <span style="color: #475569;">Subtotal:</span>
-                    <span style="font-weight: 700; color: #1e293b;">${subtotalFormatted}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
-                    <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
-                    <span style="font-weight: 700; color: ${q.tax_usd === 0 ? '#10b981' : '#d97706'};">${taxFormatted}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #002B49;">
-                    <span>TOTAL EUR:</span>
-                    <span style="color: #0072B8;">${totalFormatted}</span>
-                </div>
-            `;
-
-            currencyNotesHtml = `
-                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
-                    <p style="margin: 0;"><b>Condición de Pago & Cláusula Cambiaria:</b> Precios expresados en Euros (EUR). Pagaderos en Bolívares (VES) a la tasa oficial BCV vigente a la fecha efectiva del pago.</p>
-                </div>
-            `;
-        }
-
-        const itemsRows = (q.items || []).map((item, idx) => {
-            let unitPriceDisplay = `$${item.unit_price_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            let totalLineDisplay = `$${item.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            
-            if (curr === 'VES') {
-                unitPriceDisplay = `Bs. ${(item.unit_price_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                totalLineDisplay = `Bs. ${(item.total_usd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            } else if (curr === 'EUR') {
-                unitPriceDisplay = `€ ${item.unit_price_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                totalLineDisplay = `€ ${item.total_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            }
-
-            return `
-            <tr style="page-break-inside: avoid;">
-                <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${idx + 1}</td>
-                <td style="text-align: center; color: #0284c7; font-weight: 800; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.item_code || ('SER-' + (idx+1))}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-weight: 600; font-size: 11px; line-height: 1.35;">${item.description}</td>
-                <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.unit_measure || 'Global'}</td>
-                <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 11px;">${item.quantity}</td>
-                <td style="text-align: right; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px;">${unitPriceDisplay}</td>
-                <td style="text-align: right; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; color: #002B49;">${totalLineDisplay}</td>
-            </tr>`;
-        }).join('');
+        const itemsRows = (q.items || []).map((item, idx) => `
+            <tr>
+                <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">${idx + 1}</td>
+                <td style="text-align: center; color: #0284c7; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">${item.item_code || ('SER-' + (idx+1))}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 7px; font-weight: 600;">${item.description}</td>
+                <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px;">${item.unit_measure || 'Global'}</td>
+                <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">${item.quantity}</td>
+                <td style="text-align: right; border: 1px solid #cbd5e1; padding: 7px;">$${item.unit_price_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td style="text-align: right; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px; color: #002B49;">$${item.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>
+        `).join('');
 
         const sheetHtml = `
-            <!-- Membrete DALOR -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F5B800; padding-bottom: 10px; margin-bottom: 10px;">
+            <!-- Membrete -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F5B800; padding-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <img src="logo_dalor.jpg" alt="DALOR" style="height: 48px; display: block; border-radius: 4px;">
                     <div>
-                        <h1 style="font-size: 17px; font-weight: 900; color: #002B49; margin: 0; letter-spacing: 0.3px;">METALMECÁNICA DALOR, C.A.</h1>
-                        <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0; font-weight: 600;">RIF: <b>J-31601195-0</b> &bull; Mantenimiento Predictivo, Proyectos Industriales & Metalmecánica</p>
-                        <p style="font-size: 10px; color: #64748b; margin: 1px 0 0 0;">Av. Cámara de las Industrias, Galpón 10, Z.I. El Tigre, Guacara, Edo. Carabobo &bull; Telf: +58 0412-2407079 / 0424-4131782</p>
+                        <h1 style="font-size: 16px; font-weight: 900; color: #002B49; margin: 0;">METALMECÁNICA DALOR C.A.</h1>
+                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">RIF: J-30123456-1 &bull; Especialistas en Ingeniería, Electricidad & Montajes</p>
+                        <p style="font-size: 11px; color: #64748b; margin: 1px 0 0 0;">Zona Industrial Valencia, Edo. Carabobo &bull; Correo: operaciones@dalor.com</p>
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <span style="background: #002B49; color: #F5B800; padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px; display: inline-block;">${q.quote_number}</span>
-                    <p style="font-size: 10.5px; color: #475569; margin: 4px 0 0 0;">Fecha: <b>${new Date(q.created_at).toLocaleDateString('es-VE')}</b></p>
-                    <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0;">Validez: <b>${q.validity_days || 15} Días</b></p>
+                    <span style="background: #002B49; color: #F5B800; padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">${q.quote_number}</span>
+                    <p style="font-size: 11px; color: #64748b; margin: 6px 0 0 0;">Fecha: <b>${new Date(q.created_at).toLocaleDateString('es-VE')}</b></p>
+                    <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Validez: <b>${q.validity_days || 15} Días</b></p>
                 </div>
             </div>
 
-            <!-- Ficha de Datos: Cliente, Obra y Condiciones -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 12px; border-radius: 6px;">
+            <!-- Datos del Cliente y Obra -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px;">
                 <div>
-                    <span style="font-size: 9.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">Datos del Cliente:</span>
-                    <p style="font-size: 12.5px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${(q.client && q.client.name) || 'Cliente General'}</p>
-                    <p style="font-size: 10.5px; color: #334155; margin: 2px 0 0 0;">RIF: <b>${(q.client && q.client.rif) || '-'}</b></p>
-                    <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0;">Contacto: ${(q.client && q.client.contact_name) || '-'} | Tel: ${(q.client && q.client.contact_phone) || '-'}</p>
+                    <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Datos del Cliente:</span>
+                    <p style="font-size: 13px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${(q.client && q.client.name) || 'Cliente General'}</p>
+                    <p style="font-size: 11px; color: #475569; margin: 2px 0 0 0;">RIF: <b>${(q.client && q.client.rif) || '-'}</b></p>
+                    <p style="font-size: 11px; color: #475569; margin: 2px 0 0 0;">Contacto: ${(q.client && q.client.contact_name) || '-'} | Tel: ${(q.client && q.client.contact_phone) || '-'}</p>
                 </div>
                 <div>
-                    <span style="font-size: 9.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">Proyecto & Condiciones:</span>
-                    <p style="font-size: 12.5px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${q.project_title}</p>
-                    <p style="font-size: 10.5px; color: #334155; margin: 2px 0 0 0;">Lugar de Ejecución: <b>${q.location || 'Sede Central'}</b></p>
-                    <p style="font-size: 10.5px; color: #0284c7; margin: 2px 0 0 0;">Tiempo de Ejecución: <b>${q.execution_time || '15 días hábiles a partir del anticipo'}</b></p>
-                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Moneda de Emisión: <b>${curr === 'USD' ? 'Dólares Americanos (USD $)' : (curr === 'VES' ? 'Bolívares (VES Bs.)' : 'Euros (EUR €)')}</b></p>
+                    <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Proyecto / Ubicación:</span>
+                    <p style="font-size: 13px; font-weight: 800; color: #002B49; margin: 2px 0 0 0;">${q.project_title}</p>
+                    <p style="font-size: 11px; color: #475569; margin: 2px 0 0 0;">Lugar: <b>${q.location || 'Sede Central'}</b></p>
+                    <p style="font-size: 11px; color: #0284c7; margin: 2px 0 0 0;">Tasa Referencial: <b>${rate.toFixed(2)} Bs/$</b></p>
                 </div>
             </div>
 
-            <!-- Tabla de Partidas / APU -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px;">
+            <!-- Tabla de Partidas -->
+            <table style="width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px;">
                 <thead>
                     <tr style="background: #002B49; color: white;">
-                        <th style="width: 25px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">#</th>
-                        <th style="width: 75px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">Código</th>
-                        <th style="padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: left;">Descripción del Servicio / Partida APU</th>
-                        <th style="width: 55px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">Unidad</th>
-                        <th style="width: 45px; padding: 6px 4px; border: 1px solid #002B49; font-size: 10.5px; text-align: center;">Cant.</th>
-                        <th style="width: 95px; padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: right;">${tablePriceHeader}</th>
-                        <th style="width: 105px; padding: 6px 8px; border: 1px solid #002B49; font-size: 10.5px; text-align: right;">${tableTotalHeader}</th>
+                        <th style="width: 30px; padding: 8px; border: 1px solid #002B49; font-size: 11px;">#</th>
+                        <th style="width: 85px; padding: 8px; border: 1px solid #002B49; font-size: 11px;">Código</th>
+                        <th style="padding: 8px; border: 1px solid #002B49; font-size: 11px; text-align: left;">Descripción del Servicio / Partida APU</th>
+                        <th style="width: 60px; padding: 8px; border: 1px solid #002B49; font-size: 11px;">Unidad</th>
+                        <th style="width: 50px; padding: 8px; border: 1px solid #002B49; font-size: 11px;">Cant.</th>
+                        <th style="width: 90px; padding: 8px; border: 1px solid #002B49; font-size: 11px; text-align: right;">P. Unit ($)</th>
+                        <th style="width: 100px; padding: 8px; border: 1px solid #002B49; font-size: 11px; text-align: right;">Total ($)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2968,26 +1719,46 @@ async function printQuotation(quoteId) {
             </table>
 
             <!-- Bloque de Totales -->
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px; page-break-inside: avoid;">
-                <div style="width: 310px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px;">
-                    ${totalsBoxHtml}
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+                <div style="width: 300px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                        <span style="color: #475569;">Subtotal:</span>
+                        <span style="font-weight: 700;">$${q.subtotal_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
+                        <span>Subtotal en Bs:</span>
+                        <span>Bs. ${subtotalBs}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                        <span style="color: #475569;">IVA (${q.tax_percent}%):</span>
+                        <span style="font-weight: 700; color: #d97706;">$${q.tax_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                        <span>IVA en Bs:</span>
+                        <span>Bs. ${taxBs}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #002B49;">
+                        <span>TOTAL USD:</span>
+                        <span style="color: #0072B8;">$${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; color: #475569; margin-top: 2px;">
+                        <span>TOTAL BS:</span>
+                        <span>Bs. ${totalBs}</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Coletilla de Condiciones Comerciales -->
-            ${currencyNotesHtml}
-
-            <!-- Firmas de Aprobación Formal -->
-            <div style="margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid;">
+            <!-- Firmas y Términos -->
+            <div style="margin-top: 35px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center;">
                 <div>
-                    <div style="border-bottom: 1px solid #1e293b; margin-bottom: 5px;"></div>
-                    <p style="font-size: 10.5px; font-weight: 800; margin: 0; color: #002B49;">Por Metalmecánica Dalor C.A.</p>
-                    <p style="font-size: 9.5px; color: #64748b; margin: 0;">Gerencia de Proyectos / Estimación</p>
+                    <div style="border-bottom: 1px solid #000; margin-bottom: 6px;"></div>
+                    <p style="font-size: 11px; font-weight: 800; margin: 0; color: #002B49;">Por Metalmecánica Dalor C.A.</p>
+                    <p style="font-size: 10px; color: #64748b; margin: 0;">Gerencia de Proyectos / Estimación</p>
                 </div>
                 <div>
-                    <div style="border-bottom: 1px solid #1e293b; margin-bottom: 5px;"></div>
-                    <p style="font-size: 10.5px; font-weight: 800; margin: 0; color: #002B49;">Aceptado y Conforme por el Cliente</p>
-                    <p style="font-size: 9.5px; color: #64748b; margin: 0;">Firma y Sello de Aprobación</p>
+                    <div style="border-bottom: 1px solid #000; margin-bottom: 6px;"></div>
+                    <p style="font-size: 11px; font-weight: 800; margin: 0; color: #002B49;">Aceptado y Conforme por el Cliente</p>
+                    <p style="font-size: 10px; color: #64748b; margin: 0;">Firma y Sello de Aprobación</p>
                 </div>
             </div>
         `;
@@ -3042,33 +1813,12 @@ function openNewServiceModal() {
     openModal("modalService");
 }
 
-
-function onServiceCategoryChanged(val) {
-    const newCatInput = document.getElementById("srv_new_category");
-    if (!newCatInput) return;
-    if (val === '__NEW__') {
-        newCatInput.classList.remove("hidden");
-        newCatInput.focus();
-    } else {
-        newCatInput.classList.add("hidden");
-    }
-}
-
 async function submitCreateService(event) {
     event.preventDefault();
-    let selectedCat = document.getElementById("srv_category").value;
-    if (selectedCat === '__NEW__') {
-        const customCat = (document.getElementById("srv_new_category")?.value || "").trim();
-        if (!customCat) {
-            alert("Por favor escribe el nombre de la nueva categoría.");
-            return;
-        }
-        selectedCat = customCat;
-    }
     const payload = {
         code: document.getElementById("srv_code").value,
         name: document.getElementById("srv_name").value,
-        category: selectedCat,
+        category: document.getElementById("srv_category").value,
         unit_measure: document.getElementById("srv_unit").value,
         base_cost_usd: parseFloat(document.getElementById("srv_cost").value) || 0.0,
         unit_price_usd: parseFloat(document.getElementById("srv_price").value) || 0.0
@@ -3214,41 +1964,80 @@ function handleFileSelected(event) {
         const reader = new FileReader();
         reader.onload = function(e) {
             imgPreview.src = e.target.result;
-            if (document.getElementById("field_receipt_image_path") && !document.getElementById("field_receipt_image_path").value) {
-                document.getElementById("field_receipt_image_path").value = e.target.result;
-            }
         };
         reader.readAsDataURL(file);
-    }
-
-    const btnSubmit = document.getElementById("btnSubmitExpense");
-    if (btnSubmit) {
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Comprobante a Administración';
-        btnSubmit.style.background = "#059669";
-        btnSubmit.style.color = "#ffffff";
     }
 
     processOCRFile(file);
 }
 
-async function processOCRFile(rawFile) {
+function compressImageFile(file, maxWidth = 1200, quality = 0.82) {
+    return new Promise((resolve) => {
+        if (!file || !file.type || !file.type.startsWith('image/')) {
+            return resolve(file);
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth || height > maxWidth) {
+                    if (width > height) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    } else {
+                        width = Math.round((width * maxWidth) / height);
+                        height = maxWidth;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        return resolve(file);
+                    }
+                    const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    resolve(compressedFile);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => resolve(file);
+            img.src = e.target.result;
+        };
+        reader.onerror = () => resolve(file);
+        reader.readAsDataURL(file);
+    });
+}
+
+async function processOCRFile(file) {
     const badge = document.getElementById("ocrStatusBadge");
-    const btnSubmit = document.getElementById("btnSubmitExpense");
+    const submitBtn = document.getElementById("btnSubmitExpense");
+
     if (badge) {
         badge.style.background = "#fef3c7";
         badge.style.color = "#92400e";
-        badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Leyendo con Gemini IA...';
+        badge.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Optimizando imagen y leyendo OCR...`;
+    }
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Procesando OCR... Por favor espera`;
+        submitBtn.style.opacity = "0.7";
     }
 
-    // Compresión instantánea en el navegador (<100ms, reduce foto de 15MB a ~200KB)
-    const file = await compressImageForOCR(rawFile);
-
-    const formData = new FormData();
-    formData.append("file", file, file.name);
-    formData.append("exchange_rate", EXCHANGE_RATE || 800.0);
-
     try {
+        // Compresión ultra-rápida en Canvas antes de subir al servidor
+        const compressedFile = await compressImageFile(file, 1200, 0.82);
+
+        const formData = new FormData();
+        formData.append("file", compressedFile, compressedFile.name);
+        formData.append("exchange_rate", EXCHANGE_RATE || 800.0);
+
         // Asegurar que las categorías y proyectos estén cargados
         if (!allCategories || allCategories.length === 0) {
             try {
@@ -3270,23 +2059,25 @@ async function processOCRFile(rawFile) {
         }
 
         const data = await res.json();
-        
-        if (data.image_url && document.getElementById("field_receipt_image_path")) {
-            document.getElementById("field_receipt_image_path").value = data.image_url;
+        if (data.file_url) {
+            lastUploadedReceiptUrl = data.file_url;
         }
+        
         if (data.detected_vendor && document.getElementById("field_vendor")) {
             document.getElementById("field_vendor").value = data.detected_vendor;
         }
-        if (data.detected_amount_usd !== undefined && data.detected_amount_usd !== null && document.getElementById("field_amount_usd")) {
-            document.getElementById("field_amount_usd").value = Number(data.detected_amount_usd).toFixed(2);
-        }
+        const rate = (typeof EXCHANGE_RATE !== 'undefined' && EXCHANGE_RATE > 0) ? EXCHANGE_RATE : 800.0;
         if (data.detected_amount_bs !== undefined && data.detected_amount_bs !== null && document.getElementById("field_amount_bs")) {
-            document.getElementById("field_amount_bs").value = Number(data.detected_amount_bs).toFixed(2);
+            document.getElementById("field_amount_bs").value = data.detected_amount_bs.toFixed(2);
         }
-        if (document.getElementById("field_is_tax_exempt")) {
-            document.getElementById("field_is_tax_exempt").value = data.is_tax_exempt ? "true" : "false";
+        if (data.detected_amount_usd !== undefined && data.detected_amount_usd !== null && document.getElementById("field_amount_usd")) {
+            document.getElementById("field_amount_usd").value = data.detected_amount_usd.toFixed(2);
+            if (!data.detected_amount_bs && document.getElementById("field_amount_bs")) {
+                document.getElementById("field_amount_bs").value = (data.detected_amount_usd * rate).toFixed(2);
+            }
+        } else if (data.detected_amount_bs !== undefined && data.detected_amount_bs !== null && document.getElementById("field_amount_usd")) {
+            document.getElementById("field_amount_usd").value = (data.detected_amount_bs / rate).toFixed(2);
         }
-        updateFieldTaxDisplays();
         if (data.fuel_liters && document.getElementById("field_fuel_liters")) {
             document.getElementById("field_fuel_liters").value = data.fuel_liters;
         }
@@ -3298,14 +2089,13 @@ async function processOCRFile(rawFile) {
             }
         }
 
-        // Asegurar que 'Reportado Por' tenga un valor seleccionado
         const repSelect = document.getElementById("field_reported_by");
         if (repSelect && (!repSelect.value || repSelect.value === "")) {
             repSelect.selectedIndex = 0;
         }
 
         if (document.getElementById("field_description")) {
-            let desc = `Consumo / Factura en ${data.detected_vendor || 'Comercio'}`;
+            let desc = `Consumo en ${data.detected_vendor || 'Comercio'}`;
             if (data.detected_tax_usd && data.detected_tax_usd > 0) {
                 desc += ` (Base: $${data.detected_base_usd.toFixed(2)} + IVA: $${data.detected_tax_usd.toFixed(2)})`;
             }
@@ -3315,32 +2105,20 @@ async function processOCRFile(rawFile) {
         if (badge) {
             badge.style.background = "#dcfce7";
             badge.style.color = "#166534";
-            badge.innerHTML = `<i class="fa-solid fa-check"></i> Datos Extraídos con Gemini IA`;
-        }
-
-        const noticeBox = document.getElementById("ocrNoticeBox");
-        if (noticeBox) {
-            noticeBox.classList.remove("hidden");
-        }
-
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Registrar y Enviar a Administración';
-            btnSubmit.style.background = "#059669";
-            btnSubmit.style.color = "#ffffff";
+            badge.innerHTML = `<i class="fa-solid fa-check"></i> Datos Extraídos con Éxito`;
         }
     } catch (e) {
         console.error("Error en lectura OCR:", e);
         if (badge) {
-            badge.style.background = "#e0f2fe";
-            badge.style.color = "#0369a1";
-            badge.innerText = "Foto adjunta lista para enviar";
+            badge.style.background = "#fee2e2";
+            badge.style.color = "#991b1b";
+            badge.innerText = "Comprobante cargado (Edición manual)";
         }
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Comprobante a Administración';
-            btnSubmit.style.background = "#059669";
-            btnSubmit.style.color = "#ffffff";
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Registrar e Imputar Gasto`;
+            submitBtn.style.opacity = "1";
         }
     }
 }
@@ -3411,49 +2189,24 @@ function updateSplitBalance() {
 }
 
 async function submitFieldExpense(event) {
-    if (event && event.preventDefault) event.preventDefault();
-    const btnSubmit = document.getElementById("btnSubmitExpense");
-    const origBtnHtml = btnSubmit ? btnSubmit.innerHTML : 'Registrar y Enviar';
-    
-    const isSplit = document.getElementById("chkEnableSplit") ? document.getElementById("chkEnableSplit").checked : false;
-    let totalUsd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
-    let bsAmount = parseFloat(document.getElementById("field_amount_bs")?.value) || 0;
+    event.preventDefault();
+    const isSplit = document.getElementById("chkEnableSplit")?.checked;
+    const totalUsd = parseFloat(document.getElementById("field_amount_usd").value) || 0;
+    const totalBs = parseFloat(document.getElementById("field_amount_bs")?.value) || Math.round(totalUsd * EXCHANGE_RATE * 100) / 100;
 
-    // Si tiene monto en Bs pero no en USD, convertir automáticamente
-    if (totalUsd <= 0 && bsAmount > 0) {
-        totalUsd = Math.round((bsAmount / (EXCHANGE_RATE || 800.0)) * 100) / 100;
-        if (document.getElementById("field_amount_usd")) {
-            document.getElementById("field_amount_usd").value = totalUsd.toFixed(2);
-        }
-    } else if (bsAmount <= 0 && totalUsd > 0) {
-        bsAmount = Math.round(totalUsd * (EXCHANGE_RATE || 800.0) * 100) / 100;
-        if (document.getElementById("field_amount_bs")) {
-            document.getElementById("field_amount_bs").value = bsAmount.toFixed(2);
-        }
+    if (totalUsd <= 0) {
+        alert("Por favor ingresa un monto válido en Bs o en USD.");
+        return;
     }
-
-    if (btnSubmit) {
-        btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando a Administración...';
-    }
-
-    const isExempt = document.getElementById("field_is_tax_exempt")?.value === "true";
-    const baseAmt = parseFloat(document.getElementById("field_base_amount_usd")?.value) || (isExempt ? totalUsd : +(totalUsd / 1.16).toFixed(2));
-    const taxAmt = parseFloat(document.getElementById("field_tax_amount_usd")?.value) || (isExempt ? 0.0 : +(totalUsd - baseAmt).toFixed(2));
-    const imgPath = document.getElementById("field_receipt_image_path")?.value || null;
 
     let payload = {
-        supplier_vendor: document.getElementById("field_vendor")?.value || "Por auditar en oficina",
-        reported_by_id: parseInt(document.getElementById("field_reported_by")?.value) || 1,
+        supplier_vendor: document.getElementById("field_vendor").value || "Comercio General",
+        reported_by_id: parseInt(document.getElementById("field_reported_by").value) || 1,
         payment_method: document.getElementById("field_payment_method")?.value || "caja_chica",
         amount_usd: totalUsd,
-        amount_bs: bsAmount,
-        base_amount_usd: Math.round(baseAmt * 100) / 100,
-        tax_amount_usd: Math.round(taxAmt * 100) / 100,
-        is_tax_exempt: isExempt,
-        exchange_rate: EXCHANGE_RATE || 800.0,
-        has_receipt: true,
-        receipt_image_path: imgPath
+        amount_bs: totalBs,
+        exchange_rate: EXCHANGE_RATE,
+        has_receipt: true
     };
 
     if (isSplit) {
@@ -3471,7 +2224,6 @@ async function submitFieldExpense(event) {
 
         if (Math.abs(totalUsd - runningSum) > 0.05) {
             alert(`La suma del desglose ($${runningSum.toFixed(2)}) no coincide con el total de la factura ($${totalUsd.toFixed(2)}).`);
-            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = origBtnHtml; }
             return;
         }
 
@@ -3479,96 +2231,44 @@ async function submitFieldExpense(event) {
         payload.description = `Factura Desglosada (${splitItems.length} partidas) en ${payload.supplier_vendor}`;
         payload.split_items = splitItems;
     } else {
-        payload.category_id = parseInt(document.getElementById("field_category_id")?.value) || 1;
-        payload.project_id = document.getElementById("field_project_id")?.value ? parseInt(document.getElementById("field_project_id").value) : null;
-        payload.asset_id = document.getElementById("field_asset_id")?.value ? parseInt(document.getElementById("field_asset_id").value) : null;
-        payload.description = document.getElementById("field_description")?.value || (payload.supplier_vendor ? `Compra en ${payload.supplier_vendor}` : "Comprobante de campo");
-        payload.fuel_liters = document.getElementById("field_fuel_liters")?.value ? parseFloat(document.getElementById("field_fuel_liters").value) : null;
-        payload.odometer_at_fueling = document.getElementById("field_odometer")?.value ? parseFloat(document.getElementById("field_odometer").value) : null;
+        payload.category_id = parseInt(document.getElementById("field_category_id").value) || 1;
+        payload.project_id = document.getElementById("field_project_id").value ? parseInt(document.getElementById("field_project_id").value) : null;
+        payload.asset_id = document.getElementById("field_asset_id").value ? parseInt(document.getElementById("field_asset_id").value) : null;
+        payload.description = document.getElementById("field_description").value || "Gasto de campo";
+        payload.fuel_liters = document.getElementById("field_fuel_liters").value ? parseFloat(document.getElementById("field_fuel_liters").value) : null;
+        payload.odometer_at_fueling = document.getElementById("field_odometer").value ? parseFloat(document.getElementById("field_odometer").value) : null;
     }
 
-    // Asociación automática de usuario que reporta
-    const repName = currentUser ? (currentUser.full_name || currentUser.username) : "Personal de Campo";
-    payload.reported_by_name = repName;
+    if (lastUploadedReceiptUrl) {
+        payload.receipt_image_path = lastUploadedReceiptUrl;
+    }
 
     try {
-        const res = await fetch(`${API_BASE}/expenses/`, {
+        const res = await fetch(`${API_BASE}/expenses/?status_target=pendiente_validacion`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-
-        // 🛡️ Filtro Anti-Duplicados
-        if (res.status === 409) {
-            const err = await res.json();
-            const msg = typeof err.detail === 'object' ? err.detail.message : err.detail;
-            const confirmDup = confirm(`⚠️ ALERTA DE COMPROBANTE DUPLICADO:\n\n${msg}\n\n¿Deseas registrar este comprobante de todas formas?`);
-            if (confirmDup) {
-                payload.allow_duplicate = true;
-                const res2 = await fetch(`${API_BASE}/expenses/`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                if (res2.ok) {
-                    alert("¡Gasto registrado con éxito y enviado a Administración!");
-                    document.getElementById("expenseForm").reset();
-                    document.getElementById("imagePreviewContainer")?.classList.add("hidden");
-                    document.getElementById("dropzoneContent")?.classList.remove("hidden");
-                    document.getElementById("ocrNoticeBox")?.classList.add("hidden");
-                    const isCampo = (currentUser?.role_name || currentUser?.username || '').toLowerCase().includes('campo');
-                    if (isCampo) {
-                        switchView('pwa', 'gastos');
-                    } else {
-                        switchView('expenses-log', 'gastos');
-                    }
-                    return;
-                }
-            }
-            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = origBtnHtml; }
-            return;
-        }
-
         if (res.ok) {
-            alert("¡Comprobante enviado con éxito a la Bandeja de Administración!");
+            alert("✅ ¡Comprobante enviado con éxito a la Bandeja de Aprobaciones!");
             document.getElementById("expenseForm").reset();
-            document.getElementById("imagePreviewContainer")?.classList.add("hidden");
-            document.getElementById("dropzoneContent")?.classList.remove("hidden");
-            document.getElementById("ocrNoticeBox")?.classList.add("hidden");
+            document.getElementById("imagePreviewContainer").classList.add("hidden");
+            document.getElementById("dropzoneContent").classList.remove("hidden");
+            lastUploadedReceiptUrl = null;
             if (document.getElementById("chkEnableSplit")) {
                 document.getElementById("chkEnableSplit").checked = false;
                 toggleSplitMode();
             }
-            const isCampo = (currentUser?.role_name || currentUser?.username || '').toLowerCase().includes('campo');
-            if (isCampo) {
-                switchView('pwa', 'gastos');
-            } else {
-                switchView('expenses-log', 'gastos');
+            loadInboxPending();
+            if (currentUser && (currentUser.role_name === 'admin' || currentUser.role_name === 'administracion' || currentUser.role_name === 'contabilidad' || currentUser.is_superuser)) {
+                switchView('inbox', 'gastos');
             }
         } else {
-            let errorMsg = `Error del servidor (${res.status})`;
-            try {
-                const err = await res.json();
-                if (typeof err.detail === 'string') {
-                    errorMsg = err.detail;
-                } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
-                } else if (err.detail) {
-                    errorMsg = JSON.stringify(err.detail);
-                }
-            } catch (pErr) {
-                try { errorMsg = await res.text(); } catch(tErr) {}
-            }
-            alert("⚠️ " + errorMsg);
+            const err = await res.json();
+            alert("Error: " + (err.detail || JSON.stringify(err)));
         }
     } catch (e) {
-        console.error("Error al enviar gasto:", e);
-        alert("⚠️ Error al registrar comprobante: " + (e.message || e));
-    } finally {
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = origBtnHtml;
-        }
+        alert("Error de conexión con el backend.");
     }
 }
 
@@ -3617,231 +2317,13 @@ async function submitManualExpense(event) {
         if (res.ok) {
             alert("¡Gasto / Transferencia de oficina guardado exitosamente!");
             document.getElementById("manualExpenseForm").reset();
-            switchView('expenses-log', 'gastos');
-        } else {
-            const err = await res.json();
-        }
-    } catch (err) {
-        alert("Error de conexión: " + err.message);
-    }
-}
-
-// 📥 BANDEJA DE APROBACIÓN & VALIDACIÓN DE COMPROBANTES DE CAMPO
-// ==============================================================================
-let allPendingExpenses = [];
-
-async function loadPendingExpensesInbox() {
-    const tbody = document.getElementById("inboxPendingTableBody");
-    if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando comprobantes pendientes...</td></tr>`;
-
-    try {
-        const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
-        allPendingExpenses = await res.json();
-
-        const badge = document.getElementById("badgeInboxCount");
-        if (badge) {
-            badge.innerText = allPendingExpenses.length;
-            badge.style.display = allPendingExpenses.length > 0 ? "inline-block" : "none";
-        }
-
-        if (allPendingExpenses.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 24px; color: #059669; font-weight: 700;"><i class="fa-solid fa-circle-check" style="font-size: 24px; display: block; margin-bottom: 6px;"></i> ¡Al día! No hay comprobantes pendientes por auditar o aprobar.</td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = allPendingExpenses.map(exp => {
-            const hasImg = !!exp.receipt_image_path;
-            const imgThumb = hasImg ? `<img src="${exp.receipt_image_path}" style="height: 38px; width: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;" onclick="openValidateExpenseModal(${exp.id})">` : `<span style="font-size: 10px; color: #94a3b8;">Sin foto</span>`;
-
-            return `
-            <tr>
-                <td style="font-size: 11px; white-space: nowrap; color: #64748b;">${exp.date}</td>
-                <td style="text-align: center;">${imgThumb}</td>
-                <td style="font-weight: 700; color: var(--dalor-navy);">${exp.reported_by || 'Campo'}</td>
-                <td><span style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 800;">${exp.project_code || 'SEDE'}</span> ${exp.project_name}</td>
-                <td style="font-weight: 700;">${exp.supplier_vendor || 'Comercio General'}</td>
-                <td style="font-size: 12px; color: #475569;">${exp.description}</td>
-                <td style="font-weight: 900; color: var(--dalor-blue); font-size: 13px;">$${(exp.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td style="font-size: 11px; color: #64748b;">Bs. ${(exp.amount_bs || 0).toLocaleString()}</td>
-                <td style="text-align: center; white-space: nowrap;">
-                    <button onclick="openValidateExpenseModal(${exp.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #059669; font-weight: 800;">
-                        <i class="fa-solid fa-magnifying-glass"></i> Auditar & Aprobar
-                    </button>
-                    <button onclick="rejectExpense(${exp.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #e11d48; margin-left: 4px;" title="Rechazar Comprobante">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-            `;
-        }).join('');
-    } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar comprobantes pendientes.</td></tr>`;
-    }
-}
-
-function openValidateExpenseModal(expenseId) {
-    const exp = allPendingExpenses.find(e => e.id === expenseId);
-    if (!exp) return;
-
-    document.getElementById("val_expense_id").value = exp.id;
-    document.getElementById("val_supplier_vendor").value = exp.supplier_vendor || "";
-    document.getElementById("val_amount_usd").value = exp.amount_usd || "";
-    document.getElementById("val_amount_bs").value = exp.amount_bs || "";
-    document.getElementById("val_description").value = exp.description || "";
-    document.getElementById("val_expense_type").value = exp.project_id ? "costo_obra" : "gasto_sede";
-
-    // Foto
-    const imgEl = document.getElementById("val_receipt_image");
-    const linkEl = document.getElementById("val_receipt_link");
-    const phEl = document.getElementById("val_receipt_placeholder");
-    if (imgEl && exp.receipt_image_path) {
-        imgEl.src = exp.receipt_image_path;
-        imgEl.style.display = "block";
-        if (phEl) phEl.style.display = "none";
-        linkEl.href = exp.receipt_image_path;
-        linkEl.style.display = "inline-block";
-    } else if (imgEl) {
-        imgEl.src = "";
-        imgEl.style.display = "none";
-        if (phEl) phEl.style.display = "block";
-        linkEl.style.display = "none";
-    }
-
-    if (document.getElementById("val_is_tax_exempt")) {
-        document.getElementById("val_is_tax_exempt").value = exp.is_tax_exempt ? "true" : "false";
-    }
-    const valBase = exp.base_amount_usd !== undefined && exp.base_amount_usd !== null ? exp.base_amount_usd : (exp.is_tax_exempt ? exp.amount_usd : +(exp.amount_usd / 1.16).toFixed(2));
-    const valTax = exp.tax_amount_usd !== undefined && exp.tax_amount_usd !== null ? exp.tax_amount_usd : (exp.is_tax_exempt ? 0.0 : +(exp.amount_usd - valBase).toFixed(2));
-    if (document.getElementById("val_base_usd")) document.getElementById("val_base_usd").value = Number(valBase).toFixed(2);
-    if (document.getElementById("val_tax_usd")) document.getElementById("val_tax_usd").value = Number(valTax).toFixed(2);
-
-    // Proyectos Select
-    const projSelect = document.getElementById("val_project_id");
-    if (projSelect) {
-        projSelect.innerHTML = `<option value="">-- Seleccione Proyecto --</option>` + 
-            allProjects.map(p => `<option value="${p.id}" ${p.id === exp.project_id ? 'selected' : ''}>[${p.code}] ${p.name}</option>`).join('');
-    }
-
-    // Categorías Select (Orden Numérico & Preselección Inteligente por OCR)
-    const catSelect = document.getElementById("val_category_id");
-    if (catSelect) {
-        const sortedCats = sortCategoriesNumerically(allCategories);
-        let selectedCatId = exp.category_id;
-        if (!selectedCatId && exp.category_code) {
-            const match = sortedCats.find(c => c.code === exp.category_code || c.code.startsWith(exp.category_code));
-            if (match) selectedCatId = match.id;
-        }
-        catSelect.innerHTML = `<option value="">-- Seleccione Partida Dalor --</option>` + 
-            sortedCats.map(c => `<option value="${c.id}" ${c.id === selectedCatId ? 'selected' : ''}>[${c.code}] ${c.name}</option>`).join('');
-    }
-
-    onValExpenseTypeChanged();
-    openModal("modalValidateExpense");
-}
-
-function onValExpenseTypeChanged() {
-    const type = document.getElementById("val_expense_type").value;
-    const projContainer = document.getElementById("val_proj_container");
-    const partnerContainer = document.getElementById("val_partner_container");
-
-    if (type === "costo_obra") {
-        if (projContainer) projContainer.classList.remove("hidden");
-        if (partnerContainer) partnerContainer.classList.add("hidden");
-    } else if (type === "retiro_socio") {
-        if (projContainer) projContainer.classList.add("hidden");
-        if (partnerContainer) partnerContainer.classList.remove("hidden");
-    } else {
-        if (projContainer) projContainer.classList.add("hidden");
-        if (partnerContainer) partnerContainer.classList.add("hidden");
-    }
-}
-
-function calcValBs() {
-    const usd = parseFloat(document.getElementById("val_amount_usd").value) || 0;
-    const bsInput = document.getElementById("val_amount_bs");
-    if (bsInput) bsInput.value = (usd * EXCHANGE_RATE).toFixed(2);
-}
-
-function calcValUsd() {
-    const bs = parseFloat(document.getElementById("val_amount_bs").value) || 0;
-    const usdInput = document.getElementById("val_amount_usd");
-    if (usdInput && EXCHANGE_RATE > 0) usdInput.value = (bs / EXCHANGE_RATE).toFixed(2);
-}
-
-async function submitValidateExpense(event) {
-    event.preventDefault();
-    const expId = document.getElementById("val_expense_id").value;
-    const usd = parseFloat(document.getElementById("val_amount_usd").value) || 0;
-
-    if (usd <= 0) {
-        alert("Por favor ingresa un monto válido en USD.");
-        return;
-    }
-
-    const isExempt = document.getElementById("val_is_tax_exempt")?.value === "true";
-    const baseUsd = parseFloat(document.getElementById("val_base_usd")?.value) || (isExempt ? usd : +(usd / 1.16).toFixed(2));
-    const taxUsd = parseFloat(document.getElementById("val_tax_usd")?.value) || (isExempt ? 0.0 : +(usd - baseUsd).toFixed(2));
-
-    const payload = {
-        expense_type: document.getElementById("val_expense_type").value,
-        category_id: parseInt(document.getElementById("val_category_id").value) || (allCategories[0]?.id || 1),
-        project_id: document.getElementById("val_project_id").value ? parseInt(document.getElementById("val_project_id").value) : null,
-        partner_name: document.getElementById("val_partner_name").value || null,
-        supplier_vendor: document.getElementById("val_supplier_vendor").value,
-        description: document.getElementById("val_description").value,
-        amount_usd: usd,
-        exchange_rate: EXCHANGE_RATE,
-        payment_method: "caja_chica",
-        has_fiscal_invoice: !isExempt,
-        is_tax_exempt: isExempt,
-        base_amount_usd: Math.round(baseUsd * 100) / 100,
-        tax_amount_usd: Math.round(taxUsd * 100) / 100
-    };
-
-    try {
-        const res = await fetch(`${API_BASE}/expenses/inbox/${expId}/validate-impute`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            alert("¡Comprobante auditado, imputado y aprobado exitosamente!");
-            closeModal("modalValidateExpense");
-            loadPendingExpensesInbox();
-            if (typeof loadComparisonDashboard === 'function') loadComparisonDashboard();
+            switchView('dashboard', 'proyectos');
         } else {
             const err = await res.json();
             alert("Error: " + (err.detail || JSON.stringify(err)));
         }
     } catch (e) {
-        alert("Error de conexión al aprobar comprobante.");
-    }
-}
-
-async function rejectCurrentExpense() {
-    const expId = document.getElementById("val_expense_id").value;
-    rejectExpense(expId);
-}
-
-async function rejectExpense(expenseId) {
-    const reason = prompt("Indica el motivo del rechazo del comprobante (ej: Foto ilegible, Monto no coincide, etc.):", "Comprobante rechazado por administración");
-    if (!reason) return;
-
-    try {
-        const res = await fetch(`${API_BASE}/expenses/inbox/${expenseId}/reject?reason=${encodeURIComponent(reason)}`, {
-            method: "PUT"
-        });
-        if (res.ok) {
-            alert("Comprobante rechazado.");
-            closeModal("modalValidateExpense");
-            loadPendingExpensesInbox();
-        } else {
-            alert("Error al rechazar comprobante.");
-        }
-    } catch (e) {
-        alert("Error de conexión con el servidor.");
+        alert("Error al registrar gasto de oficina.");
     }
 }
 
@@ -3921,28 +2403,21 @@ async function loadCategoriesTree() {
         const tree = await res.json();
 
         container.innerHTML = tree.map(parent => `
-            <div class="card" style="margin-bottom: 0; border-top: 3px solid var(--dalor-blue);">
+            <div class="card" style="margin-bottom: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 8px;">
                     <div>
                         <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 6px; border-radius: 4px;">${parent.code}</span>
-                        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); display: inline-block; margin-left: 6px;">${parent.name}</h4>
+                        <h4 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); display: inline-block; margin-left: 6px;">${parent.name}</h4>
                     </div>
-                    <div style="text-align: right;">
-                        <span style="font-size: 10px; color: #64748b; display: block;">Gasto Real</span>
-                        <span style="font-weight: 800; color: #e11d48; font-size: 13px;">$${parent.total_spent_usd.toFixed(2)}</span>
-                    </div>
+                    <span style="font-weight: 800; color: #e11d48; font-size: 14px;">$${parent.total_spent_usd.toFixed(2)}</span>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                    ${parent.subcategories && parent.subcategories.length > 0 ? parent.subcategories.map(sub => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #475569; padding: 4px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #f1f5f9;">
+                    ${parent.subcategories.map(sub => `
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #475569; padding: 3px 6px; background: #f8fafc; border-radius: 4px;">
                             <span><b>${sub.code}</b> ${sub.name}</span>
                             <span style="font-weight: 700; color: var(--dalor-navy);">$${sub.spent_usd.toFixed(2)}</span>
                         </div>
-                    `).join('') : `
-                        <div style="font-size: 11px; color: #94a3b8; font-style: italic; padding: 4px 6px;">
-                            Partida directa sin sub-cuentas &bull; Ppto ref: $${(parent.monthly_budget_usd || 0).toLocaleString()}
-                        </div>
-                    `}
+                    `).join('')}
                 </div>
             </div>
         `).join('');
@@ -4009,14 +2484,9 @@ async function loadReceivablesList() {
         }
 
         tbody.innerHTML = list.map(r => {
-            const isIncobrable = r.status === 'incobrable' || r.is_bad_debt;
-            const isPaid = r.status === 'cobrado' || (r.balance_usd <= 0.05 && !isIncobrable);
-            const isOverdue = !isPaid && !isIncobrable && new Date(r.due_date) < new Date();
             let badgeBg = '#fef3c7', badgeColor = '#92400e', statusLabel = 'Pendiente';
-            if (r.status === 'cobrado' || (r.balance_usd <= 0.05 && r.status !== 'incobrable')) { badgeBg = '#d1fae5'; badgeColor = '#065f46'; statusLabel = 'Cobrado Total'; }
-            else if (r.status === 'incobrable' || r.is_bad_debt) { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '🛑 Incobrable / Castigado'; }
-            else if (new Date(r.due_date) < new Date()) { badgeBg = '#fee2e2'; badgeColor = '#dc2626'; statusLabel = '⚠️ En Mora / Vencido'; }
-            else if (r.status === 'parcial') { badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; statusLabel = 'Abono Parcial'; }
+            if (r.status === 'cobrado') { badgeBg = '#d1fae5'; badgeColor = '#065f46'; statusLabel = 'Cobrado Total'; }
+            if (r.status === 'parcial') { badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; statusLabel = 'Abono Parcial'; }
             if (r.status === 'vencido') { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '⚠️ Vencida'; }
 
             return `
@@ -4049,70 +2519,29 @@ async function loadReceivablesList() {
     }
 }
 
-async function openNewReceivableModal() {
-    if (!allClients || allClients.length === 0) {
-        try {
-            const resC = await fetch(`${API_BASE}/clients/`);
-            if (resC.ok) allClients = await resC.json();
-        } catch(e) {}
-    }
-    if (!allProjects || allProjects.length === 0) {
-        try {
-            const resP = await fetch(`${API_BASE}/projects/`);
-            if (resP.ok) allProjects = await resP.json();
-        } catch(e) {}
-    }
-
-    populateSelect("cxc_client_id", allClients || [], c => `<option value="${c.id}">${c.name} (${c.rif || 'S/R'})</option>`);
-    populateSelect("cxc_project_id", [{id: '', code: 'Sin Obra / General'}, ...(allProjects || [])], p => `<option value="${p.id || ''}">${p.code} - ${p.name || ''}</option>`);
+function openNewReceivableModal() {
+    populateSelect("cxc_client_id", allClients, c => `<option value="${c.id}">${c.name}</option>`);
+    populateSelect("cxc_project_id", [{id: '', code: 'Sin Obra / General'}, ...allProjects], p => `<option value="${p.id || ''}">${p.code} - ${p.name || ''}</option>`);
     
-    // Fecha de vencimiento a 15 días
+    // Set default due date to 15 days ahead
     const d = new Date();
     d.setDate(d.getDate() + 15);
-    const dueDateInput = document.getElementById("cxc_due_date");
-    if (dueDateInput) dueDateInput.value = d.toISOString().split('T')[0];
+    document.getElementById("cxc_due_date").value = d.toISOString().split('T')[0];
     
     openModal("modalReceivable");
 }
 
 async function submitCreateReceivable(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    const invoiceNum = document.getElementById("cxc_invoice_number").value.trim();
-    const clientId = parseInt(document.getElementById("cxc_client_id").value);
-    const projId = document.getElementById("cxc_project_id").value ? parseInt(document.getElementById("cxc_project_id").value) : null;
-    const desc = document.getElementById("cxc_description").value.trim();
-    const dueDateVal = document.getElementById("cxc_due_date").value;
-    const amountVal = parseFloat(document.getElementById("cxc_amount_usd").value);
-    const taxRetained = parseFloat(document.getElementById("cxc_tax_retained").value) || 0.0;
-
-    if (!invoiceNum || !clientId || !dueDateVal || isNaN(amountVal) || amountVal <= 0) {
-        alert("Por favor completa todos los campos requeridos (*): N° Factura, Cliente, Fecha de Vencimiento y Monto válido.");
-        return;
-    }
-
-    // Desglose fiscal limpio: Sólo aplicar retención si el usuario introdujo un valor explícito mayor a 0
-    const baseUsd = parseFloat((amountVal / 1.16).toFixed(2));
-    const taxUsd = parseFloat((amountVal - baseUsd).toFixed(2));
-    const retIvaUsd = taxRetained > 0 ? parseFloat((taxRetained * 0.75).toFixed(2)) : 0.0;
-    const retIslrUsd = taxRetained > 0 ? parseFloat((taxRetained * 0.25).toFixed(2)) : 0.0;
-    const netUsd = parseFloat((amountVal - taxRetained).toFixed(2));
-
+    e.preventDefault();
     const payload = {
-        invoice_number: invoiceNum,
-        client_id: clientId,
-        project_id: projId,
-        description: desc || `Valuación / Factura ${invoiceNum}`,
-        due_date: new Date(dueDateVal).toISOString(),
-        amount_usd: amountVal,
-        taxable_base_usd: baseUsd,
-        tax_amount_usd: taxUsd,
-        tax_withholding_rate: 75.0,
-        tax_withholding_usd: retIvaUsd,
-        islr_rate: 2.0,
-        islr_withholding_usd: retIslrUsd,
-        net_amount_usd: netUsd,
-        tax_retained_usd: taxRetained > 0 ? taxRetained : (retIvaUsd + retIslrUsd),
-        exchange_rate: (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 800.0)
+        invoice_number: document.getElementById("cxc_invoice_number").value.trim(),
+        client_id: parseInt(document.getElementById("cxc_client_id").value),
+        project_id: document.getElementById("cxc_project_id").value ? parseInt(document.getElementById("cxc_project_id").value) : null,
+        description: document.getElementById("cxc_description").value.trim(),
+        due_date: new Date(document.getElementById("cxc_due_date").value).toISOString(),
+        amount_usd: parseFloat(document.getElementById("cxc_amount_usd").value),
+        tax_retained_usd: parseFloat(document.getElementById("cxc_tax_retained").value) || 0.0,
+        exchange_rate: EXCHANGE_RATE
     };
 
     try {
@@ -4121,26 +2550,13 @@ async function submitCreateReceivable(e) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || "Error al emitir factura");
-        }
-        
+        if (!res.ok) throw new Error("Error al emitir factura");
         closeModal("modalReceivable");
         document.getElementById("receivableForm").reset();
-        
-        // Conmutar a vista financiera y refrescar
-        switchView('financial', 'finanzas');
-        switchFinancialSubtab('cxc');
-        await loadReceivablesList();
-        
-        if (typeof showToastNotification === 'function') {
-            showToastNotification(`✅ Valuación/Factura [${invoiceNum}] cargada exitosamente en el Módulo Financiero.`, 'success');
-        } else {
-            alert(`✅ Valuación/Factura [${invoiceNum}] registrada exitosamente y cargada en el Módulo Financiero.`);
-        }
+        loadReceivablesList();
+        alert("✅ Factura / Valuación por cobrar registrada exitosamente.");
     } catch (err) {
-        alert("Error al guardar cuenta por cobrar: " + err.message);
+        alert("Error: " + err.message);
     }
 }
 
@@ -4381,30 +2797,36 @@ async function loadTreasurySummary() {
 // 🔐 14. AUTENTICACIÓN, ROLES & CAPAS DE USO (TIPO PROFIT PLUS)
 // ==============================================================================
 async function checkAuthStatus() {
-    // Para garantizar que el usuario SIEMPRE pueda elegir su perfil en el login al abrir el teléfono:
-    // Solo se mantiene autenticado si la sesión fue iniciada explícitamente en la pestaña actual (sessionStorage).
-    const sessionActive = sessionStorage.getItem('dalor_session_active');
-    const savedUser = sessionStorage.getItem('dalor_user');
-    const savedToken = sessionStorage.getItem('dalor_token');
-    
-    if (sessionActive === 'true' && savedUser && savedToken) {
+    const savedUser = localStorage.getItem('dalor_user');
+    if (savedUser) {
         try {
             currentUser = JSON.parse(savedUser);
-            authToken = savedToken;
             renderUserBadge();
             applyPermissionMap(currentUser);
-            return true;
+            return;
         } catch (e) {
-            sessionStorage.clear();
+            console.error('Error parsing stored user:', e);
         }
     }
     
-    currentUser = null;
-    authToken = null;
-    sessionStorage.clear();
-    localStorage.removeItem('dalor_user');
-    localStorage.removeItem('dalor_token');
-    return false;
+    // Si no hay usuario guardado, iniciar con admin por defecto para comodidad
+    currentUser = {
+        id: 1,
+        username: 'admin',
+        full_name: 'Director General / Socio',
+        role_name: 'director',
+        permissions: {
+            comercial_view: true, comercial_edit: true,
+            proyectos_view: true, proyectos_edit: true,
+            finanzas_view: true, finanzas_edit: true,
+            recursos_view: true, recursos_edit: true,
+            gastos_view: true, gastos_edit: true,
+            executive_dashboard: true,
+            mantenimiento_admin: true
+        }
+    };
+    renderUserBadge();
+    applyPermissionMap(currentUser);
 }
 
 function renderUserBadge() {
@@ -4417,14 +2839,8 @@ function renderUserBadge() {
     if (roleEl) {
         const roleNames = {
             'director': '👑 Director General',
-            'director_general': '👑 Director General',
-            'admin': '👑 Director General',
-            'administracion': '💼 Administración & Finanzas',
-            'administrador_financiero': '💼 Administración & Finanzas',
             'admin_finanzas': '💼 Administración & Finanzas',
-            'ingeniero': '👷 Ing. Residente de Obra',
-            'ingeniero_obra': '👷 Ing. Residente de Obra',
-            'campo': '📱 Supervisor de Campo',
+            'ingeniero_obra': '👷 Ing. Residente / Obras',
             'supervisor_campo': '📱 Supervisor de Campo'
         };
         roleEl.textContent = roleNames[currentUser.role_name] || currentUser.role_name;
@@ -4435,141 +2851,47 @@ function renderUserBadge() {
 }
 
 function applyPermissionMap(user) {
-    if (!user) return;
-    const role = (user.role_name || '').toLowerCase();
-    const uname = (user.username || '').toLowerCase();
-    const isDirector = uname === 'director' || role.includes('director') || user.is_superuser;
-    const isFinanzas = uname === 'administracion' || role.includes('admin') || role.includes('finanzas') || role.includes('contador');
-    const isIngeniero = uname === 'ingeniero' || role.includes('ingeniero');
-    const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
-    const isAlmacen = uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
+    const isFieldWorker = (user && (user.role_name === 'supervisor_campo' || user.username === 'campo'));
+    const ids = [
+        'dropdown-comercial',
+        'dropdown-proyectos',
+        'dropdown-finanzas',
+        'dropdown-recursos',
+        'dropdown-gastos',
+        'dropdown-mantenimiento',
+        'dropdown-inbox-direct',
+        'dropdown-gerencia'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (isFieldWorker) {
+                el.style.display = (id === 'dropdown-gastos') ? 'inline-block' : 'none';
+            } else {
+                el.style.display = 'inline-block';
+            }
+        }
+    });
 
-    // Dropdown Comercial (SOLO Director General)
-    const dCom = document.getElementById('dropdown-comercial');
-    if (dCom) {
-        dCom.style.display = isDirector ? 'inline-block' : 'none';
-    }
-
-    // Dropdown Proyectos (Director e Ingeniero)
-    const dProj = document.getElementById('dropdown-proyectos');
-    if (dProj) {
-        dProj.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
-    }
-
-    // Dropdown Finanzas (Director y Administración/Finanzas)
-    const dFin = document.getElementById('dropdown-finanzas');
-    if (dFin) {
-        dFin.style.display = (isDirector || isFinanzas) ? 'inline-block' : 'none';
-    }
-
-    // Dropdown Recursos (Director, Ingeniero y Almacén/Pañol)
-    const dRec = document.getElementById('dropdown-recursos');
-    if (dRec) {
-        dRec.style.display = (isDirector || isIngeniero || isAlmacen) ? 'inline-block' : 'none';
-    }
-
-    // Dropdown Gastos (Oculto para Almacén e Ingeniero; Ingeniero opera en Proyectos/Recursos/Campo)
-    const dGas = document.getElementById('dropdown-gastos');
-    if (dGas) {
-        dGas.style.display = (isAlmacen || isIngeniero) ? 'none' : 'inline-block';
-    }
-
-    const itmInbox = document.getElementById('item-gasto-inbox');
-    const itmPwa = document.getElementById('item-gasto-pwa');
-    const itmManual = document.getElementById('item-gasto-manual');
-    const itmDashboard = document.getElementById('item-gasto-dashboard');
-    const itmTree = document.getElementById('item-gasto-tree');
-
-    // 🛡️ Restricciones y Adaptaciones de Rol para Campo vs Administración vs Almacén vs Ingeniero
-    const btnQF = document.getElementById('btnQuickFlow');
-    if (btnQF) btnQF.style.display = (isCampo || isAlmacen || isIngeniero) ? 'none' : 'inline-flex';
-
-    const fiscalBox = document.getElementById('field_fiscal_tax_box');
-    if (fiscalBox) fiscalBox.style.display = isCampo ? 'none' : 'grid';
-
-    const splitBox = document.getElementById('field_split_expense_box');
-    if (splitBox) splitBox.style.display = isCampo ? 'none' : 'block';
-
-    const repContainer = document.getElementById('field_reported_by_container');
-    if (repContainer) repContainer.style.display = isCampo ? 'none' : 'block';
-
-    const repBadge = document.getElementById('field_reported_by_badge');
-    const repText = document.getElementById('field_reported_by_text');
-    if (repBadge) {
-        repBadge.style.display = isCampo ? 'flex' : 'none';
-        if (repText) repText.innerHTML = `Reportando como: <b>${user.full_name || user.username}</b> (Supervisor de Campo)`;
-    }
-
-    // Tasa BCV Oficial solo visible para Administración / Dirección
-    const tasaBox = document.getElementById('bcvTasaBadge') || document.querySelector('.tasa-editor-box');
-    if (tasaBox) {
-        tasaBox.style.display = (isDirector || isFinanzas) ? 'inline-flex' : 'none';
-    }
-
-    // Ocultar sección de Bolsas de Costo (Paso 4) en formulario de proyectos para Ingeniero
-    const step4Budget = document.getElementById('new_proj_contract')?.closest('.grid-3')?.parentElement?.parentElement?.querySelector('h4:has(span)') || document.getElementById('new_proj_labor')?.closest('.grid-3')?.parentElement;
-    if (step4Budget) {
-        step4Budget.style.display = isIngeniero ? 'none' : 'block';
-    }
-    const contractInputContainer = document.getElementById('new_proj_contract')?.parentElement;
-    if (contractInputContainer) {
-        contractInputContainer.style.display = isIngeniero ? 'none' : 'block';
-    }
-
-    if (isAlmacen) {
-        // ROL ALMACÉN & PAÑOL: Solo Activos, Recursos, Materiales y Despachos
-        switchView('resources');
-    } else if (isCampo) {
-        // ROL DE CAMPO: SOLO RENDICIÓN DE GASTO / CAPTURA OCR
-        if (itmInbox) itmInbox.style.display = 'none';
-        if (itmPwa) itmPwa.style.display = 'flex';
-        if (itmManual) itmManual.style.display = 'none';
-        if (itmDashboard) itmDashboard.style.display = 'none';
-        if (itmTree) itmTree.style.display = 'none';
-        switchView('pwa', 'gastos');
-    } else if (isFinanzas) {
-        // ADMINISTRACIÓN: Inbox, Carga Oficina, Dashboard Oculto (Job Costing solo para dirección), Árbol
-        if (itmInbox) itmInbox.style.display = 'flex';
-        if (itmPwa) itmPwa.style.display = 'none';
-        if (itmManual) itmManual.style.display = 'flex';
-        if (itmDashboard) itmDashboard.style.display = 'none';
-        if (itmTree) itmTree.style.display = 'flex';
-    } else if (isIngeniero) {
-        // INGENIERO DE OBRA: Operativa técnica de Proyectos y Recursos (Sin costos ni finanzas)
-        if (itmInbox) itmInbox.style.display = 'none';
-        if (itmPwa) itmPwa.style.display = 'none';
-        if (itmManual) itmManual.style.display = 'none';
-        if (itmDashboard) itmDashboard.style.display = 'none';
-        if (itmTree) itmTree.style.display = 'none';
-    } else {
-        // DIRECTOR GENERAL: Todo disponible
-        if (itmInbox) itmInbox.style.display = 'flex';
-        if (itmPwa) itmPwa.style.display = 'flex';
-        if (itmManual) itmManual.style.display = 'flex';
-        if (itmDashboard) itmDashboard.style.display = 'flex';
-        if (itmTree) itmTree.style.display = 'flex';
-    }
-
-    // Dropdown Mantenimiento (SOLO Director General / Superuser)
-    const dMaint = document.getElementById('dropdown-mantenimiento');
-    if (dMaint) {
-        dMaint.style.display = isDirector ? 'inline-block' : 'none';
-    }
-
-    // Botón PowerBI Directivo (SOLO Director General)
-    const dGer = document.getElementById('dropdown-gerencia');
-    if (dGer) {
-        dGer.style.display = isDirector ? 'inline-block' : 'none';
+    const inboxBadge = document.getElementById('inboxBadgeMenu');
+    if (inboxBadge && isFieldWorker) {
+        inboxBadge.style.display = 'none';
     }
 }
 
-async function loginDirectlyAs(username, password) {
+function fillQuickLogin(username, password) {
     const uIn = document.getElementById('login_username');
     const pIn = document.getElementById('login_password');
     if (uIn) uIn.value = username;
     if (pIn) pIn.value = password;
+}
 
+async function submitLogin(event) {
+    event.preventDefault();
+    const username = document.getElementById('login_username').value.trim();
+    const password = document.getElementById('login_password').value;
     const errEl = document.getElementById('loginErrorMessage');
+
     if (errEl) errEl.classList.add('hidden');
 
     try {
@@ -4595,82 +2917,30 @@ async function loginDirectlyAs(username, password) {
 
         renderUserBadge();
         applyPermissionMap(currentUser);
-        
-        const modal = document.getElementById('modalLogin');
-        if (modal) {
-            modal.classList.add('hidden');
-            modal.style.display = 'none';
-        }
+        closeModal('modalLogin');
 
-        redirectUserByRole(currentUser);
+        // Redirigir según rol
+        if (currentUser.role_name === 'supervisor_campo' || currentUser.username === 'campo') {
+            switchView('pwa', 'gastos');
+        } else if (currentUser.permissions && currentUser.permissions.executive_dashboard) {
+            switchView('executive', 'gerencia');
+        } else if (currentUser.permissions && currentUser.permissions.finanzas_view) {
+            switchView('financial', 'finanzas');
+        } else {
+            switchView('projects', 'proyectos');
+        }
 
     } catch (e) {
         if (errEl) {
-            errEl.textContent = 'Error de conexión: ' + e.message;
+            errEl.textContent = 'Error de conexión con el servidor.';
             errEl.classList.remove('hidden');
         }
     }
 }
 
-function fillQuickLogin(username, password) {
-    loginDirectlyAs(username, password);
-}
-
-function fillAndSubmitQuickLogin(username, password) {
-    loginDirectlyAs(username, password);
-}
-
-function redirectUserByRole(user) {
-    if (!user) return;
-    const role = (user.role_name || user.username || '').toLowerCase();
-    
-    if (role.includes('almacen') || role.includes('panol') || role.includes('taller')) {
-        switchView('resources', 'recursos');
-    } else if (role.includes('supervisor') || role.includes('campo')) {
-        switchView('pwa', 'gastos');
-    } else if (role.includes('admin') || role.includes('finanzas') || role.includes('administrador')) {
-        switchView('financial', 'finanzas');
-    } else if (role.includes('ingeniero') || role.includes('obra')) {
-        switchView('projects', 'proyectos');
-    } else {
-        switchView('executive', 'gerencia');
-    }
-}
-
-async function submitLogin(event) {
-    if (event && event.preventDefault) event.preventDefault();
-    const username = document.getElementById('login_username').value.trim();
-    const password = document.getElementById('login_password').value;
-    await loginDirectlyAs(username, password);
-}
-
 function handleLogout() {
-    sessionStorage.clear();
-    localStorage.removeItem('dalor_user');
-    localStorage.removeItem('dalor_token');
-    localStorage.clear();
-    currentUser = null;
-    authToken = null;
-    window.location.reload();
-    return;
-
-    document.body.classList.remove('authenticated');
-    const loginScreen = document.getElementById('app-login-screen');
-    const authShell = document.getElementById('app-authenticated-shell');
-    const nav = document.querySelector('.mobile-bottom-nav');
-
-    if (loginScreen) loginScreen.style.display = 'flex';
-    if (authShell) authShell.style.display = 'none';
-    if (nav) nav.style.display = 'none';
-
-    const uIn = document.getElementById('portal_username');
-    const pIn = document.getElementById('portal_password');
-    if (uIn) uIn.value = '';
-    if (pIn) pIn.value = '';
-    const errBox = document.getElementById('loginErrorMessage');
-    if (errBox) errBox.style.display = 'none';
-
-    showToast('Sesión finalizada. Inicia sesión con tus credenciales.', 'info');
+    const modal = document.getElementById('modalLogin');
+    if (modal) modal.classList.remove('hidden');
 }
 
 // ==============================================================================
@@ -4684,7 +2954,7 @@ function openMaintenanceSubtab(subtab) {
 }
 
 function switchMaintenanceSubtab(subtab) {
-    ['users', 'audit', 'clean'].forEach(t => {
+    ['users', 'audit'].forEach(t => {
         const pane = document.getElementById(`subtab-maint-${t}`);
         const btn = document.getElementById(`tabbtn-maint-${t}`);
         if (pane) pane.classList.add('hidden');
@@ -4946,11 +3216,6 @@ async function loadMaintenanceAuditLogs() {
 // ⚡ 17. CARGA RÁPIDA EN 3 TOQUES & CONTROL DE RETIROS DE SOCIOS
 // ==============================================================================
 function openQuickFlowModal() {
-    const role = (currentUser?.role_name || currentUser?.username || '').toLowerCase();
-    if (role.includes('campo') || role.includes('supervisor')) {
-        alert('Acceso restringido: El atajo de 3 toques es exclusivo para Dirección y Finanzas. Por favor utiliza el formulario formal de campo.');
-        return;
-    }
     const pSelect = document.getElementById('qf_project_id');
     if (pSelect && allProjects.length > 0) {
         pSelect.innerHTML = allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name.substring(0, 30)}</option>`).join('');
@@ -5490,2808 +3755,777 @@ async function restoreBackup(filename) {
     }
 }
 
-// ==============================================================================
-// 📦 5. MÓDULO DE INVENTARIO DE MATERIALES Y CONSUMIBLES (DALOR SIGO-P)
-// ==============================================================================
 
-async function loadMaterialsList() {
-    const tbody = document.getElementById("materialsTableBody");
+// ----------------------------------------------------
+// CONVERSIÓN BIMONEDA DINÁMICA (BS <-> USD)
+// ----------------------------------------------------
+function convertBsToUsd() {
+    const bs = parseFloat(document.getElementById("field_amount_bs")?.value) || 0;
+    const rate = (typeof EXCHANGE_RATE !== 'undefined' && EXCHANGE_RATE > 0) ? EXCHANGE_RATE : 800.0;
+    const usdInput = document.getElementById("field_amount_usd");
+    if (usdInput) {
+        usdInput.value = (bs / rate).toFixed(2);
+    }
+}
+
+function convertUsdToBs() {
+    const usd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
+    const rate = (typeof EXCHANGE_RATE !== 'undefined' && EXCHANGE_RATE > 0) ? EXCHANGE_RATE : 800.0;
+    const bsInput = document.getElementById("field_amount_bs");
+    if (bsInput) {
+        bsInput.value = (usd * rate).toFixed(2);
+    }
+}
+
+// ----------------------------------------------------
+// 13. BANDEJA DE APROBACIONES & COMPROBANTES DE CAMPO (DOBLE PANTALLA)
+// ----------------------------------------------------
+let currentPendingInboxList = [];
+
+async function loadInboxPending() {
+    const tbody = document.getElementById("inboxPendingTableBody");
     if (!tbody) return;
-
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de materiales...</td></tr>`;
-
-    try {
-        const res = await fetch(`${API_BASE}/materials/`);
-        const data = await res.json();
-        allMaterials = data.materials || (Array.isArray(data) ? data : []);
-
-        const totalItemsEl = document.getElementById("matTotalItemsCount");
-        const totalValEl = document.getElementById("matTotalValuationUsd");
-        if (totalItemsEl) totalItemsEl.innerText = data.total_items !== undefined ? data.total_items : allMaterials.length;
-        if (totalValEl) {
-            const val = data.total_inventory_usd !== undefined ? data.total_inventory_usd : allMaterials.reduce((acc, m) => acc + (m.stock_quantity * m.unit_cost_usd || 0), 0);
-            totalValEl.innerText = `$${val.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`;
-        }
-
-        renderMaterialsTable(allMaterials);
-        try {
-            if (typeof populateSelectDropdowns === 'function') populateSelectDropdowns();
-        } catch (errPop) {
-            console.warn("Dropdown populator warning:", errPop);
-        }
-    } catch (e) {
-        console.error("Error loading materials:", e);
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar inventario de materiales: ${e.message}</td></tr>`;
-    }
-}
-
-function renderMaterialsTable(materials) {
-    const tbody = document.getElementById("materialsTableBody");
-    if (!tbody) return;
-
-    if (materials.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;">No se encontraron materiales registrados.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = materials.map(m => {
-        const isLow = m.is_low_stock || m.stock_quantity <= m.min_stock_alert;
-        return `
-        <tr>
-            <td style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">${m.code}</td>
-            <td style="font-weight: 700; color: var(--dalor-navy);">${m.name}</td>
-            <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #475569;">${m.category}</span></td>
-            <td style="text-align: center; font-weight: 700;">${m.unit_measure}</td>
-            <td style="text-align: center;">
-                <span style="font-weight: 800; font-size: 13px; color: ${isLow ? '#e11d48' : '#059669'};">
-                    ${m.stock_quantity.toLocaleString()} ${m.unit_measure}
-                </span>
-                ${isLow ? `<span style="display: block; font-size: 9px; color: #dc2626; font-weight: 800;">⚠️ STOCK CRÍTICO</span>` : ''}
-            </td>
-            <td style="text-align: center; color: #64748b; font-size: 11px;">${m.min_stock_alert} ${m.unit_measure}</td>
-            <td style="text-align: right; font-weight: 700; color: #0284c7;">$${m.unit_cost_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-            <td style="text-align: right; font-weight: 900; color: var(--dalor-navy);">$${m.total_cost_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-            <td style="text-align: center; white-space: nowrap;">
-                <button onclick="openMaterialEntryModal(${m.id})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; background: #059669;" title="Registrar Entrada / Compra">
-                    <i class="fa-solid fa-plus"></i> Entrada
-                </button>
-                <button onclick="openMaterialConsumeModal(${m.id})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; background: #0284c7; margin-left: 4px;" title="Despachar a Obra o Taller">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Despachar
-                </button>
-            </td>
-        </tr>
-        `;
-    }).join('');
-}
-
-function filterMaterialsTable() {
-    const search = (document.getElementById("filterMaterialSearch")?.value || "").toLowerCase();
-    const cat = document.getElementById("filterMaterialCategory")?.value || "";
-
-    const filtered = allMaterials.filter(m => {
-        const matchesSearch = !search || m.name.toLowerCase().includes(search) || m.code.toLowerCase().includes(search);
-        const matchesCat = !cat || m.category === cat;
-        return matchesSearch && matchesCat;
-    });
-
-    renderMaterialsTable(filtered);
-}
-
-function openNewMaterialModal() {
-    document.getElementById("newMaterialForm").reset();
-    openModal("modalNewMaterial");
-}
-
-async function submitCreateMaterial(event) {
-    event.preventDefault();
-    const payload = {
-        code: document.getElementById("nmat_code").value.trim(),
-        name: document.getElementById("nmat_name").value.trim(),
-        category: document.getElementById("nmat_category").value,
-        unit_measure: document.getElementById("nmat_unit").value,
-        stock_quantity: parseFloat(document.getElementById("nmat_stock").value) || 0.0,
-        min_stock_alert: parseFloat(document.getElementById("nmat_alert").value) || 5.0,
-        unit_cost_usd: parseFloat(document.getElementById("nmat_cost").value) || 0.0,
-        location: document.getElementById("nmat_location").value.trim() || "Almacén Central Dalor"
-    };
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando comprobantes pendientes...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}/materials/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+        const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
+        currentPendingInboxList = await res.json();
 
-        if (res.ok) {
-            alert("✅ Material registrado con éxito en el catálogo.");
-            closeModal("modalNewMaterial");
-            await loadInitialMasterData();
-            loadMaterialsList();
-        } else {
-            const err = await res.json();
-            alert("Error: " + (err.detail || JSON.stringify(err)));
+        const count = Array.isArray(currentPendingInboxList) ? currentPendingInboxList.length : 0;
+        
+        // Actualizar badges
+        const badgeCount = document.getElementById("inboxBadgeCount");
+        const badgeMenu = document.getElementById("inboxBadgeMenu");
+        if (badgeCount) {
+            badgeCount.innerText = count;
+            badgeCount.style.display = count > 0 ? "inline-block" : "none";
         }
-    } catch (e) {
-        alert("Error de conexión al crear material: " + e.message);
-    }
-}
-
-function openMaterialEntryModal(materialId = null) {
-    document.getElementById("materialEntryForm").reset();
-    populateSelectDropdowns();
-    if (materialId) {
-        document.getElementById("me_material_id").value = materialId;
-    }
-    calcMaterialEntryTotal();
-    openModal("modalMaterialEntry");
-}
-
-function calcMaterialEntryTotal() {
-    const qty = parseFloat(document.getElementById("me_quantity")?.value) || 0.0;
-    const cost = parseFloat(document.getElementById("me_unit_cost")?.value) || 0.0;
-    const total = qty * cost;
-    const previewEl = document.getElementById("me_total_usd_preview");
-    if (previewEl) previewEl.innerText = `$${total.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`;
-}
-
-async function submitMaterialEntry(event) {
-    event.preventDefault();
-    const matId = parseInt(document.getElementById("me_material_id").value);
-    const qty = parseFloat(document.getElementById("me_quantity").value) || 0.0;
-    const cost = parseFloat(document.getElementById("me_unit_cost").value) || 0.0;
-    const registerCxp = document.getElementById("me_register_cxp")?.checked || false;
-
-    if (!matId || qty <= 0) {
-        alert("Selecciona un material y cantidad válida.");
-        return;
-    }
-
-    const payload = {
-        material_id: matId,
-        quantity: qty,
-        unit_cost_usd: cost,
-        supplier_name: document.getElementById("me_supplier").value.trim() || "Proveedor General",
-        reference_doc: document.getElementById("me_doc").value.trim() || "Compra Almacén",
-        notes: document.getElementById("me_notes").value.trim(),
-        performed_by: "Custodio de Almacén",
-        register_in_cxp: registerCxp,
-        due_days: 15
-    };
-
-    try {
-        const res = await fetch(`${API_BASE}/materials/entry`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            alert(`✅ ${data.message}`);
-            closeModal("modalMaterialEntry");
-            await loadInitialMasterData();
-            loadMaterialsList();
-            if (registerCxp) loadPayablesList();
-        } else {
-            const err = await res.json();
-            alert("Error: " + (err.detail || JSON.stringify(err)));
-        }
-    } catch (e) {
-        alert("Error al procesar entrada de material: " + e.message);
-    }
-}
-
-function openMaterialConsumeModal(materialId = null) {
-    document.getElementById("materialConsumeForm").reset();
-    populateSelectDropdowns();
-    if (materialId) {
-        document.getElementById("mc_material_id").value = materialId;
-    }
-    onConsumeMaterialSelected();
-    calcMaterialConsumeTotal();
-    openModal("modalMaterialConsume");
-}
-
-function onConsumeMaterialSelected() {
-    const sel = document.getElementById("mc_material_id");
-    if (!sel || !sel.options[sel.selectedIndex]) return;
-    const opt = sel.options[sel.selectedIndex];
-    const stock = opt.getAttribute("data-stock") || "0";
-    const unit = opt.getAttribute("data-unit") || "UND";
-    const label = document.getElementById("mc_stock_available_label");
-    if (label) label.innerText = `${parseFloat(stock).toLocaleString()} ${unit}`;
-    calcMaterialConsumeTotal();
-}
-
-function calcMaterialConsumeTotal() {
-    const sel = document.getElementById("mc_material_id");
-    const qty = parseFloat(document.getElementById("mc_quantity")?.value) || 0.0;
-    let cost = 0.0;
-    if (sel && sel.options[sel.selectedIndex]) {
-        cost = parseFloat(sel.options[sel.selectedIndex].getAttribute("data-cost")) || 0.0;
-    }
-    const total = qty * cost;
-    const previewEl = document.getElementById("mc_cost_preview");
-    if (previewEl) previewEl.value = `$${total.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`;
-}
-
-async function submitMaterialConsume(event) {
-    event.preventDefault();
-    const matId = parseInt(document.getElementById("mc_material_id").value);
-    const qty = parseFloat(document.getElementById("mc_quantity").value) || 0.0;
-    const projIdVal = document.getElementById("mc_project_id").value;
-    const projId = projIdVal ? parseInt(projIdVal) : null;
-
-    if (!matId || qty <= 0) {
-        alert("Selecciona un material y cantidad válida.");
-        return;
-    }
-
-    const payload = {
-        material_id: matId,
-        quantity: qty,
-        project_id: projId,
-        destination: projId ? "Obra en Ejecución" : "Taller Central",
-        reference_doc: document.getElementById("mc_doc").value.trim() || "Requisición Interna",
-        notes: document.getElementById("mc_notes").value.trim(),
-        performed_by: document.getElementById("mc_performed_by").value.trim() || "Custodio de Almacén"
-    };
-
-    try {
-        const res = await fetch(`${API_BASE}/materials/consume`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            alert(`✅ ${data.message}`);
-            closeModal("modalMaterialConsume");
-            await loadInitialMasterData();
-            loadMaterialsList();
-        } else {
-            const err = await res.json();
-            alert("Error: " + (err.detail || JSON.stringify(err)));
-        }
-    } catch (e) {
-        alert("Error al procesar despacho de material: " + e.message);
-    }
-}
-
-// ==============================================================================
-// 💵 6. COBRANZAS & ABONOS DIRECTOS DE CLIENTES
-// ==============================================================================
-
-function openReceiveClientPaymentModal() {
-    document.getElementById("receiveClientPaymentForm").reset();
-    populateSelectDropdowns();
-    const rateEl = document.getElementById("rcp_rate");
-    if (rateEl) rateEl.value = EXCHANGE_RATE.toFixed(2);
-    calcClientPaymentBs();
-    openModal("modalReceiveClientPayment");
-}
-
-function calcClientPaymentBs() {
-    const usd = parseFloat(document.getElementById("rcp_amount_usd")?.value) || 0.0;
-    const rate = parseFloat(document.getElementById("rcp_rate")?.value) || EXCHANGE_RATE || 800.0;
-    const bs = usd * rate;
-    const preview = document.getElementById("rcp_total_bs_preview");
-    if (preview) {
-        preview.innerText = `Bs. ${bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
-    }
-}
-
-async function submitDirectClientPayment(event) {
-    event.preventDefault();
-    const clientId = parseInt(document.getElementById("rcp_client_id").value);
-    const projIdVal = document.getElementById("rcp_project_id").value;
-    const projId = projIdVal ? parseInt(projIdVal) : null;
-    const amountUsd = parseFloat(document.getElementById("rcp_amount_usd").value) || 0.0;
-    const rate = parseFloat(document.getElementById("rcp_rate").value) || EXCHANGE_RATE || 800.0;
-
-    if (!clientId || amountUsd <= 0) {
-        alert("Por favor selecciona un cliente y un monto válido.");
-        return;
-    }
-
-    const payload = {
-        client_id: clientId,
-        project_id: projId,
-        amount_usd: amountUsd,
-        exchange_rate: rate,
-        payment_method: document.getElementById("rcp_method").value,
-        reference_number: document.getElementById("rcp_ref").value.trim() || `COB-${Date.now().toString().slice(-6)}`,
-        concept: document.getElementById("rcp_concept").value.trim() || "Abono / Cobranza de Cliente",
-        notes: document.getElementById("rcp_notes").value.trim()
-    };
-
-    try {
-        const res = await fetch(`${API_BASE}/financial/direct-collection`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            alert(`✅ ${data.message}\nComprobante Nº: ${data.receipt_number}`);
-            closeModal("modalReceiveClientPayment");
-            loadReceivablesList();
-            loadFinancialSummary();
-        } else {
-            const err = await res.json();
-            alert("Error: " + (err.detail || JSON.stringify(err)));
-        }
-    } catch (e) {
-        alert("Error de conexión al registrar cobro: " + e.message);
-    }
-}
-
-// ==============================================================================
-// 📋 7. GUÍAS OFICIALES DE TRASLADO & DESPACHO A OBRA
-// ==============================================================================
-
-function openTransferGuideModal() {
-    document.getElementById("transferGuideForm").reset();
-    populateSelectDropdowns();
-    renderTransferToolsChecklist();
-    openModal("modalTransferGuide");
-}
-
-function onTransferGuideProjectChanged() {
-    const sel = document.getElementById("tg_project_id");
-    if (!sel || !sel.options[sel.selectedIndex]) return;
-    const opt = sel.options[sel.selectedIndex];
-    const projId = parseInt(sel.value);
-    const proj = allProjects.find(p => p.id === projId);
-
-    // 1. Destino
-    const loc = (proj && proj.location) || opt.getAttribute("data-location") || "Planta Centro - Morón";
-    const destInput = document.getElementById("tg_destination");
-    if (destInput) destInput.value = loc;
-
-    // 2. Chofer responsable pre-cargado
-    const driverInput = document.getElementById("tg_driver_name");
-    if (driverInput) {
-        let chofer = (allPersonnel || []).find(p => p.current_project_id === projId && (p.role_title || '').toLowerCase().includes('chofer'));
-        if (!chofer) {
-            chofer = (allPersonnel || []).find(p => (p.role_title || '').toLowerCase().includes('chofer'));
-        }
-        if (!chofer && allPersonnel && allPersonnel.length > 0) {
-            chofer = allPersonnel[0];
-        }
-        if (chofer) driverInput.value = chofer.full_name;
-    }
-
-    // 3. Vehículo de transporte pre-cargado
-    const vehSelect = document.getElementById("tg_vehicle_id");
-    if (vehSelect) {
-        const projVeh = (allAssets || []).find(a => (a.asset_type === 'vehiculo' || a.asset_type === 'camioneta') && a.current_project_id === projId);
-        if (projVeh) {
-            vehSelect.value = projVeh.id;
-        } else {
-            const firstVeh = (allAssets || []).find(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
-            if (firstVeh) vehSelect.value = firstVeh.id;
-        }
-    }
-
-    // 4. Pre-marcar herramientas asignadas a este proyecto
-    renderTransferToolsChecklist(projId);
-}
-
-function renderTransferToolsChecklist(selectedProjId = null) {
-    const container = document.getElementById("tg_tools_checklist_container");
-    if (!container) return;
-
-    const tools = allAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
-    if (tools.length === 0) {
-        container.innerHTML = `<span style="font-size:11px; color:#94a3b8;">No hay herramientas registradas.</span>`;
-        return;
-    }
-
-    container.innerHTML = tools.map(t => {
-        const isPreChecked = selectedProjId && (t.current_project_id === selectedProjId || t.current_location === "en_obra");
-        return `
-        <label style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; background: ${isPreChecked ? '#f0fdf4' : '#f8fafc'}; font-size: 11px; cursor: pointer;" class="tg-tool-item" data-text="${t.asset_code} ${t.name} ${t.brand || ''}">
-            <input type="checkbox" value="${t.id}" data-name="${t.name}" data-code="${t.asset_code}" data-brand="${t.brand || ''}" data-serial="${t.serial_number || ''}" class="tg-tool-checkbox" ${isPreChecked ? 'checked' : ''} style="width: 15px; height: 15px; accent-color: #0284c7;">
-            <span style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">[${t.asset_code}]</span>
-            <span style="font-weight: 600; color: var(--dalor-navy);">${t.name}</span>
-            <span style="color: #64748b; font-size: 10px; margin-left: auto;">${t.brand || ''}</span>
-        </label>
-        `;
-    }).join('');
-}
-
-function filterTransferToolsChecklist() {
-    const q = (document.getElementById("tg_tools_search")?.value || "").toLowerCase();
-    document.querySelectorAll(".tg-tool-item").forEach(item => {
-        const text = item.getAttribute("data-text").toLowerCase();
-        item.style.display = text.includes(q) ? "flex" : "none";
-    });
-}
-
-async function submitGenerateTransferGuide(event) {
-    event.preventDefault();
-    const projId = parseInt(document.getElementById("tg_project_id").value);
-    const dest = document.getElementById("tg_destination").value.trim();
-    const vehId = document.getElementById("tg_vehicle_id").value;
-    const driver = document.getElementById("tg_driver_name").value.trim();
-
-    if (!projId) {
-        alert("Por favor selecciona un proyecto aprobado de destino.");
-        return;
-    }
-
-    const selectedTools = [];
-    document.querySelectorAll(".tg-tool-checkbox:checked").forEach(cb => {
-        selectedTools.push({
-            id: parseInt(cb.value),
-            code: cb.getAttribute("data-code"),
-            name: cb.getAttribute("data-name")
-        });
-    });
-
-    if (selectedTools.length === 0) {
-        alert("Por favor selecciona al menos una herramienta o equipo a trasladar.");
-        return;
-    }
-
-    const proj = allProjects.find(p => p.id === projId) || { code: "DAL-2026-001", name: "Proyecto Obra" };
-    const veh = allAssets.find(a => a.id == vehId) || { asset_code: "VEH-001", name: "Camioneta Toyota Hilux" };
-    const guideNumber = `GT-DALOR-${Date.now().toString().slice(-6)}`;
-
-    // Reubicar herramientas en backend para el proyecto
-    for (const tool of selectedTools) {
-        try {
-            await fetch(`${API_BASE}/resources/assign`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    resource_type: "asset",
-                    resource_id: tool.id,
-                    project_id: projId,
-                    destination_location: dest,
-                    custodian_name: driver,
-                    action_type: "assign"
-                })
-            });
-        } catch (e) {
-            console.error("Error asignando herramienta:", e);
-        }
-    }
-
-    closeModal("modalTransferGuide");
-    await loadInitialMasterData();
-    if (document.getElementById("subtab-res-tools") && !document.getElementById("subtab-res-tools").classList.contains("hidden")) {
-        loadToolsList();
-    }
-
-    // MOSTRAR FORMATO OFICIAL FORMAL LISTO PARA IMPRIMIR O GUARDAR EN PDF
-    const printArea = document.getElementById("modalPrintPreviewContent");
-    const titleEl = document.getElementById("previewModalTitle");
-    if (titleEl) titleEl.innerText = "Guía Oficial de Traslado y Despacho de Equipos - Dalor C.A.";
-
-    const nowStr = new Date().toLocaleDateString('es-VE') + ' ' + new Date().toLocaleTimeString('es-VE', {hour: '2-digit', minute:'2-digit'});
-
-    if (printArea) {
-        printArea.innerHTML = `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 25px; background: #fff;">
-            <!-- Header Membretado Oficial DALOR -->
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #002B49; padding-bottom: 12px; margin-bottom: 16px;">
-                <div>
-                    <h2 style="margin: 0; color: #002B49; font-size: 22px; font-weight: 900; letter-spacing: 1px;">DALOR, C.A.</h2>
-                    <p style="margin: 3px 0 0 0; font-size: 11px; color: #475569; font-weight: 600;">SOLUCIONES DE INGENIERÍA, MANTENIMIENTO Y MONTAJE INDUSTRIAL</p>
-                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">RIF: J-50477218-4 &bull; Guacara, Edo. Carabobo - Venezuela</p>
-                </div>
-                <div style="text-align: right;">
-                    <div style="background: #0284c7; color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">
-                        GUÍA DE TRASLADO DE EQUIPOS
-                    </div>
-                    <div style="font-size: 13px; font-weight: 900; color: #002B49; margin-top: 5px;">
-                        N°: ${guideNumber}
-                    </div>
-                    <div style="font-size: 11px; color: #64748b;">
-                        Fecha: ${nowStr}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Ficha de Traslado y Destino -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
-                <tr style="background: #f8fafc;">
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; width: 20%; color: #475569;">Proyecto Destino:</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; width: 30%; font-weight: 800; color: #0284c7;">[${proj.code}] ${proj.name}</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; width: 20%; color: #475569;">Ubicación / Frente:</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; width: 30%; font-weight: 700;">${dest}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">Vehículo de Carga:</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">${veh.name} (Placa: ${veh.license_plate || 'N/A'})</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">Conductor / Chofer:</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 800; color: #002B49;">${driver}</td>
-                </tr>
-            </table>
-
-            <!-- Tabla de Herramientas y Equipos Despachados -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
-                <thead>
-                    <tr style="background: #002B49; color: #ffffff;">
-                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 40px; text-align: center;">Item</th>
-                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 90px;">Código</th>
-                        <th style="padding: 8px 10px; border: 1px solid #002B49;">Descripción de la Herramienta / Equipo</th>
-                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 130px;">Marca / Modelo</th>
-                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 120px;">Serial</th>
-                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 90px; text-align: center;">Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${selectedTools.map((t, i) => `
-                        <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: 800;">${i + 1}</td>
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: 800; color: #0284c7;">${t.code}</td>
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${t.name}</td>
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; color: #64748b;">${t.brand || '-'}</td>
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace;">${t.serial || 'S/N'}</td>
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; color: #059669; font-weight: 800;">Operativo</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-
-            <!-- Observaciones -->
-            <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 24px; font-size: 11px;">
-                <strong>Observaciones / Condición de Custodia:</strong> ${document.getElementById("tg_notes")?.value || 'Equipos verificados y entregados en condiciones 100% operativas para faena de obra.'}
-            </div>
-
-            <!-- Bloque Formal de 3 Firmas de Responsabilidad -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; text-align: center; margin-top: 36px; font-size: 11px;">
-                <div style="border-top: 1px solid #475569; padding-top: 6px;">
-                    <strong style="color: #002B49;">Despachado por:</strong><br>
-                    <span style="color: #64748b; font-size: 10px;">Almacén Central / Custodia Dalor</span>
-                </div>
-                <div style="border-top: 1px solid #475569; padding-top: 6px;">
-                    <strong style="color: #002B49;">Transportado por:</strong><br>
-                    <span style="color: #64748b; font-size: 10px;">${driver} (Chofer)</span>
-                </div>
-                <div style="border-top: 1px solid #475569; padding-top: 6px;">
-                    <strong style="color: #002B49;">Recibido Conforme en Obra:</strong><br>
-                    <span style="color: #64748b; font-size: 10px;">Supervisor / Residente de Obra</span>
-                </div>
-            </div>
-        </div>
-        `;
-        openModal("modalPrintPreview");
-    }
-}
-
-// ==============================================================================
-// 🚜 CREACIÓN DE NUEVOS ACTIVOS, VEHÍCULOS, HERRAMIENTAS & MAQUINARIA
-// ==============================================================================
-function openNewAssetModal(presetType = 'herramienta_mayor') {
-    const form = document.getElementById("newAssetForm");
-    if (form) form.reset();
-    
-    const typeSelect = document.getElementById("nass_type");
-    if (typeSelect) {
-        typeSelect.value = presetType;
-    }
-    onAssetTypeChanged();
-    openModal("modalNewAsset");
-}
-
-function openNewToolModal_v2() {
-    openNewAssetModal('herramienta_mayor');
-}
-
-function openNewVehicleModal_v2() {
-    openNewAssetModal('vehiculo');
-}
-
-function onAssetTypeChanged() {
-    const type = document.getElementById("nass_type").value;
-    const title = document.getElementById("newAssetModalTitle");
-    const serialLabel = document.getElementById("nass_serial_label");
-    const odometerLabel = document.getElementById("nass_odometer_label");
-
-    if (type === 'vehiculo') {
-        if (title) title.innerHTML = '<i class="fa-solid fa-truck" style="color: #6366f1;"></i> Registrar Nuevo Vehículo de Flota / Carga';
-        if (serialLabel) serialLabel.textContent = "Placa del Vehículo *";
-        if (odometerLabel) odometerLabel.textContent = "Kilometraje Inicial (Km)";
-    } else if (type === 'maquinaria') {
-        if (title) title.innerHTML = '<i class="fa-solid fa-gears" style="color: #d97706;"></i> Registrar Nueva Maquinaria Pesada / Planta / Compresor';
-        if (serialLabel) serialLabel.textContent = "Serial del Fabricante";
-        if (odometerLabel) odometerLabel.textContent = "Horómetro Inicial (Horas)";
-    } else if (type === 'equipo_medicion') {
-        if (title) title.innerHTML = '<i class="fa-solid fa-scale-unbalanced" style="color: #8b5cf6;"></i> Registrar Nuevo Equipo de Medición / Calibración';
-        if (serialLabel) serialLabel.textContent = "Serial / Certificado Calibración";
-        if (odometerLabel) odometerLabel.textContent = "Usos / Horómetro";
-    } else {
-        if (title) title.innerHTML = '<i class="fa-solid fa-toolbox" style="color: var(--dalor-blue);"></i> Registrar Nueva Herramienta / Equipo';
-        if (serialLabel) serialLabel.textContent = "Serial / Identificador";
-        if (odometerLabel) odometerLabel.textContent = "Horómetro / Contador";
-    }
-}
-
-async function submitCreateAsset(e) {
-    e.preventDefault();
-    const type = document.getElementById("nass_type").value;
-    const code = document.getElementById("nass_code").value.trim();
-    const name = document.getElementById("nass_name").value.trim();
-    const brand = document.getElementById("nass_brand").value.trim();
-    const model = document.getElementById("nass_model").value.trim();
-    const serial = document.getElementById("nass_serial").value.trim();
-    const odometer = parseFloat(document.getElementById("nass_odometer").value) || 0.0;
-    const location = document.getElementById("nass_location").value.trim() || "Sede Central";
-    const custodian = document.getElementById("nass_custodian").value.trim() || "Disponible en Base";
-
-    const payload = {
-        asset_code: code,
-        name: name,
-        asset_type: type,
-        brand: brand,
-        model: model,
-        serial_number: type !== 'vehiculo' ? serial : null,
-        license_plate: type === 'vehiculo' ? serial : null,
-        current_odometer: odometer,
-        service_interval_km: type === 'vehiculo' ? 5000 : 250,
-        current_location: location,
-        current_custodian_name: custodian,
-        is_exclusive: true
-    };
-
-    try {
-        const res = await fetch(`${API_BASE}/assets/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || "Error al crear activo");
+        if (badgeMenu) {
+            badgeMenu.innerText = count;
+            badgeMenu.style.display = count > 0 ? "inline-block" : "none";
         }
 
-        closeModal("modalNewAsset");
-        alert(`✅ Activo ${code} (${name}) registrado exitosamente.`);
-        await loadInitialMasterData();
-        loadFleetList();
-        loadToolsList();
-    } catch (err) {
-        alert(`❌ Error: ${err.message}`);
-    }
-}
-
-// ==============================================================================
-// 👷 CREACIÓN DE NUEVOS EMPLEADOS / PERSONAL
-// ==============================================================================
-function openNewPersonnelModal() {
-    const form = document.getElementById("newPersonnelForm");
-    if (form) form.reset();
-    openModal("modalNewPersonnel");
-}
-
-async function submitCreatePersonnel(e) {
-    e.preventDefault();
-    const code = document.getElementById("npers_code").value.trim();
-    const fullName = document.getElementById("npers_name").value.trim();
-    const idNum = document.getElementById("npers_id").value.trim();
-    const role = document.getElementById("npers_role").value;
-    const phone = document.getElementById("npers_phone").value.trim();
-    const roster = document.getElementById("npers_roster").value;
-    const salary = parseFloat(document.getElementById("npers_salary").value) || 0.0;
-    const location = document.getElementById("npers_location").value.trim() || "Sede Central";
-
-    const payload = {
-        code: code,
-        full_name: fullName,
-        identification_id: idNum,
-        role_title: role,
-        phone: phone,
-        roster_type: roster,
-        monthly_salary_usd: salary,
-        current_location: location,
-        status: "disponible_base"
-    };
-
-    try {
-        const res = await fetch(`${API_BASE}/personnel/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || "Error al registrar empleado");
-        }
-
-        closeModal("modalNewPersonnel");
-        alert(`✅ Empleado ${fullName} (${role}) registrado exitosamente.`);
-        await loadInitialMasterData();
-        loadPersonnelTableList();
-    } catch (err) {
-        alert(`❌ Error: ${err.message}`);
-    }
-}
-
-// ==============================================================================
-// 👤 GESTIÓN Y CREACIÓN DE USUARIOS DE SISTEMA
-// ==============================================================================
-async function openUserManagementModal() {
-    openModal("modalUserManagement");
-    await loadUsersManagementTable();
-}
-
-async function loadUsersManagementTable() {
-    const tbody = document.getElementById("userManagementTableBody");
-    if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando usuarios...</td></tr>`;
-
-    try {
-        const res = await fetch(`${API_BASE}/auth/users`);
-        if (!res.ok) throw new Error("Error al obtener usuarios");
-        const users = await res.json();
-
-        if (!users || users.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">No hay usuarios registrados.</td></tr>`;
+        if (!currentPendingInboxList || currentPendingInboxList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 30px; color: #059669; font-weight: 700;"><i class="fa-solid fa-circle-check" style="font-size: 24px; display: block; margin-bottom: 6px;"></i> ¡Todo al día! No hay comprobantes pendientes por aprobar.</td></tr>`;
             return;
         }
 
-        const roleNamesMap = {
-            "director_general": "Director General / Socio",
-            "administrador_financiero": "Administración & Finanzas",
-            "ingeniero_obra": "Ingeniero Residente de Obra",
-            "supervisor_campo": "Supervisor de Campo / Faena"
-        };
-
-        tbody.innerHTML = users.map(u => `
+        tbody.innerHTML = currentPendingInboxList.map(item => `
             <tr>
-                <td><b style="color: var(--dalor-navy); font-family: monospace;">@${u.username}</b></td>
-                <td><b>${u.full_name}</b></td>
-                <td><span style="color: #64748b; font-size: 11px;">${u.email || '-'}</span></td>
-                <td><span class="badge-tag" style="background: #e0f2fe; color: #0369a1; font-size: 10px;">${roleNamesMap[u.role_name] || u.role_name}</span></td>
-                <td><span style="color: ${u.is_active ? '#059669' : '#ef4444'}; font-weight: 700; font-size: 11px;">${u.is_active ? '● Activo' : '○ Inactivo'}</span></td>
-                <td><span style="color: #64748b; font-size: 11px;">${u.last_login}</span></td>
+                <td style="font-size: 11px; font-weight: 700; color: #64748b;">${item.date}</td>
+                <td style="text-align: center;">
+                    ${item.receipt_image_path ? `
+                        <a href="${item.receipt_image_path}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-decoration: none;">
+                            <i class="fa-solid fa-image"></i> Ver Foto
+                        </a>
+                    ` : '<span style="color: #94a3b8; font-size: 11px;">Sin foto</span>'}
+                </td>
+                <td style="font-weight: 700; color: var(--dalor-navy);">${item.reported_by}</td>
+                <td>
+                    <b style="color: var(--dalor-blue);">${item.supplier_vendor}</b>
+                    <p style="font-size: 11px; color: #64748b; margin: 0;">${item.description}</p>
+                </td>
+                <td>
+                    <span style="font-size: 11px; font-weight: 800; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${item.project_name}</span>
+                </td>
+                <td>
+                    <span style="font-size: 11px; font-weight: 700; color: #7c3aed;">[${item.category_code}] ${item.category_name}</span>
+                </td>
+                <td style="font-weight: 700; color: #059669;">${(item.amount_bs || 0).toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs</td>
+                <td style="font-weight: 800; color: var(--dalor-navy); font-size: 14px;">$${(item.amount_usd || 0).toFixed(2)}</td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button onclick="openAuditExpenseModal(${item.id})" class="btn-primary" style="background: var(--dalor-navy); padding: 5px 12px; font-size: 11px; border-radius: 6px; font-weight: 800; margin-right: 4px;" title="Auditar y Editar Comprobante">
+                        <i class="fa-solid fa-file-signature"></i> Auditar / Aprobar
+                    </button>
+                    <button onclick="rejectExpense(${item.id})" class="btn-secondary" style="background: #ef4444; color: white; border: none; padding: 5px 8px; font-size: 11px; border-radius: 6px; font-weight: 700;" title="Rechazar Comprobante">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </td>
             </tr>
-        `).join("");
-    } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 20px;">Error al cargar usuarios: ${err.message}</td></tr>`;
+        `).join('');
+    } catch (e) {
+        console.error("Error al cargar inbox:", e);
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48;">Error al cargar comprobantes.</td></tr>`;
     }
 }
 
-function openNewUserModal_v2() {
-    const form = document.getElementById("newUserForm");
-    if (form) form.reset();
-    openModal("modalNewUser");
+function openAuditExpenseModal(expenseId) {
+    const item = currentPendingInboxList.find(i => i.id === expenseId);
+    if (!item) {
+        alert("Comprobante no encontrado.");
+        return;
+    }
+
+    document.getElementById("audit_expense_id").value = item.id;
+    
+    // Foto
+    const imgEl = document.getElementById("audit_receipt_img");
+    const linkEl = document.getElementById("audit_img_link");
+    if (item.receipt_image_path) {
+        imgEl.src = item.receipt_image_path;
+        imgEl.style.display = "block";
+        linkEl.href = item.receipt_image_path;
+        linkEl.style.display = "inline-block";
+    } else {
+        imgEl.src = "";
+        imgEl.style.display = "none";
+        linkEl.style.display = "none";
+    }
+
+    // Poblar campos
+    document.getElementById("audit_supplier_vendor").value = item.supplier_vendor || "";
+    document.getElementById("audit_payment_method").value = "caja_chica";
+    document.getElementById("audit_amount_usd").value = (item.amount_usd || 0).toFixed(2);
+    document.getElementById("audit_amount_bs").value = (item.amount_bs || 0).toFixed(2);
+    document.getElementById("audit_description").value = item.description || "";
+    document.getElementById("audit_fuel_liters").value = "";
+    document.getElementById("audit_odometer").value = "";
+
+    // Poblar Proyectos
+    const projSelect = document.getElementById("audit_project_id");
+    if (projSelect) {
+        projSelect.innerHTML = `<option value="">-- Gasto General Sede Central (Sin Obra) --</option>` +
+            allProjects.map(p => `<option value="${p.id}" ${item.project_id === p.id ? 'selected' : ''}>${p.code} - ${p.name}</option>`).join('');
+    }
+
+    // Poblar Categorías
+    const catSelect = document.getElementById("audit_category_id");
+    if (catSelect) {
+        catSelect.innerHTML = allCategories.map(c => 
+            `<option value="${c.id}" ${item.category_id === c.id ? 'selected' : ''}>[${c.code}] ${c.name}</option>`
+        ).join('');
+    }
+
+    // Poblar Activos/Vehículos
+    const assetSelect = document.getElementById("audit_asset_id");
+    if (assetSelect) {
+        assetSelect.innerHTML = `<option value="">-- No Aplica / Sin Activo --</option>` +
+            allAssets.map(a => `<option value="${a.id}" ${item.asset_id === a.id ? 'selected' : ''}>${a.name} (${a.code || a.license_plate || 'S/N'})</option>`).join('');
+    }
+
+    const modal = document.getElementById("modalAuditExpense");
+    if (modal) modal.classList.remove("hidden");
 }
 
-async function submitCreateUser_v2(e) {
-    e.preventDefault();
-    const username = document.getElementById("nusr_username").value.trim();
-    const password = document.getElementById("nusr_password").value.trim();
-    const fullname = document.getElementById("nusr_fullname").value.trim();
-    const email = document.getElementById("nusr_email").value.trim();
-    const role = document.getElementById("nusr_role").value;
+function calcAuditBs() {
+    const usd = parseFloat(document.getElementById("audit_amount_usd")?.value) || 0;
+    const rate = (typeof EXCHANGE_RATE !== 'undefined' && EXCHANGE_RATE > 0) ? EXCHANGE_RATE : 800.0;
+    const bsInput = document.getElementById("audit_amount_bs");
+    if (bsInput) {
+        bsInput.value = (usd * rate).toFixed(2);
+    }
+}
+
+async function submitAuditApproveExpense(event) {
+    event.preventDefault();
+    const expenseId = document.getElementById("audit_expense_id").value;
+    if (!expenseId) return;
+
+    const projectIdVal = document.getElementById("audit_project_id").value;
+    const categoryIdVal = parseInt(document.getElementById("audit_category_id").value);
+    const supplierVendor = document.getElementById("audit_supplier_vendor").value.trim();
+    const amountUsd = parseFloat(document.getElementById("audit_amount_usd").value) || 0;
+    const amountBs = parseFloat(document.getElementById("audit_amount_bs").value) || 0;
+    const paymentMethod = document.getElementById("audit_payment_method").value;
+    const description = document.getElementById("audit_description").value.trim();
+    const fuelLiters = parseFloat(document.getElementById("audit_fuel_liters").value) || null;
+    const odometer = parseFloat(document.getElementById("audit_odometer").value) || null;
 
     const payload = {
-        username: username,
-        password: password,
-        full_name: fullname,
-        email: email || null,
-        role_name: role,
-        is_active: true,
-        is_superuser: role === "director_general"
+        expense_type: projectIdVal ? "costo_obra" : "gasto_sede",
+        category_id: categoryIdVal,
+        project_id: projectIdVal ? parseInt(projectIdVal) : null,
+        supplier_vendor: supplierVendor,
+        description: description,
+        amount_usd: amountUsd,
+        exchange_rate: (typeof EXCHANGE_RATE !== 'undefined' && EXCHANGE_RATE > 0) ? EXCHANGE_RATE : 800.0,
+        payment_method: paymentMethod,
+        has_fiscal_invoice: true,
+        fuel_liters: fuelLiters,
+        odometer_at_fueling: odometer
     };
 
     try {
-        const res = await fetch(`${API_BASE}/auth/users`, {
-            method: "POST",
+        const res = await fetch(`${API_BASE}/expenses/inbox/${expenseId}/validate-impute`, {
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || "Error al crear usuario");
+            throw new Error(err.detail || "Error al validar e imputar comprobante");
         }
 
-        closeModal("modalNewUser");
-        alert(`✅ Usuario @${username} (${fullname}) creado exitosamente.`);
-        await loadUsersManagementTable();
-    } catch (err) {
-        alert(`❌ Error: ${err.message}`);
+        closeModal("modalAuditExpense");
+        await loadInboxPending();
+        await loadExpensesLedger();
+        alert("✅ Comprobante auditado, validado y aprobado exitosamente e imputado al flujo contable.");
+    } catch (e) {
+        alert("Error al aprobar comprobante: " + e.message);
     }
 }
 
-function openMaintenanceSubtab_v2(subtab) {
-    if (subtab === 'users') {
-        openUserManagementModal();
-    } else {
-        alert(`Módulo de ${subtab} activo.`);
+async function submitAuditRejectExpense() {
+    const expenseId = document.getElementById("audit_expense_id").value;
+    if (!expenseId) return;
+    const reason = prompt("Indica el motivo del rechazo del comprobante:");
+    if (reason === null) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/expenses/inbox/${expenseId}/reject?reason=${encodeURIComponent(reason)}`, { method: "PUT" });
+        if (!res.ok) throw new Error("Error al procesar el rechazo");
+        closeModal("modalAuditExpense");
+        await loadInboxPending();
+        alert("❌ Comprobante rechazado correctamente.");
+    } catch (e) {
+        alert("Error al rechazar: " + e.message);
     }
 }
 
+async function rejectExpense(expenseId) {
+    const reason = prompt("Indica el motivo del rechazo para registro de auditoría:");
+    if (reason === null) return;
+    try {
+        const res = await fetch(`${API_BASE}/expenses/inbox/${expenseId}/reject?reason=${encodeURIComponent(reason)}`, { method: "PUT" });
+        if (!res.ok) throw new Error("Error al procesar el rechazo");
+        await loadInboxPending();
+        alert("❌ Comprobante rechazado.");
+    } catch (e) {
+        alert("Error al rechazar el comprobante.");
+    }
+}
+
+
+// ----------------------------------------------------
+// 14. PLANILLA GENERAL DE GASTOS (CONTROL CONTABLE)
+// ----------------------------------------------------
+let allExpensesLedgerData = [];
+
+async function loadExpensesLedger() {
+    const tbody = document.getElementById("expensesLedgerTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando planilla de gastos...</td></tr>`;
+
+    const statusFilter = document.getElementById("ledgerStatusFilter")?.value || "todos";
+
+    try {
+        const url = statusFilter === "todos" 
+            ? `${API_BASE}/expenses/?status=todos`
+            : `${API_BASE}/expenses/?status=${statusFilter}`;
+        
+        const res = await fetch(url);
+        allExpensesLedgerData = await res.json();
+
+        renderExpensesLedgerTable(allExpensesLedgerData);
+    } catch (e) {
+        console.error("Error al cargar planilla:", e);
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48;">Error al cargar planilla de gastos.</td></tr>`;
+    }
+}
+
+function renderExpensesLedgerTable(data) {
+    const tbody = document.getElementById("expensesLedgerTableBody");
+    if (!tbody) return;
+
+    let totalUsd = 0;
+    let totalBs = 0;
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 30px; color: #64748b;"><i class="fa-solid fa-receipt" style="font-size: 24px; display: block; margin-bottom: 6px;"></i> No se encontraron gastos registrados.</td></tr>`;
+        document.getElementById("ledger_total_usd").innerText = "$0.00";
+        document.getElementById("ledger_total_bs").innerText = "0.00 Bs";
+        document.getElementById("ledger_count").innerText = "0";
+        return;
+    }
+
+    tbody.innerHTML = data.map(exp => {
+        if (exp.status === "aprobado") {
+            totalUsd += exp.amount_usd || 0;
+            totalBs += exp.amount_bs || 0;
+        }
+
+        let statusBadge = `<span style="font-size: 10px; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 9999px;">✓ Aprobado</span>`;
+        if (exp.status === "pendiente_validacion" || exp.status === "pendiente_aprobacion") {
+            statusBadge = `<span style="font-size: 10px; font-weight: 800; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 9999px;">⏳ Pendiente</span>`;
+        } else if (exp.status === "rechazado") {
+            statusBadge = `<span style="font-size: 10px; font-weight: 800; background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 9999px;">✕ Rechazado</span>`;
+        }
+
+        const formattedDate = exp.expense_date ? exp.expense_date.substring(0, 16).replace('T', ' ') : '-';
+
+        return `
+            <tr>
+                <td style="font-size: 11px; font-weight: 700; color: #64748b;">${formattedDate}</td>
+                <td>${statusBadge}</td>
+                <td style="font-weight: 800; color: var(--dalor-navy);">${exp.supplier_vendor}</td>
+                <td style="font-size: 12px; color: #334155;">${exp.description}</td>
+                <td><span style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Cat #${exp.category_id}</span></td>
+                <td><span style="font-size: 11px; color: #64748b;">${exp.project_id ? `Proyecto #${exp.project_id}` : 'Sede Central'}</span></td>
+                <td style="font-weight: 700; color: #059669;">${(exp.amount_bs || 0).toLocaleString('es-VE', {minimumFractionDigits: 2})} Bs</td>
+                <td style="font-weight: 900; color: var(--dalor-blue); font-size: 13px;">$${(exp.amount_usd || 0).toFixed(2)}</td>
+                <td style="text-align: center;">
+                    ${exp.receipt_image_path ? `
+                        <a href="${exp.receipt_image_path}" target="_blank" style="color: #0284c7; font-size: 12px; text-decoration: none;" title="Ver Comprobante">
+                            <i class="fa-solid fa-file-invoice"></i> Ver
+                        </a>
+                    ` : '<span style="color: #cbd5e1; font-size: 11px;">-</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById("ledger_total_usd").innerText = `$${totalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById("ledger_total_bs").innerText = `${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})} Bs`;
+    document.getElementById("ledger_count").innerText = data.length;
+}
+
+function filterExpensesLedger() {
+    const q = document.getElementById("ledgerSearchInput")?.value.toLowerCase().trim() || "";
+    if (!q) {
+        renderExpensesLedgerTable(allExpensesLedgerData);
+        return;
+    }
+    const filtered = allExpensesLedgerData.filter(e => 
+        (e.supplier_vendor && e.supplier_vendor.toLowerCase().includes(q)) ||
+        (e.description && e.description.toLowerCase().includes(q))
+    );
+    renderExpensesLedgerTable(filtered);
+}
 
 
 // ==============================================================================
-// 📦 NOTA DE ENTREGA DE MATERIALES (PARA JEFE DE MATERIALES / ALMACÉN)
+// 📋 19. GUÍAS DE TRASLADO & DOBLE VERIFICACIÓN DE HERRAMIENTAS (GUIA.PDF)
 // ==============================================================================
-function openMaterialDeliveryModal() {
-    const form = document.getElementById("materialDeliveryForm");
-    if (form) form.reset();
-    populateSelect("md_project_id", allProjects, p => `<option value="${p.id}" data-location="${p.location || ''}">${p.code} - ${p.name}</option>`);
-    onMaterialDeliveryProjectChanged();
-    openModal("modalMaterialDelivery");
-}
+let allTransferGuides = [];
 
-function onMaterialDeliveryProjectChanged() {
-    const sel = document.getElementById("md_project_id");
-    if (!sel || !sel.options[sel.selectedIndex]) return;
-    const projId = parseInt(sel.value);
-    const proj = allProjects.find(p => p.id === projId);
-
-    const loc = (proj && proj.location) || "Frente de Obra / Planta";
-    const destInput = document.getElementById("md_destination");
-    if (destInput) destInput.value = loc;
-
-    const dispInput = document.getElementById("md_dispatcher_name");
-    if (dispInput && !dispInput.value) {
-        dispInput.value = "Jefe de Materiales / Almacén Central";
-    }
-
-    const recvInput = document.getElementById("md_receiver_name");
-    if (recvInput && !recvInput.value) {
-        recvInput.value = (proj && proj.client_name) ? `Supervisor / Residente (${proj.client_name})` : "Supervisor Residente de Obra";
-    }
-
-    renderInitialMaterialDeliveryRows();
-}
-
-function renderInitialMaterialDeliveryRows() {
-    const tbody = document.getElementById("md_materials_tbody");
+async function loadTransferGuidesList() {
+    const tbody = document.getElementById("transferGuidesTableBody");
     if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    // Si hay materiales en inventario, precargar los primeros 2
-    if (allMaterials && allMaterials.length > 0) {
-        for (let i = 0; i < Math.min(2, allMaterials.length); i++) {
-            addMaterialDeliveryRow(allMaterials[i].name, allMaterials[i].unit_measure || 'Pza', 1);
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando guías de traslado...</td></tr>`;
+
+    try {
+        const res = await fetch(`${API_BASE}/transfer-guides/`);
+        allTransferGuides = await res.json();
+
+        if (!allTransferGuides || allTransferGuides.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #64748b; padding: 24px;">No hay guías de traslado registradas. Haz clic en <b>"+ Crear Guía de Despacho"</b>.</td></tr>`;
+            return;
         }
-    } else {
-        addMaterialDeliveryRow('Cable THW 12 AWG', 'Metro (m)', 50);
-        addMaterialDeliveryRow('Breaker 2x30A', 'Pza', 2);
+
+        tbody.innerHTML = allTransferGuides.map(g => {
+            let statusBadge = `<span style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 11px;">⏳ Borrador / Por Despachar</span>`;
+            let actionBtn = `<button onclick="openCustodianDispatchModal(${g.id})" class="btn-primary" style="background: #059669; font-size: 11px; padding: 4px 8px; font-weight: 800;" title="Checklist Custodio Carlos Hurtado"><i class="fa-solid fa-truck-ramp-box"></i> Despachar</button>`;
+
+            if (g.status === "despachado") {
+                statusBadge = `<span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 11px;">🚚 En Tránsito con Chofer</span>`;
+                actionBtn = `<button onclick="openReceiverChecklistModal(${g.id})" class="btn-primary" style="background: #0284c7; font-size: 11px; padding: 4px 8px; font-weight: 800;" title="Doble Verificación Ing. Residente"><i class="fa-solid fa-clipboard-check"></i> Recibir en Obra</button>`;
+            } else if (g.status === "recibido_en_obra") {
+                statusBadge = `<span style="background: #d1fae5; color: #065f46; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 11px;">✅ Recibido en Obra</span>`;
+                actionBtn = `<button onclick="returnTransferGuideToBase(${g.id})" class="btn-secondary" style="background: #64748b; color: white; border: none; font-size: 11px; padding: 4px 8px; font-weight: 800;" title="Retornar herramientas al almacén central"><i class="fa-solid fa-rotate-left"></i> Retornar</button>`;
+            } else if (g.status === "retornado") {
+                statusBadge = `<span style="background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 11px;">📦 Retornado a Base</span>`;
+                actionBtn = `<span style="color: #64748b; font-size: 11px; font-weight: 700;">Completada</span>`;
+            }
+
+            return `
+                <tr>
+                    <td style="font-weight: 800; color: var(--dalor-navy);">${g.guide_number}</td>
+                    <td>
+                        <strong style="color: var(--dalor-blue); font-size: 12px;">${g.project_code}</strong>
+                        <p style="font-size: 11px; color: #475569; margin: 0;">${g.destination}</p>
+                    </td>
+                    <td style="font-size: 11px; color: #64748b; font-weight: 700;">${g.issue_date}</td>
+                    <td>
+                        <b style="font-size: 12px;">${g.vehicle_name}</b>
+                        <p style="font-size: 10px; color: #64748b; font-weight: 700; margin: 0;">Placa: ${g.vehicle_plate}</p>
+                    </td>
+                    <td>
+                        <span style="font-size: 11px; font-weight: 700;">${g.driver_name}</span>
+                        <p style="font-size: 10px; color: #94a3b8; margin: 0;">${g.driver_id_card}</p>
+                    </td>
+                    <td style="font-weight: 800; text-align: center; color: #7c3aed;">${g.total_items}</td>
+                    <td>${statusBadge}</td>
+                    <td style="font-size: 11px;">
+                        ${g.dispatched_at ? `<span style="color: #059669; font-weight: 800;"><i class="fa-solid fa-check"></i> ${g.custodian_name}</span><br><small style="color: #64748b;">${g.dispatched_at}</small>` : '<span style="color: #94a3b8;">Pendiente</span>'}
+                    </td>
+                    <td style="font-size: 11px;">
+                        ${g.received_at ? `<span style="color: #0284c7; font-weight: 800;"><i class="fa-solid fa-check-double"></i> ${g.receiver_name}</span><br><small style="color: #64748b;">${g.received_at}</small>` : '<span style="color: #94a3b8;">Pendiente</span>'}
+                    </td>
+                    <td style="text-align: center; white-space: nowrap;">
+                        ${actionBtn}
+                        <button onclick="openPrintTransferGuideModal(${g.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px;" title="Ver Formato Oficial GUIA.pdf">
+                            <i class="fa-solid fa-print"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (e) {
+        console.error("Error al cargar guías:", e);
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar guías de traslado.</td></tr>`;
     }
 }
 
-function addMaterialDeliveryRow(defaultName = '', defaultUnit = 'Pza', defaultQty = 1) {
-    const tbody = document.getElementById("md_materials_tbody");
-    if (!tbody) return;
+function openNewTransferGuideModal() {
+    // Proyectos
+    const projSelect = document.getElementById("tg_project_id");
+    if (projSelect) {
+        projSelect.innerHTML = `<option value="">-- Seleccionar Obra Destino --</option>` +
+            allProjects.map(p => `<option value="${p.id}" data-location="${p.location || p.name}">${p.code} - ${p.name}</option>`).join('');
+    }
 
-    const tr = document.createElement("tr");
-    tr.style.borderBottom = "1px solid #f1f5f9";
-    tr.innerHTML = `
-        <td style="padding: 4px 6px;">
-            <input type="text" class="form-input md-item-name" value="${defaultName}" placeholder="Descripción del material..." style="padding: 4px 6px; font-size: 11px;" required>
-        </td>
-        <td style="padding: 4px 6px;">
-            <input type="text" class="form-input md-item-unit" value="${defaultUnit}" placeholder="Pza, m, etc." style="padding: 4px 6px; font-size: 11px; text-align: center;">
-        </td>
-        <td style="padding: 4px 6px;">
-            <input type="number" step="0.01" class="form-input md-item-qty" value="${defaultQty}" style="padding: 4px 6px; font-size: 11px; text-align: right; font-weight: 800;" required>
-        </td>
-        <td style="padding: 4px 6px; text-align: center;">
-            <button type="button" onclick="this.closest('tr').remove()" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px;">&times;</button>
-        </td>
-    `;
-    tbody.appendChild(tr);
+    // Vehículos
+    const vehSelect = document.getElementById("tg_vehicle_id");
+    if (vehSelect) {
+        const vehicles = allAssets.filter(a => a.type === 'vehicle' || a.category === 'Vehículo' || a.category === 'Camion' || (a.license_plate && a.license_plate.length > 0));
+        vehSelect.innerHTML = `<option value="">-- Sin Vehículo / Retiro por Cliente --</option>` +
+            vehicles.map(v => `<option value="${v.id}">${v.name} (Placa: ${v.license_plate || 'S/P'})</option>`).join('');
+    }
+
+    // Herramientas
+    renderToolsSelectorInGuideModal("");
+
+    const modal = document.getElementById("modalNewTransferGuide");
+    if (modal) modal.classList.remove("hidden");
 }
 
-function submitGenerateMaterialDeliveryGuide(event) {
+function updateGuideDestination(selectEl) {
+    const selectedOpt = selectEl.options[selectEl.selectedIndex];
+    const destIn = document.getElementById("tg_destination");
+    if (destIn && selectedOpt) {
+        destIn.value = selectedOpt.getAttribute("data-location") || selectedOpt.text;
+    }
+}
+
+function renderToolsSelectorInGuideModal(filterText) {
+    const container = document.getElementById("tg_tools_selector_container");
+    if (!container) return;
+
+    const query = filterText.toLowerCase().trim();
+    // Herramientas y equipos del inventario DALOR
+    const tools = allAssets.filter(a => a.type === 'tool' || a.category === 'Herramienta' || a.category === 'Equipos');
+    const filtered = query ? tools.filter(t => t.name.toLowerCase().includes(query) || (t.code && t.code.toLowerCase().includes(query))) : tools;
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 10px; font-size: 11px;">No se encontraron herramientas que coincidan.</div>`;
+        return;
+    }
+
+    container.innerHTML = filtered.slice(0, 100).map(t => `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #f1f5f9; font-size: 11px;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1;">
+                <input type="checkbox" class="tg-tool-checkbox" data-asset-id="${t.id}" data-name="${t.name}" data-brand="${t.brand || ''}" data-serial="${t.serial_number || t.code || ''}" style="cursor: pointer;">
+                <span><b>${t.code ? `[${t.code}] ` : ''}${t.name}</b> <small style="color: #64748b;">(${t.brand || 'Dalor'})</small></span>
+            </label>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="color: #64748b; font-size: 10px;">Cant:</span>
+                <input type="number" class="tg-tool-qty" data-asset-id="${t.id}" value="1" min="1" style="width: 45px; padding: 2px 4px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center;">
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterToolsInGuideModal(query) {
+    renderToolsSelectorInGuideModal(query);
+}
+
+async function submitCreateTransferGuide(event) {
     event.preventDefault();
-    const projId = parseInt(document.getElementById("md_project_id").value);
-    const dest = document.getElementById("md_destination").value.trim();
-    const dispatcher = document.getElementById("md_dispatcher_name").value.trim();
-    const receiver = document.getElementById("md_receiver_name").value.trim();
-    const notes = document.getElementById("md_notes").value.trim();
+    const projectId = parseInt(document.getElementById("tg_project_id").value);
+    const destination = document.getElementById("tg_destination").value.trim();
+    const vehicleIdVal = document.getElementById("tg_vehicle_id").value;
+    const vehicleId = vehicleIdVal ? parseInt(vehicleIdVal) : null;
+    const driverName = document.getElementById("tg_driver_name").value.trim();
+    const driverIdCard = document.getElementById("tg_driver_id_card").value.trim();
 
+    // Recolectar herramientas seleccionadas
+    const checkboxes = document.querySelectorAll(".tg-tool-checkbox:checked");
     const items = [];
-    document.querySelectorAll("#md_materials_tbody tr").forEach(row => {
-        const name = row.querySelector(".md-item-name")?.value.trim();
-        const unit = row.querySelector(".md-item-unit")?.value.trim() || "Pza";
-        const qty = parseFloat(row.querySelector(".md-item-qty")?.value) || 0;
-        if (name && qty > 0) {
-            items.push({ name, unit, qty });
-        }
+
+    checkboxes.forEach(cb => {
+        const assetId = parseInt(cb.getAttribute("data-asset-id"));
+        const name = cb.getAttribute("data-name");
+        const brand = cb.getAttribute("data-brand");
+        const serial = cb.getAttribute("data-serial");
+        const qtyInput = document.querySelector(`.tg-tool-qty[data-asset-id="${assetId}"]`);
+        const qty = qtyInput ? parseFloat(qtyInput.value) || 1.0 : 1.0;
+
+        items.push({
+            asset_id: assetId,
+            description: name,
+            brand: brand || null,
+            serial_or_presentation: serial || null,
+            quantity: qty
+        });
     });
 
     if (items.length === 0) {
-        alert("Por favor ingresa al menos un material con cantidad válida.");
+        alert("⚠️ Por favor selecciona al menos una herramienta o equipo para despachar en la guía.");
         return;
     }
-
-    const proj = allProjects.find(p => p.id === projId) || { code: "DAL-2026-001", name: "Proyecto en Obra", client_name: "General" };
-    const guideNumber = `NE-MAT-${Date.now().toString().slice(-6)}`;
-    const nowStr = new Date().toLocaleDateString('es-VE') + ' ' + new Date().toLocaleTimeString('es-VE', {hour: '2-digit', minute:'2-digit'});
-
-    closeModal("modalMaterialDelivery");
-
-    // MOSTRAR FORMATO OFICIAL FORMAL LISTO PARA IMPRIMIR O GUARDAR EN PDF
-    const printArea = document.getElementById("modalPrintPreviewContent");
-    const titleEl = document.getElementById("previewModalTitle");
-    if (titleEl) titleEl.innerText = "Nota Oficial de Entrega de Materiales - Dalor C.A.";
-
-    if (printArea) {
-        printArea.innerHTML = `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 25px; background: #fff;">
-            <!-- Header Membretado Oficial DALOR -->
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #002B49; padding-bottom: 12px; margin-bottom: 16px;">
-                <div>
-                    <h2 style="margin: 0; color: #002B49; font-size: 22px; font-weight: 900; letter-spacing: 1px;">DALOR, C.A.</h2>
-                    <p style="margin: 3px 0 0 0; font-size: 11px; color: #475569; font-weight: 600;">SOLUCIONES DE INGENIERÍA, MANTENIMIENTO Y MONTAJE INDUSTRIAL</p>
-                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">RIF: J-50477218-4 &bull; Guacara, Edo. Carabobo - Venezuela</p>
-                </div>
-                <div style="text-align: right;">
-                    <div style="background: #059669; color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">
-                        NOTA DE ENTREGA DE MATERIALES
-                    </div>
-                    <div style="font-size: 13px; font-weight: 900; color: #002B49; margin-top: 5px;">
-                        N°: ${guideNumber}
-                    </div>
-                    <div style="font-size: 11px; color: #64748b;">
-                        Fecha: ${nowStr}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Ficha de Destinatario y Entrega -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
-                <tr style="background: #f8fafc;">
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; width: 20%; color: #475569;">Proyecto / Obra:</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; width: 30%; font-weight: 800; color: #059669;">[${proj.code}] ${proj.name}</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; width: 20%; color: #475569;">Lugar de Entrega:</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; width: 30%; font-weight: 700;">${dest}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">Despachado Por:</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${dispatcher}</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">Receptor en Obra:</td>
-                    <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 800; color: #002B49;">${receiver}</td>
-                </tr>
-            </table>
-
-            <!-- Tabla de Materiales Despachados -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
-                <thead>
-                    <tr style="background: #002B49; color: #ffffff;">
-                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 40px; text-align: center;">Item</th>
-                        <th style="padding: 8px 10px; border: 1px solid #002B49;">Descripción de Material / Insumo</th>
-                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 100px; text-align: center;">Unidad</th>
-                        <th style="padding: 8px 10px; border: 1px solid #002B49; width: 110px; text-align: right;">Cantidad Entregada</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${items.map((it, i) => `
-                        <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: 800;">${i + 1}</td>
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${it.name}</td>
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; color: #64748b;">${it.unit}</td>
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: right; font-weight: 900; color: #059669; font-size: 12px;">${it.qty}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-
-            <!-- Observaciones -->
-            <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 24px; font-size: 11px;">
-                <strong>Observaciones de Despacho:</strong> ${notes || 'Material verificado en almacén, embalado y entregado conforme para instalación inmediata en obra.'}
-            </div>
-
-            <!-- Bloque de Firmas -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; text-align: center; margin-top: 36px; font-size: 11px;">
-                <div style="border-top: 1px solid #475569; padding-top: 6px;">
-                    <strong style="color: #002B49;">Despachado por:</strong><br>
-                    <span style="color: #64748b; font-size: 10px;">${dispatcher}</span>
-                </div>
-                <div style="border-top: 1px solid #475569; padding-top: 6px;">
-                    <strong style="color: #002B49;">Transportado por:</strong><br>
-                    <span style="color: #64748b; font-size: 10px;">Chofer / Transportista</span>
-                </div>
-                <div style="border-top: 1px solid #475569; padding-top: 6px;">
-                    <strong style="color: #002B49;">Recibido Conforme en Obra:</strong><br>
-                    <span style="color: #64748b; font-size: 10px;">${receiver}</span>
-                </div>
-            </div>
-        </div>
-        `;
-        openModal("modalPrintPreview");
-    }
-}
-
-// ==============================================================================
-// 📑 13. HISTÓRICO & AUDITORÍA GENERAL DE GASTOS
-// ==============================================================================
-let allExpensesCache = [];
-
-async function loadExpensesLog() {
-    const tbody = document.getElementById("expensesLogTableBody");
-    if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando histórico consolidado de gastos...</td></tr>`;
-
-    try {
-        const res = await fetch(`${API_BASE}/expenses/`);
-        allExpensesCache = await res.json();
-
-        populateExpensesLogFilters();
-        filterExpensesLog();
-    } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#e11d48;">Error al cargar histórico de gastos.</td></tr>`;
-    }
-}
-
-function populateExpensesLogFilters() {
-    populateSelect("log_filter_project", [{id: '', code: '-- Todos los Proyectos --'}, ...allProjects], p => `<option value="${p.id || ''}">${p.code ? p.code + ' - ' + (p.name || '') : p.name}</option>`);
-    const sortedCats = sortCategoriesNumerically(allCategories || []);
-    populateSelect("log_filter_category", [{id: '', code: '', name: '-- Todas las Partidas --'}, ...sortedCats], c => `<option value="${c.id || ''}">${c.code ? '[' + c.code + '] ' + c.name : c.name}</option>`);
-}
-
-function filterExpensesLog() {
-    const projId = document.getElementById("log_filter_project")?.value;
-    const catId = document.getElementById("log_filter_category")?.value;
-    const fiscal = document.getElementById("log_filter_fiscal")?.value;
-    const fromDate = document.getElementById("log_filter_date_from")?.value;
-    const toDate = document.getElementById("log_filter_date_to")?.value;
-    const search = (document.getElementById("log_filter_search")?.value || "").toLowerCase().trim();
-
-    let filtered = allExpensesCache.filter(e => {
-        if (projId && String(e.project_id) !== String(projId)) return false;
-        if (catId && String(e.category_id) !== String(catId)) return false;
-        if (fiscal === 'con_iva' && (e.is_tax_exempt || (e.tax_amount_usd || 0) <= 0)) return false;
-        if (fiscal === 'sin_iva' && (!e.is_tax_exempt && (e.tax_amount_usd || 0) > 0)) return false;
-        
-        if (fromDate) {
-            const expDate = (e.expense_date || '').split('T')[0];
-            if (expDate && expDate < fromDate) return false;
-        }
-        if (toDate) {
-            const expDate = (e.expense_date || '').split('T')[0];
-            if (expDate && expDate > toDate) return false;
-        }
-
-        if (search) {
-            const matchText = `${e.vendor || ''} ${e.invoice_number || ''} ${e.description || ''} ${e.reported_by || ''}`.toLowerCase();
-            if (!matchText.includes(search)) return false;
-        }
-
-        return true;
-    });
-
-    renderExpensesLogTable(filtered);
-    updateExpensesLogKPIs(filtered);
-}
-
-function updateExpensesLogKPIs(list) {
-    let totalUsd = 0;
-    let totalBs = 0;
-    let fiscalUsd = 0;
-    let fiscalCount = 0;
-    let nonFiscalUsd = 0;
-    let nonFiscalCount = 0;
-    let totalTaxUsd = 0;
-
-    list.forEach(e => {
-        const usd = e.amount_usd || 0;
-        const bs = e.amount_bs || 0;
-        const tax = e.tax_amount_usd || 0;
-        totalUsd += usd;
-        totalBs += bs;
-        totalTaxUsd += tax;
-
-        if (!e.is_tax_exempt && tax > 0) {
-            fiscalUsd += usd;
-            fiscalCount++;
-        } else {
-            nonFiscalUsd += usd;
-            nonFiscalCount++;
-        }
-    });
-
-    const elTotalUsd = document.getElementById("log_kpi_total_usd");
-    const elTotalBs = document.getElementById("log_kpi_total_bs");
-    const elFiscalUsd = document.getElementById("log_kpi_fiscal_usd");
-    const elFiscalCount = document.getElementById("log_kpi_fiscal_count");
-    const elNonFiscalUsd = document.getElementById("log_kpi_nonfiscal_usd");
-    const elNonFiscalCount = document.getElementById("log_kpi_nonfiscal_count");
-    const elTaxUsd = document.getElementById("log_kpi_tax_usd");
-    const elCountTotal = document.getElementById("log_kpi_count_total");
-
-    if (elTotalUsd) elTotalUsd.innerText = `$${totalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (elTotalBs) elTotalBs.innerText = `Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (elFiscalUsd) elFiscalUsd.innerText = `$${fiscalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (elFiscalCount) elFiscalCount.innerText = `${fiscalCount} facturas fiscales con IVA`;
-    if (elNonFiscalUsd) elNonFiscalUsd.innerText = `$${nonFiscalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (elNonFiscalCount) elNonFiscalCount.innerText = `${nonFiscalCount} notas / compras sin IVA`;
-    if (elTaxUsd) elTaxUsd.innerText = `$${totalTaxUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (elCountTotal) elCountTotal.innerText = `${list.length} registros listados`;
-}
-
-function renderExpensesLogTable(list) {
-    const tbody = document.getElementById("expensesLogTableBody");
-    if (!tbody) return;
-
-    if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:24px; color:#94a3b8;">No se encontraron gastos que coincidan con los filtros seleccionados.</td></tr>`;
-        const tfoot = document.getElementById("expensesLogTableFoot");
-        if (tfoot) tfoot.innerHTML = "";
-        return;
-    }
-
-    let totBase = 0, totTax = 0, totUsd = 0, totBs = 0;
-
-    tbody.innerHTML = list.map((e, idx) => {
-        const dateStr = (e.expense_date || '').split('T')[0] || '-';
-        const proj = allProjects.find(p => p.id === e.project_id);
-        const projLabel = proj ? `[${proj.code}] ${proj.name}` : (e.project_id ? `Proyecto #${e.project_id}` : 'Gasto General Sede');
-        const cat = (allCategories || []).find(c => c.id === e.category_id);
-        const catLabel = cat ? `${cat.code} ${cat.name}` : (e.category_code || '10.0 General');
-        const isFiscal = !e.is_tax_exempt && (e.tax_amount_usd || 0) > 0;
-        const fiscalBadge = isFiscal 
-            ? `<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Fiscal IVA</span>`
-            : `<span style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px;">Sin IVA</span>`;
-        const statusBadge = e.status === 'aprobado'
-            ? `<span style="background:#d1fae5; color:#065f46; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Aprobado</span>`
-            : `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Pendiente</span>`;
-
-        const bAmount = (e.base_amount_usd !== undefined && e.base_amount_usd !== null) ? e.base_amount_usd : (e.is_tax_exempt ? e.amount_usd : (e.amount_usd - (e.tax_amount_usd||0)));
-        const tAmount = e.tax_amount_usd || 0;
-        const uAmount = e.amount_usd || 0;
-        const bsAmount = e.amount_bs || 0;
-
-        totBase += bAmount;
-        totTax += tAmount;
-        totUsd += uAmount;
-        totBs += bsAmount;
-
-        const viewBtn = e.receipt_image_path
-            ? `<button onclick="viewReceiptImageById(${e.id})" class="btn-primary" style="padding:3px 8px; font-size:11px; background:#0284c7; cursor:pointer;" title="Ver Comprobante Digital"><i class="fa-solid fa-eye"></i></button>`
-            : `<span style="color:#cbd5e1; font-size:11px;">-</span>`;
-
-        return `
-            <tr>
-                <td style="font-size:11px; color:#64748b;">${dateStr}</td>
-                <td style="font-weight:700; font-size:11px; color:var(--dalor-navy);">${projLabel}</td>
-                <td style="font-size:11px;"><span style="background:#f0f9ff; color:#0369a1; padding:2px 5px; border-radius:4px; font-weight:700;">${catLabel}</span></td>
-                <td style="font-weight:600; font-size:11px;">${e.vendor || e.supplier_vendor || 'Comercio'}</td>
-                <td style="font-family:monospace; font-size:11px;">${e.invoice_number || '-'}</td>
-                <td style="text-align:center;">${fiscalBadge}</td>
-                <td style="text-align:right; font-size:11px;">$${bAmount.toFixed(2)}</td>
-                <td style="text-align:right; font-size:11px; color:#8b5cf6;">$${tAmount.toFixed(2)}</td>
-                <td style="text-align:right; font-weight:800; font-size:12px; color:var(--dalor-navy);">$${uAmount.toFixed(2)}</td>
-                <td style="text-align:right; font-weight:700; font-size:11px; color:#0284c7;">Bs. ${bsAmount.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                <td style="font-size:11px; color:#475569;">${e.reported_by || '-'}</td>
-                <td style="text-align:center;">${statusBadge}</td>
-                <td style="text-align:center;">${viewBtn}</td>
-            </tr>
-        `;
-    }).join('');
-
-    // RENDERIZAR FILA TOTALIZADORA FIJA (TFOOT)
-    let tfoot = document.getElementById("expensesLogTableFoot");
-    if (!tfoot) {
-        const table = tbody.closest("table");
-        if (table) {
-            tfoot = document.createElement("tfoot");
-            tfoot.id = "expensesLogTableFoot";
-            table.appendChild(tfoot);
-        }
-    }
-    if (tfoot) {
-        tfoot.innerHTML = `
-            <tr style="background: var(--dalor-navy); color: white; font-weight: 800; font-size: 11px; border-top: 2px solid var(--dalor-gold);">
-                <td colspan="6" style="padding: 10px 12px; text-align: left; text-transform: uppercase; letter-spacing: 0.5px;">
-                    <i class="fa-solid fa-calculator" style="color: var(--dalor-gold); margin-right: 6px;"></i> TOTALIZADO AUDITORÍA (${list.length} Registros)
-                </td>
-                <td style="padding: 10px 8px; text-align: right; color: #93c5fd;">$${totBase.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                <td style="padding: 10px 8px; text-align: right; color: #c4b5fd;">$${totTax.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                <td style="padding: 10px 8px; text-align: right; color: var(--dalor-gold); font-size: 13px;">$${totUsd.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                <td style="padding: 10px 8px; text-align: right; color: #38bdf8; font-size: 12px;">Bs. ${totBs.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                <td colspan="3" style="padding: 10px 8px; text-align: center; color: #94a3b8; font-size: 10px;">Sincronizado con Tesorería</td>
-            </tr>
-        `;
-    }
-}
-
-window.viewReceiptImageById = function(expId) {
-    const exp = (allExpensesCache || []).find(e => e.id === expId);
-    if (!exp || !exp.receipt_image_path) {
-        alert("Este gasto no tiene imagen de comprobante digital adjunta.");
-        return;
-    }
-    viewReceiptImage(exp.receipt_image_path);
-};
-
-window.openReceiptInNewTab = function() {
-    const imgEl = document.getElementById("receiptViewerImg");
-    if (!imgEl || !imgEl.src) return;
-    const src = imgEl.src;
-    if (src.startsWith("data:")) {
-        const w = window.open("");
-        w.document.write(`<html><head><title>Comprobante DALOR</title><style>body{margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;}img{max-width:98%;max-height:98vh;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);}</style></head><body><img src="${src}"></body></html>`);
-    } else {
-        window.open(src, "_blank");
-    }
-};
-
-function viewReceiptImage(imagePath) {
-    if (!imagePath) return;
-    const fullUrl = (imagePath.startsWith('http') || imagePath.startsWith('data:')) ? imagePath : (imagePath.startsWith('/') ? imagePath : '/' + imagePath);
-    const imgEl = document.getElementById("receiptViewerImg");
-    const linkEl = document.getElementById("receiptViewerDownload");
-    if (imgEl) imgEl.src = fullUrl;
-    if (linkEl) {
-        linkEl.href = fullUrl;
-        if (fullUrl.startsWith('data:')) {
-            linkEl.setAttribute('download', `Comprobante_DALOR_${Date.now()}.jpg`);
-            linkEl.onclick = function(e) { e.preventDefault(); openReceiptInNewTab(); };
-        } else {
-            linkEl.onclick = null;
-        }
-    }
-    openModal("modalReceiptViewer");
-}
-
-function exportExpensesLogExcel() {
-    if (!allExpensesCache || allExpensesCache.length === 0) {
-        alert("No hay gastos cargados para exportar.");
-        return;
-    }
-    // Formato CSV delimitado por punto y coma compatible con Excel en español
-    let csv = "Fecha;Proyecto;Partida;Proveedor;Factura;Condicion Fiscal;Base USD;IVA USD;Total USD;Total Bs;Reportado Por;Estado\n";
-    allExpensesCache.forEach(e => {
-        const proj = allProjects.find(p => p.id === e.project_id);
-        const projLabel = proj ? `[${proj.code}] ${proj.name}` : 'Sede General';
-        const cat = (allCategories || []).find(c => c.id === e.category_id);
-        const catLabel = cat ? `${cat.code} ${cat.name}` : (e.category_code || 'General');
-        const cond = (!e.is_tax_exempt && (e.tax_amount_usd || 0) > 0) ? 'Fiscal Con IVA' : 'Sin IVA / Exento';
-        
-        csv += `"${(e.expense_date||'').split('T')[0]}";"${projLabel}";"${catLabel}";"${e.vendor||''}";"${e.invoice_number||''}";"${cond}";"${(e.base_amount_usd||0).toFixed(2)}";"${(e.tax_amount_usd||0).toFixed(2)}";"${(e.amount_usd||0).toFixed(2)}";"${(e.amount_bs||0).toFixed(2)}";"${e.reported_by||''}";"${e.status||''}"\n`;
-    });
-
-    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `Auditoria_Gastos_DALOR_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-
-async function submitResetToCleanSlate(event) {
-    event.preventDefault();
-    const pwd = document.getElementById("clean_slate_password")?.value;
-    if (!pwd) return;
-
-    if (!confirm("⚠️ ADVERTENCIA CRÍTICA:\n\n¿Estás 100% seguro de que deseas purgar todos los registros de prueba y llevar el sistema a CERO para el arranque oficial de DALOR?\n\nEsta acción dejará la base de datos impecable para la contabilidad real.")) {
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_BASE}/maintenance/reset-to-clean-slate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ director_password: pwd })
-        });
-        if (res.ok) {
-            const data = await res.json();
-            alert("🧹 " + data.message);
-            document.getElementById("clean_slate_password").value = "";
-            await loadInitialMasterData();
-            switchView("executive", "gerencia");
-        } else {
-            const err = await res.json();
-            alert("❌ Error: " + (err.detail || "No se pudo realizar la puesta a cero."));
-        }
-    } catch (e) {
-        alert("Error de conexión al ejecutar puesta a cero.");
-    }
-}
-
-// ==============================================================================
-// 📄 FACTURACIÓN RÁPIDA 1-CLIC DESDE PROYECTO HACIA CxC
-// ==============================================================================
-async function openCreateCxCForProject(projId) {
-    const pId = projId || window.currentViewingProjectId;
-    
-    // Cerrar modal de detalle de proyecto si estaba abierto
-    closeModal('modalProjectDetail');
-
-    // Asegurar que tengamos la lista de clientes y proyectos actualizada
-    if (!allClients || allClients.length === 0) {
-        try {
-            const resC = await fetch(`${API_BASE}/clients/`);
-            if (resC.ok) allClients = await resC.json();
-        } catch(e) {
-            console.error("Error loading clients:", e);
-        }
-    }
-    if (!allProjects || allProjects.length === 0) {
-        try {
-            const resP = await fetch(`${API_BASE}/projects/`);
-            if (resP.ok) allProjects = await resP.json();
-        } catch(e) {
-            console.error("Error loading projects:", e);
-        }
-    }
-
-    const proj = (allProjects || []).find(p => p.id == pId);
-
-    // Cambiar a vista de finanzas y subpestaña de CxC
-    switchView('financial', 'finanzas');
-    switchFinancialSubtab('cxc');
-
-    // Poblar y abrir modal
-    openNewReceivableModal();
-
-    if (proj) {
-        if (proj.client_id && document.getElementById("cxc_client_id")) {
-            document.getElementById("cxc_client_id").value = proj.client_id;
-        }
-        if (document.getElementById("cxc_project_id")) {
-            document.getElementById("cxc_project_id").value = proj.id;
-        }
-        if (document.getElementById("cxc_description")) {
-            document.getElementById("cxc_description").value = `Valuación / Facturación de Obra - [${proj.code}] ${proj.name}`;
-        }
-        if (document.getElementById("cxc_amount_usd") && proj.contract_amount_usd) {
-            const amt = parseFloat(proj.contract_amount_usd) || 0;
-            document.getElementById("cxc_amount_usd").value = amt.toFixed(2);
-            
-            // Retenciones en 0.00 por defecto (el cliente debe el 100% hasta que consigne comprobantes de retención)
-            if (document.getElementById("cxc_tax_retained")) {
-                document.getElementById("cxc_tax_retained").value = "0.00";
-            }
-        }
-        if (document.getElementById("cxc_invoice_number")) {
-            const randNum = Math.floor(100 + Math.random() * 900);
-            document.getElementById("cxc_invoice_number").value = `VAL-${proj.code}-${randNum}`;
-        }
-    }
-}
-
-// ==============================================================================
-// 🔔 SISTEMA DE ALERTAS EN TIEMPO REAL: SONIDO (CHIME), TOAST & AUTO-REFRESH
-// ==============================================================================
-
-let isSoundAlertsEnabled = localStorage.getItem('dalor_sound_alerts') !== 'false'; // Activo por defecto
-let lastKnownPendingIds = new Set();
-let isFirstPendingCheck = true;
-
-function toggleSoundAlerts() {
-    isSoundAlertsEnabled = !isSoundAlertsEnabled;
-    localStorage.setItem('dalor_sound_alerts', isSoundAlertsEnabled ? 'true' : 'false');
-    updateSoundToggleUI();
-    if (isSoundAlertsEnabled) {
-        playNotificationChime();
-    }
-}
-
-function updateSoundToggleUI() {
-    const icon1 = document.getElementById('iconSoundToggle');
-    const txt1 = document.getElementById('textSoundToggle');
-    const icon2 = document.getElementById('iconSoundToggleInbox');
-    const txt2 = document.getElementById('textSoundToggleInbox');
-    const btn1 = document.getElementById('btnSoundToggle');
-    
-    if (icon1 && txt1) {
-        if (isSoundAlertsEnabled) {
-            icon1.className = 'fa-solid fa-bell';
-            txt1.innerText = 'Sonido: ON';
-            if (btn1) {
-                btn1.style.color = '#fbbf24';
-                btn1.style.borderColor = '#fbbf24';
-            }
-        } else {
-            icon1.className = 'fa-solid fa-bell-slash';
-            txt1.innerText = 'Sonido: OFF';
-            if (btn1) {
-                btn1.style.color = '#94a3b8';
-                btn1.style.borderColor = '#334155';
-            }
-        }
-    }
-
-    if (icon2 && txt2) {
-        if (isSoundAlertsEnabled) {
-            icon2.className = 'fa-solid fa-bell';
-            icon2.style.color = '#059669';
-            txt2.innerText = 'Alertas Sonoras: ON';
-        } else {
-            icon2.className = 'fa-solid fa-bell-slash';
-            icon2.style.color = '#94a3b8';
-            txt2.innerText = 'Alertas Sonoras: OFF';
-        }
-    }
-}
-
-// 🔊 Generador de Tono de Notificación Nativo (Web Audio API - Cero Dependencias)
-function playNotificationChime() {
-    if (!isSoundAlertsEnabled) return;
-    try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        const now = ctx.currentTime;
-        
-        // Tono Armónico 1 (Mi 5 - 659.25 Hz)
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(659.25, now);
-        gain1.gain.setValueAtTime(0.25, now);
-        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.35);
-
-        // Tono Armónico 2 (La 5 - 880.00 Hz)
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(880.00, now + 0.12);
-        gain2.gain.setValueAtTime(0.30, now + 0.12);
-        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.start(now + 0.12);
-        osc2.stop(now + 0.55);
-    } catch(e) {
-        console.warn('Audio alert error:', e);
-    }
-}
-
-// 🪟 Renderizador de Tarjetas Flotantes (Toast Notification)
-function showInboxToastNotification(item) {
-    const container = document.getElementById('toastNotificationContainer');
-    if (!container) return;
-    
-    const toast = document.createElement('div');
-    toast.className = 'toast-card-live';
-    toast.style.cssText = `
-        background: #0f172a;
-        color: white;
-        border: 2px solid #059669;
-        border-radius: 12px;
-        padding: 12px 14px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
-        pointer-events: auto;
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        transition: all 0.3s ease;
-    `;
-    
-    const rep = item.reported_by || 'Personal de Campo';
-    const amt = Number(item.amount_usd || 0).toFixed(2);
-    const proj = item.project_name || 'Obra General';
-    const vendor = item.supplier_vendor || 'Comercio General';
-    
-    toast.innerHTML = `
-        <div style="background: rgba(5, 150, 105, 0.2); color: #34d399; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; animation: pulseGlowGreen 2s infinite;">
-            <i class="fa-solid fa-file-invoice-dollar"></i>
-        </div>
-        <div style="flex: 1; min-width: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h4 style="margin: 0; font-size: 13px; font-weight: 800; color: #34d399;">¡Nuevo Comprobante Recibido!</h4>
-                <button onclick="this.closest('.toast-card-live').remove()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px;">&times;</button>
-            </div>
-            <p style="margin: 3px 0 0 0; font-size: 11px; color: #cbd5e1;"><b>${rep}</b> reportó factura en <b>${vendor}</b></p>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                <span style="font-size: 13px; font-weight: 900; color: var(--dalor-gold);">$${amt} USD <small style="color: #94a3b8; font-weight: 600;">(${proj})</small></span>
-                <button onclick="switchView('inbox', 'gastos'); this.closest('.toast-card-live').remove();" style="background: #059669; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                    <i class="fa-solid fa-stamp"></i> Auditar
-                </button>
-            </div>
-        </div>
-    `;
-    
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        if (toast.parentElement) {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(60px)';
-            setTimeout(() => toast.remove(), 300);
-        }
-    }, 9000);
-}
-
-// 🔄 Ciclo de Monitoreo Rápido (Cada 5 Segundos)
-async function updatePendingInboxBadge() {
-    try {
-        if (!currentUser) return;
-        const uname = (currentUser.username || '').toLowerCase();
-        const role = (currentUser.role_name || '').toLowerCase();
-        const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
-        if (isCampo) {
-            const b1 = document.getElementById("badgeInboxCount");
-            const b2 = document.getElementById("badgeGastosDropdown");
-            if (b1) b1.style.display = "none";
-            if (b2) b2.style.display = "none";
-            return;
-        }
-
-        const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
-        if (!res.ok) return;
-        const pending = await res.json();
-        const list = Array.isArray(pending) ? pending : [];
-        const count = list.length;
-
-        const b1 = document.getElementById("badgeInboxCount");
-        if (b1) {
-            b1.innerText = count;
-            b1.style.display = count > 0 ? "inline-block" : "none";
-        }
-        const b2 = document.getElementById("badgeGastosDropdown");
-        if (b2) {
-            b2.innerText = count;
-            b2.style.display = count > 0 ? "inline-block" : "none";
-        }
-
-        // Detección de nuevos comprobantes entrantes
-        const currentIds = new Set(list.map(item => item.id));
-        
-        if (!isFirstPendingCheck) {
-            const newlyArrived = list.filter(item => !lastKnownPendingIds.has(item.id));
-            if (newlyArrived.length > 0) {
-                // 🔊 Sonido de Notificación
-                playNotificationChime();
-                
-                // 🪟 Notificación Toast en Pantalla
-                newlyArrived.forEach(item => showInboxToastNotification(item));
-                
-                // 🔄 Si el usuario está viendo el Inbox, actualizar la tabla automáticamente
-                const inboxView = document.getElementById('view-inbox');
-                if (inboxView && !inboxView.classList.contains('hidden')) {
-                    loadPendingExpensesInbox();
-                }
-            }
-        }
-
-        lastKnownPendingIds = currentIds;
-        isFirstPendingCheck = false;
-    } catch(e) {
-        // Silencioso
-    }
-}
-
-// Ejecutar cada 5 segundos para respuesta inmediata en demostraciones
-setInterval(updatePendingInboxBadge, 5000);
-
-// Inicializar el estado de los interruptores de sonido
-updateSoundToggleUI();
-
-// 🟢 UPTIME & KEEP-ALIVE PING (Mantiene Render 100% activo sin latencia en frío)
-setInterval(() => {
-    fetch('/healthz').catch(() => {});
-}, 300000); // Cada 5 minutos
-
-
-// ==============================================================================
-// 🌟 MÓDULOS MAESTROS DALOR: SEGUIMIENTO PÚBLICO, MULTIMONEDA & RETENCIONES SENIAT
-// ==============================================================================
-
-// Copiar Enlace de Seguimiento Público de Proyecto para Clientes
-// Enlace de Seguimiento Público de Proyecto para Clientes (Portal Ciego a Costos)
-window.copyProjectClientTrackingLink = async function(projIdOrCode) {
-    let token = null;
-    let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
-    
-    // Si se pasa un código de proyecto string que no sea número
-    if (typeof projIdOrCode === 'string' && isNaN(parseInt(projIdOrCode))) {
-        token = projIdOrCode;
-    } else if (projIdOrCode && !isNaN(parseInt(projIdOrCode))) {
-        projId = parseInt(projIdOrCode);
-    }
-
-    if (projId) {
-        try {
-            const res = await fetch(`${API_BASE}/projects/${projId}/tracking-token`, { method: 'POST' });
-            if (res.ok) {
-                const data = await res.json();
-                token = data.tracking_token || data.project_code;
-            }
-        } catch(e) {
-            console.error('Error generating token:', e);
-        }
-    }
-
-    if (!token && window.allProjects && projId) {
-        const p = window.allProjects.find(x => x.id == projId);
-        if (p) token = p.tracking_token || p.code;
-    }
-    
-    const url = window.location.origin + '/seguimiento/' + (token || 'PRJ-2026-001');
-    if (navigator.clipboard) {
-        await navigator.clipboard.writeText(url);
-    }
-    
-    if (typeof showToastNotification === 'function') {
-        showToastNotification(`🔗 Enlace copiado al portapapeles: ${url}`, 'success');
-    } else {
-        alert(`🔗 Enlace de Seguimiento para Cliente copiado al portapapeles:
-
-${url}`);
-    }
-    window.open(url, '_blank');
-};
-
-// Toggle Activo / Inactivo en Activos y Equipos
-window.toggleAssetActive = async function(assetId) {
-    try {
-        const res = await fetch(`${API_BASE}/assets/${assetId}/toggle-active`, { method: 'POST' });
-        if (!res.ok) throw new Error('No se pudo cambiar el estado del activo.');
-        const data = await res.json();
-        showToastNotification(`Activo actualizado: ${data.status_label}`, 'success');
-        if (typeof loadAssetsList === 'function') loadAssetsList();
-        if (typeof loadFleetView === 'function') loadFleetView();
-    } catch(err) {
-        showToastNotification(`Error: ${err.message}`, 'error');
-    }
-};
-
-// Cambio dinámico de moneda en cotización
-window.onQuotationCurrencyChanged = function() {
-    const cur = document.getElementById("quote_currency")?.value || "USD";
-    const symbol = cur === "VES" ? "Bs." : (cur === "EUR" ? "€" : "$");
-    const labelSub = document.querySelector("#quote_subtotal_display")?.previousElementSibling;
-    const labelTot = document.querySelector("#quote_total_display")?.previousElementSibling;
-    if (labelSub) labelSub.innerText = `Subtotal (${symbol})`;
-    if (labelTot) labelTot.innerText = `Total Cotizado (${symbol})`;
-    if (typeof recalcQuotationTotals === 'function') recalcQuotationTotals();
-};
-
-
-async function deleteReceivable(cxcId, invoiceNum) {
-    if (!confirm(`¿Estás seguro de anular / eliminar la Cuenta por Cobrar [${invoiceNum || cxcId}]?`)) return;
-    try {
-        const res = await fetch(`${API_BASE}/financial/cxc/${cxcId}`, { method: 'DELETE' });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || "Error al anular CxC");
-        }
-        await loadReceivablesList();
-        if (typeof showToastNotification === 'function') {
-            showToastNotification(`🗑️ Cuenta por cobrar [${invoiceNum}] eliminada con éxito.`, 'success');
-        } else {
-            alert(`🗑️ Cuenta por cobrar eliminada con éxito.`);
-        }
-    } catch(err) {
-        alert("Error al anular CxC: " + err.message);
-    }
-}
-
-
-// ==============================================================================
-// 📦 MÓDULO DE GUÍAS DE DESPACHO, TRASLADO & ENTREGA DE PRODUCTOS / EJES
-// ==============================================================================
-let allDispatchGuides = [];
-
-function switchDispatchSubtab(subtabName) {
-    const isList = (subtabName === 'list');
-    const subtabList = document.getElementById('subtab-disp-list');
-    const subtabForm = document.getElementById('subtab-disp-form');
-    const btnList = document.getElementById('tabbtn-disp-list');
-    const btnForm = document.getElementById('tabbtn-disp-form');
-
-    if (subtabList) subtabList.classList.toggle('hidden', !isList);
-    if (subtabForm) subtabForm.classList.toggle('hidden', isList);
-
-    if (btnList) btnList.className = isList ? 'btn-primary' : 'btn-secondary';
-    if (btnForm) btnForm.className = !isList ? 'btn-primary' : 'btn-secondary';
-
-    if (isList) {
-        loadDispatchGuidesList();
-    } else {
-        initDispatchForm();
-    }
-}
-
-async function initDispatchView() {
-    switchDispatchSubtab('list');
-    await loadDispatchGuidesList();
-}
-
-async function initDispatchForm() {
-    // Asegurar carga fresca de clientes, proyectos y flota DALOR
-    try {
-        const [resC, resP, resA] = await Promise.all([
-            fetch(`${API_BASE}/clients/`),
-            fetch(`${API_BASE}/projects/`),
-            fetch(`${API_BASE}/assets/`)
-        ]);
-        if (resC.ok) allClients = await resC.json();
-        if (resP.ok) allProjects = await resP.json();
-        if (resA.ok) allAssets = await resA.json();
-    } catch(e) {}
-
-    // Poblar Selector de Clientes
-    const clientSelect = document.getElementById("disp_client_id");
-    if (clientSelect) {
-        clientSelect.innerHTML = `<option value="">-- Seleccionar Cliente Destinatario --</option>` + 
-            (allClients || []).map(c => `<option value="${c.id}">${c.name} ${c.rif ? '(' + c.rif + ')' : ''}</option>`).join('');
-    }
-
-    // Poblar Selector de Proyectos
-    const projSelect = document.getElementById("disp_project_id");
-    if (projSelect) {
-        projSelect.innerHTML = `<option value="">[Sin Obra / Servicio Directo de Taller]</option>` + 
-            (allProjects || []).map(p => `<option value="${p.id}">[${p.code || 'PRJ'}] ${p.name}</option>`).join('');
-    }
-
-    // Poblar Vehículos Flota DALOR (8 Unidades Oficiales)
-    const vehicles = (allAssets || []).filter(a => 
-        a.asset_type === 'vehiculo' || 
-        a.category === 'vehiculo' || 
-        (a.license_plate && a.license_plate !== 'N/A' && a.license_plate !== '') ||
-        (a.code && a.code.includes('-V-')) ||
-        (a.asset_code && a.asset_code.includes('-V-'))
-    );
-
-    const assetSelect = document.getElementById("disp_select_asset");
-    if (assetSelect) {
-        assetSelect.innerHTML = `<option value="">-- Seleccionar Vehículo Flota DALOR --</option>` + 
-            vehicles.map(v => {
-                const code = v.asset_code || v.code || 'VEH';
-                const plate = v.license_plate || v.plate_number || 'S/P';
-                const brandModel = (v.brand ? v.brand + ' ' : '') + (v.model || '');
-                return `<option value="${v.id}" data-driver="${v.current_custodian_name || ''}" data-plate="${plate}" data-model="${brandModel}">[${code}] ${v.name} (Placa: ${plate})</option>`;
-            }).join('');
-    }
-
-    // Reset modo a propio
-    setDispatchTransportMode('propio_dalor');
-
-    // Inicializar tabla de ítems de carga limpia sin textos de prueba
-    const container = document.getElementById("dispatchItemsTableBody");
-    if (container && container.children.length === 0) {
-        addDispatchItemRow("", 1, "PZA", "Nuevo Fabricado", 0);
-    }
-}
-
-function setDispatchTransportMode(mode) {
-    document.getElementById("disp_transport_type").value = mode;
-
-    const btnP = document.getElementById("btn_mode_propio");
-    const btnT = document.getElementById("btn_mode_tercerizado");
-    const btnR = document.getElementById("btn_mode_retiro");
-
-    if (btnP) btnP.className = (mode === 'propio_dalor') ? 'btn-primary' : 'btn-secondary';
-    if (btnT) btnT.className = (mode === 'tercerizado_flete') ? 'btn-primary' : 'btn-secondary';
-    if (btnR) btnR.className = (mode === 'retiro_cliente') ? 'btn-primary' : 'btn-secondary';
-
-    const secP = document.getElementById("disp_sec_propio");
-    const secT = document.getElementById("disp_sec_tercerizado");
-    const secR = document.getElementById("disp_sec_retiro");
-
-    if (secP) secP.classList.toggle("hidden", mode !== 'propio_dalor');
-    if (secT) secT.classList.toggle("hidden", mode !== 'tercerizado_flete');
-    if (secR) secR.classList.toggle("hidden", mode !== 'retiro_cliente');
-}
-
-function onDispatchClientChanged() {
-    const cId = parseInt(document.getElementById("disp_client_id")?.value);
-    const client = (allClients || []).find(c => c.id === cId);
-    if (client) {
-        if (client.address && document.getElementById("disp_destination_address")) {
-            document.getElementById("disp_destination_address").value = client.address;
-        }
-        if (client.industry && document.getElementById("disp_destination_plant")) {
-            document.getElementById("disp_destination_plant").value = `Planta ${client.name}`;
-        }
-    }
-}
-
-function onDispatchAssetChanged() {
-    const sel = document.getElementById("disp_select_asset");
-    if (!sel) return;
-    const opt = sel.options[sel.selectedIndex];
-    if (opt) {
-        const driver = opt.getAttribute("data-driver") || "";
-        const plate = opt.getAttribute("data-plate") || "";
-        if (driver && document.getElementById("disp_driver_name_propio")) {
-            document.getElementById("disp_driver_name_propio").value = driver;
-        }
-        if (plate && document.getElementById("disp_plate_propio")) {
-            document.getElementById("disp_plate_propio").value = plate;
-        }
-        if (document.getElementById("disp_driver_id_propio") && !document.getElementById("disp_driver_id_propio").value) {
-            document.getElementById("disp_driver_id_propio").value = "V-18.450.210";
-        }
-    }
-}
-
-function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Reparado / Listo para Montaje", weight = 0) {
-    const tbody = document.getElementById("dispatchItemsTableBody");
-    if (!tbody) return;
-    const rowIdx = tbody.children.length + 1;
-    const tr = document.createElement("tr");
-    tr.className = "dispatch-item-row";
-    tr.style.borderBottom = "1px solid #f1f5f9";
-    tr.innerHTML = `
-        <td style="padding: 8px; text-align: center; font-weight: 800; color: var(--dalor-navy);">${rowIdx}</td>
-        <td style="padding: 8px;">
-            <input type="text" class="disp-it-desc form-input" required value="${desc}" placeholder="Ej: Ejes rectificados..." style="width: 100%; font-size: 12px; padding: 5px 8px;">
-        </td>
-        <td style="padding: 8px; text-align: center;">
-            <input type="number" step="0.1" class="disp-it-qty form-input" required value="${qty}" min="0.1" style="width: 100%; font-size: 12px; padding: 5px; text-align: center;">
-        </td>
-        <td style="padding: 8px;">
-            <select class="disp-it-unit form-select" style="width: 100%; font-size: 12px; padding: 5px;">
-                <option value="Pzas" ${unit === 'Pzas' ? 'selected' : ''}>Pzas</option>
-                <option value="Ejes" ${unit === 'Ejes' ? 'selected' : ''}>Ejes</option>
-                <option value="Tramos" ${unit === 'Tramos' ? 'selected' : ''}>Tramos</option>
-                <option value="Kg" ${unit === 'Kg' ? 'selected' : ''}>Kg</option>
-                <option value="Tn" ${unit === 'Tn' ? 'selected' : ''}>Tn</option>
-                <option value="Conjuntos" ${unit === 'Conjuntos' ? 'selected' : ''}>Conjuntos</option>
-                <option value="Servicios" ${unit === 'Servicios' ? 'selected' : ''}>Servicios</option>
-            </select>
-        </td>
-        <td style="padding: 8px;">
-            <input type="text" class="disp-it-cond form-input" value="${cond}" placeholder="Condición" style="width: 100%; font-size: 12px; padding: 5px 8px;">
-        </td>
-        <td style="padding: 8px; text-align: right;">
-            <input type="number" step="0.01" class="disp-it-weight form-input" value="${weight}" style="width: 100%; font-size: 12px; padding: 5px; text-align: right;">
-        </td>
-        <td style="padding: 8px; text-align: center;">
-            <button type="button" onclick="removeDispatchItemRow(this)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px;" title="Quitar ítem">
-                <i class="fa-solid fa-trash-can"></i>
-            </button>
-        </td>
-    `;
-    tbody.appendChild(tr);
-}
-
-function removeDispatchItemRow(btn) {
-    const tr = btn.closest("tr");
-    if (tr) {
-        tr.remove();
-        // Renumerar
-        const tbody = document.getElementById("dispatchItemsTableBody");
-        if (tbody) {
-            Array.from(tbody.children).forEach((row, i) => {
-                const numTd = row.querySelector("td:first-child");
-                if (numTd) numTd.innerText = i + 1;
-            });
-        }
-    }
-}
-
-async function submitCreateDispatchGuide(event) {
-    event.preventDefault();
-    const mode = document.getElementById("disp_transport_type").value;
-    const clientId = parseInt(document.getElementById("disp_client_id").value);
-    const projIdVal = document.getElementById("disp_project_id").value;
-    const projId = projIdVal ? parseInt(projIdVal) : null;
-    const destAddr = document.getElementById("disp_destination_address").value.trim();
-    const destPlant = document.getElementById("disp_destination_plant").value.trim();
-
-    let driverName = "", driverDoc = "", plate = "", carrierComp = null, assetId = null;
-    let freightCost = 0.0, freightCharged = 0.0;
-
-    if (mode === 'propio_dalor') {
-        const assetVal = document.getElementById("disp_select_asset").value;
-        assetId = assetVal ? parseInt(assetVal) : null;
-        driverName = document.getElementById("disp_driver_name_propio").value.trim();
-        driverDoc = document.getElementById("disp_driver_id_propio").value.trim();
-        plate = document.getElementById("disp_plate_propio").value.trim();
-        if (!driverName || !driverDoc || !plate) {
-            alert("Por favor completa los datos del chofer y vehículo propio de DALOR.");
-            return;
-        }
-    } else if (mode === 'tercerizado_flete') {
-        carrierComp = document.getElementById("disp_carrier_company").value.trim();
-        driverName = document.getElementById("disp_driver_name_ext").value.trim();
-        driverDoc = document.getElementById("disp_driver_id_ext").value.trim();
-        plate = document.getElementById("disp_plate_ext").value.trim();
-        freightCost = parseFloat(document.getElementById("disp_freight_cost_usd").value) || 0.0;
-        freightCharged = parseFloat(document.getElementById("disp_freight_price_charged_usd").value) || 0.0;
-        if (!carrierComp || !driverName || !driverDoc || !plate) {
-            alert("Por favor completa los datos de la empresa de transporte y chofer tercerizado.");
-            return;
-        }
-    } else {
-        driverName = document.getElementById("disp_driver_name_ret").value.trim();
-        driverDoc = document.getElementById("disp_driver_id_ret").value.trim();
-        plate = document.getElementById("disp_plate_ret").value.trim() || "RETIRO-PLANTA";
-        if (!driverName || !driverDoc) {
-            alert("Por favor indica la persona autorizada y su cédula.");
-            return;
-        }
-    }
-
-    // Recoger ítems
-    const itemRows = document.querySelectorAll("#dispatchItemsTableBody .dispatch-item-row");
-    if (itemRows.length === 0) {
-        alert("Debes agregar al menos un ítem de carga para despachar.");
-        return;
-    }
-
-    const items = [];
-    itemRows.forEach((row, idx) => {
-        items.push({
-            description: row.querySelector(".disp-it-desc").value.trim(),
-            quantity: parseFloat(row.querySelector(".disp-it-qty").value) || 1.0,
-            unit: row.querySelector(".disp-it-unit").value,
-            condition_status: row.querySelector(".disp-it-cond").value.trim() || "Reparado / Conforme",
-            approx_weight_kg: parseFloat(row.querySelector(".disp-it-weight").value) || 0.0
-        });
-    });
 
     const payload = {
-        client_id: clientId,
-        project_id: projId,
-        destination_address: destAddr,
-        destination_plant: destPlant,
-        transport_type: mode,
-        asset_id: assetId,
-        carrier_company: carrierComp,
+        project_id: projectId,
+        destination: destination,
+        vehicle_id: vehicleId,
         driver_name: driverName,
-        driver_id_doc: driverDoc,
-        vehicle_plate: plate,
-        freight_cost_usd: freightCost,
-        freight_price_charged_usd: freightCharged,
-        dispatcher_name: document.getElementById("disp_dispatcher_name").value.trim(),
-        quality_inspector: document.getElementById("disp_quality_inspector").value.trim(),
-        notes: document.getElementById("disp_notes").value.trim(),
+        driver_id_card: driverIdCard,
+        custodian_name: "Carlos Hurtado",
         items: items
     };
 
     try {
-        const res = await fetch(`${API_BASE}/dispatch/`, {
+        const res = await fetch(`${API_BASE}/transfer-guides/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
+
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || "Error al emitir guía de despacho");
+            throw new Error(err.detail || "Error al crear guía de traslado");
         }
+
         const data = await res.json();
-
-        if (typeof showToastNotification === 'function') {
-            showToastNotification(`✅ Guía de Despacho [${data.guide_number}] emitida con éxito.`, 'success');
-        } else {
-            alert(`✅ Guía de Despacho [${data.guide_number}] emitida exitosamente.`);
-        }
-
-        switchDispatchSubtab('list');
-        await loadDispatchGuidesList();
-        
-        // Preguntar si desea imprimir la guía de inmediato
-        if (data.id && confirm(`¿Deseas visualizar e imprimir la Guía Oficial [${data.guide_number}] en este momento?`)) {
-            printOfficialDispatchGuide(data.id);
-        }
-    } catch(err) {
-        alert("Error al guardar guía de despacho: " + err.message);
+        closeModal("modalNewTransferGuide");
+        await loadTransferGuidesList();
+        alert(`✅ ${data.message} (${data.guide_number})`);
+    } catch (e) {
+        alert("Error al crear guía: " + e.message);
     }
 }
 
-async function loadDispatchGuidesList() {
-    const tbody = document.getElementById("dispatchTableBody");
-    if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando despachos...</td></tr>`;
-
+async function openCustodianDispatchModal(guideId) {
     try {
-        const res = await fetch(`${API_BASE}/dispatch/`);
-        if (!res.ok) throw new Error("Error en servidor");
-        allDispatchGuides = await res.json();
+        const res = await fetch(`${API_BASE}/transfer-guides/${guideId}`);
+        const g = await res.json();
 
-        const badge = document.getElementById("dispatch_count_badge");
-        if (badge) badge.innerText = `${allDispatchGuides.length} despacho(s) registrado(s)`;
+        document.getElementById("custodian_guide_id").value = g.id;
+        document.getElementById("custodianModalTitle").innerText = `Checklist de Salida: ${g.guide_number} ➔ ${g.project_code}`;
 
-        if (allDispatchGuides.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;">No hay guías de despacho emitidas. Pulsa "➕ Emitir Despacho" para registrar la primera.</td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = allDispatchGuides.map(g => {
-            let statusBadge = `<span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px;"><i class="fa-solid fa-truck"></i> En Tránsito</span>`;
-            if (g.status === 'entregado_conforme') {
-                statusBadge = `<span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px;"><i class="fa-solid fa-check-double"></i> Entregado Conforme</span>`;
-            }
-
-            let modeLabel = `<span style="color: #0369a1; font-weight: 700;">Propio DALOR</span>`;
-            if (g.transport_type === 'tercerizado_flete') modeLabel = `<span style="color: #d97706; font-weight: 700;">Flete Tercerizado</span>`;
-            if (g.transport_type === 'retiro_cliente') modeLabel = `<span style="color: #64748b; font-weight: 700;">Retiro en Planta</span>`;
-
-            return `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px; font-weight: 800; color: var(--dalor-navy);">${g.guide_number}</td>
-                <td style="padding: 10px; color: #475569;">${g.dispatch_date || '-'}</td>
-                <td style="padding: 10px;">
-                    <b style="color: var(--dalor-navy);">${g.client_name}</b>
-                    <small style="display: block; color: #64748b;">${g.destination_plant ? g.destination_plant + ' - ' : ''}${g.destination_address}</small>
-                </td>
-                <td style="padding: 10px;">
-                    <span style="font-weight: 700; color: var(--dalor-blue);">${g.project_code}</span>
-                    <small style="display: block; color: #64748b;">${g.project_name}</small>
-                </td>
-                <td style="padding: 10px;">
-                    <div>${modeLabel} &bull; <b>${g.vehicle_plate}</b></div>
-                    <small style="color: #64748b;">Chofer: ${g.driver_name} (${g.driver_id_doc})</small>
-                </td>
-                <td style="padding: 10px; text-align: center;">
-                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 6px; font-weight: 800; color: #334155;">
-                        ${g.items_count} ítem(s)
-                    </span>
-                </td>
-                <td style="padding: 10px; text-align: right; font-weight: 700; color: ${g.freight_cost_usd > 0 ? '#dc2626' : '#64748b'};">
-                    ${g.freight_cost_usd > 0 ? '$' + g.freight_cost_usd.toFixed(2) : '$0.00'}
-                </td>
-                <td style="padding: 10px; text-align: center;">${statusBadge}</td>
-                <td style="padding: 10px; text-align: center;">
-                    <div style="display: flex; gap: 4px; justify-content: center;">
-                        <button type="button" onclick="printOfficialDispatchGuide(${g.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Imprimir Guía de Despacho">
-                            <i class="fa-solid fa-print"></i>
-                        </button>
-                        ${g.status !== 'entregado_conforme' ? `
-                        <button type="button" onclick="openConfirmDeliveryModal(${g.id}, '${g.guide_number}')" class="btn-primary" style="padding: 4px 8px; font-size: 11px; background: #059669;" title="Confirmar Recepción Cliente">
-                            <i class="fa-solid fa-check"></i>
-                        </button>` : ''}
-                        <button type="button" onclick="deleteDispatchGuide(${g.id}, '${g.guide_number}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px; padding: 4px;" title="Eliminar Guía">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+        const container = document.getElementById("custodianItemsChecklist");
+        container.innerHTML = g.items.map((it, idx) => `
+            <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1;">
+                    <input type="checkbox" class="custodian-item-check" data-item-id="${it.id}" checked style="width: 16px; height: 16px; cursor: pointer;">
+                    <div>
+                        <b>#${idx+1}. ${it.description}</b>
+                        <p style="font-size: 10px; color: #64748b; margin: 0;">Marca: ${it.brand} | Serial: ${it.serial_or_presentation}</p>
                     </div>
-                </td>
-            </tr>
-            `;
-        }).join('');
-    } catch(e) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #ef4444; padding: 16px;">Error al cargar despachos: ${e.message}</td></tr>`;
+                </label>
+                <span style="background: #ede9fe; color: #6b21a8; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 11px;">Cant: ${it.quantity}</span>
+            </div>
+        `).join('');
+
+        const modal = document.getElementById("modalCustodianDispatch");
+        if (modal) modal.classList.remove("hidden");
+    } catch (e) {
+        alert("Error al cargar detalle de guía: " + e.message);
     }
 }
 
-function filterDispatchList(query) {
-    if (!allDispatchGuides || allDispatchGuides.length === 0) return;
-    const q = (query || '').toLowerCase().trim();
-    const tbody = document.getElementById("dispatchTableBody");
-    if (!tbody) return;
+async function submitCustodianDispatch(event) {
+    event.preventDefault();
+    const guideId = document.getElementById("custodian_guide_id").value;
+    const notes = document.getElementById("custodian_notes").value.trim();
 
-    const rows = tbody.querySelectorAll("tr");
-    let visible = 0;
-    rows.forEach(r => {
-        const text = (r.innerText || '').toLowerCase();
-        if (!q || text.includes(q)) {
-            r.style.display = "";
-            visible++;
-        } else {
-            r.style.display = "none";
-        }
-    });
-
-    const badge = document.getElementById("dispatch_count_badge");
-    if (badge) badge.innerText = q ? `${visible} de ${allDispatchGuides.length} despacho(s)` : `${allDispatchGuides.length} despacho(s) registrado(s)`;
-}
-
-function openConfirmDeliveryModal(guideId, guideNum) {
-    document.getElementById("conf_disp_id").value = guideId;
-    document.getElementById("conf_disp_guide_text").innerText = `Confirmando recepción formal para Guía de Despacho [${guideNum}]:`;
-    document.getElementById("confirmDeliveryForm").reset();
-    openModal("modalConfirmDelivery");
-}
-
-async function submitConfirmDelivery(e) {
-    e.preventDefault();
-    const guideId = document.getElementById("conf_disp_id").value;
-    const recBy = document.getElementById("conf_received_by").value.trim();
-    const recDoc = document.getElementById("conf_received_id_doc").value.trim();
-    const notes = document.getElementById("conf_notes").value.trim();
+    const checkedBoxes = document.querySelectorAll(".custodian-item-check:checked");
+    const verifiedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.getAttribute("data-item-id")));
 
     try {
-        const res = await fetch(`${API_BASE}/dispatch/${guideId}/confirm-delivery`, {
+        const res = await fetch(`${API_BASE}/transfer-guides/${guideId}/dispatch`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                received_by_client_name: recBy,
-                received_by_client_id_doc: recDoc,
-                notes: notes
+                custodian_name: "Carlos Hurtado",
+                custodian_notes: notes,
+                verified_item_ids: verifiedIds
             })
         });
-        if (!res.ok) throw new Error("Error al confirmar entrega");
-        closeModal("modalConfirmDelivery");
-        await loadDispatchGuidesList();
-        if (typeof showToastNotification === 'function') {
-            showToastNotification(`✅ Guía confirmada como Entregada Conforme por ${recBy}.`, 'success');
-        } else {
-            alert(`✅ Guía confirmada como Entregada Conforme por ${recBy}.`);
-        }
-    } catch(err) {
-        alert("Error: " + err.message);
+
+        if (!res.ok) throw new Error("Error al despachar guía");
+        closeModal("modalCustodianDispatch");
+        await loadTransferGuidesList();
+        alert("✅ Salida de almacén confirmada por custodio Carlos Hurtado. Los equipos están ahora en tránsito con el chofer.");
+    } catch (e) {
+        alert("Error al confirmar salida: " + e.message);
     }
 }
 
-async function deleteDispatchGuide(guideId, guideNum) {
-    if (!confirm(`¿Estás seguro de anular / eliminar la Guía de Despacho [${guideNum}]?`)) return;
+async function openReceiverChecklistModal(guideId) {
     try {
-        const res = await fetch(`${API_BASE}/dispatch/${guideId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Error al anular guía");
-        await loadDispatchGuidesList();
-        if (typeof showToastNotification === 'function') {
-            showToastNotification(`🗑️ Guía [${guideNum}] eliminada con éxito.`, 'success');
-        }
-    } catch(e) {
-        alert("Error: " + e.message);
-    }
-}
-
-async function printOfficialDispatchGuide(guideId) {
-    try {
-        const res = await fetch(`${API_BASE}/dispatch/${guideId}`);
-        if (!res.ok) throw new Error("No se pudo cargar la información del despacho.");
+        const res = await fetch(`${API_BASE}/transfer-guides/${guideId}`);
         const g = await res.json();
 
-        let modeText = "Transporte Propio (Flota DALOR)";
-        if (g.transport_type === 'tercerizado_flete') modeText = `Flete Tercerizado (${g.carrier_company || 'Línea de Transporte'})`;
-        if (g.transport_type === 'retiro_cliente') modeText = "Retiro en Taller por Personal Autorizado del Cliente";
+        document.getElementById("receiver_guide_id").value = g.id;
+        document.getElementById("receiverModalTitle").innerText = `Doble Verificación en Obra: ${g.guide_number}`;
 
-        const printHtml = `
-        <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 800px; margin: auto; padding: 20px; border: 1px solid #cbd5e1; background: #fff;">
-                        <!-- Membrete Oficial DALOR -->
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0f172a; padding-bottom: 14px; margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; gap: 14px;">
-                    <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAA
-AAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAA
-ACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAAB
-UAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0
-AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJY
-WVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAA
-AAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQA
-AAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAM
-ZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/
-2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsO
-CwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQ
-EBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ
-EBD/wAARCADGAmoDASIAAhEBAxEB/8QAHgABAAEEAwEBAAAAAAAAAAAAAAkB
-AgcIAwUGBAr/xABpEAAABAQCBAUKDRAGBA0FAAAAAQIDBAUGEQcSCCExQQki
-MlFhExhSV3F1gZGUsxQXGTc4QlVWk7LB0dIVFiMzNmJyc3R2oaKjsdPhNDWC
-lbTwJSeDkiQmKENERlNkZYSFwvFFR1Rjw//EABwBAQABBQEBAAAAAAAAAAAA
-AAAGAQIDBAUHCP/EADwRAAEDAwAGCAUCBAYDAAAAAAABAgMEBREGEhMhMVIU
-IjIzNEFRcRUWYYGRB0IXGCRTCCNiwdHhQ3Kh/9oADAMBAAIRAxEAPwCVBJ3I
-9QGok7SFTGOcTsesI8IIyEl+JVey6n35g0p2GbilKI3UkZkZlYj3/uFyNV3Z
-KOc1m9y4QyJnIgzp5yGB+vg0U+SeOFPFzXU4Z/FFS03tFHt4U8f9tz6AybCT
-0MC1UPMhnjOkM6Bgjr3dFHt3098I79AOvd0Uu3bT3wjv0A2D/RR0qHmT8md8
-6AzoGCOvd0Uu3bT3wjv0A693RS7dtPfCO/QDYP8ARR0qHmT8md8yOcMyOcYI
-693RS7dtPfCO/QFvXvaKKf8A7208f+0c+VAdHf6KOlQ8yfkz0pZEVxUjuMN0
-/pb6NlVRaYGS40008+o7JQuMS3c+jqhEMqwMxg5nCtxcujGIhh0rtuMuE4hR
-c5KSdjLpFjo3N4oXsmZJ2VOwAcSbkXGM/DuF+bYLDL5ZLgAAAAAAABQ9gtO9
-jMAUz+IVzp7IhjvEnHXCbB52BaxMryW0+uYktUKiJWZKdJNiMyJJGdiuW35B
-4nr39FI9Z4306V9fKc+iMqRPdvRDC+eNi4c5DPRLQW8XXIYRkemBo11RO4Gn
-afxgkMfMZi8mHhYdtayU46o7ERXIi222jNTZ8UrHq2ELHMcztJguZKyRMtXJ
-ygKFsFRaZAAAAKaiFM5CijO+oeYr3ECksMqffq2uZ5DyeTwyktuxT5HkSazs
-ktVz2iqJrLhCjnIxMuPT509AZ+YxgVOm9op7PTtp7V9+79EXdfBop+1xup/V
-fVmcsfjSMuwf6Ka/S4PJyGeSVfcK6jHlcO8R6LxSp9NVUBUUNO5Q48tlEXDm
-ZoNaDspOsi2fKQ9URWGJU1Vwpna5HJlCoAAoXAAAAAAAAAU3+AVAAW8Ucaz4
-1teznHT1DV1N0nAHM6nqCXyqFTynoyIQynVrsWc9ttwqjVd2S1XtbxU73MXO
-Qt6okYPjNNTRal8QuFi8bqb6ojiqyvKUV+6kjIfP172il276e+Ec+gMiQScq
-mDpMPMhnjOgM6Bgjr3dFLt2098I79AOvd0Uu3bT3wjv0BXYP9FK9Kh5k/Jnb
-MjpDMjpGCevd0Uu3bT3wjv0A69/RULZjfTvwjnyoDo7/AEUdKh5k/JnglFew
-uGGJDpeaNVSRiICTY00w9ELVZLaowmsx7iLOREMrwMzgZpCojZdMIeLhnSzI
-eYcJaFF0KSZlYY3RvbxQvZNHJ2VPuzdAZugWMkWU9Znr5xfq6RaZcoV1EGZP
-OPgnEzhJPLYqazCKKGhYJlUQ+6ZXJDaSM1GfgIxg5OnTopFysZ5PfmNDhW/U
-FzY3vTqpkxPlji7a4NgMyecMyecYCLTq0T/bY0SQvA79AOvq0UO3PJD8Dv0B
-f0eXlUxdLg5kM+5k84Zk84wD19Wih25ZL+0+iHX1aKHblkv7T6Ir0aXlUdLg
-5kM/Zk84Zk84wD19Wij255MXgc+gHX16KBF680lP+y79AOjS8qjpkHMhn3Mk
-CMlDCUr0zNGKcvFDy/GumluK9q5EG38cklYZPp+saWqpj0VTlQy2asqSSiXB
-RaHS/VPVuFixPbxQvbURO4OO+zdAZugWJX7UxcRlfeLDNlC8BakXAVAAAAAA
-AAAAAAAAAAAACw9oi64Xs81fUGnaX1JfP9sYlFEW3C8K/wBY1CJvr+oz5/tj
-G7QJmdDm3ZcU6mgRJTqF3U0ihbRcr5RKtXKEMVVKdTQGRIpm7gXMOqOsVyJD
-IkUzd0M3dFOoOsVyJ5gyJ5hTN3QuoXoqDrBSUntTcZWwW0m8Y8BJwzHUPVsW
-cClRdXlMW4b0G8nek21HZJ2LlJsZahiq99QqlAxvjZN1XJkyMldGus1cE4+i
-5pW0RpLUwqPlazllQQaUlM5Q6sjWwvVx2z9u2fZeA9gzy1xtvd7g/Ptgxi3U
-2BmI0qxFpaIWl+AeL0SwSjJMVDmfHaURbSMr7dh2E9OH1ZSfECj5PWcgiCel
-85g24xhV72StJKyn0kZ2MRqvpOjuy3gpK7ZXLUt1X8UPTAKFsFRzzrAAAAW3
-LMOJw9dtxp5/89A5TLXYYz0hsTYfB7B+qcQH3Updl0vX6DSoyLPEqI0tJLpN
-ak/pFzGbRyNQxyP2bVcRNcIPix6amkVN4WBikuyqlCKSweVV0mtszN1Rbtaz
-Vr6CGtaUkZcw5oqMiplFPzKPeU9Exjqn3nFHc1rUZmozPpMzHEJhBFs2I0gl
-RMssiuU+iVzKNkM0gp5K3jZi5fENxTDiT1pcQolJPxl+kT94FYkQOLGFFL4g
-wTiTKcy5l51JW4jxJyuJsWyyyUVh+fvYov8ANxJxwTOLaZhStR4OzGJu9J4g
-5rLkKPX1B2xOJLnssr/2hzrpCjma3odOz1Gzl1F4KSGpFwsb1kZ85i8R4lgA
-AAFiy3jVnhKCLrUKjv8A/lwXniG07nJMascJR7FGovyyC88kZ6VMzNNWt307
-iGDKnKWUhaaO4ORItV9sExREUgyLvJjeC7K2ixL+/Ef8dI265xqNwXnsWZf3
-4j/jpG3JbTEPq++d7k4ovDt9ioAA1zbAAAAAAAC22uw+aKcU2WZO0jLVfbr/
-APgfSs7ENfNNTH9ej7gpMaklryEz+aK+pknSe30Qsju5bfkSRq8Qvjj2rkaY
-Z5NjGrzFOmdp+S3BKKisOcMkwk4rMm8sW84XVIaV31kSi2OO2seU9RXK/MIu
-K8xJr7FKdOz7EKrplPY11WbNFvmpKOhCC4qCK+wiIdBGRkbM4x+ZzKKdiYqL
-dU8+86o1LccUZmpSjPWZmZmY4TI9wlFNRsgam7eQ6rrpKl29dwyl2NgyJ5gU
-rYHGG7k0sqMiQyJFM3dDN3RTLSnWK5E8wZE9iQZy6f8APgFLq5yFctK9Yr1N
-Ki2ahk3BnSRxgwFnDcyoGrYpEGlRG/K4pxTsC+ktymzOxd1NjGMuMK21axjk
-jZL1XIXxzPiXWapOBoqaW9EaTFLqel5JldSS9JfVSTrcLM1f/nWzPWts+faW
-w+cZ/aM7GSjzGR+Lxj892EuKVUYMYhSnESk4xbMbLXyUtJKMkxDR8tpdtqVJ
-uRkfQJ68Mq6k+JtCSOvZA6S4CeQLUYzr5GZOtB9KTuk+4I3XUmwdlOBLLZWr
-Ut1X8ULcWvWvq0+aSRuv/YLH55UkWTk7x+hrFj1sKt7yxvmVj88u7wjds6ZR
-xz752mqVy9ArlLsRdz6hbcy2jtKiEfRVUZE9iQZE9iQoSjFcxgitHWGRPYkG
-UuYhQ1KFMyhXLSuFL+po3pIdlT9UVPSMciZUnUczk8U2olJegYpxlRGXPlMr
-jqsyhVOVW0WK1r+qqFzXOZvRTd3ADhPcTKMioaR40M/XbJMyWzmLaEomEOns
-jMiyvFrudyzcxiTfDXE+i8WKWhKyoGoIabyuMSVnGXCM0K3oWnahRbyMiMfn
-tGZNF7Saq/Rprxidyx56Lp6NcSicSrOeSIZ3qQWxLiS1krotvHLq7c1zdaPc
-p16C6Pjdqyb0Unda5J6yPXzjkK24eboWtKfr+k5XWNLRyIyVTiGRFQzqdhoU
-Wy24y2GW4yMejSfFEfVqt3KSlrkems3gXAKFsFRQuAAAAAAAAAAAAAAAsEW3
-C8p/1kUIvf8AUZ8v2xiUnmEW3C9asRaE7zP+fMb9u8Q05l3T+nU0FLYL20Jc
-dbbVyVrJJ226+YcaeUX4I5oX+lsfjUfGISlyYbuIexMuRCVCm+CvwCnEil81
-iqjqtLsXCtPLJuMaJJGpBGdroPnHZlwTej975qw8ta/hjb2hvuMkXe2H82ke
-gyp5hFH1s7XKiOJjFb6dWIqtNIfUmtH73y1f5a1/DD1JrR+98tX+Wtfwxu7Z
-PMFk8wt6dUcxk+G03KaRepNaP3vlq/yxr+GKHwTmj+k/ukq8y/LGv4Y3fyp5
-hTKjmIOn1HMPh1PykSWl/wAHlD4HUa7iZhnUUfN5LL1pKaQcckjeh0KVlJxC
-kERKIjMiMjK5XuNKEndJCc/TZT/yXcQjV7mauj7IgQXN8gh27bM6aNdYjd0g
-bBLhibi5e4tWwTB8F/VkXUWjTCyuMdUtUimUTBN3O9m750l+sYh7c+T5hK7w
-SvrIT/v855tIXVEWHJdZ1Xbob0I1EZdJi4Wo2C4RlSYAAAAcTqjTsVbV4ukR
-z8LPix6HlVMYMwEUZOxq1TiZoSq5dTRdDJGXSrOdu4YkSjnGWGFxEQ51NplJ
-rWpR2SSSI7mfQRXPwCB3SrxVcxkx8qysyeNyCONVBy4jO5JhWTyN23a7GrVv
-UY6Nti15db0OReJ9nDqpxUxNuIVIwsfMK5HFJWpDa1JbTmWaUmeUjMi182sy
-LXzkJQuOKkQRMlqizHlGZtDzFVWDekNStUPRHUpdFxJSuZGfJ9DvnkNR/gnl
-PotcYa9qZi1WYuOkzJSdZGQxTMR7FavmZYZFiejk8j9HzDxOIS4gyUlfGSZb
-y/zr8I+g9QwNoZYtKxi0eqWqR+KJ6ZQsN9TJkpW30SxZBme/jERHc9txnZCr
-kIdK3ZvVqk7gkSWNr08zkAAFhmLXOSY1Y4Sf2KFRflkF55I2nc5JjVjhJ/Yo
-VF+WQXnkjZpO9b7mpW9w/wBiGJPyi1XLFyflFquX4RLm+RBW8SY/gu/YrwHf
-iP8AjkNt0jUjgu/YrwHfiP8AjkNt0iH1ffu9ydUfcM9i4AAYDbAAAAAAACxS
-uNYRZ8LnVkVF4jUTQ6Hj9Cy+UvzFSCVq6q87kuZfgtF4zEpij43cERPCu6tI
-+U/mxD+eeG/bkzMhyrwqpT7jTEt45G23n3G4eHaU468sm0JTtUo9SSLumZDj
-TsHeUT929Nl/4tB+fQJM52Gq4iLG6zkQkNwc4KelI+j4Ga4u1bOUT2NYQ87A
-y40NtQmZJGTZqWkzUormRnsv3BkD1JvR+O//ABlq/wAsa1fsxurCJSTCL21J
-IfRlTzCLPrptZcOJjFb4NRMtNIfUmtH73y1f5Y1/DD1JrR+98tX+Wtfwxu7Z
-PMFkcwp06o5jJ8NpuU0i9Sa0fvfLV/ljX8MPUm9H0v8ArHV6uj0Y1/DG7tkc
-woZJsYp06o5h8Op+Uid0u+DphcFKFiMT8MKkmE1lcq401gI9KTeZaMyLqzak
-EWYiMyIyMtW2+0aPe1JQna0yiLrXMTbkRl9bsV8UQSJvk1juW2Z0zFV+9UI5
-dqdkEqJGmEKGWxPOJdeCsquKnujxGSGKeU4dPTqIh2sx3ytuJS4ReNSvGIij
-5AlL4Igz9Kqtu/zX+HSKXTfDkraHK2oQ3NxY9a+rd/8AoSN8ysfnl+cfobxZ
-9a+ru8kb5lY/PJ84wWfg73Ny+dpv3OW6s2obVaCeirQGk3FVZD13MJxCFI0Q
-6oc5e8lvNnNWa+ZJ8xDVVRmRiRPghLHM8RT39Rg/3rG/XSOjgVzV4HLt0bZZ
-2scm5TKSeCc0fl8b646wT/5xv+GK+pN6P3vlq/yxr+GN22rZdgvyp5hHen1H
-MSpbbTJ+00h9Sa0fvfLV/lrX8MUVwTej/axVNWJH0RjPytjd6yeYOLzF4g6f
-Ucw+G03KR41rwRlFvQbrlA4pTmBjEl9jRMoZEQ0o9xGbeVSS6SIxorjjo5Yq
-aPE8TKcQpCbcO+o/Qcyhj6pBxREZldK7cU9XJVYxPo4kjUR5SO2zVsHicX8K
-aTxjoWZUFWMvREQUxZUlK8pZ2HLcVxBnsUR69XSM9PcZWP6+81Kq0xObrR7l
-Pz53M+cu6LjLMnuD0WI9DzTDGv5/h7Of6ZII92CcV2RJPiq8KTI/CPPHvEjY
-/XTJFXtVjtVSSPgoMa34iHn+Bc5izNMEn6rScnFayQZkTzae4ZpV4xI62d0+
-EQb6ClVRFI6VNCxLLhobmMWuWPcym3m1JsfPrMvCRCcdu+XWdxGrjFqTa3qS
-y0TLJCrV8jlTsFRQtgqOedcAAAAAAAAAAAAAACxXLEW3C9+uLQneZ7z5iUlX
-LEW3C9+uLQneZ7z5jft3iGnNu3hlNBEcovwRywv9MY/GJ+MQ4kcovwRywv8A
-TGPxifjEJU/skPj7aH6IKG+46Rd7ofzZD0Jbh56hvuOkXe6H82Q9CW4QmXvF
-J9D3bfYqAALDIAAABgvTZ16LeIfes/OIEFiOQQnS02vYs4h96j84gQWo5BCQ
-WjsOItfO9QK5Pg+YSvcEt6yNQd/nPNpEUTmzwfKJXeCW9ZGoO/znm0jPc/Dm
-Cz+IQ3nRsFwtRsFwjBMAKGdt5Co4HU5lHr2Fz7QBr/pzYu+lFo71HNoWJJuZ
-zdv6jy+yuN1V8jSpRFt4qMx9Ag9SWQ8uu+8b1cKri2VRYkSHCeWROaDpiG9G
-xqSVe8W9qIjtvS2ktu9RjRixGkucSe2Q7OHWXzIbdZ9rOqeSbi4j41xvNoU6
-LDOKWjpihUk3hE+iqlhVSuSuLbIzSqHMnc6L7DNxKE3LmMaOy+Xxk0j4aVQD
-KnYqNeRDsITrNTi1ElJEXSZl4xPrgPhnC4QYR0rh/BNJI5TLm0xB/wDaPmWZ
-1R9JrUoW3Go2bURvErbKTpD1zwQgIiYSJl8ZES6MbU3EQrqmXkKKxpWk7GR+
-EhxqPXYbG6fuEh4UaRs89BQvUpVUxFOoI0psj7IZk6grark4R+MhrenbrG3B
-KkkaKnmaM8Wzkc1fI364KLFr6jVtUWDswiDJidsfVWAQo/8ApDRElaSvsuix
-6uxEpaTsR90fnvwbxEjsJsU6XxFgHFJVJZi086Re2ZM8riT57oNQn+kU2gp9
-J4OdSyIS9BxzCIhhxJ6lIUkjI/EY4d0hRsiOJHZp9eNY1Xeh2iTvcXC1vkkL
-hyzuFrnJMascJP7FCovyyC88kbTuckxqxwk/sUKi/LILzyRs0net9zUre4f7
-EMSflFquX4Rcn5Rarl+ES5vkQVvEmP4Lv2K8B34j/jkNt0jUjgu/YrwHfiP+
-OQ23SIfV9+73J1R9wz2LgABgNsAAAAAAAOM9viERfCu+yOlf5sw3n3hLofK8
-QiL4V32R0r/NmG8+8Ola/EfY5N47j8GmJckd3RX3cU332gvPoHR+0Id5RH3c
-U333gvPoEjf3biKRd4nufojhvtSO4Q+gfPD/AGpvuEPoEMf2ieRdhAAALTKB
-RXJMVFFckwBhTTJ9i3iX+bsV8UQSJ5JCd3TJ9i3ib+bsV8UQRFySEgtC9RxF
-b4mJW+xarkiU3gifWrrfv+1/h0iLJXJEpnBE+tXW/f8Aa/w6Rmufc/g17V36
-G5uLHrX1b3kjfMKH55vnH6GsWPWuq3vJG+ZWPzy/ONez8He5v3zc5n3L1a/G
-JFeCC/rHEX8TB/vWI7PbCRPgg/6xxG/Ewf71jduKYp3HOtXiWklrPJF57Bxt
-nxS27BeZl0iKE1XiXALblzmK5iAoUMiIcDtlGRc/Tu3+L5hyOKIla9hkMXY/
-Y7UZgNQMdWtWxrKFNNqTAwRuF1aMiLcVtCd+258xC9jHSO1UMcsjYm6ziJbh
-AXpbEaWdarluWza4Zt/Ls6sTCM3h2XGvO0dzXFXTivawnNbT943JjO41yNiD
-veylnckke8iKxF3B0pbNYl8EaxsRvmQOoftJFenmZO0XUPOaRuG7bPLVUkF4
-icIz/QQnxZy5CMhCPoAUdEVhpVUgptk1MSNx2bvqtckpaQdr/wBo0ibbjZbJ
-LZqIs20uccO6uRZEaSOyN1YnOXzORSizWzEV+cfBNZ9J5EwcROJrBwLSfbRD
-5J/eesdbP4WNjG1IKpFSxhJcY2UJJzp469ngGN42VaPcFFm9VFTSePiy5Tk2
-nSXVf7ql2LXfcOa2GR3ZTJ1ZKqGLc9x2VQaTWF8lUtuFmURNXEnyYNkzSf8A
-aOxDxMw0xYBJqKVUXEucxvRJJ/QRGMhyCLwKjFJZptdGxLhaiKFVDrV+gzHr
-PrWo+MbyqpeUutq3nBtmR/qg6F7E6yYKxVMUy4jciqYATpkzHN9lodkk9EYd
-/ij0sg0uaPj3kMz+Sx8rSrUbxWdQXdtrt4B7KosA8LaiaUhVMtQLttTsERsq
-LwFqPuDWvF3Aqc4a2m0HEHMpM4vKT6UWUwZ7Er7urWMZnNxpBU0kqqXtzKQz
-eHjodxN7squZd0iO6T6DHbo2fJzCPOha8qLD+cNTiQRjiLKLqrGb7G6nelSd
-mzYY3koCuJVXlNQ1RStVkP8AFdazcZlzVdJ8+vf0gu4HqgFqdp90XACxXLEW
-3C9+uLQneZ7z5iUlXLEW3C9+uLQneZ7z5jft3iGnNu3hlNBEcovwRywv9MY/
-GJ+MQ4kcovwRywv9MY/GJ+MQlT+yQ+Ptofogob7jpF3uh/NkPQluHnqG+46R
-d7ofzZD0JbhCZe8Un0Pdt9ioAAsMgAAAGCtNr2LOIfeo/OIEFqeQQnS02vYs
-4h96j84gQWo5BCQWnu3EWvneIVc2eD5RK7wS3rI1B3+c82kRRObPB8old4Jb
-1kag7/OebSM9z8OYLR4hDedGwXC1GwXCMEwLT3mOlqyfwNK0/Mqlmr5MwUrh
-HYyIUZkREhtJqPWfc/SO3vxj1jT7hNsXSoDARdHwMUTcyraIKXWSfGKFRx3j
-5yIyypv98ZDLTsWWRGmvVSpBE5y+hFPihXUwxNxGqPECaOGqInkwdi/wUmri
-F4EkXiHlxanip33F2bKm+8TBjdRuqnAgj1V7lU2c4O/Cf0zdI2VTOLheqyuk
-GznERmTdKnU6mUnfVyzv/ZE0bbZJb12Ue2/ONLOC6wj+snBKJxAmUMaJhWcV
-1dtSk2UUG2eVsr7bGeZXhG6qE5U67fyEZuE20mVE8iX2qHZQIvmppDwqGEaa
-uwel2JEthCXH0fGfZzQjjHBvWJdzLclRJPwmImuVzGP0PYjUfLq/omdUVNm0
-OQk6gXYNxKk3Ky0mRKsfMZpMfn7rKlZlQtYTmi5w2tuMksa7BOkorGZoUZX7
-hlY/COjano5ix+hyb1BqSbRPM6dScybbjITH8Gzi4WJGj1B07HxBOTSjnjlL
-6TVrNm2ZlX+4dv7IhxVs5jG3HBmYtpw+x8OiphFE3La3hfQREpRkSYtu62j5
-iMyNab9JDZuMO1hX6Gra5tlOn1JiUFctQ5BY1yCsZH3BeIupNM5LXOSY1Y4S
-f2KFRflkF55I2nc5JjVjhJ/YoVF+WQXnkjYpO9b7mpW9w/2IYk/KLVcvwi5P
-yi1XL8IlzfIgreJMfwXfsV4DvxH/AByG26RqRwXfsV4DvxH/AByG26RD6vv3
-e5OqPuGexcAAMBtgAAAAAABxnyj7hCIvhXfZHSv82Ybz7wl0PlH3CERfCu+y
-Olf5sw3n3h07X4j7HKvPhvwaYe0SO7of7uac77wXn0DpPaJHd0P93NOd94Lz
-6BIpO7d7ETh7xPf/AHP0SQ/2pvuEPoHzw/2pvuEPoELdxJ5D2EAAAoZQKK5J
-ioorkmAMK6ZPsWcTvzdiviiCMuSQnc0yfYs4nfm7FfFEEZckhILT2HEWvvet
-9i1XJEpnBE+tXW/f9r/DpEWauSJTOCJ9aut+/wC1/h0jNc+5/Br2nv0NzsWP
-Wtq3vJG+ZWPzyfOP0N4setbVveSN8ysfnk+ca9n4L7m/fu037nLzjYzQ90to
-LRYiKjiIyi4mffV5LCSJmNSx1PqZmeu6FXvca5ARH0jrSxpKmq7gR+KV0TtZ
-vEkqTwwMl1/6kZgRbiOco1fshX1YGSHtwSmH98o/hiNQkF7Yz8QZU840/hsP
-obyXWpTdrElfqwMl3YJzAv8A1hB//wAxT1YCT+1wTjz/APWE/wAMRqZC5zMM
-pbzD4bCnkV+KVK/uN+q24XCu5jBuQ1C4Wy2UvLI0oiZhGKijbPcZISlJH4TG
-mmJ2LeImM1QHUmI9URU3jCuTSVqsywkzM8rSC4qSuZ7CHkTIuYU36hnipY4F
-6qGtLVyz9tRlUSe4KGsyIyFVK4t72GyehvofVHpE1UzPp9Cvy+hJW6l2OjlJ
-y+izSd+oNGdrmexSthFcVnmbA3WcpbTwPqHarTbHgt8CoylqGm+NE6gVNzCp
-rQcqS4WVXoNtV1KIz5OdZWI/vRt5P5PixUS3YSW1TK6Zg72JcLBqi4oy57rN
-KCv0EY7SXx9I0jLYaQSVlDMJLmUw0PCwjJqS2hJERJTlLdYt+0h80ViTAQfG
-elUzQhOxaocyIi8I8+uWk1JSSOfKvD6E4o7W/YpG1Pf6mNppokyaqlm5XWJd
-bzxauUS5kTTXgbJNi/mPNzTg/sGItgygoqoYZ09jnoxCyLpMjTr8Yz/I64kV
-QKNqBi7O/wDZqKyjHoUFmUaucb9u0kSvbr0smUx5GrUWKBqq2VuF+pHBjHoR
-1rhrAvVNQ06VPICFSbrjaWupxLCC9sRJM85Fvtr6B0eAemBXmGc4hZNVs0i5
-5TqlE081EKNT0Mm9s7ajMz1dj3RJzEwzTzakuISolJMlEZXvfcIi9JWk4Kis
-bqokkubJuFTGdXZQkrZEuJz21dJmQndkqW3lrqWpairjcpA9IKSSwvbV0z1R
-M8CWanZ5Lahk8JOpVGoioOMaS9DvIO5LQorkfiCo5JBVFJYuSTBtK4eLZU2o
-lJvYz1EevmuNYeD3rqMqHDaYUjHxGdynosks3O9mHLmRa+ZRH4xtd1YlEeYu
-LY733CJ11K6jqXwr5KTq01vxCkjn83IRxTaAclM2jJW4my4N9cOrupUZfIM2
-6J9XOS2rIqk3nLw8yaN1tJnsdTbZ3S+KQxDWsSmNrCdxiFXS9MH1l4VmPR4F
-uLZxYptTd7qjCSf4JpO41F3HSN8W9h93xC8Wo5PdFwtBYrliLbhe/XFoTvM9
-58xKSItuF79cWhO8z3nzG/bvENObdvDKaCI5Rfgjlhf6Yx+MT8YhxI5Rfgjl
-hf6Yx+MT8YhKn9kh8fbQ/RBQ33HSLvdD+bIehLcPPUN9x0i73Q/myHoS3CEy
-94pPoe7b7FQABYZAAAAMFabXsWcQ+9R+cQILU8ghOlptexZxD71H5xAgtRyC
-EgtPYcRa+d4hVzZ4PlEr3BLesjUHf5zzaRFA58nyiV7glvWQqDv855tIzXNf
-6cwWjxCG86NguFje8XcwjJMDge1pMiK5ns8Yhr4SPFlOJOkJFU7L4onJZRjH
-1Mayquk3j4zx822xf2RLBjPiLAYT4XVPiFMVJS1JZe6+hJ247pFZtHTmUaSE
-AE3nEwqCcx8/m7xvRkyiHIqIcUdzU4tRqUevpMx17VDrOWTBwL3PqtbEnHif
-Ge4ehoCjJliLXUgoWUMqcip5MGYNBJ3EtREpXgIzPwDoFDdbgs8JTq3F6Z4l
-zKEU5A0lDEiFUpN0nGPaitfelBKP+0Q7NTJsY1ccGliWeVrUJTaLpSXUTS0o
-pKUMobgpPBMwTCUpIiytpJJHYt52Iz6R6BNklzC1FrGe4X21GIg52suspOmI
-jWo1vA4HcprsoiMjLf3f8+IRG8KHhH9ZmNcHiPLITJL6yhSW8pKbJKNZLK4R
-nzqTkV06xLqs0nqtrGrvCG4SHifo6ziMg4UnZrSyynMJZN1mlBGTqS7qL/7o
-3KGXZSoaV0g21OqpxQhgSo1D76bqCOpWpJXVMpeW1GSeMZjWFJVYyW2slFrL
-WWwdak+L3RTKfjEneusmCGN6q5Q/QxhRXssxLw7p2upW4lbE6l7UVxdiVmks
-6fAojLwD2BbbjQngpcXvriwznOE0yiTVGUtFeiYJKla1Qj53sV9yXM2ouyIb
-5tXy79fOIjUx7KVWk5o5dvA1xe5yTGrHCT+xQqL8sgvPJG06+SNWOEn9ihUX
-5ZBeeSL6Tvm+5St7h/sQxJ2C1XL8Iv3C0uWJc3y9yCoTHcF37FeA78R/xyG2
-6RqNwXvsWYDvxHfHSNuUiIVffO9ydUfcM9i4AAa5tgAAAAAABxnyj7hCIvhX
-fZHSv82Ybz7wl0PleIRF8K77I6V/mzDefeHTtfiPscq8+G/Bph7RI7uh/u5p
-zvvBefQOk9okd3Q/3c0533gvPoEik7t3sROHvE9/9z9EkP8Aam+4Q+gfPD/a
-m+4Q+gQt3EnkXYQAAChlAorkmKiiuSYAwrpk+xZxO/N2K+KIIy5JCdzTJ9iz
-id+bsV8UQRlySEgtPYcRa+9632LVckSmcET61db9/wBr/DpEWauSJTOCJ9au
-t+/7X+HSM1z7n8Gvae/Q3OxY9a2re8kb5lY/PJ84/Q3ix61tW95I3zKx+eT5
-xr2fgvub9+7TfucgtNwkGLz3jfjgqaJo+tJhXrdW0tKZ0mHbgzZKPgm4jqdz
-XfLnI7XsV7Dq1EuwjWT0OFTwLUSIxPM0F6ohW3/P6A6o30j9BHpF4Mdqikrd
-MnY+gKqwLwZ7VFI/3ND/AEBzEvDeU7HwF/Mfn16q0W8yIVzpVsH6BzwMwZJX
-rVUkWrV/oZj6AjY4RbRKh8NZ36cmHMkTD0zM3EszSDh28qICJPkrSlJWS2sr
-bNRGXSMsFzbM/Vwa9TaJKdmvnJpDe6R9Msl0RNplCSmEcZQ9GvIYbU84TbZK
-UoiLMo9SS17dw+RJ2T3QPWm5ajIyMucdLc5MJxOUm5SSTR84LKBh3ISqMdag
-ZmOx1uSyt0+oq32detxittJOo+cxIPT1MSGlpLCU9TsphZdLIBomIaEh2kob
-aQW4kkVi+UaT8G9pZKr6n28E6/mCVVBImSKVRTznHjYQtRIMz2rQWrpTlG97
-akrIRStWXaK2QmduZBs0fF9zhTDtp4rbaUkRW1FYha9DIcQaHGULIy1kZbR9
-Kr5do41nffY9Y40tLTuYu0Yip9UOq1zk35MJV/KW6YqNiOlhmwbxdUSSTtZR
-HsK2y4yvTk0VNpPCx9uM63dVufYMTYpTREdUXUGlZkwiCRq57mZ/MMpURAql
-9NwUK5xVpaI1d09fyjx7QqZyaTVkNPuiReHlkkNzanQIpH73nduLJts77k3v
-/nwCIjSTqNqqccaumrCycYOPNhtSdhpbIkXLxGJOcdcQYbDPDKeVU88SHIeF
-UiGIz1rfURpQReGx9wjEQMTEvR0Y9GOqNb0Q6bhmrapSjvr59Zj6m0PplRz6
-h3DgeH6d1iSalK1d/E3i4NqWxHoOr5spsyacdhmUq3GZZjP9BkNvK6njdM0f
-OJ48skFDQbik31XXlsnxmZDFOhrh2ugMFZWqLh8kdOjOZRJK1HZZESCPuIJP
-jMfLpZVomBp+DouGeI3pg51eISR60tIPUR25z/cI7eZ0qa6R6cMkv0cpnU1u
-jY7jg1ZccU86t5w7qcUalHzmesZR0apK5NsVJdEEi7cuS5FLPm4ti/SYxXsP
-Xr3eEbT6JlIPQMjj6wiGTSuYr9Cw2YvaIMjUfcM/3DlqdpDYhOwXC1HJFwtL
-i3f4RFvwvXriUH3lf88YlI3+ERa8L1641CFv+or/AJ4xvW/xDTm3Xwymghcr
-wDlhf6ZD/jU/GIcR7u4ORhSURDLi1ElKXEmpR7CK5CUud1SHR9pD9ENDfcbI
-+90P5tI9CNfKR0vtGqBpeTwUZjLTjTzEBDtuNqidaVE2kjI9XOO568rRi7dd
-NeVfyEPkhkV69Um8VTEjETWM1WSFkjCvXk6MPbrpryn+QdeTow9uumvKf5Cz
-YScqmTpUXMZqskLJGFevJ0Ye3XTXlP8AIWq0yNGK5H6dlNEX5V/IV2EvKpTp
-UPMfPptexZxD71H5xAgtQfEIhJtp06cOFk9wrmeFWF9QMVLMKiQlmLioUj6h
-CMEojPjHqNZ5S1c3dEZSSypJPMO/a4nMYut5kau87JpU1V4FHNpCV3glvWRq
-Dv6vzaRFEotdz2EJc+CskUVK9HiIm0Q2pKZrOIh5rVa6E5UEf6DF1zXECopZ
-aEzOhui3vFHL7c1tQqRHbbsHA851Ns1GqxbzPYXdEZ48CYKuDQLhY8Wyk9F0
-/hFLIgiiJ/EHMZgklayh2dTZH3Vmeo+xEX+0+4M3aZ+LR4x6Q9U1BCxBuSyX
-xBymXa9XUGDNOYi3ZlZldNxhAtezYJTRR7GJG+ZCa+bbTud5FV3y84mt0BMH
-04UaOkiTGQptTapLzqPzJIlJU6RdTSe88rZILo1iJvRzwxicY8bKUoFllS2I
-yOQ9GmRcmFbPO4Z8xWK3hIT2ytiGgoKHgYRtLbMOhLSEp1JSlJWIi6LEQ0rt
-NlEjadGxwZcsi+R9yMtjyi8UK24VHDJMWqKw6+bS+DmkBES6YNJdhotlbDqF
-FcloUk0qIy2HclGOyHE4XgL/AORVq4XJRUReJ+f7H/DKJwfxjqvD99CyZlsw
-dKEUojLqkOpRqaUV92Uy8Qx/uISF8LPhGcHOqYxmgIazca39R5mpKb2cRdTK
-jPpI1J8BCPQtgllFJtokcQWti2Mzmme9BzFhWEmkbTcyiogmpVO3PqNMMyrJ
-6m9qQo/wVkk9fOYnDh1EtJKSdyMi18+ofnBQ68y6iIh3FIcbUTiFJOxpUWsj
-LwieXRVxYh8ZsC6Wrg4hK4x6CRDTBKVXNEU0RIcv3TK/9ohy7pFj/MO1Y5u1
-GZeVyRqzwk/sUKi/LILzyRtMrZ4Rqzwk/sUKi/LILzyRzqPvm+516zuHexDG
-Ke3FRYro2iX8EQgiEx3Be+xYgO/Ef8dI24uVzIR+cH1pHYH4YaO0FS9eYlSa
-STVE0jXlQsU8aXCQpZZTtbYZENlevT0XSLXjVTZ/+YP5hFKqGR0zlRPMmdHU
-xJA1FXyM36gskYQ69TRd7dNN+UfyDr1NF3t0035R/IYejy8qm10qHmM32SFk
-jCHXqaLvbppvyj+Qdepou9umm/KP5BsJeVR0qHmM33PmC58wwh16mi926ac8
-oP5harTQ0X1KK2NlOFrLV6IP5hbsJOUp0qL1M3X16ugRFcK77I2VfmzDefeE
-pOH+JtDYqyVyocPqogp5LmnjhlxEIvMhLpERmkz5yuR+EhGdwtUgfg8aKTqT
-IfUJlIPQ+fdnafWZp8Sy8Y3rd/lz9Y0bs5H02s3gaM+1Ih3dEfdzTnfeC8+g
-dKOeBjoiVzCDmkHb0RBRDcQzfYa0KJRX8JEJI5MtVv0IpEuHop+jeH+1N9wh
-9A1Vwg4QDR+ryjZfMqkryBpacoZQmPgJgs0GhwiLNkUZGS0mewy1+Ie9Tpla
-MdteNlNn/wCZ/kIg+nkRy7iaw1cSsTeZrt0kFukhhbrydGLt1U15T/IOvJ0Y
-e3XTXlP8hZsJeVTN0mLmM06t9gO1jsMLdeVow9uumvKf5C1WmRoxduum9er+
-lfyFUgl5VKdKi5i7TJ9i1id+bsV8UQR/82QlB04tOPCaaYSTnC3DGpGalmtT
-QxwUQ/CFeHhIdSi6opSjLWs0kZERdlcRfpTxSHftUTmRrrIRm8TMmlTVXgWn
-yfCJSuCJ9aytu/7X+HIRbqTr6BLDwTVPxMuwJns9eQaW5tUDhs3K2ZLTSEGf
-jM/ELromICy0JrVCG22LHrXVb3kjfMrH55PnH6GcWL+lhV3eWN8ysfnm+ca9
-n4ON29rlzfucp7RInwQf9Y4i/iYP96xHWe3wiRTggv6yxE/Ewf71jduXcKc6
-1+JaSWtp4pW5hdlLoFGj4o5BFck2VVLMpdA6Cs6UkNcU5MaQqSWsxsrmsOqG
-iYdzYtCr37h7yPnHobi1SG1cpJaxRHK1coWObrphSBnSk0e55o34nxdIx6XH
-5NGGqKkscpNiiIa5kRHzLSZWUXcGIC4h6tgnT0s9HOR6RuGMXS8S23DzqEvE
-yaPUnXDxJFqSZ9gsuKZdzeIP6lpueUbUUwpSpZe7AzOVvqholh1NlIWk7eI9
-pHzGQk1BUpUN1VXehDrjR9HkVW9k5qTqqoKGqaWVdS0wcgprKohETCvIPWla
-TuV7bSPYZb7icLRd0iKf0icL4GsIBTUNN2rQ84gW1ZlQsVqJWo9eQ9RkfMYg
-mNewhnLQ+0gakwBxfl0ylbEVHyidutwE2lrCTWqIaUoiJSEltcQZ3LwlsF1w
-pNtGr08ittrHU8mqvBSc/NxekdJVU+Yp+VvxjykkoknkIz5StxEPoXNmGpei
-aPqNhlTRPWd4ppIyuRGR7DItpc4wzU89mFdzlEHApUphC7Q7XOezMY8V040o
-S00y0dN1pn7kRPqej2uh6W9Hu7Cb1U46Sk0VVdSFExX2RrP1aJMy1FzFcZ1S
-jqDRZWyslNiHQ0hTUPTMsTCpsp4yzvKMuWe/X0cwxLpV6QkJg1R7kvlMQlyo
-5shTUC1mIzZSeo3jItlt199ukbf6b6IzUNOj5EzNLvd9PoaWkt7jjRZFXDGJ
-u+prVp543Iq6qIfDKn4pLkskyjcj1Nqul2J2ZS58hX8JjFGjLhFFYu4ny+UP
-MGqVQDqYyZOJKxE0kyPKR9J2K3T0DGcPDzeqJ22ww2/HzKZRB6iI1LddUd9e
-/WZiU3RjwNg8F8PWYCKZQudzIkxMyetf7JYjJu/Yp1+EzH0BXzx2O3tpY+0q
-Y/5U8ZttJJpHc3VUnYRc/wDRld2Jl9PSRcTEqbhYGBYNSi2JQ2gtRF3CK1ho
-diRWURXlYR9RPGZNOuGmHb3IaLkkXNz90zGb9KLFIsnpdSSKuo7OTJxCt2s0
-t6vGfdIa0FuSnVbZfcPOVXK6x621qMajU8jtqVpyYVVP4Kn5a2a4iMeJtP3p
-b1H0EVxILS1PwNL0/A0/LU2h4Jkmk/fc5n0mdz8Iwfou4YlJ5YvECcsqRExq
-DbgkrLW21vXr3meougbCIMyTxtu8WqXIhds2EKgAoVLba/CIteF5SXpj0Iv/
-AMFfL9sYlJEXXC8+uBQaj9yXy/bGN23L/UIcy6rmmU0AJNzLuC4+YWkeXYK5
-y5hK04ENLSbSn2pBZPYkLsx9iGY+xDVaNZS3InsCDInsCF2Y+xDMfYiuq0pl
-SmRPYkHUy7AvEK5lcwZlcwtVGldZQRauSKazBSuy1DtaXpWpq3nkNTdHySMm
-0zi1khmGhmzWpRnqLZqIukxaqtamVUua1z1whdSdKT+uakllH0xAuRkzm0U3
-Cw7SEmZ51KsSjtsItpmJ7cC8MJfg9hXTmHsvNKkyiCQy64n/AJx3a4rpuozM
-a56D2g8xgVCpxCxESxF1tGs2S2my25YgyK6EnbW4eu5lsLUNx2t+8y23EduF
-U2Z2qzgSq1USwNV703qcowppd4qJwewFqmrkRCWo1cKcDAdkcQ9xE236iUo+
-iwzSvmLVfpEYvCw4u/VGfU3g1LYq6Jc19V5mlKtjq7paQe47JIz8I1aOJZZm
-p6G3cZthAq+akfBmt5a3XVGpa1GpSj2mZne4tVxdX+TFU3SWUVbZiIx5qFhW
-jdfeWltpsiualqOxJLumYleERuSFJl7iRbgl8I+rRVUY0TKFPKhKZLK1LTtP
-Ut9STP8A2ZaukSUtp+xkk7X/AM3GKdFvCmHwdwOpSiUtZYpiBRERx5bGqJdI
-luX8J28Ay3Yi5xFKqXazK4m1BAkECJ5lS2CotuXOYXLnMaxulwtUkla94XLn
-MLlzmAMM6WmEzWMWA9V0ahtKo30GcbAHvTEs3Wi3SdlJ1c4ghcbeh1Kh3mzQ
-60o0KSe1JltI+kh+kB7LlNSkmqxbBBrptYTelBpFVJJ4WFNqVzZz6rS6ybJN
-t66lEW7UvMViHZtUy5WNSO3uDckqGCMuolCRDgnMWVQ8dVODMwiySiISU6lq
-Vq2KIiQ8lKeksitXMYjvJWvcMjaPOKUTg3jVSmIDTq0Q8BHtojSSoyzwrh5H
-UnbaWU726B1ayLawqnmceimWCZriftJ7O6Y1e4Sj2KVRflkF55I2WlsdCzOC
-ZjoJ4nWIltLzLiTuSkqSRkZHv1GNZ+Ep16KFRdEXBeeSI1SpqztT6kurFRaZ
-yt9CGItgZc3hFM+UiLaHVPvRLmq1N5BsKDQW9JGYpkT2BCuf70M/3odUZcUy
-J7AgyJ7AhXP96Gf70MtGXFMiewIMiewIVz/ehn+9DLRlxTqaexLxB1NJFySF
-3VDFFOahdhhXLiWvgn7Fo6zXi/8AWWJ82yO/4RrAyOxcwSVPqfg1RE8otxc0
-h2W03W7DGkifQki1mdkkq33o6Dgn05tHOa9NTRPm2RufEpSpBtKJKyMrKSrm
-O/zbxFJ5NlUq5PUmEEKT0bWO4YPzi8YknxTI+kUTmMSBabvB+TeUTSY4tYHS
-k4uWRCjiprIYcvssMo75nGE+2bM9eUtZa7DQFxp2FcXDxTS2XmlGlxtaTSpK
-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
-AAAAH//Z" style="height: 65px; width: auto; object-fit: contain; border-radius: 4px; border: 1px solid #cbd5e1;" alt="Logo DALOR" />
+        const container = document.getElementById("receiverItemsChecklist");
+        container.innerHTML = g.items.map((it, idx) => `
+            <div style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1;">
+                    <input type="checkbox" class="receiver-item-check" data-item-id="${it.id}" checked style="width: 16px; height: 16px; cursor: pointer;">
                     <div>
-                        <h1 style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Metalmecánica Dalor, C.A.</h1>
-                        <p style="font-size: 11px; font-weight: 700; color: #2563eb; margin: 2px 0;">RIF: J-31601195-0 &bull; Registro Nacional de Contratistas (RNC)</p>
-                        <p style="font-size: 10px; color: #64748b; margin: 2px 0;">Sede & Taller Principal: Guacara, Estado Carabobo, Venezuela</p>
-                        <p style="font-size: 10px; color: #64748b; margin: 0;">Especialistas en Mecanizado, Fabricación y Mantenimiento Mayor Industrial</p>
+                        <b>#${idx+1}. ${it.description}</b>
+                        <p style="font-size: 10px; color: #64748b; margin: 0;">Marca: ${it.brand} | Serial: ${it.serial_or_presentation}</p>
+                    </div>
+                </label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 10px; color: #059669; font-weight: 700;"><i class="fa-solid fa-check"></i> Almacén OK</span>
+                    <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 11px;">Cant: ${it.quantity}</span>
+                </div>
+            </div>
+        `).join('');
+
+        const modal = document.getElementById("modalReceiverChecklist");
+        if (modal) modal.classList.remove("hidden");
+    } catch (e) {
+        alert("Error al abrir recepción: " + e.message);
+    }
+}
+
+async function submitReceiverReception(event) {
+    event.preventDefault();
+    const guideId = document.getElementById("receiver_guide_id").value;
+    const receiverName = document.getElementById("receiver_name").value.trim();
+    const notes = document.getElementById("receiver_notes").value.trim();
+
+    const checkedBoxes = document.querySelectorAll(".receiver-item-check:checked");
+    const verifiedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.getAttribute("data-item-id")));
+
+    try {
+        const res = await fetch(`${API_BASE}/transfer-guides/${guideId}/receive`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                receiver_name: receiverName,
+                receiver_notes: notes,
+                verified_item_ids: verifiedIds
+            })
+        });
+
+        if (!res.ok) throw new Error("Error al recibir guía en obra");
+        closeModal("modalReceiverChecklist");
+        await loadTransferGuidesList();
+        alert("✅ Doble verificación confirmada exitosamente. Herramientas recibidas conformes en la obra.");
+    } catch (e) {
+        alert("Error al confirmar recepción: " + e.message);
+    }
+}
+
+async function returnTransferGuideToBase(guideId) {
+    if (!confirm("¿Deseas registrar el retorno formal de todas las herramientas y vehículos de esta guía al Almacén Central Dalor?")) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/transfer-guides/${guideId}/return-to-base`, { method: "PUT" });
+        if (!res.ok) throw new Error("Error al retornar a base");
+        await loadTransferGuidesList();
+        alert("✅ Equipos y vehículos retornados con éxito al inventario del Almacén Central.");
+    } catch (e) {
+        alert("Error al retornar equipos: " + e.message);
+    }
+}
+
+async function openPrintTransferGuideModal(guideId) {
+    try {
+        const res = await fetch(`${API_BASE}/transfer-guides/${guideId}`);
+        const g = await res.json();
+
+        const sheet = document.getElementById("printTransferGuideSheet");
+        if (!sheet) return;
+
+        sheet.innerHTML = `
+            <div style="border: 2px solid #0f172a; padding: 20px; font-family: 'Inter', Arial, sans-serif; color: #0f172a;">
+                <!-- ENCABEZADO MEMBRETADO OFICIAL DALOR -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 0.5px; color: #002B49;">METALMECÁNICA DALOR, C.A.</h2>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; font-weight: 800; color: #64748b;">RIF: J-31601195-0 &bull; VALENCIA, EDO. CARABOBO, VENEZUELA</p>
+                        <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">Fabricación Mecánica, Montajes Industriales & Proyectos Electromecánicos</p>
+                    </div>
+                    <div style="text-align: right; border-left: 2px solid #0f172a; padding-left: 16px;">
+                        <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b;">GUÍA DE TRASLADO & DESPACHO</span>
+                        <h3 style="margin: 2px 0 0 0; font-size: 17px; font-weight: 900; color: #e11d48; font-family: monospace;">${g.guide_number}</h3>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; font-weight: 700;">Fecha: ${g.issue_date}</p>
                     </div>
                 </div>
-                    <p style="font-size: 11px; font-weight: 700; color: #3b82f6; margin: 2px 0;">RIF: J-31601195-0 &bull; Registro Nacional de Contratistas (RNC)</p>
-                    <p style="font-size: 10px; color: #64748b; margin: 2px 0;">Sede & Taller Principal: Guacara, Estado Carabobo, Venezuela</p>
-                    <p style="font-size: 10px; color: #64748b; margin: 0;">Especialistas en Mecanizado, Fabricación y Mantenimiento Mayor Industrial</p>
-                </div>
-                <div style="text-align: right; border: 2px solid #0f172a; padding: 8px 14px; border-radius: 6px; background: #f8fafc;">
-                    <div style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase;">GUÍA DE DESPACHO / TRASLADO</div>
-                    <div style="font-size: 16px; font-weight: 900; color: #dc2626; margin-top: 2px;">N° ${g.guide_number}</div>
-                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Fecha: ${g.dispatch_date || new Date().toLocaleString()}</div>
-                </div>
-            </div>
 
-            <!-- Datos del Cliente y Destino -->
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 14px; font-size: 11px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                <div>
-                    <div style="font-weight: 800; color: #0f172a; font-size: 12px; margin-bottom: 4px;">DATOS DEL CLIENTE / DESTINATARIO:</div>
-                    <div><b>Razón Social:</b> ${g.client_name}</div>
-                    <div><b>RIF:</b> ${g.client_rif}</div>
-                    <div><b>Destino / Planta:</b> ${g.destination_plant ? g.destination_plant + ' - ' : ''}${g.destination_address}</div>
-                    <div><b>Obra / Servicio:</b> [${g.project_code}] ${g.project_name}</div>
+                <!-- METADATOS DE LOGÍSTICA & TRANSPORTE -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border: 1px solid #cbd5e1; background: #f8fafc; padding: 10px; border-radius: 6px; margin-bottom: 14px; font-size: 11px;">
+                    <div>
+                        <p style="margin: 2px 0;"><b>PROYECTO / OBRA:</b> [${g.project_code}] ${g.project_name}</p>
+                        <p style="margin: 2px 0;"><b>DESTINO / PLANTA:</b> ${g.destination}</p>
+                    </div>
+                    <div>
+                        <p style="margin: 2px 0;"><b>VEHÍCULO / PLACA:</b> ${g.vehicle_name} (Placa: ${g.vehicle_plate})</p>
+                        <p style="margin: 2px 0;"><b>CONDUCTOR / CHOFER:</b> ${g.driver_name} (C.I. ${g.driver_id_card})</p>
+                    </div>
                 </div>
-                <div>
-                    <div style="font-weight: 800; color: #0f172a; font-size: 12px; margin-bottom: 4px;">DATOS DE TRANSPORTE & LOGÍSTICA:</div>
-                    <div><b>Modalidad:</b> ${modeText}</div>
-                    <div><b>Vehículo / Placa:</b> ${g.vehicle_model ? g.vehicle_model + ' - ' : ''}<b>${g.vehicle_plate}</b></div>
-                    <div><b>Chofer Asignado:</b> ${g.driver_name} (C.I. ${g.driver_id_doc})</div>
-                    ${g.driver_phone ? `<div><b>Teléfono:</b> ${g.driver_phone}</div>` : ''}
-                </div>
-            </div>
 
-            <!-- Tabla de Carga y Piezas Despachadas -->
-            <div style="margin-bottom: 14px;">
-                <div style="font-weight: 800; color: #0f172a; font-size: 12px; margin-bottom: 6px; text-transform: uppercase;">
-                    Detalle de Piezas, Equipos & Materiales Despachados:
-                </div>
-                <table style="width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #cbd5e1;">
-                    <thead style="background: #0f172a; color: #ffffff;">
-                        <tr>
-                            <th style="padding: 6px 8px; width: 30px; text-align: center;">#</th>
-                            <th style="padding: 6px 8px; text-align: left;">Descripción de la Pieza / Trabajo Mecánico</th>
-                            <th style="padding: 6px 8px; width: 60px; text-align: center;">Cant.</th>
-                            <th style="padding: 6px 8px; width: 60px; text-align: center;">Unidad</th>
-                            <th style="padding: 6px 8px; width: 140px; text-align: left;">Condición / Estado</th>
-                            <th style="padding: 6px 8px; width: 70px; text-align: right;">Peso Aprox</th>
+                <!-- TABLA DE HERRAMIENTAS & CUSTODIA (ESTILO GUIA.PDF) -->
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 16px;">
+                    <thead>
+                        <tr style="background: #002B49; color: white;">
+                            <th style="border: 1px solid #002B49; padding: 6px; width: 40px; text-align: center;">ITEM</th>
+                            <th style="border: 1px solid #002B49; padding: 6px; text-align: left;">DESCRIPCIÓN DE HERRAMIENTA / EQUIPO</th>
+                            <th style="border: 1px solid #002B49; padding: 6px; width: 100px; text-align: left;">MARCA</th>
+                            <th style="border: 1px solid #002B49; padding: 6px; width: 120px; text-align: left;">SERIAL / CÓDIGO</th>
+                            <th style="border: 1px solid #002B49; padding: 6px; width: 50px; text-align: center;">CANT</th>
+                            <th style="border: 1px solid #002B49; padding: 6px; width: 75px; text-align: center;">ALMACÉN</th>
+                            <th style="border: 1px solid #002B49; padding: 6px; width: 75px; text-align: center;">OBRA</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${g.items.map((it, idx) => `
-                        <tr style="border-bottom: 1px solid #e2e8f0; background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-                            <td style="padding: 6px 8px; text-align: center; font-weight: 700;">${idx + 1}</td>
-                            <td style="padding: 6px 8px; font-weight: 600;">${it.description}</td>
-                            <td style="padding: 6px 8px; text-align: center; font-weight: 800;">${it.quantity}</td>
-                            <td style="padding: 6px 8px; text-align: center;">${it.unit}</td>
-                            <td style="padding: 6px 8px;">${it.condition_status}</td>
-                            <td style="padding: 6px 8px; text-align: right;">${it.approx_weight_kg > 0 ? it.approx_weight_kg + ' Kg' : '-'}</td>
-                        </tr>
+                            <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: 800;">${idx+1}</td>
+                                <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: 700;">${it.description}</td>
+                                <td style="border: 1px solid #cbd5e1; padding: 6px; color: #475569;">${it.brand || '-'}</td>
+                                <td style="border: 1px solid #cbd5e1; padding: 6px; font-family: monospace; font-size: 10px;">${it.serial_or_presentation || '-'}</td>
+                                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: 800;">${it.quantity}</td>
+                                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: 800; color: ${it.verified_by_custodian ? '#059669' : '#94a3b8'};">
+                                    ${it.verified_by_custodian ? '✓ VERIFICADO' : '[ &nbsp; ]'}
+                                </td>
+                                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: 800; color: ${it.verified_by_receiver ? '#0284c7' : '#94a3b8'};">
+                                    ${it.verified_by_receiver ? '✓ RECIBIDO' : '[ &nbsp; ]'}
+                                </td>
+                            </tr>
                         `).join('')}
                     </tbody>
                 </table>
-            </div>
 
-            ${g.notes ? `
-            <div style="font-size: 10px; color: #475569; margin-bottom: 16px; background: #fffbeb; border: 1px solid #fef3c7; padding: 6px 10px; border-radius: 4px;">
-                <b>Observaciones / Precintos:</b> ${g.notes}
-            </div>` : ''}
+                <!-- BLOQUE DE TRIPLE FIRMA Y RESPONSABILIDAD LEGAL -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 30px; padding-top: 10px;">
+                    <div style="border-top: 1px solid #0f172a; text-align: center; padding-top: 6px;">
+                        <p style="margin: 0; font-size: 10px; font-weight: 800; text-transform: uppercase;">1. ENTREGADO POR (ALMACÉN)</p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; font-weight: 900; color: #002B49;">${g.custodian_name || 'Carlos Hurtado'}</p>
+                        <p style="margin: 2px 0 0 0; font-size: 9px; color: #64748b;">Custodio Almacén Central Dalor</p>
+                        <p style="margin: 2px 0 0 0; font-size: 9px; color: #059669; font-weight: 700;">${g.dispatched_at ? `Firmado: ${g.dispatched_at}` : 'Firma Pendiente'}</p>
+                    </div>
 
-            <!-- Cuadro de 3 Firmas Legales -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 24px; font-size: 10px; text-align: center;">
-                <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
-                    <div style="font-weight: 800; color: #0f172a;">DESPACHADO POR DALOR</div>
-                    <div style="color: #475569; margin-top: 2px;">${g.dispatcher_name || 'Taller Guacara'}</div>
-                    <div style="color: #64748b; font-size: 9px;">QA/QC: ${g.quality_inspector || 'Conforme'}</div>
-                </div>
-                <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
-                    <div style="font-weight: 800; color: #0f172a;">TRANSPORTADO POR</div>
-                    <div style="color: #475569; margin-top: 2px;">${g.driver_name}</div>
-                    <div style="color: #64748b; font-size: 9px;">C.I. ${g.driver_id_doc} &bull; Placa: ${g.vehicle_plate}</div>
-                </div>
-                <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
-                    <div style="font-weight: 800; color: #0f172a;">RECIBIDO CONFORME CLIENTE</div>
-                    <div style="color: #475569; margin-top: 2px;">${g.received_by_client_name || 'Firma / Sello de Recepción'}</div>
-                    <div style="color: #64748b; font-size: 9px;">${g.received_by_client_id_doc ? 'C.I. ' + g.received_by_client_id_doc : 'Nombre, C.I. y Sello Planta'}</div>
+                    <div style="border-top: 1px solid #0f172a; text-align: center; padding-top: 6px;">
+                        <p style="margin: 0; font-size: 10px; font-weight: 800; text-transform: uppercase;">2. TRANSPORTADO POR (CHOFER)</p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; font-weight: 900; color: #002B49;">${g.driver_name}</p>
+                        <p style="margin: 2px 0 0 0; font-size: 9px; color: #64748b;">C.I. ${g.driver_id_card}</p>
+                        <p style="margin: 2px 0 0 0; font-size: 9px; color: #0284c7; font-weight: 700;">En Custodia de Transporte</p>
+                    </div>
+
+                    <div style="border-top: 1px solid #0f172a; text-align: center; padding-top: 6px;">
+                        <p style="margin: 0; font-size: 10px; font-weight: 800; text-transform: uppercase;">3. RECIBIDO EN OBRA POR (INGENIERO)</p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; font-weight: 900; color: #002B49;">${g.receiver_name || 'Ing. Residente de Obra'}</p>
+                        <p style="margin: 2px 0 0 0; font-size: 9px; color: #64748b;">Responsable en Sitio de Obra</p>
+                        <p style="margin: 2px 0 0 0; font-size: 9px; color: #059669; font-weight: 700;">${g.received_at ? `Recibido: ${g.received_at}` : 'Recepción Pendiente'}</p>
+                    </div>
                 </div>
             </div>
-
-            <!-- Coletilla Legal de Transporte SENIAT -->
-            <div style="margin-top: 18px; border-top: 1px dashed #cbd5e1; padding-top: 6px; font-size: 9px; color: #94a3b8; text-align: justify; line-height: 1.2;">
-                Esta Guía de Despacho y Traslado ampara la movilización de las piezas, maquinarias y materiales aquí descritos en estricto cumplimiento con la normativa legal y tributaria venezolana vigente. La mercancía viaja por cuenta y riesgo del destinatario una vez entregada al transportista.
-            </div>
-        </div>
         `;
 
-        const win = window.open('', '_blank');
-        win.document.write(`
-            <html>
-                <head>
-                    <title>Guía de Despacho N° ${g.guide_number} - DALOR, C.A.</title>
-                    <style>
-                        body { margin: 0; padding: 20px; background: #f1f5f9; }
-                        @media print {
-                            body { background: #fff; padding: 0; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${printHtml}
-                    <script>
-                        window.onload = function() { window.print(); }
-                    </script>
-                </body>
-            </html>
-        `);
-        win.document.close();
-    } catch(err) {
-        alert("Error al preparar impresión de guía: " + err.message);
+        const modal = document.getElementById("modalPrintTransferGuide");
+        if (modal) modal.classList.remove("hidden");
+    } catch (e) {
+        alert("Error al preparar vista de impresión: " + e.message);
     }
 }
 
-
-// ==============================================================================
-// 🛑 CASTIGO DE CARTERA & GESTIÓN DE DEUDAS INCOBRABLES EN FINANZAS
-// ==============================================================================
-function openBadDebtModal(recId, invoiceNum, balanceUsd) {
-    document.getElementById("bad_debt_cxc_id").value = recId;
-    document.getElementById("bad_debt_invoice_title").innerText = `Factura [${invoiceNum}] &bull; Saldo a Castigar: $${parseFloat(balanceUsd).toFixed(2)}`;
-    document.getElementById("badDebtForm").reset();
-    openModal("modalBadDebt");
-}
-
-async function submitBadDebtWriteOff(event) {
-    event.preventDefault();
-    const cxcId = document.getElementById("bad_debt_cxc_id").value;
-    const reason = document.getElementById("bad_debt_reason").value;
-    const notes = document.getElementById("bad_debt_notes").value.trim();
-
-    if (!confirm(`¿Confirmas que deseas declarar este saldo como INCOBRABLE / Castigo de Cartera?\n\nEsta acción retirará el saldo vivo de tesorería y lo registrará formalmente como pérdida operativa.`)) {
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_BASE}/financial/cxc/${cxcId}/write-off`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reason: reason, notes: notes })
-        });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || "Error al castigar deuda");
-        }
-        const data = await res.json();
-        closeModal("modalBadDebt");
-        await loadReceivablesList();
-        if (typeof showToastNotification === 'function') {
-            showToastNotification(`🛑 Factura [${data.invoice_number}] declarada como Incobrable. Saldo castigado.`, 'success');
-        } else {
-            alert(`🛑 Factura [${data.invoice_number}] declarada como Incobrable por $${data.bad_debt_amount_usd.toFixed(2)}.`);
-        }
-    } catch(err) {
-        alert("Error al castigar saldo: " + err.message);
-    }
-}

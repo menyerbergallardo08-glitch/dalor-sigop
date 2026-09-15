@@ -761,7 +761,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ==============================================================================
 
-window.APP_BUILD_VERSION = "2026.09.15.v88-clean-audited";
+window.APP_BUILD_VERSION = "2026.09.15.v89-dropdown-fix";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
@@ -1453,21 +1453,23 @@ function populateSelectDropdowns() {
 
 
 
+        // Helper para repoblar selectores PRESERVANDO la seleccion activa
+    const setSafeOptions = (id, optsHtml) => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = optsHtml;
+        if (prev) sel.value = prev;
+    };
+
     // Clientes Selects
-
     const cliOptions = `<option value="">-- Seleccione Cliente --</option>` + 
-
         safeClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
-
     
-
-    if (document.getElementById("quote_client_id")) document.getElementById("quote_client_id").innerHTML = cliOptions;
-
-    if (document.getElementById("new_proj_client_id")) document.getElementById("new_proj_client_id").innerHTML = cliOptions;
-
-    if (document.getElementById("cxc_client_id")) document.getElementById("cxc_client_id").innerHTML = cliOptions;
-
-    if (document.getElementById("rcp_client_id")) document.getElementById("rcp_client_id").innerHTML = cliOptions;
+    setSafeOptions("quote_client_id", cliOptions);
+    setSafeOptions("new_proj_client_id", cliOptions);
+    setSafeOptions("cxc_client_id", cliOptions);
+    setSafeOptions("rcp_client_id", cliOptions);
 
 
 
@@ -5530,7 +5532,7 @@ async function submitCreateQuotation(event) {
 
         const data = await res.json();
         closeModal("modalNewQuotation");
-        document.getElementById("quotationForm").reset();
+        const qForm = document.getElementById("quoteForm") || document.getElementById("quotationForm"); if (qForm) qForm.reset();
         document.getElementById("edit_quotation_id").value = "";
 
         if (typeof showToastNotification === 'function') {
@@ -8008,19 +8010,6 @@ async function loadCategoriesTree() {
 // ----------------------------------------------------
 
 function openModal(modalId) {
-
-    if (typeof populateSelectDropdowns === 'function') {
-
-        try { populateSelectDropdowns(); } catch (e) {}
-
-    }
-
-    if (typeof populatePlanDropdownSelectors === 'function') {
-
-        try { populatePlanDropdownSelectors(); } catch (e) {}
-
-    }
-
     const el = document.getElementById(modalId);
 
     if (el) el.classList.remove("hidden");

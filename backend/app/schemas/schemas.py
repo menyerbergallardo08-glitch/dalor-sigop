@@ -347,7 +347,7 @@ class PayableCreate(BaseModel):
     issue_date: Optional[datetime] = None
 
 class FinancialPaymentCreate(BaseModel):
-    payment_type: str
+    payment_type: Optional[str] = "abono"
     payment_method: Optional[str] = "transferencia"
     voucher_number: Optional[str] = None
     reference_number: Optional[str] = None

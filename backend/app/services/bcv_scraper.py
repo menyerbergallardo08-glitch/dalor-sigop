@@ -112,9 +112,6 @@ class BCVExchangeRateService:
             cls._cached_data["source"] = f"{cls._cached_data['source']} (Cache Guardado)"
             return cls._cached_data
 
-        # ----------------------------------------------------
-        # CAPA 4: Fallback Base de Contingencia (850.00)
-        # ----------------------------------------------------
         return {
             "rate": 850.00,
             "formatted_rate": "850.00",
@@ -125,3 +122,7 @@ class BCVExchangeRateService:
             "is_fallback": True,
             "status": "warning"
         }
+
+# Alias de compatibilidad universal
+BCVScraperService = BCVExchangeRateService
+

@@ -31,7 +31,13 @@ let authToken = localStorage.getItem('dalor_token') || null;
 
 document.addEventListener("DOMContentLoaded", async () => {
     const rateInput = document.getElementById("globalExchangeRateInput");
-    if (rateInput) rateInput.value = EXCHANGE_RATE.toFixed(2);
+    const savedRate = localStorage.getItem('dalor_exchange_rate');
+    if (savedRate) {
+        EXCHANGE_RATE = parseFloat(savedRate);
+        if (rateInput) rateInput.value = EXCHANGE_RATE.toFixed(2);
+    } else {
+        await refreshLiveBCVRate(false);
+    }
 
     document.addEventListener("click", (e) => {
         if (!e.target.closest(".nav-dropdown")) {
@@ -39,7 +45,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    await refreshLiveBCVRate(false);
     await checkAuthStatus();
     await loadInitialMasterData();
     

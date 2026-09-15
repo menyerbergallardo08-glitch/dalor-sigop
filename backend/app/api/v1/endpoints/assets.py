@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
@@ -24,6 +24,20 @@ class AssetCreate(BaseModel):
     current_custodian_name: Optional[str] = "Disponible en Base"
     is_exclusive: bool = True
 
+class AssetUpdate(BaseModel):
+    name: Optional[str] = None
+    asset_type: Optional[str] = None
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    license_plate: Optional[str] = None
+    current_odometer: Optional[float] = None
+    service_interval_km: Optional[float] = None
+    current_location: Optional[str] = None
+    current_custodian_name: Optional[str] = None
+    status: Optional[str] = None
+    is_active: Optional[bool] = None
+
 class DispatchGuideItem(BaseModel):
     asset_id: int
     asset_code: str
@@ -44,20 +58,39 @@ class DispatchGuideCreate(BaseModel):
 
 @router.get("/")
 def get_assets(asset_type: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Asset).filter(Asset.is_active == True)
+    query = db.query(Asset).filter(or_(Asset.is_active == True, Asset.is_active == None))
     if asset_type:
         query = query.filter(Asset.asset_type == asset_type)
-    return query.order_by(Asset.asset_code.asc()).all()
+    assets = query.order_by(Asset.asset_code.asc()).all()
+    return [{
+        "id": a.id,
+        "asset_code": a.asset_code,
+        "name": a.name,
+        "asset_type": a.asset_type,
+        "brand": a.brand,
+        "model": a.model,
+        "serial_number": a.serial_number,
+        "license_plate": a.license_plate,
+        "current_odometer": a.current_odometer or 0.0,
+        "service_interval_km": a.service_interval_km or 5000.0,
+        "last_service_odometer": a.last_service_odometer or 0.0,
+        "status": "en_obra" if a.current_project_id else (a.status or "disponible_base"),
+        "current_location": a.current_location or "Sede Central",
+        "current_custodian_name": a.current_custodian_name or "Disponible en Base",
+        "current_project_id": a.current_project_id,
+        "current_project_name": a.current_project.name if a.current_project else None,
+        "is_active": a.is_active
+    } for a in assets]
 
 @router.post("/")
 def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
     existing = db.query(Asset).filter(Asset.asset_code == asset_in.asset_code).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Ya existe un activo/herramienta con ese código.")
+        raise HTTPException(status_code=400, detail="Ya existe un activo/herramienta con ese codigo.")
     
     new_asset = Asset(
-        asset_code=asset_in.asset_code,
-        name=asset_in.name,
+        asset_code=asset_in.asset_code.strip().upper(),
+        name=asset_in.name.strip(),
         asset_type=asset_in.asset_type,
         brand=asset_in.brand,
         model=asset_in.model,
@@ -77,6 +110,41 @@ def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
     db.refresh(new_asset)
     return new_asset
 
+@router.put("/{asset_id}")
+def update_asset(asset_id: int, asset_in: AssetUpdate, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Activo no encontrado.")
+    
+    if asset_in.name is not None:
+        asset.name = asset_in.name.strip()
+    if asset_in.asset_type is not None:
+        asset.asset_type = asset_in.asset_type
+    if asset_in.brand is not None:
+        asset.brand = asset_in.brand.strip()
+    if asset_in.model is not None:
+        asset.model = asset_in.model.strip()
+    if asset_in.serial_number is not None:
+        asset.serial_number = asset_in.serial_number.strip()
+    if asset_in.license_plate is not None:
+        asset.license_plate = asset_in.license_plate.strip()
+    if asset_in.current_odometer is not None:
+        asset.current_odometer = asset_in.current_odometer
+    if asset_in.service_interval_km is not None:
+        asset.service_interval_km = asset_in.service_interval_km
+    if asset_in.current_location is not None:
+        asset.current_location = asset_in.current_location.strip()
+    if asset_in.current_custodian_name is not None:
+        asset.current_custodian_name = asset_in.current_custodian_name.strip()
+    if asset_in.status is not None:
+        asset.status = asset_in.status
+    if asset_in.is_active is not None:
+        asset.is_active = asset_in.is_active
+        
+    db.commit()
+    db.refresh(asset)
+    return asset
+
 @router.delete("/{asset_id}")
 def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -84,11 +152,11 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Activo no encontrado.")
     asset.is_active = False
     db.commit()
-    return {"message": "Activo/Herramienta inactivado exitosamente (traza histórica preservada)."}
+    return {"message": "Activo/Vehiculo inactivado exitosamente."}
 
 @router.get("/fleet-summary")
 def get_fleet_summary(db: Session = Depends(get_db)):
-    assets = db.query(Asset).filter(Asset.is_active == True).all()
+    assets = db.query(Asset).filter(or_(Asset.is_active == True, Asset.is_active == None)).all()
     result = []
     
     for a in assets:
@@ -121,9 +189,6 @@ def get_fleet_summary(db: Session = Depends(get_db)):
         })
     return result
 
-# ------------------------------------------------------------------------------
-# 📄 GUÍAS DE TRASLADO & PASES DE SALIDA DE HERRAMIENTAS Y EQUIPOS
-# ------------------------------------------------------------------------------
 @router.get("/dispatch-guides")
 def list_dispatch_guides(db: Session = Depends(get_db)):
     histories = db.query(ResourceAssignmentHistory).order_by(ResourceAssignmentHistory.assigned_at.desc()).all()
@@ -139,7 +204,7 @@ def list_dispatch_guides(db: Session = Depends(get_db)):
         "origin_location": h.origin_location,
         "destination_location": h.destination_location,
         "status": h.status,
-        "assigned_at": h.assigned_at.strftime("%Y-%m-%d %H:%M"),
+        "assigned_at": h.assigned_at.strftime("%Y-%m-%d %H:%M") if h.assigned_at else "-",
         "notes": h.notes
     } for h in histories]
 
@@ -170,7 +235,7 @@ def create_dispatch_guide(guide_in: DispatchGuideCreate, db: Session = Depends(g
             origin_location=guide_in.origin_location,
             destination_location=guide_in.destination_location,
             status="en_obra",
-            notes=f"Guía {guide_number} | Chofer: {guide_in.driver_name} (Placa: {guide_in.vehicle_plate}) | {item.condition_notes or ''}"
+            notes=f"Guia {guide_number} | Chofer: {guide_in.driver_name} (Placa: {guide_in.vehicle_plate}) | {item.condition_notes or ''}"
         )
         db.add(history_record)
         created_records.append(history_record)
@@ -181,7 +246,7 @@ def create_dispatch_guide(guide_in: DispatchGuideCreate, db: Session = Depends(g
         username="almacen",
         module="recursos_obra",
         action="emitir_guia_traslado",
-        details=f"Guía de Traslado {guide_number} emitida con {len(guide_in.items)} equipos para obra '{proj.code}'"
+        details=f"Guia de Traslado {guide_number} emitida con {len(guide_in.items)} equipos para obra '{proj.code}'"
     )
     db.add(audit)
     db.commit()
@@ -190,5 +255,5 @@ def create_dispatch_guide(guide_in: DispatchGuideCreate, db: Session = Depends(g
         "success": True,
         "guide_number": guide_number,
         "items_count": len(guide_in.items),
-        "message": f"Guía de Traslado {guide_number} generada con éxito."
+        "message": f"Guia de Traslado {guide_number} generada con exito."
     }

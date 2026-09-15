@@ -51,13 +51,23 @@ def healthcheck():
         "timestamp": datetime.utcnow().isoformat()
     }
 
-# Servir Frontend SPA y archivos estáticos
+# Servir Frontend SPA y archivos estáticos con prevención estricta de caché
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0"
+}
+
 if os.path.exists(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
     @app.get("/")
     def serve_frontend():
-        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), headers=NO_CACHE_HEADERS)
+
+    @app.get("/app.js")
+    def serve_app_js():
+        return FileResponse(os.path.join(FRONTEND_DIR, "app.js"), media_type="text/javascript", headers=NO_CACHE_HEADERS)
 
     @app.get("/seguimiento/{token}")
     @app.get("/tracking/{token}")
@@ -65,7 +75,7 @@ if os.path.exists(FRONTEND_DIR):
     def serve_tracking(token: Optional[str] = None):
         track_path = os.path.join(FRONTEND_DIR, "tracking.html")
         if os.path.exists(track_path):
-            return FileResponse(track_path)
+            return FileResponse(track_path, headers=NO_CACHE_HEADERS)
         return {"status": "Tracking Portal not found"}
 
     @app.get("/flujogramas.html")
@@ -73,8 +83,8 @@ if os.path.exists(FRONTEND_DIR):
     def serve_flujogramas():
         fpath = os.path.join(FRONTEND_DIR, "flujogramas.html")
         if os.path.exists(fpath):
-            return FileResponse(fpath)
-        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+            return FileResponse(fpath, headers=NO_CACHE_HEADERS)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), headers=NO_CACHE_HEADERS)
 
     @app.get("/FLUJOGRAMAS_OFICIALES_DALOR_SIGOP.pdf")
     @app.get("/MANUAL_LOGICA_Y_FLUJOGRAMAS_DALOR_SIGOP.pdf")
@@ -88,5 +98,5 @@ if os.path.exists(FRONTEND_DIR):
     def serve_spa_fallback(full_path: str):
         target_file = os.path.join(FRONTEND_DIR, full_path)
         if os.path.exists(target_file) and os.path.isfile(target_file):
-            return FileResponse(target_file)
-        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+            return FileResponse(target_file, headers=NO_CACHE_HEADERS)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), headers=NO_CACHE_HEADERS)

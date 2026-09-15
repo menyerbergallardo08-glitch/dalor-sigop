@@ -2147,8 +2147,33 @@
                         <div style="margin-bottom: 16px;">
                             <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                                 <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">1</span>
-                                Alcance General & Datos Contractuales
+                                Alcance General & Modalidad Operativa del Proyecto
                             </h4>
+
+                            <!-- Selector Visual Prominente Sede vs Foráneo -->
+                            <div style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                                <label style="font-size: 11px; font-weight: 800; color: #1e293b; text-transform: uppercase; display: block; margin-bottom: 6px;">
+                                    <i class="fa-solid fa-map-location-dot" style="color: var(--dalor-blue);"></i> Selecciona la Modalidad / Frente de Trabajo *:
+                                </label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <label id="card_type_sede" onclick="setProjectType('sede')" style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: all 0.2s;">
+                                        <input type="radio" name="proj_type_radio" value="sede" id="radio_type_sede" onchange="setProjectType('sede')" style="accent-color: var(--dalor-navy); width: 18px; height: 18px;">
+                                        <div>
+                                            <b style="font-size: 12px; color: #002B49; display: block;">🏢 En Sede (Taller Guacara)</b>
+                                            <span style="font-size: 10px; color: #64748b;">Fabricación, corte, armado o calderería en taller central propio</span>
+                                        </div>
+                                    </label>
+                                    <label id="card_type_foraneo" onclick="setProjectType('foraneo')" style="display: flex; align-items: center; gap: 10px; background: #eff6ff; border: 2px solid var(--dalor-blue); border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: all 0.2s;">
+                                        <input type="radio" name="proj_type_radio" value="foraneo" id="radio_type_foraneo" checked onchange="setProjectType('foraneo')" style="accent-color: var(--dalor-blue); width: 18px; height: 18px;">
+                                        <div>
+                                            <b style="font-size: 12px; color: var(--dalor-blue); display: block;">📍 Proyecto Foráneo / En Planta</b>
+                                            <span style="font-size: 10px; color: #64748b;">En instalaciones del cliente (activa viáticos, fletes y logística de campo)</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                <input type="hidden" id="new_proj_type" value="foraneo">
+                            </div>
+
                             <div class="grid-4" style="margin-bottom: 10px;">
                                 <div>
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Código de Obra *</label>
@@ -2162,13 +2187,6 @@
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente Asignado *</label>
                                     <select id="new_proj_client_id" required style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
                                         <option value="">-- Seleccionar Cliente --</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Tipo de Proyecto / Frente Operativo *</label>
-                                    <select id="new_proj_type" required style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; font-weight: 700; color: var(--dalor-navy);">
-                                        <option value="sede">🏢 En Sede (Taller Guacara - Fabricación / Mecanizado Local)</option>
-                                        <option value="foraneo" selected>📍 Proyecto Foráneo (En Planta de Cliente - Viáticos, Logística & Fletes)</option>
                                     </select>
                                 </div>
                                 <div>

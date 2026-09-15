@@ -731,13 +731,14 @@ def sync_dalor_catalog(db: Session = Depends(get_db)):
                 min_stock_alert=5.0,
                 unit_cost_usd=m_data["cost"],
                 total_cost_usd=round(m_data["stock"] * m_data["cost"], 2),
-                location="Almacén Central Dalor"
+                location="Almacén Central Dalor", is_active=True
             )
             db.add(m)
         else:
             m.name = m_data["name"]
             m.category = m_data["category"]
             m.unit_measure = m_data["unit"]
+            m.is_active = True
             if m.stock_quantity == 0:
                 m.stock_quantity = m_data["stock"]
                 m.unit_cost_usd = m_data["cost"]

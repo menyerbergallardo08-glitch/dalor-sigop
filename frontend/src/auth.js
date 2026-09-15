@@ -2,25 +2,34 @@ import { Api } from './api.js';
 import { State } from './state.js';
 
 export function checkAuthStatus() {
-    const sessionActive = sessionStorage.getItem('dalor_session_active');
-    const savedUser = sessionStorage.getItem('dalor_user');
-    const savedToken = sessionStorage.getItem('dalor_token');
+    const savedUser = localStorage.getItem('dalor_user') || sessionStorage.getItem('dalor_user');
+    const savedToken = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token');
     
-    if (sessionActive === 'true' && savedUser && savedToken) {
+    if (savedUser && savedToken) {
         try {
             State.currentUser = JSON.parse(savedUser);
             State.authToken = savedToken;
+            window.currentUser = State.currentUser;
+            window.authToken = State.authToken;
+            localStorage.setItem('dalor_user', JSON.stringify(State.currentUser));
+            localStorage.setItem('dalor_token', State.authToken);
+            sessionStorage.setItem('dalor_session_active', 'true');
+            sessionStorage.setItem('dalor_user', JSON.stringify(State.currentUser));
+            sessionStorage.setItem('dalor_token', State.authToken);
             renderUserBadge();
             applyPermissionMap(State.currentUser);
             return true;
         } catch (e) {
             sessionStorage.clear();
+            localStorage.removeItem('dalor_user');
+            localStorage.removeItem('dalor_token');
         }
     }
     
     State.currentUser = null;
     State.authToken = null;
-    sessionStorage.clear();
+    window.currentUser = null;
+    window.authToken = null;
     return false;
 }
 
@@ -47,7 +56,6 @@ export function applyPermissionMap(user) {
     const isAdmin = isDirector || role.includes('finanzas') || role.includes('administracion');
     const isIngeniero = isDirector || isAdmin || role.includes('ingeniero') || role.includes('obra');
     
-    // Configurar visibilidad de menús por rol
     document.querySelectorAll('.role-director-only').forEach(el => el.style.display = isDirector ? '' : 'none');
     document.querySelectorAll('.role-admin-only').forEach(el => el.style.display = isAdmin ? '' : 'none');
     document.querySelectorAll('.role-eng-only').forEach(el => el.style.display = isIngeniero ? '' : 'none');
@@ -71,7 +79,11 @@ export async function performLogin(username, password) {
         const data = await Api.auth.login(username, password);
         State.currentUser = data.user;
         State.authToken = data.access_token;
+        window.currentUser = data.user;
+        window.authToken = data.access_token;
         
+        localStorage.setItem('dalor_user', JSON.stringify(State.currentUser));
+        localStorage.setItem('dalor_token', State.authToken);
         sessionStorage.setItem('dalor_session_active', 'true');
         sessionStorage.setItem('dalor_user', JSON.stringify(State.currentUser));
         sessionStorage.setItem('dalor_token', State.authToken);
@@ -79,13 +91,22 @@ export async function performLogin(username, password) {
         // Desbloquear interfaz
         document.body.classList.add('authenticated');
         const loginScreen = document.getElementById('app-login-screen');
-        const authShell = document.getElementById('app-authenticated-shell');
         if (loginScreen) loginScreen.style.setProperty('display', 'none', 'important');
-        if (authShell) authShell.style.setProperty('display', 'block', 'important');
         
         renderUserBadge();
         applyPermissionMap(State.currentUser);
         redirectUserByRole(State.currentUser);
+
+        // Inicializar cargas visuales si existen en app.js
+        if (typeof window.loadExecutiveDashboard === 'function') {
+            try { window.loadExecutiveDashboard(); } catch(e) {}
+        }
+        if (typeof window.loadProjectsList === 'function') {
+            try { window.loadProjectsList(); } catch(e) {}
+        }
+        if (typeof window.loadMaterialsList === 'function') {
+            try { window.loadMaterialsList(); } catch(e) {}
+        }
 
         if (window.showToast) {
             window.showToast(`Bienvenido, ${State.currentUser.full_name || State.currentUser.username}`, 'success');
@@ -95,7 +116,7 @@ export async function performLogin(username, password) {
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión';
+            btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión Manual';
         }
     }
 }
@@ -105,14 +126,18 @@ export function redirectUserByRole(user) {
     const role = (user.role_name || user.username || '').toLowerCase();
     if (role.includes('almacen')) {
         window.switchView('resources', 'recursos');
+        if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('materials');
     } else if (role.includes('supervisor') || role.includes('campo')) {
         window.switchView('pwa', 'gastos');
     } else if (role.includes('admin') || role.includes('finanzas')) {
         window.switchView('financial', 'finanzas');
+        if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab('cxc');
     } else if (role.includes('ingeniero') || role.includes('obra')) {
         window.switchView('projects', 'proyectos');
+        if (typeof window.loadProjectsList === 'function') window.loadProjectsList();
     } else {
         window.switchView('executive', 'gerencia');
+        if (typeof window.loadExecutiveDashboard === 'function') window.loadExecutiveDashboard();
     }
 }
 
@@ -129,5 +154,7 @@ export function handleLogout() {
     localStorage.removeItem('dalor_user');
     State.currentUser = null;
     State.authToken = null;
+    window.currentUser = null;
+    window.authToken = null;
     window.location.reload();
 }

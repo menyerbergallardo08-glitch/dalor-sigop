@@ -163,7 +163,11 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
         else:
             weighted_cost = new_unit_cost
 
-        mat.stock_quantity = total_qty
+        is_discrete = (mat.unit_measure or "").strip().lower() in ["und", "unid", "unidad", "unidades", "pza", "pieza", "piezas", "rollo", "rollos"]
+        if is_discrete:
+            mat.stock_quantity = float(round(total_qty))
+        else:
+            mat.stock_quantity = round(total_qty, 2)
         mat.unit_cost_usd = round(weighted_cost, 4)
         mat.total_cost_usd = round(total_qty * mat.unit_cost_usd, 2)
 

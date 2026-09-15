@@ -123,6 +123,8 @@ class Quotation(Base):
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
     project_title = Column(String(200), nullable=False)
     location = Column(String(200), nullable=True)
+    execution_time = Column(String(100), default="15 días hábiles")
+    currency = Column(String(10), default="USD")
     validity_days = Column(Integer, default=15)
     exchange_rate = Column(Float, default=800.0)
     subtotal_usd = Column(Float, default=0.0)
@@ -166,6 +168,8 @@ class Project(Base):
     start_date = Column(DateTime, default=datetime.utcnow)
     end_date = Column(DateTime, nullable=True)
     duration_days = Column(Integer, default=30)
+    execution_time = Column(String(100), default="15 días hábiles")
+    tracking_token = Column(String(64), unique=True, index=True, nullable=True)
     
     # Valores Financieros / Bolsas de Costo Estimado
     contract_amount_usd = Column(Float, default=0.0)
@@ -185,6 +189,21 @@ class Project(Base):
     resource_history = relationship("ResourceAssignmentHistory", back_populates="project")
     receivables = relationship("AccountReceivable", back_populates="project")
     payables = relationship("AccountPayable", back_populates="project")
+
+
+    @property
+    def total_spent_usd(self) -> float:
+        if hasattr(self, 'expenses') and self.expenses:
+            return sum(float(e.amount_usd or 0.0) for e in self.expenses)
+        return 0.0
+
+    @property
+    def progress_pct(self) -> float:
+        if hasattr(self, 'phases') and self.phases:
+            total = len(self.phases)
+            done = sum(1 for ph in self.phases if ph.status == "completado")
+            return round((done / total) * 100.0, 1) if total > 0 else 0.0
+        return 0.0
 
 class ProjectPhase(Base):
     __tablename__ = "project_phases"
@@ -225,6 +244,12 @@ class Asset(Base):
     service_interval_km = Column(Float, default=5000.0)
     last_service_odometer = Column(Float, default=0.0)
     
+    # Condición de propiedad & Alquiler
+    ownership_type = Column(String(50), default="propio") # propio, alquilado_a_tercero, prestado_de_tercero, alquilado_a_cliente, prestado_a_cliente
+    external_entity_name = Column(String(150), nullable=True)
+    rental_rate_usd = Column(Float, default=0.0)
+    return_due_date = Column(DateTime, nullable=True)
+
     status = Column(String(50), default="disponible_base")
     current_location = Column(String(150), default="Sede Central")
     current_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
@@ -247,6 +272,10 @@ class Personnel(Base):
     status = Column(String(50), default="disponible_base")
     current_location = Column(String(150), default="Sede Central")
     current_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    roster_type = Column(String(50), default="guacara_fijo")
+    monthly_salary_usd = Column(Float, default=0.0)
+    daily_rate_usd = Column(Float, default=0.0)
+    is_approver = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
     current_project = relationship("Project")
@@ -256,14 +285,18 @@ class ResourceAssignmentHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    transfer_code = Column(String(50), nullable=True)
     resource_type = Column(String(50), nullable=False)
     resource_id = Column(Integer, nullable=False)
     resource_code = Column(String(50), nullable=True)
     resource_name = Column(String(150), nullable=True)
     custodian_name = Column(String(150), nullable=True)
+    driver_name = Column(String(150), nullable=True)
     start_odometer = Column(Float, nullable=True)
     origin_location = Column(String(150), default="Sede Central")
     destination_location = Column(String(150), nullable=False)
+    freight_cost_usd = Column(Float, default=0.0)
+    fuel_cost_usd = Column(Float, default=0.0)
     status = Column(String(50), default="en_obra")
     notes = Column(String(255), nullable=True)
     assigned_at = Column(DateTime, default=datetime.utcnow)
@@ -296,14 +329,17 @@ class Expense(Base):
     
     # Clasificación de Alto Nivel
     expense_type = Column(String(50), default="costo_obra") # costo_obra, gasto_sede, retiro_socio
-    partner_name = Column(String(150), nullable=True) # Para retiros de socios
+    partner_name = Column(Text, nullable=True) # Para retiros de socios o autor que reporta
     
     expense_date = Column(DateTime, default=datetime.utcnow)
-    description = Column(String(255), nullable=False)
-    supplier_vendor = Column(String(150), nullable=False)
+    description = Column(Text, nullable=False)
+    supplier_vendor = Column(Text, nullable=False)
     amount_bs = Column(Float, nullable=False)
     exchange_rate = Column(Float, nullable=False)
     amount_usd = Column(Float, nullable=False)
+    base_amount_usd = Column(Float, default=0.0)
+    tax_amount_usd = Column(Float, default=0.0)
+    is_tax_exempt = Column(Boolean, default=False)
     
     fuel_liters = Column(Float, nullable=True)
     price_per_liter_usd = Column(Float, nullable=True)
@@ -312,10 +348,10 @@ class Expense(Base):
     payment_method = Column(String(50), default="caja_chica")
     status = Column(String(50), default="aprobado")
     has_receipt = Column(Boolean, default=True)
-    receipt_image_path = Column(String(255), nullable=True)
+    receipt_image_path = Column(Text, nullable=True)
     
     alert_flag = Column(Boolean, default=False)
-    alert_notes = Column(String(255), nullable=True)
+    alert_notes = Column(Text, nullable=True)
 
     category = relationship("ExpenseCategory", back_populates="expenses")
     project = relationship("Project", back_populates="expenses")
@@ -338,7 +374,16 @@ class AccountReceivable(Base):
     issue_date = Column(DateTime, default=datetime.utcnow)
     due_date = Column(DateTime, nullable=False)
     
-    amount_usd = Column(Float, default=0.0)
+    # Desglose Fiscal y Retenciones SENIAT
+    taxable_base_usd = Column(Float, default=0.0)
+    tax_amount_usd = Column(Float, default=0.0)
+    tax_withholding_rate = Column(Float, default=75.0) # 0%, 75%, 100%
+    tax_withholding_usd = Column(Float, default=0.0)
+    islr_rate = Column(Float, default=2.0) # 0%, 1%, 2%, 3%, 5%
+    islr_withholding_usd = Column(Float, default=0.0)
+    net_amount_usd = Column(Float, default=0.0)
+    
+    amount_usd = Column(Float, default=0.0) # Total bruto factura
     amount_bs = Column(Float, default=0.0)
     exchange_rate = Column(Float, default=800.0)
     tax_retained_usd = Column(Float, default=0.0)
@@ -346,6 +391,12 @@ class AccountReceivable(Base):
     paid_amount_usd = Column(Float, default=0.0)
     balance_usd = Column(Float, default=0.0)
     status = Column(String(50), default="pendiente")
+    # Castigo de Cartera e Incobrabilidad
+    is_bad_debt = Column(Boolean, default=False)
+    bad_debt_amount_usd = Column(Float, default=0.0)
+    bad_debt_reason = Column(String(255), nullable=True)
+    bad_debt_date = Column(DateTime, nullable=True)
+    
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -369,6 +420,15 @@ class AccountPayable(Base):
     issue_date = Column(DateTime, default=datetime.utcnow)
     due_date = Column(DateTime, nullable=False)
     
+    # Desglose Fiscal y Retenciones SENIAT
+    taxable_base_usd = Column(Float, default=0.0)
+    tax_amount_usd = Column(Float, default=0.0)
+    tax_withholding_rate = Column(Float, default=75.0) # 0%, 75%, 100%
+    tax_withholding_usd = Column(Float, default=0.0)
+    islr_rate = Column(Float, default=2.0) # 0%, 1%, 2%, 3%, 5%
+    islr_withholding_usd = Column(Float, default=0.0)
+    net_amount_usd = Column(Float, default=0.0)
+    
     amount_usd = Column(Float, default=0.0)
     amount_bs = Column(Float, default=0.0)
     exchange_rate = Column(Float, default=800.0)
@@ -387,7 +447,8 @@ class FinancialPayment(Base):
     __tablename__ = "financial_payments"
 
     id = Column(Integer, primary_key=True, index=True)
-    payment_type = Column(String(50), nullable=False)
+    payment_type = Column(String(50), nullable=False) # transferencia, efectivo_usd, retencion_iva, retencion_islr, zelle, pago_movil
+    voucher_number = Column(String(100), nullable=True) # N° Comprobante Retención SENIAT o Ref Bancaria
     receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
     payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
     
@@ -403,111 +464,103 @@ class FinancialPayment(Base):
     payable = relationship("AccountPayable", back_populates="payments")
 
 # ==============================================================================
-# 📋 GUÍAS DE TRASLADO, DESPACHO & DOBLE VERIFICACIÓN DE ACTIVOS (ESTILO GUIA.PDF)
+# 📦 INVENTARIO DE MATERIALES Y CONSUMIBLES DE METALMECÁNICA
 # ==============================================================================
 
-class TransferGuide(Base):
-    __tablename__ = "transfer_guides"
-
-    id = Column(Integer, primary_key=True, index=True)
-    guide_number = Column(String(50), unique=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
-    destination = Column(String(255), nullable=False)
-    issue_date = Column(DateTime, default=datetime.utcnow)
-    
-    # Vehículo y Transporte
-    vehicle_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
-    vehicle_name = Column(String(150), nullable=True)
-    vehicle_plate = Column(String(50), nullable=True)
-    driver_name = Column(String(150), nullable=True)
-    driver_id_card = Column(String(50), nullable=True)
-    
-    # Doble Verificación & Estados
-    status = Column(String(50), default="borrador") # borrador, despachado, recibido_en_obra, retornado
-    
-    # 1. Verificación de Custodio / Almacén
-    custodian_name = Column(String(150), default="Carlos Hurtado")
-    dispatched_at = Column(DateTime, nullable=True)
-    custodian_notes = Column(Text, nullable=True)
-    
-    # 2. Verificación de Recepción en Obra
-    receiver_name = Column(String(150), nullable=True)
-    received_at = Column(DateTime, nullable=True)
-    receiver_notes = Column(Text, nullable=True)
-    
-    # 3. Retorno a Base
-    returned_at = Column(DateTime, nullable=True)
-    return_notes = Column(Text, nullable=True)
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    project = relationship("Project")
-    vehicle = relationship("Asset", foreign_keys=[vehicle_id])
-    items = relationship("TransferGuideItem", back_populates="guide", cascade="all, delete-orphan")
-
-
-class TransferGuideItem(Base):
-    __tablename__ = "transfer_guide_items"
-
-    id = Column(Integer, primary_key=True, index=True)
-    guide_id = Column(Integer, ForeignKey("transfer_guides.id"), nullable=False)
-    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
-    
-    item_number = Column(Integer, default=1)
-    description = Column(String(255), nullable=False)
-    brand = Column(String(100), nullable=True)
-    serial_or_presentation = Column(String(100), nullable=True)
-    quantity = Column(Float, default=1.0)
-    
-    verified_by_custodian = Column(Boolean, default=False)
-    verified_by_receiver = Column(Boolean, default=False)
-    returned_to_base = Column(Boolean, default=False)
-    
-    notes = Column(String(255), nullable=True)
-
-    guide = relationship("TransferGuide", back_populates="items")
-    asset = relationship("Asset")
-
-
-# ==============================================================================
-# 📦 INVENTARIO DE MATERIALES, INSUMOS & CONSUMIBLES DE METALMECÁNICA
-# ==============================================================================
 class Material(Base):
     __tablename__ = "materials"
 
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, index=True)
     name = Column(String(200), nullable=False)
-    category = Column(String(100), default="Acero & Perfiles") # Acero & Perfiles, Soldadura & Electrodos, Abrasivos & Discos, Tornillería, Pinturas & Químicos, Tuberías, Varios
-    unit_of_measure = Column(String(50), default="Unidad") # Lamina, Metro, Kg, Caja, Cuñete, Unidad, Ciento
-    current_stock = Column(Float, default=0.0)
-    minimum_stock = Column(Float, default=5.0)
+    category = Column(String(100), default="Acero Estructural") # Acero Estructural, Planchas, Tuberías, Soldadura, Abrasivos, Tornillería, Pinturas
+    unit_measure = Column(String(50), default="UND") # UND, KG, MTR, PLG, GAL, ROLLO, CAJA
+    stock_quantity = Column(Float, default=0.0)
+    min_stock_alert = Column(Float, default=5.0)
     unit_cost_usd = Column(Float, default=0.0)
-    location = Column(String(150), default="Almacén Central / Galpón Dalor")
+    total_cost_usd = Column(Float, default=0.0)
+    location = Column(String(150), default="Almacén Central Dalor")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     movements = relationship("MaterialMovement", back_populates="material", cascade="all, delete-orphan")
-
 
 class MaterialMovement(Base):
     __tablename__ = "material_movements"
 
     id = Column(Integer, primary_key=True, index=True)
     material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
-    movement_type = Column(String(50), nullable=False) # entrada_compra, salida_obra, consumo_taller, ajuste
+    movement_type = Column(String(50), nullable=False) # entrada_compra, despacho_obra, ajuste_inventario, devolucion_obra
     quantity = Column(Float, nullable=False)
     unit_cost_usd = Column(Float, default=0.0)
     total_cost_usd = Column(Float, default=0.0)
     
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
-    supplier_vendor = Column(String(150), nullable=True)
-    invoice_number = Column(String(100), nullable=True)
-    performed_by = Column(String(100), default="Custodio de Almacén")
+    destination = Column(String(150), default="Sede Central")
+    reference_doc = Column(String(100), nullable=True) # Factura, Vale interno, Guía
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    performed_by = Column(String(150), default="Custodio de Almacén")
+    movement_date = Column(DateTime, default=datetime.utcnow)
 
     material = relationship("Material", back_populates="movements")
     project = relationship("Project")
 
 
+class DispatchGuide(Base):
+    __tablename__ = "dispatch_guides"
+
+    id = Column(Integer, primary_key=True, index=True)
+    guide_number = Column(String(50), unique=True, index=True) # GD-2026-001
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
+    
+    dispatch_date = Column(DateTime, default=datetime.utcnow)
+    destination_address = Column(String(255), nullable=False)
+    destination_plant = Column(String(150), nullable=True)
+    
+    # Modalidad de Transporte (Propio DALOR vs Tercerizado Flete vs Retiro Cliente)
+    transport_type = Column(String(50), default="propio_dalor") # propio_dalor, tercerizado_flete, retiro_cliente
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
+    carrier_company = Column(String(150), nullable=True)
+    driver_name = Column(String(150), nullable=False)
+    driver_id_doc = Column(String(50), nullable=False) # C.I.
+    driver_phone = Column(String(50), nullable=True)
+    vehicle_model = Column(String(100), nullable=True)
+    vehicle_plate = Column(String(50), nullable=False)
+    
+    # Aspectos Financieros del Flete/Servicio Tercerizado
+    freight_cost_usd = Column(Float, default=0.0) # Costo del transportista (CxP)
+    freight_price_charged_usd = Column(Float, default=0.0) # Cobrado al cliente (CxC)
+    payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
+    receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
+    
+    # Control de Estado y Firmas
+    status = Column(String(50), default="en_transito") # en_preparacion, en_transito, entregado_conforme, anulado
+    quality_inspector = Column(String(150), default="Control de Calidad DALOR")
+    dispatcher_name = Column(String(150), default="Despacho Taller Guacara")
+    received_by_client_name = Column(String(150), nullable=True)
+    received_by_client_id_doc = Column(String(50), nullable=True)
+    reception_date = Column(DateTime, nullable=True)
+    
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    client = relationship("Client")
+    project = relationship("Project")
+    asset = relationship("Asset")
+    items = relationship("DispatchGuideItem", back_populates="dispatch_guide", cascade="all, delete-orphan")
+
+
+class DispatchGuideItem(Base):
+    __tablename__ = "dispatch_guide_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    dispatch_guide_id = Column(Integer, ForeignKey("dispatch_guides.id"), nullable=False)
+    item_number = Column(Integer, default=1)
+    description = Column(String(255), nullable=False)
+    quantity = Column(Float, default=1.0)
+    unit = Column(String(50), default="Pzas") # Pzas, Ejes, Tramos, Kg, Tn, Conjuntos
+    condition_status = Column(String(100), default="Reparado / Listo para Montaje")
+    approx_weight_kg = Column(Float, default=0.0)
+
+    dispatch_guide = relationship("DispatchGuide", back_populates="items")

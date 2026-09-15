@@ -25,9 +25,11 @@ class PersonnelUpdate(BaseModel):
     status: Optional[str] = None
     is_active: Optional[bool] = None
 
+from sqlalchemy import or_
+
 @router.get("/")
 def get_personnel(db: Session = Depends(get_db)):
-    return db.query(Personnel).filter(Personnel.is_active == True).order_by(Personnel.code.asc()).all()
+    return db.query(Personnel).filter(or_(Personnel.is_active == True, Personnel.is_active == None)).order_by(Personnel.code.asc()).all()
 
 @router.get("/{personnel_id}")
 def get_personnel_by_id(personnel_id: int, db: Session = Depends(get_db)):

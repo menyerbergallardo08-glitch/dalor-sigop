@@ -310,3 +310,64 @@ class OCRExtractResult(BaseModel):
     image_url: Optional[str] = None
     is_tax_exempt: Optional[bool] = False
 
+
+
+# ==============================================================================
+# ESQUEMAS FINANCIEROS (CxC, CxP, PAGOS Y RETIROS)
+# ==============================================================================
+
+class ReceivableCreate(BaseModel):
+    invoice_number: str
+    client_id: int
+    project_id: Optional[int] = None
+    description: str
+    due_date: datetime
+    amount_usd: float
+    taxable_base_usd: Optional[float] = 0.0
+    tax_amount_usd: Optional[float] = 0.0
+    tax_withholding_rate: Optional[float] = 75.0
+    tax_withholding_usd: Optional[float] = 0.0
+    islr_rate: Optional[float] = 2.0
+    islr_withholding_usd: Optional[float] = 0.0
+    net_amount_usd: Optional[float] = 0.0
+    tax_retained_usd: Optional[float] = 0.0
+    notes: Optional[str] = None
+    issue_date: Optional[datetime] = None
+
+class PayableCreate(BaseModel):
+    invoice_number: str
+    supplier_name: str
+    project_id: Optional[int] = None
+    category_id: Optional[int] = None
+    payable_type: Optional[str] = "costo_material_obra"
+    description: str
+    due_date: datetime
+    amount_usd: float
+    notes: Optional[str] = None
+    issue_date: Optional[datetime] = None
+
+class FinancialPaymentCreate(BaseModel):
+    payment_type: str
+    payment_method: Optional[str] = "transferencia"
+    voucher_number: Optional[str] = None
+    reference_number: Optional[str] = None
+    amount_usd: float
+    amount_bs: Optional[float] = 0.0
+    exchange_rate: Optional[float] = 800.0
+    notes: Optional[str] = None
+    payment_date: Optional[datetime] = None
+
+class PartnerWithdrawalCreate(BaseModel):
+    partner_name: str
+    amount_usd: float
+    amount_bs: Optional[float] = 0.0
+    exchange_rate: Optional[float] = 800.0
+    payment_method: Optional[str] = "transferencia"
+    notes: Optional[str] = None
+    withdrawal_date: Optional[datetime] = None
+
+class FixedExpenseSettingCreate(BaseModel):
+    name: str
+    category_id: Optional[int] = None
+    monthly_amount_usd: float
+    is_active: bool = True

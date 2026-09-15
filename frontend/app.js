@@ -761,7 +761,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ==============================================================================
 
-window.APP_BUILD_VERSION = "2026.09.15.v86-full-operational-shield";
+window.APP_BUILD_VERSION = "2026.09.15.v87-generic-architecture";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
@@ -5396,14 +5396,8 @@ async async function editQuotation(quoteId) {
                 fetch(`${API_BASE}/clients/`),
                 fetch(`${API_BASE}/services/`)
             ]);
-            if (resCli.ok) {
-                const cData = await resCli.json();
-                allClients = Array.isArray(cData) ? cData : [];
-            }
-            if (resSrv.ok) {
-                const sData = await resSrv.json();
-                allServices = Array.isArray(sData) ? sData : [];
-            }
+            if (resCli.ok) allClients = await resCli.json();
+            if (resSrv.ok) allServices = await resSrv.json();
         }
         populateSelectDropdowns();
 
@@ -5421,27 +5415,19 @@ async async function editQuotation(quoteId) {
         const btnSubmit = document.getElementById("btnSubmitQuotation");
         if (btnSubmit) btnSubmit.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Presupuesto`;
 
-        // 2. Pre-llenar datos principales y seleccionar cliente
+        // 2. Pre-llenar datos principales y seleccionar cliente dinámicamente
         const clientSelect = document.getElementById("quote_client_id");
-        if (clientSelect) {
-            if (q.client_id) clientSelect.value = String(q.client_id);
-            if (!clientSelect.value || clientSelect.selectedIndex <= 0) {
-                const targetName = (q.client?.name || q.client_name || '').toLowerCase().trim();
-                for (let i = 0; i < clientSelect.options.length; i++) {
-                    const optText = clientSelect.options[i].text.toLowerCase();
-                    if (targetName && (optText.includes(targetName) || (targetName.includes('corpoelec') && optText.includes('corpoelec')))) {
-                        clientSelect.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
+        if (clientSelect && q.client_id) {
+            clientSelect.value = String(q.client_id);
         }
 
         if (document.getElementById("quote_title")) document.getElementById("quote_title").value = q.project_title || "";
         if (document.getElementById("quote_location")) document.getElementById("quote_location").value = q.location || "Sede Central";
         if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = q.execution_time || "15 días hábiles";
         if (document.getElementById("quote_validity")) document.getElementById("quote_validity").value = q.validity_days || 15;
-        if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = q.currency || "USD";
+        if (document.getElementById("quote_currency")) {
+            document.getElementById("quote_currency").value = q.currency || "USD";
+        }
         if (document.getElementById("quote_tax_percent")) {
             document.getElementById("quote_tax_percent").value = (q.tax_percent !== undefined && q.tax_percent !== null) ? q.tax_percent : (q.tax_usd > 0 ? 16 : 0);
         }
@@ -5618,7 +5604,7 @@ async async function convertQuoteToProject(quoteId) {
         const banner = document.getElementById("quote_conversion_banner");
         const bannerText = document.getElementById("quote_conversion_text");
         if (banner) banner.classList.remove("hidden");
-        const clientNameStr = q.client ? q.client.name : (q.client_name || 'CORPOELEC INDUSTRIAL / PDVSA');
+        const clientNameStr = q.client ? q.client.name : (q.client_name || 'Cliente');
         if (bannerText) {
             bannerText.innerText = `Presupuesto [${q.quote_number}] para ${clientNameStr}. Monto: $${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}. Revisa y completa los campos a continuación:`;
         }
@@ -5628,22 +5614,12 @@ async async function convertQuoteToProject(quoteId) {
         const codeInput = document.getElementById("new_proj_code");
         if (codeInput) codeInput.value = `PRJ-2026-${String(projNum).padStart(3, '0')}`;
 
-        // 4. Pre-llenar datos principales y seleccionar cliente
+        // 4. Pre-llenar datos principales y seleccionar cliente dinámicamente
         if (document.getElementById("new_proj_name")) document.getElementById("new_proj_name").value = q.project_title || "";
         
         const projClientSelect = document.getElementById("new_proj_client_id");
-        if (projClientSelect) {
-            if (q.client_id) projClientSelect.value = String(q.client_id);
-            if (!projClientSelect.value || projClientSelect.selectedIndex <= 0) {
-                const targetName = (q.client?.name || q.client_name || '').toLowerCase().trim();
-                for (let i = 0; i < projClientSelect.options.length; i++) {
-                    const optText = projClientSelect.options[i].text.toLowerCase();
-                    if (targetName && (optText.includes(targetName) || (targetName.includes('corpoelec') && optText.includes('corpoelec')))) {
-                        projClientSelect.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
+        if (projClientSelect && q.client_id) {
+            projClientSelect.value = String(q.client_id);
         }
 
         if (document.getElementById("new_proj_location")) document.getElementById("new_proj_location").value = q.location || "Sede Central";
@@ -5677,7 +5653,7 @@ async async function convertQuoteToProject(quoteId) {
         recalcProjectBudgetPreview();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch(err) {
-        console.error("Error al vincular presupuesto:", err);
+        console.error("Error al convertir presupuesto:", err);
         alert("Error al vincular presupuesto: " + err.message);
     }
 }
@@ -6413,67 +6389,64 @@ function openNewClientModal() {
 
 
 async function submitCreateClient(event) {
-
-    event.preventDefault();
-
+    if (event && event.preventDefault) event.preventDefault();
     const payload = {
-
-        code: document.getElementById("cli_code").value,
-
-        name: document.getElementById("cli_name").value,
-
-        rif: document.getElementById("cli_rif").value,
-
-        industry: document.getElementById("cli_industry").value,
-
-        contact_name: document.getElementById("cli_contact").value,
-
-        contact_phone: document.getElementById("cli_phone").value,
-
-        contact_email: document.getElementById("cli_email").value,
-
-        address: document.getElementById("cli_address").value
-
+        code: document.getElementById("cli_code").value.trim(),
+        name: document.getElementById("cli_name").value.trim(),
+        rif: document.getElementById("cli_rif") ? document.getElementById("cli_rif").value.trim() : "",
+        industry: document.getElementById("cli_industry") ? document.getElementById("cli_industry").value.trim() : "General",
+        contact_name: document.getElementById("cli_contact") ? document.getElementById("cli_contact").value.trim() : "",
+        contact_phone: document.getElementById("cli_phone") ? document.getElementById("cli_phone").value.trim() : "",
+        contact_email: document.getElementById("cli_email") ? document.getElementById("cli_email").value.trim() : "",
+        address: document.getElementById("cli_address") ? document.getElementById("cli_address").value.trim() : ""
     };
 
-
-
-    try {
-
-        const res = await fetch(`${API_BASE}/clients/`, {
-
-            method: "POST",
-
-            headers: { "Content-Type": "application/json" },
-
-            body: JSON.stringify(payload)
-
-        });
-
-        if (res.ok) {
-
-            alert("Cliente registrado exitosamente.");
-
-            closeModal("modalClient");
-
-            await loadInitialMasterData();
-
-            loadClients();
-
-        } else {
-
-            const err = await res.json();
-
-            alert("Error: " + (err.detail || JSON.stringify(err)));
-
-        }
-
-    } catch (e) {
-
-        alert("Error al guardar cliente.");
-
+    if (!payload.name) {
+        alert("Por favor ingresa el nombre o razón social del cliente.");
+        return;
     }
 
+    try {
+        const res = await fetch(`${API_BASE}/clients/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const newClient = await res.json();
+            closeModal("modalClient");
+            const form = document.getElementById("clientForm");
+            if (form) form.reset();
+
+            // Recargar datos maestros en caliente desde la base de datos
+            await loadInitialMasterData();
+            populateSelectDropdowns();
+            populatePlanDropdownSelectors();
+
+            // Auto-seleccionar el cliente recién creado en el selector activo
+            if (document.getElementById("quote_client_id")) {
+                document.getElementById("quote_client_id").value = String(newClient.id);
+            }
+            if (document.getElementById("new_proj_client_id")) {
+                document.getElementById("new_proj_client_id").value = String(newClient.id);
+            }
+
+            if (typeof loadClients === 'function') loadClients();
+            if (typeof showToastNotification === 'function') {
+                showToastNotification(`Cliente ${newClient.name} registrado con éxito`, 'success');
+            } else if (typeof showToast === 'function') {
+                showToast(`Cliente ${newClient.name} registrado con éxito`, 'success');
+            } else {
+                alert(`Cliente ${newClient.name} registrado con éxito.`);
+            }
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        console.error("Error al guardar cliente:", e);
+        alert("Error de conexión al guardar cliente.");
+    }
 }
 
 

@@ -1,5 +1,7 @@
 
-// Global robust parser for currency and localized inputs
+// --------------------------------------------------------------------------
+// DALOR PARSER NUMERICO UNIVERSAL PARA MULTIMONEDA (USD / VES / EUR)
+// --------------------------------------------------------------------------
 function parseLocalizedNumber(val) {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
     if (!val) return 0;
@@ -2326,105 +2328,200 @@ function recalcProjectBudgetPreview() {
 
 
 async function submitCreateProject(event) {
-    if (event && event.preventDefault) event.preventDefault();
 
-    const codeVal = document.getElementById("new_proj_code")?.value.trim();
-    const nameVal = document.getElementById("new_proj_name")?.value.trim();
-    const clientVal = parseInt(document.getElementById("new_proj_client_id")?.value);
-    const locVal = document.getElementById("new_proj_location")?.value.trim() || "Sede Central";
-    const durVal = parseInt(document.getElementById("new_proj_duration")?.value) || 30;
-    const contractVal = parseLocalizedNumber(document.getElementById("new_proj_contract")?.value) || 0.0;
-    const scopeVal = document.getElementById("new_proj_scope")?.value || "";
+    event.preventDefault();
 
-    if (!codeVal || !nameVal || !clientVal) {
-        alert("Por favor completa los campos obligatorios: Código de Obra, Nombre del Proyecto y Cliente Asignado.");
-        return;
-    }
 
-    // Auto-capturar recursos seleccionados
+
+    // Auto-capturar si hay algún recurso seleccionado en el dropdown que no fue pulsado con '+'
+
     const pSelVal = parseInt(document.getElementById("plan_select_personnel")?.value);
+
     if (pSelVal && !selectedPersonnelIds.includes(pSelVal)) selectedPersonnelIds.push(pSelVal);
 
+
+
     const fSelVal = parseInt(document.getElementById("plan_select_fleet")?.value);
+
     if (fSelVal && !selectedVehicleIds.includes(fSelVal)) selectedVehicleIds.push(fSelVal);
 
+
+
     const tSelVal = parseInt(document.getElementById("plan_select_tools")?.value);
+
     if (tSelVal && !selectedToolIds.includes(tSelVal)) selectedToolIds.push(tSelVal);
 
-    // Etapas
+
+
+    event.preventDefault();
+
+
+
+    // 1. Etapas con Sub-tareas Operativas
+
     const phaseCards = document.querySelectorAll("#projectPhasesContainer .project-phase-card");
+
     let phases = [];
+
     phaseCards.forEach((card, idx) => {
-        const phName = card.querySelector(".ph-name")?.value.trim() || `Fase ${idx + 1}`;
-        const days = parseInt(card.querySelector(".ph-days")?.value) || 7;
-        const cost = parseLocalizedNumber(card.querySelector(".ph-cost")?.value) || 0.0;
+
+        const name = card.querySelector(".ph-name").value.trim();
+
+        const days = parseInt(card.querySelector(".ph-days").value) || 7;
+
+        const cost = parseFloat(card.querySelector(".ph-cost").value) || 0.0;
+
         
+
         const taskInputs = card.querySelectorAll(".ph-task-input");
+
         const tasksList = Array.from(taskInputs).map(inp => inp.value.trim()).filter(Boolean);
-        const description = tasksList.length > 0 ? tasksList.join("; ") : phName;
+
+        const description = tasksList.length > 0 ? tasksList.join("; ") : name;
+
+
 
         phases.push({
+
             phase_number: idx + 1,
-            name: phName,
+
+            name: name,
+
             description: description,
+
             duration_days: days,
+
             estimated_cost_usd: cost,
+
             status: "pendiente"
+
         });
+
     });
 
+
+
     const payload = {
-        code: codeVal,
-        name: nameVal,
-        client_id: clientVal,
-        location: locVal,
-        duration_days: durVal,
-        contract_amount_usd: contractVal,
-        scope_of_work: scopeVal,
-        estimated_labor_usd: parseLocalizedNumber(document.getElementById("new_proj_labor")?.value),
-        estimated_fuel_usd: parseLocalizedNumber(document.getElementById("new_proj_fuel")?.value),
-        estimated_materials_usd: parseLocalizedNumber(document.getElementById("new_proj_materials")?.value),
-        estimated_tools_usd: parseLocalizedNumber(document.getElementById("new_proj_tools")?.value),
-        estimated_services_usd: parseLocalizedNumber(document.getElementById("new_proj_services")?.value),
+
+        code: document.getElementById("new_proj_code").value,
+
+        name: document.getElementById("new_proj_name").value,
+
+        client_id: parseInt(document.getElementById("new_proj_client_id").value) || null,
+
+        location: document.getElementById("new_proj_location").value,
+
+        duration_days: parseInt(document.getElementById("new_proj_duration").value) || 30,
+
+        contract_amount_usd: parseFloat(document.getElementById("new_proj_contract").value) || 0.0,
+
+        scope_of_work: document.getElementById("new_proj_scope").value,
+
+        estimated_labor_usd: parseFloat(document.getElementById("new_proj_labor").value) || 0.0,
+
+        estimated_fuel_usd: parseFloat(document.getElementById("new_proj_fuel").value) || 0.0,
+
+        estimated_materials_usd: parseFloat(document.getElementById("new_proj_materials").value) || 0.0,
+
+        estimated_tools_usd: parseFloat(document.getElementById("new_proj_tools").value) || 0.0,
+
+        estimated_services_usd: parseFloat(document.getElementById("new_proj_services").value) || 0.0,
+
+        phases: phases,
+
         assigned_personnel_ids: selectedPersonnelIds,
+
         assigned_vehicle_ids: selectedVehicleIds,
-        assigned_tool_ids: selectedToolIds,
-        origin_quotation_id: parseInt(document.getElementById("converting_quotation_id")?.value) || null,
-        phases: phases
+
+        assigned_tool_ids: selectedToolIds
+
     };
 
+
+
     try {
+
         const res = await fetch(`${API_BASE}/projects/`, {
+
             method: "POST",
+
             headers: { "Content-Type": "application/json" },
+
             body: JSON.stringify(payload)
+
         });
 
         if (res.ok) {
-            const data = await res.json();
-            alert(`✓ Obra / Proyecto [${data.code}] aperturado exitosamente con recursos asignados y cuenta por cobrar inicial.`);
-            
-            // Limpiar formulario y estados
-            document.getElementById("projectPlanningForm")?.reset();
-            selectedPersonnelIds = [];
-            selectedVehicleIds = [];
-            selectedToolIds = [];
-            renderAssignedTags();
-            
-            const banner = document.getElementById("quote_conversion_banner");
-            if (banner) banner.classList.add("hidden");
 
-            // Recargar proyectos y mostrar lista
-            switchProjectSubtab('active');
-            await loadProjectsList();
+            const data = await res.json();
+
+            
+
+            // Si proviene de un presupuesto, marcar la cotización como 'aprobado'
+
+            const convQuoteId = document.getElementById("converting_quotation_id") ? document.getElementById("converting_quotation_id").value : "";
+
+            if (convQuoteId) {
+
+                try {
+
+                    await fetch(`${API_BASE}/quotations/${convQuoteId}`, {
+
+                        method: "PUT",
+
+                        headers: { "Content-Type": "application/json" },
+
+                        body: JSON.stringify({ status: "aprobado" })
+
+                    });
+
+                } catch (errQ) {
+
+                    console.error("Error actualizando status de cotización vinculada:", errQ);
+
+                }
+
+                cancelQuotationConversion();
+
+            }
+
+
+
+            alert(`¡Proyecto ${data.code} planificado, estructurado y activado con éxito!`);
+
+            document.getElementById("projectCreateForm").reset();
+
+            selectedPersonnelIds = [];
+
+            selectedVehicleIds = [];
+
+            selectedToolIds = [];
+
+            renderAssignedTags();
+
+            await loadInitialMasterData();
+
+            loadProjectsList();
+
+            loadQuotations();
+
         } else {
+
             const err = await res.json();
-            alert("Error al aperturar proyecto: " + (err.detail || JSON.stringify(err)));
+
+            alert("Error: " + (err.detail || JSON.stringify(err)));
+
         }
+
     } catch (e) {
-        alert("Error de conexión al guardar proyecto: " + e.message);
+
+        alert("Error al planificar proyecto.");
+
     }
+
 }
+
+
 
 async function loadProjectsList() {
 
@@ -5612,17 +5709,10 @@ function cancelQuotationConversion() {
 
 async async function convertQuoteToProject(quoteId) {
     try {
-        // 1. Asegurar carga de datos maestros
         if (!allClients || allClients.length === 0) {
             try {
-                const resCli = await fetch(`${API_BASE}/clients/`);
+                const resCli = await fetch(`${API_BASE}/clients`);
                 if (resCli.ok) allClients = await resCli.json();
-            } catch(e) {}
-        }
-        if (!allProjects || allProjects.length === 0) {
-            try {
-                const resPrj = await fetch(`${API_BASE}/projects/`);
-                if (resPrj.ok) allProjects = await resPrj.json();
             } catch(e) {}
         }
 
@@ -5630,99 +5720,212 @@ async async function convertQuoteToProject(quoteId) {
         if (!res.ok) throw new Error('No se pudo cargar la información del presupuesto.');
         const q = await res.json();
 
-        // 2. Cambiar a vista de Proyectos y pestaña de Formulario
+        // 1. Cambiar a vista de Proyectos
         switchView('projects', 'proyectos');
+
         switchProjectSubtab('form');
 
-        // 3. Poblar dropdowns en el DOM antes de asignar valores
-        populateSelectDropdowns();
         populatePlanDropdownSelectors();
 
-        // 4. Mostrar banner de conversión
+
+
+        // 2. Mostrar banner de conversión
+
         const convInput = document.getElementById("converting_quotation_id");
+
         if (convInput) convInput.value = q.id;
 
+
+
         const banner = document.getElementById("quote_conversion_banner");
+
         const bannerText = document.getElementById("quote_conversion_text");
+
         if (banner) banner.classList.remove("hidden");
+
         if (bannerText) {
-            const cliName = q.client ? q.client.name : 'Cliente';
-            bannerText.innerText = `Presupuesto [${q.quote_number}] para ${cliName}. Monto: $${(q.total_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}. Revisa y completa los campos a continuación:`;
+
+            bannerText.innerText = `Presupuesto [${q.quote_number}] para ${q.client ? q.client.name : 'Cliente'}. Monto: $${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}. Revisa y completa los campos a continuación:`;
+
         }
 
-        // 5. Generar código correlativo de proyecto
+
+
+        // 3. Generar código correlativo de proyecto
+
         const projNum = (allProjects ? allProjects.length : 0) + 1;
+
         const codeInput = document.getElementById("new_proj_code");
+
         if (codeInput) codeInput.value = `PRJ-2026-${String(projNum).padStart(3, '0')}`;
 
-        // 6. Pre-llenar datos principales
+
+
+        // 4. Pre-llenar datos principales
+
         if (document.getElementById("new_proj_name")) document.getElementById("new_proj_name").value = q.project_title || "";
-        
-        const targetClientId = q.client_id || (q.client ? q.client.id : null);
-        const cliSelect = document.getElementById("new_proj_client_id");
-        if (cliSelect && targetClientId) {
-            cliSelect.value = String(targetClientId);
-        }
+
+        if (document.getElementById("new_proj_client_id")) document.getElementById("new_proj_client_id").value = q.client_id;
 
         if (document.getElementById("new_proj_location")) document.getElementById("new_proj_location").value = q.location || "Sede Central";
-        
-        let durDays = 30;
-        if (q.execution_time) {
-            const match = q.execution_time.match(/\d+/);
-            if (match) durDays = parseInt(match[0]);
-        }
-        if (document.getElementById("new_proj_duration")) document.getElementById("new_proj_duration").value = durDays;
-        if (document.getElementById("new_proj_contract")) document.getElementById("new_proj_contract").value = (q.total_usd || 0).toFixed(2);
 
-        // Desglose técnico de partidas
-        let itemsScope = `Obra adjudicada bajo Presupuesto ${q.quote_number}.\nPartidas y APU contratadas:\n`;
-        if (q.items && q.items.length > 0) {
-            q.items.forEach((it, idx) => {
-                itemsScope += `${idx + 1}. [${it.item_code || 'SRV'}] ${it.description} - Cant: ${it.quantity} ${it.unit_measure} ($${(it.unit_price_usd || 0).toFixed(2)}) = $${(it.total_usd || 0).toFixed(2)}\n`;
-            });
+        
+
+        // Calcular días de duración
+
+        let durDays = 30;
+
+        if (q.execution_time) {
+
+            const match = q.execution_time.match(/\d+/);
+
+            if (match) durDays = parseInt(match[0]);
+
         }
+
+        if (document.getElementById("new_proj_duration")) document.getElementById("new_proj_duration").value = durDays;
+
+        if (document.getElementById("new_proj_contract")) document.getElementById("new_proj_contract").value = q.total_usd.toFixed(2);
+
+
+
+        // Alcance técnico con desglose de partidas del presupuesto
+
+        let itemsScope = `Obra adjudicada bajo Presupuesto ${q.quote_number}.\nPartidas y APU contratadas:\n`;
+
+        if (q.items && q.items.length > 0) {
+
+            itemsScope += q.items.map((it, idx) => `${idx + 1}. [${it.item_code || 'SER'}] ${it.description} (Cant: ${it.quantity} ${it.unit_measure || 'Global'})`).join('\n');
+
+        } else {
+
+            itemsScope += q.project_title;
+
+        }
+
         if (document.getElementById("new_proj_scope")) document.getElementById("new_proj_scope").value = itemsScope;
 
-        // Estimar bolsas operativas recomendadas
-        const subtotal = q.subtotal_usd || q.total_usd || 0.0;
-        if (document.getElementById("new_proj_labor")) document.getElementById("new_proj_labor").value = (subtotal * 0.30).toFixed(2);
-        if (document.getElementById("new_proj_fuel")) document.getElementById("new_proj_fuel").value = (subtotal * 0.08).toFixed(2);
-        if (document.getElementById("new_proj_materials")) document.getElementById("new_proj_materials").value = (subtotal * 0.20).toFixed(2);
-        if (document.getElementById("new_proj_tools")) document.getElementById("new_proj_tools").value = (subtotal * 0.04).toFixed(2);
-        if (document.getElementById("new_proj_services")) document.getElementById("new_proj_services").value = (subtotal * 0.03).toFixed(2);
 
-        calcNewProjectBudgetSummary();
 
-        // 7. Generar fases / etapas a partir de las partidas de la cotización
+        // 5. Pre-calcular bolsas estimadas (Job Costing)
+
+        const subtotal = q.subtotal_usd || q.total_usd || 0;
+
+        const estLabor = Math.round(subtotal * 0.30 * 100) / 100;
+
+        const estFuel = Math.round(subtotal * 0.08 * 100) / 100;
+
+        const estMaterials = Math.round(subtotal * 0.20 * 100) / 100;
+
+        const estTools = Math.round(subtotal * 0.04 * 100) / 100;
+
+        const estServices = Math.round(subtotal * 0.03 * 100) / 100;
+
+
+
+        if (document.getElementById("new_proj_labor")) document.getElementById("new_proj_labor").value = estLabor.toFixed(2);
+
+        if (document.getElementById("new_proj_fuel")) document.getElementById("new_proj_fuel").value = estFuel.toFixed(2);
+
+        if (document.getElementById("new_proj_materials")) document.getElementById("new_proj_materials").value = estMaterials.toFixed(2);
+
+        if (document.getElementById("new_proj_tools")) document.getElementById("new_proj_tools").value = estTools.toFixed(2);
+
+        if (document.getElementById("new_proj_services")) document.getElementById("new_proj_services").value = estServices.toFixed(2);
+
+
+
+        // 6. Pre-poblar Etapas / Fases del Proyecto sugeridas
+
         const phasesContainer = document.getElementById("projectPhasesContainer");
+
         if (phasesContainer) {
+
             phasesContainer.innerHTML = "";
-            phaseRowCount = 0;
-            if (q.items && q.items.length > 0) {
-                const daysPerPhase = Math.max(3, Math.round(durDays / q.items.length));
-                q.items.forEach((it, idx) => {
-                    const estCost = Math.round((it.total_usd || 0) * 0.65 * 100) / 100;
-                    addProjectPhaseCard(it.description, daysPerPhase, estCost, [
-                        `Preparación y movilización de ${it.description}`,
-                        `Ejecución técnica de partida [${it.item_code || 'APU'}]`,
-                        `Inspección de calidad y entrega formal`
-                    ]);
-                });
-            } else {
-                addProjectPhaseCard("Fase 1: Replanteo y Movilización", 7, 500);
-                addProjectPhaseCard("Fase 2: Ejecución Principal", 15, 1200);
+
+            phaseCounter = 0;
+
+            
+
+            // Fase 1: Logística y Preparación
+
+            addProjectPhaseRow();
+
+            // Fase 2: Ejecución Técnica
+
+            addProjectPhaseRow();
+
+            // Fase 3: Pruebas y Entrega
+
+            addProjectPhaseRow();
+
+
+
+            const phaseCards = phasesContainer.querySelectorAll(".project-phase-card");
+
+            if (phaseCards.length >= 3) {
+
+                // Configurar Fase 1
+
+                phaseCards[0].querySelector(".ph-name").value = "Fase 1: Logística, Procura & Habilitación de Equipos";
+
+                phaseCards[0].querySelector(".ph-days").value = Math.max(3, Math.round(durDays * 0.2));
+
+                phaseCards[0].querySelector(".ph-cost").value = (estMaterials * 0.5 + estFuel).toFixed(2);
+
+
+
+                // Configurar Fase 2
+
+                phaseCards[1].querySelector(".ph-name").value = "Fase 2: Ejecución Técnica, Montaje & Servicios en Sitio";
+
+                phaseCards[1].querySelector(".ph-days").value = Math.max(5, Math.round(durDays * 0.6));
+
+                phaseCards[1].querySelector(".ph-cost").value = (estLabor + estTools).toFixed(2);
+
+
+
+                // Configurar Fase 3
+
+                phaseCards[2].querySelector(".ph-name").value = "Fase 3: Pruebas Operativas, Protocolo de Calidad & Entrega Conforme";
+
+                phaseCards[2].querySelector(".ph-days").value = Math.max(2, Math.round(durDays * 0.2));
+
+                phaseCards[2].querySelector(".ph-cost").value = (estServices + estLabor * 0.2).toFixed(2);
+
             }
+
         }
 
-        window.scrollTo({ top: 0, behavior: 'smooth' });
 
-        if (typeof showToastNotification === 'function') {
-            showToastNotification(`Presupuesto [${q.quote_number}] cargado listo para apertura de obra.`, 'info');
-        }
+
+        // 7. Recalcular márgenes
+
+        recalcProjectBudgetPreview();
+
+
+
+        // 8. Scroll suave al formulario
+
+        setTimeout(() => {
+
+            const formEl = document.getElementById("projectCreateForm");
+
+            if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        }, 150);
+
+
+
     } catch (e) {
-        alert("Error al convertir presupuesto a proyecto: " + e.message);
+
+        alert("Error al transferir presupuesto a proyecto: " + e.message);
+
     }
+
 }
+
+
 
 async function printQuotation(quoteId) {
 

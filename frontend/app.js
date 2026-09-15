@@ -488,7 +488,7 @@ window.onValTaxChanged = function() {
 
 
 
-window.APP_BUILD_VERSION = "2026.09.09.v29";
+window.APP_BUILD_VERSION = "2026.09.15.v93-clean-production";
 
 console.log("--> DALOR SIGO-P INITIALIZED v22");
 
@@ -768,7 +768,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ==============================================================================
 
-window.APP_BUILD_VERSION = "2026.09.15.v92-clean-production";
+window.APP_BUILD_VERSION = "2026.09.15.v93-clean-production";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
@@ -821,6 +821,7 @@ let selectedPersonnelIds = [];
 let selectedVehicleIds = [];
 
 let selectedToolIds = [];
+let selectedMaterialIds = [];
 
 
 
@@ -4621,6 +4622,8 @@ async function submitCreateTool(event) {
             await loadInitialMasterData();
 
             loadToolsList();
+            if (typeof loadMachineryList === "function") loadMachineryList();
+            if (typeof loadFleetList === "function") loadFleetList();
 
         } else {
 
@@ -5167,8 +5170,6 @@ async function openNewQuotationModal() {
     if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "15 días hábiles a partir del anticipo";
 
     if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = "USD";
-
-    addQuotationRow();
 
     addQuotationRow();
 
@@ -8711,6 +8712,7 @@ async function submitFinancialPayment(e) {
 
 // ----------------------------------------------------
 
+window.loadFinancialSummary = loadTreasurySummary;
 async function loadTreasurySummary() {
 
     const kpisContainer = document.getElementById("treasuryKPIsContainer");
@@ -8729,7 +8731,7 @@ async function loadTreasurySummary() {
 
         const data = await res.json();
 
-        const k = data.kpis;
+        const k = (data.kpis || data);
 
 
 
@@ -11195,7 +11197,7 @@ function renderMaterialsTable(materials) {
 
                 <span style="font-weight: 800; font-size: 13px; color: ${isLow ? '#e11d48' : '#059669'};">
 
-                    ${m.stock_quantity.toLocaleString()} ${m.unit_measure}
+                    ${([\'und\', \'unid\', \'unidad\', \'unidades\', \'pza\', \'pieza\', \'piezas\', \'rollo\', \'rollos\'].includes((m.unit_measure || \'\').toLowerCase()) ? Math.round(m.stock_quantity) : Number((m.stock_quantity || 0).toFixed(2))).toLocaleString()} ${m.unit_measure}
 
                 </span>
 
@@ -11743,7 +11745,7 @@ async function submitDirectClientPayment(event) {
 
             loadReceivablesList();
 
-            loadFinancialSummary();
+            if (typeof loadTreasurySummary === "function") loadTreasurySummary();
 
         } else {
 
@@ -12071,7 +12073,7 @@ async function submitGenerateTransferGuide(event) {
 
                     <p style="margin: 3px 0 0 0; font-size: 11px; color: #475569; font-weight: 600;">SOLUCIONES DE INGENIERÍA, MANTENIMIENTO Y MONTAJE INDUSTRIAL</p>
 
-                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">RIF: J-50477218-4 &bull; Guacara, Edo. Carabobo - Venezuela</p>
+                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">RIF: J-31601195-0 &bull; Guacara, Edo. Carabobo - Venezuela</p>
 
                 </div>
 
@@ -12959,14 +12961,13 @@ function submitGenerateMaterialDeliveryGuide(event) {
 
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #002B49; padding-bottom: 12px; margin-bottom: 16px;">
 
-                <div>
-
-                    <h2 style="margin: 0; color: #002B49; font-size: 22px; font-weight: 900; letter-spacing: 1px;">DALOR, C.A.</h2>
-
-                    <p style="margin: 3px 0 0 0; font-size: 11px; color: #475569; font-weight: 600;">SOLUCIONES DE INGENIERÍA, MANTENIMIENTO Y MONTAJE INDUSTRIAL</p>
-
-                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">RIF: J-50477218-4 &bull; Guacara, Edo. Carabobo - Venezuela</p>
-
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="logo_dalor.jpg" alt="DALOR" style="height: 48px; display: block; border-radius: 4px;" onerror="this.style.display='none'">
+                    <div>
+                        <h2 style="margin: 0; color: #002B49; font-size: 20px; font-weight: 900; letter-spacing: 0.5px;">METALMECÁNICA DALOR, C.A.</h2>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; color: #0284c7; font-weight: 700;">RIF: <b>J-31601195-0</b> &bull; Mantenimiento Predictivo, Proyectos Industriales & Metalmecánica</p>
+                        <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">Av. Cámara de las Industrias, Galpón 10, Z.I. El Tigre, Guacara, Edo. Carabobo</p>
+                    </div>
                 </div>
 
                 <div style="text-align: right;">
@@ -13167,7 +13168,7 @@ async function loadExpensesLog() {
 
 function populateExpensesLogFilters() {
 
-    populateSelect("log_filter_project", [{id: '', code: '-- Todos los Proyectos --'}, ...allProjects], p => `<option value="${p.id || ''}">${p.code ? p.code + ' - ' + (p.name || '') : p.name}</option>`);
+    populateSelect("log_filter_project", [{id: '', code: '-- Todos los Proyectos --'}, {id: 'sede_central', code: '🏢 Sede Central / Gastos Fijos (Sin Proyecto)'}, ...allProjects], p => `<option value="${p.id || ''}">${p.code ? p.code + ' - ' + (p.name || '') : p.name}</option>`);
 
     const sortedCats = sortCategoriesNumerically(allCategories || []);
 

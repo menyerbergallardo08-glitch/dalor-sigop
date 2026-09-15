@@ -13,8 +13,8 @@ from app.api.v1.endpoints import (
     financial,
     auth,
     maintenance,
-    transfer_guides,
-    materials
+    materials,
+    dispatch
 )
 
 api_router = APIRouter()
@@ -23,11 +23,11 @@ api_router.include_router(auth.router, prefix="/auth", tags=["Autenticación"])
 api_router.include_router(maintenance.router, prefix="/maintenance", tags=["Mantenimiento & Usuarios"])
 api_router.include_router(clients.router, prefix="/clients", tags=["Clientes"])
 api_router.include_router(services.router, prefix="/services", tags=["Catálogo de Servicios"])
-api_router.include_router(quotations.router, prefix="/quotations", tags=["Presupuestos LuloWin"])
+api_router.include_router(quotations.router, prefix="/quotations", tags=["Presupuestos & APU"])
 api_router.include_router(projects.router, prefix="/projects", tags=["Proyectos"])
+api_router.include_router(dispatch.router, prefix="/dispatch", tags=["Guías de Despacho & Salida"])
 api_router.include_router(resources.router, prefix="/resources", tags=["Matriz de Recursos"])
-api_router.include_router(materials.router, prefix="/materials", tags=["Inventario de Materiales & Insumos"])
-api_router.include_router(transfer_guides.router, prefix="/transfer-guides", tags=["Guías de Traslado & Doble Verificación"])
+api_router.include_router(materials.router, prefix="/materials", tags=["Inventario de Materiales"])
 api_router.include_router(expenses.router, prefix="/expenses", tags=["Gastos & Imputación"])
 api_router.include_router(financial.router, prefix="/financial", tags=["Módulo Financiero & CxC/CxP"])
 api_router.include_router(assets.router, prefix="/assets", tags=["Flota & Activos"])

@@ -33,6 +33,17 @@ class ExpenseValidationInput(BaseModel):
 
 from app.services.storage import R2StorageService
 
+class ManualExpenseCreate(BaseModel):
+    category_id: Optional[int] = 1
+    project_id: Optional[int] = None
+    amount_usd: float
+    amount_bs: Optional[float] = 0.0
+    exchange_rate: Optional[float] = 800.0
+    payment_method: Optional[str] = "efectivo_divisa"
+    supplier_vendor: Optional[str] = "Varios / Sede"
+    description: str
+    reported_by_id: Optional[int] = None
+
 @router.get("/{expense_id}/receipt")
 def get_expense_receipt(expense_id: int, db: Session = Depends(get_db)):
     exp = db.query(Expense.receipt_image_path).filter(Expense.id == expense_id).first()
@@ -565,3 +576,36 @@ def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
         except Exception as final_e:
             db.rollback()
             raise HTTPException(status_code=400, detail=f"No se pudo guardar el comprobante: {str(e)}")
+
+
+@router.post("/manual")
+def create_manual_expense(exp_in: ManualExpenseCreate, db: Session = Depends(get_db)):
+    if exp_in.amount_usd <= 0:
+        raise HTTPException(status_code=400, detail="El monto del gasto debe ser mayor a cero.")
+
+    rate = exp_in.exchange_rate or 800.0
+    amt_bs = exp_in.amount_bs if (exp_in.amount_bs and exp_in.amount_bs > 0) else round(exp_in.amount_usd * rate, 2)
+    exp_type = "costo_obra" if exp_in.project_id else "gasto_sede"
+    
+    new_exp = Expense(
+        category_id=exp_in.category_id or 1,
+        project_id=exp_in.project_id,
+        reported_by_id=exp_in.reported_by_id,
+        expense_type=exp_type,
+        expense_date=datetime.utcnow(),
+        description=exp_in.description.strip(),
+        supplier_vendor=(exp_in.supplier_vendor or "Comercio General").strip(),
+        amount_bs=amt_bs,
+        exchange_rate=rate,
+        amount_usd=exp_in.amount_usd,
+        base_amount_usd=exp_in.amount_usd,
+        payment_method=exp_in.payment_method or "efectivo_divisa",
+        status="aprobado",
+        ocr_status="validado",
+        has_receipt=True,
+        notes="Registrado vía Carga Rápida / 3 Toques"
+    )
+    db.add(new_exp)
+    db.commit()
+    db.refresh(new_exp)
+    return {"success": True, "message": "Gasto registrado con éxito.", "id": new_exp.id}

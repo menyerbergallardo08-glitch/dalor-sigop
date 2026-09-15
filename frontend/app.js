@@ -761,7 +761,7 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ==============================================================================
 
-window.APP_BUILD_VERSION = "2026.09.15.v87-generic-architecture";
+window.APP_BUILD_VERSION = "2026.09.15.v88-clean-audited";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
@@ -5389,7 +5389,7 @@ function recalcQuotationTotals() {
 
 // Función interactiva para Re-editar Cotizaciones / Presupuestos
 
-async async function editQuotation(quoteId) {
+async function editQuotation(quoteId) {
     try {
         if (!allClients || allClients.length === 0 || !allServices || allServices.length === 0) {
             const [resCli, resSrv] = await Promise.all([
@@ -5453,7 +5453,7 @@ async async function editQuotation(quoteId) {
 
 
 
-async async function submitCreateQuotation(event) {
+async function submitCreateQuotation(event) {
     if (event && event.preventDefault) event.preventDefault();
 
     const clientSelect = document.getElementById("quote_client_id");
@@ -5579,7 +5579,7 @@ function cancelQuotationConversion() {
 
 // Convertir cotización en Proyecto con pre-llenado interactivo y edición completa
 
-async async function convertQuoteToProject(quoteId) {
+async function convertQuoteToProject(quoteId) {
     try {
         if (!allClients || allClients.length === 0) {
             try {

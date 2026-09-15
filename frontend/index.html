@@ -1076,18 +1076,38 @@
                 <p style="font-size: 12px; color: #64748b; font-weight: 600;">Ingreso Seguro al ERP DALOR SIGO-P</p>
             </div>
 
-            <!-- Botón de Acceso Directo 1-Clic para Director General -->
-            <div style="margin-bottom: 16px;">
-                <button type="button" onclick="quickFillAndLogin('director', 'dalor2026')"
-                    style="width: 100%; background: linear-gradient(135deg, #002b49 0%, #004d7a 100%); color: #ffffff; border: 2px solid #f5b800; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(245, 184, 0, 0.35); transition: transform 0.1s;">
-                    <span style="font-size: 18px;">👑</span> <span>Entrar como <strong>Director General</strong> (1 Clic)</span>
-                </button>
+            <!-- Panel de Acceso Rápido por Perfil (Prueba y Demostración) -->
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px; margin-bottom: 16px;">
+                <div style="font-size: 11px; font-weight: 800; color: #002b49; text-transform: uppercase; margin-bottom: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="fa-solid fa-bolt" style="color: #f5b800;"></i> <span>Acceso Rápido de Prueba por Rol</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <button type="button" onclick="quickFillAndLogin('director', 'dalor2026')"
+                        style="width: 100%; background: linear-gradient(135deg, #002b49 0%, #004d7a 100%); color: #ffffff; border: 1.5px solid #f5b800; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 6px rgba(0, 43, 73, 0.2);">
+                        <span>👑 Director General (Acceso Total)</span>
+                        <span style="font-size: 10px; background: rgba(245, 184, 0, 0.25); color: #f5b800; padding: 2px 6px; border-radius: 4px; border: 1px solid #f5b800;">1-Clic</span>
+                    </button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                        <button type="button" onclick="quickFillAndLogin('administracion', 'admin2026')" style="background: #ffffff; color: #065f46; border: 1.5px solid #10b981; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            💼 Administración
+                        </button>
+                        <button type="button" onclick="quickFillAndLogin('ingeniero', 'obra2026')" style="background: #ffffff; color: #0369a1; border: 1.5px solid #0ea5e9; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            👷 Ing. Obra
+                        </button>
+                        <button type="button" onclick="quickFillAndLogin('almacen', 'almacen2026')" style="background: #ffffff; color: #9a3412; border: 1.5px solid #f97316; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            📦 Almacén Central
+                        </button>
+                        <button type="button" onclick="quickFillAndLogin('campo', 'campo2026')" style="background: #ffffff; color: #92400e; border: 1.5px solid #eab308; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            📱 Campo OCR
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Separador -->
-            <div style="display: flex; align-items: center; text-align: center; margin-bottom: 14px; color: #94a3b8; font-size: 11px; font-weight: 700;">
+            <div style="display: flex; align-items: center; text-align: center; margin-bottom: 12px; color: #94a3b8; font-size: 11px; font-weight: 700;">
                 <div style="flex: 1; border-bottom: 1px solid #e2e8f0;"></div>
-                <span style="padding: 0 8px; text-transform: uppercase;">O ingresa manualmente</span>
+                <span style="padding: 0 8px; text-transform: uppercase;">O ingresa con credenciales</span>
                 <div style="flex: 1; border-bottom: 1px solid #e2e8f0;"></div>
             </div>
 
@@ -1102,9 +1122,9 @@
                     <label style="display: block; font-size: 11px; font-weight: 800; color: #334155; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fa-solid fa-user" style="color: #0072b8; margin-right: 4px;"></i> Usuario o Correo *
                     </label>
-                    <input type="text" id="portal_username" value="director" placeholder="director / admin / administracion" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
+                    <input type="text" id="portal_username" value="director" placeholder="director / administracion / ingeniero" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
                         onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
-                        style="width: 100%; padding: 12px 14px; font-size: 15px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
+                        style="width: 100%; padding: 11px 13px; font-size: 14px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
                         onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
                 </div>
 
@@ -1115,7 +1135,7 @@
                     <div style="position: relative; width: 100%;">
                         <input type="password" id="portal_password" value="dalor2026" placeholder="••••••••" required autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false"
                             onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
-                            style="width: 100%; padding: 12px 42px 12px 14px; font-size: 15px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
+                            style="width: 100%; padding: 11px 42px 11px 13px; font-size: 14px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
                             onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
                         <button type="button" onclick="togglePasswordVisibility('portal_password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; font-size: 15px; padding: 4px;">
                             <i class="fa-solid fa-eye"></i>
@@ -1124,31 +1144,10 @@
                 </div>
 
                 <button type="button" id="btnSubmitPortalLogin" onclick="handlePortalLogin(event)"
-                    style="width: 100%; background: #002b49; color: #ffffff; padding: 14px; font-size: 15px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35);">
-                    <i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión
+                    style="width: 100%; background: #002b49; color: #ffffff; padding: 13px; font-size: 14px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35);">
+                    <i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión Manual
                 </button>
             </form>
-
-            <!-- Otros Perfiles Operativos -->
-            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed #cbd5e1;">
-                <div style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; text-align: center;">
-                    <i class="fa-solid fa-users" style="color: #0072b8;"></i> Otros Perfiles de Demostración:
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                    <button type="button" onclick="quickFillAndLogin('administracion', 'admin2026')" style="background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center;">
-                        💼 Administración
-                    </button>
-                    <button type="button" onclick="quickFillAndLogin('ingeniero', 'obra2026')" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center;">
-                        👷 Ing. Obra
-                    </button>
-                    <button type="button" onclick="quickFillAndLogin('campo', 'campo2026')" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center;">
-                        📱 Campo OCR
-                    </button>
-                    <button type="button" onclick="quickFillAndLogin('almacen', 'almacen2026')" style="background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; text-align: center;">
-                        📦 Almacén & Pañol
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 

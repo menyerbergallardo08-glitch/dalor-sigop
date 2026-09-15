@@ -588,7 +588,7 @@ function switchView(viewName, moduleCategory) {
         'quotations', 'clients', 'services', 
         'projects', 'dispatch', 'dashboard', 
         'resources', 
-        'pwa', 'manual', 'tree', 'inbox', 'expenses-log'
+        'pwa', 'manual', 'tree', 'inbox', 'expenses-log', 'flujogramas'
     ];
 
     allViews.forEach(v => {
@@ -616,6 +616,7 @@ function switchView(viewName, moduleCategory) {
     if (viewName === 'inbox') loadPendingExpensesInbox();
     if (viewName === 'tree') loadCategoriesTree();
     if (viewName === 'expenses-log') loadExpensesLog();
+    if (viewName === 'flujogramas') { if (window.mermaid) { setTimeout(() => { mermaid.run(); }, 50); } }
 }
 
 // Carga Inicial de Datos Maestros
@@ -774,28 +775,71 @@ function initProjectPlanningView() {
 }
 
 function populatePlanDropdownSelectors() {
+    const safePersonnel = Array.isArray(allPersonnel) ? allPersonnel : [];
+    const safeAssets = Array.isArray(allAssets) ? allAssets : [];
+
     // 1. Desplegable de Personal
-    const persSel = document.getElementById("plan_pers_select");
+    const persSel = document.getElementById("plan_select_personnel") || document.getElementById("plan_pers_select");
     if (persSel) {
-        persSel.innerHTML = `<option value="">-- Elegir Trabajador --</option>` + 
-            allPersonnel.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name} (${p.role_title})</option>`).join('');
+        persSel.innerHTML = `<option value="">-- Seleccionar Trabajador (${safePersonnel.length} disp.) --</option>` + 
+            safePersonnel.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name} (${p.role_title})</option>`).join('');
     }
 
     // 2. Desplegable de Vehículos
-    const vehSel = document.getElementById("plan_veh_select");
-    const vehicles = allAssets.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
+    const vehSel = document.getElementById("plan_select_fleet") || document.getElementById("plan_veh_select");
+    const vehicles = safeAssets.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
     if (vehSel) {
-        vehSel.innerHTML = `<option value="">-- Elegir Vehículo / Camioneta --</option>` + 
+        vehSel.innerHTML = `<option value="">-- Seleccionar Unidad / Flota (${vehicles.length} disp.) --</option>` + 
             vehicles.map(v => `<option value="${v.id}">[${v.asset_code}] ${v.name} ${v.license_plate ? `(${v.license_plate})` : ''}</option>`).join('');
     }
 
-    // 3. Desplegable de Herramientas
-    const toolSel = document.getElementById("plan_tool_select");
-    const tools = allAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
+    // 3. Desplegable de Herramientas / Maquinaria Mayor
+    const toolSel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
+    const tools = safeAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
     if (toolSel) {
-        toolSel.innerHTML = `<option value="">-- Elegir Herramienta / Equipo --</option>` + 
+        toolSel.innerHTML = `<option value="">-- Seleccionar Equipo Mayor (${tools.length} disp.) --</option>` + 
             tools.map(t => `<option value="${t.id}">[${t.asset_code}] ${t.name} ${t.serial_number ? `(S/N: ${t.serial_number})` : ''}</option>`).join('');
     }
+}
+
+// Handler universal para asignación y desasignación de recursos en proyectos
+function addPlanResource(type) {
+    if (type === 'personnel') {
+        const sel = document.getElementById("plan_select_personnel") || document.getElementById("plan_pers_select");
+        const val = parseInt(sel?.value);
+        if (val && !selectedPersonnelIds.includes(val)) {
+            selectedPersonnelIds.push(val);
+            renderAssignedTags();
+        }
+        if (sel) sel.value = "";
+    } else if (type === 'fleet' || type === 'vehicle') {
+        const sel = document.getElementById("plan_select_fleet") || document.getElementById("plan_veh_select");
+        const val = parseInt(sel?.value);
+        if (val && !selectedVehicleIds.includes(val)) {
+            selectedVehicleIds.push(val);
+            renderAssignedTags();
+        }
+        if (sel) sel.value = "";
+    } else if (type === 'tools' || type === 'tool') {
+        const sel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
+        const val = parseInt(sel?.value);
+        if (val && !selectedToolIds.includes(val)) {
+            selectedToolIds.push(val);
+            renderAssignedTags();
+        }
+        if (sel) sel.value = "";
+    }
+}
+
+function removePlanResource(type, id) {
+    if (type === 'personnel') {
+        selectedPersonnelIds = selectedPersonnelIds.filter(i => i !== id);
+    } else if (type === 'fleet' || type === 'vehicle') {
+        selectedVehicleIds = selectedVehicleIds.filter(i => i !== id);
+    } else if (type === 'tools' || type === 'tool') {
+        selectedToolIds = selectedToolIds.filter(i => i !== id);
+    }
+    renderAssignedTags();
 }
 
 // Asignaciones Dinámicas de Recursos con Tags
@@ -849,56 +893,56 @@ function removeToolTag(id) {
 
 function renderAssignedTags() {
     // 1. Personal Tags
-    const persContainer = document.getElementById("plan_pers_tags");
+    const persContainer = document.getElementById("plan_tags_personnel") || document.getElementById("plan_pers_tags");
     if (persContainer) {
         if (selectedPersonnelIds.length === 0) {
-            persContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">Sin personal seleccionado. Selecciona arriba y pulsa '+ Asignar'.</span>`;
+            persContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">Sin personal seleccionado. Selecciona arriba y pulsa '+'.</span>`;
         } else {
             persContainer.innerHTML = selectedPersonnelIds.map(id => {
                 const p = allPersonnel.find(item => item.id === id);
                 if (!p) return '';
                 return `
-                    <span class="resource-tag">
-                        <i class="fa-solid fa-user-check"></i> ${p.full_name} (${p.role_title})
-                        <span class="tag-remove" onclick="removePersonnelTag(${id})">&times;</span>
+                    <span class="resource-tag-pill" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; padding:3px 8px; border-radius:9999px; font-size:11px; font-weight:700; margin:2px;">
+                        <i class="fa-solid fa-user-check"></i> [${p.code}] ${p.full_name}
+                        <button type="button" onclick="removePlanResource('personnel', ${p.id})" style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:bold; font-size:12px; line-height:1;">&times;</button>
                     </span>
                 `;
             }).join('');
         }
     }
 
-    // 2. Vehicle Tags
-    const vehContainer = document.getElementById("plan_veh_tags");
+    // 2. Vehículos Tags
+    const vehContainer = document.getElementById("plan_tags_fleet") || document.getElementById("plan_veh_tags");
     if (vehContainer) {
         if (selectedVehicleIds.length === 0) {
-            vehContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">Sin vehículos seleccionados. Selecciona arriba y pulsa '+ Asignar'.</span>`;
+            vehContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">Sin unidades asignadas. Selecciona arriba y pulsa '+'.</span>`;
         } else {
             vehContainer.innerHTML = selectedVehicleIds.map(id => {
                 const v = allAssets.find(item => item.id === id);
                 if (!v) return '';
                 return `
-                    <span class="resource-tag" style="background:#eef2ff; color:#4338ca; border-color:#c7d2fe;">
-                        <i class="fa-solid fa-truck-pickup"></i> ${v.name} ${v.license_plate ? `(${v.license_plate})` : ''}
-                        <span class="tag-remove" onclick="removeVehicleTag(${id})">&times;</span>
+                    <span class="resource-tag-pill" style="display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; padding:3px 8px; border-radius:9999px; font-size:11px; font-weight:700; margin:2px;">
+                        <i class="fa-solid fa-truck"></i> [${v.asset_code}] ${v.name}
+                        <button type="button" onclick="removePlanResource('fleet', ${v.id})" style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:bold; font-size:12px; line-height:1;">&times;</button>
                     </span>
                 `;
             }).join('');
         }
     }
 
-    // 3. Tool Tags
-    const toolContainer = document.getElementById("plan_tool_tags");
+    // 3. Herramientas Tags
+    const toolContainer = document.getElementById("plan_tags_tools") || document.getElementById("plan_tool_tags");
     if (toolContainer) {
         if (selectedToolIds.length === 0) {
-            toolContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">Sin herramientas seleccionadas. Selecciona arriba y pulsa '+ Asignar'.</span>`;
+            toolContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">Sin equipos seleccionados. Selecciona arriba y pulsa '+'.</span>`;
         } else {
             toolContainer.innerHTML = selectedToolIds.map(id => {
                 const t = allAssets.find(item => item.id === id);
                 if (!t) return '';
                 return `
-                    <span class="resource-tag" style="background:#f0fdf4; color:#15803d; border-color:#bbf7d0;">
-                        <i class="fa-solid fa-toolbox"></i> ${t.name}
-                        <span class="tag-remove" onclick="removeToolTag(${id})">&times;</span>
+                    <span class="resource-tag-pill" style="display:inline-flex; align-items:center; gap:6px; background:#fffbeb; color:#92400e; border:1px solid #fde68a; padding:3px 8px; border-radius:9999px; font-size:11px; font-weight:700; margin:2px;">
+                        <i class="fa-solid fa-wrench"></i> [${t.asset_code}] ${t.name}
+                        <button type="button" onclick="removePlanResource('tools', ${t.id})" style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:bold; font-size:12px; line-height:1;">&times;</button>
                     </span>
                 `;
             }).join('');
@@ -2677,6 +2721,7 @@ async function convertQuoteToProject(quoteId) {
         // 1. Cambiar a vista de Proyectos
         switchView('projects', 'proyectos');
         switchProjectSubtab('form');
+        populatePlanDropdownSelectors();
 
         // 2. Mostrar banner de conversión
         const convInput = document.getElementById("converting_quotation_id");

@@ -151,85 +151,39 @@ def get_audit_logs(db: Session = Depends(get_db)):
 # ------------------------------------------------------------------------------
 # 3. 💾 MÓDULO DE COPIAS DE SEGURIDAD & RESPALDOS (AUTO-BACKUP & RESTORE)
 # ------------------------------------------------------------------------------
+from app.services.backup_service import BackupService
+
 @router.get("/backups")
 def list_backups():
-    files = glob.glob(os.path.join(BACKUP_DIR, "dalor_backup_*.db"))
-    backups = []
-    for f in files:
-        fname = os.path.basename(f)
-        size_bytes = os.path.getsize(f)
-        mtime = os.path.getmtime(f)
-        backups.append({
-            "filename": fname,
-            "size_kb": round(size_bytes / 1024, 2),
-            "size_mb": round(size_bytes / (1024 * 1024), 2),
-            "created_at": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-        })
-    backups.sort(key=lambda x: x["created_at"], reverse=True)
-    return backups
+    return BackupService.list_backups()
 
 @router.post("/backups/create")
 def create_backup(db: Session = Depends(get_db)):
-    src_db = get_db_file_path()
-    if not os.path.exists(src_db):
-        raise HTTPException(status_code=404, detail=f"Base de datos no encontrada en {src_db}.")
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_filename = f"dalor_backup_{timestamp}.db"
-    dest_path = os.path.join(BACKUP_DIR, backup_filename)
-
-    shutil.copyfile(src_db, dest_path)
-    size_kb = round(os.path.getsize(dest_path) / 1024, 2)
-
-    audit = AuditLog(
-        username="admin",
-        module="seguridad",
-        action="crear_respaldo_bd",
-        details=f"Copia de seguridad generada con éxito: {backup_filename} ({size_kb} KB)"
-    )
-    db.add(audit)
-    db.commit()
-
-    return {
-        "success": True,
-        "message": f"Copia de seguridad '{backup_filename}' generada exitosamente ({size_kb} KB).",
-        "filename": backup_filename,
-        "size_kb": size_kb
-    }
+    try:
+        res = BackupService.create_backup(db=db, initiator_username="admin")
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al generar copia de seguridad: {str(e)}")
 
 @router.get("/backups/download/{filename}")
 def download_backup(filename: str):
-    file_path = os.path.join(BACKUP_DIR, filename)
-    if not os.path.exists(file_path):
+    file_path = BackupService.get_backup_path(filename)
+    if not file_path:
         raise HTTPException(status_code=404, detail="Archivo de respaldo no encontrado.")
-    return FileResponse(path=file_path, filename=filename, media_type="application/octet-stream")
+    
+    media_type = "application/json" if filename.endswith(".json") else "application/octet-stream"
+    return FileResponse(path=file_path, filename=filename, media_type=media_type)
 
 @router.post("/backups/restore/{filename}")
 def restore_backup(filename: str, db: Session = Depends(get_db)):
-    backup_path = os.path.join(BACKUP_DIR, filename)
-    if not os.path.exists(backup_path):
-        raise HTTPException(status_code=404, detail="El archivo de respaldo no existe.")
+    try:
+        res = BackupService.restore_backup(filename=filename, db=db, initiator_username="admin")
+        return res
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"El archivo de respaldo '{filename}' no existe.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al restaurar respaldo: {str(e)}")
 
-    src_db = get_db_file_path()
-
-    pre_restore_filename = f"pre_restore_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-    shutil.copyfile(src_db, os.path.join(BACKUP_DIR, pre_restore_filename))
-
-    shutil.copyfile(backup_path, src_db)
-
-    audit = AuditLog(
-        username="admin",
-        module="seguridad",
-        action="restaurar_respaldo_bd",
-        details=f"Base de datos restaurada desde la copia: {filename}"
-    )
-    db.add(audit)
-    db.commit()
-
-    return {
-        "success": True,
-        "message": f"Base de datos restaurada con éxito a partir de '{filename}'."
-    }
 
 # ------------------------------------------------------------------------------
 # 4. 🧹 PUESTA A CERO / PURGAR REGISTROS DE PRUEBA (SOLO DIRECTOR GENERAL)

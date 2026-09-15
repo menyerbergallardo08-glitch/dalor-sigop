@@ -258,10 +258,10 @@ def record_payable_payment(payable_id: int, pay_in: FinancialPaymentCreate, db: 
 @router.get("/bcv-rate/")
 @router.get("/exchange-rate")
 @router.get("/exchange-rate/")
-def get_bcv_rate():
-    return BCVScraperService.get_official_rate()
+def get_bcv_rate(force_refresh: bool = False):
+    return BCVExchangeRateService.get_current_rate(force_refresh=force_refresh)
 
 @router.post("/bcv-rate/sync")
 @router.post("/bcv-rate/sync/")
 def force_sync_bcv_rate():
-    return BCVScraperService.force_scrape_bcv()
+    return BCVExchangeRateService.get_current_rate(force_refresh=True)

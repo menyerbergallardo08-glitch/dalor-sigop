@@ -124,5 +124,16 @@ class BCVExchangeRateService:
         }
 
 # Alias de compatibilidad universal
+
+    @classmethod
+    def get_official_rate(cls) -> Dict[str, Any]:
+        return cls.get_current_rate(force_refresh=False)
+
+    @classmethod
+    def force_scrape_bcv(cls) -> Dict[str, Any]:
+        return cls.get_current_rate(force_refresh=True)
+
+# Alias de compatibilidad universal
 BCVScraperService = BCVExchangeRateService
+
 

@@ -266,8 +266,8 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
                     db.add(hist)
 
         # Si proviene de una cotizacion, marcarla como convertida
-        if project_in.origin_quotation_id:
-            quote = db.query(Quotation).filter(Quotation.id == project_in.origin_quotation_id).first()
+        if getattr(project_in, 'origin_quotation_id', None):
+            quote = db.query(Quotation).filter(Quotation.id == getattr(project_in, 'origin_quotation_id', None)).first()
             if quote:
                 quote.status = "adjudicado"
                 quote.notes = (quote.notes or "") + f" [Convertido a Obra: {new_project.code}]"

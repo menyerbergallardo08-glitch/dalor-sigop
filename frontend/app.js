@@ -588,7 +588,7 @@ function switchView(viewName, moduleCategory) {
         'quotations', 'clients', 'services', 
         'projects', 'dispatch', 'dashboard', 
         'resources', 
-        'pwa', 'manual', 'tree', 'inbox', 'expenses-log', 'flujogramas'
+        'pwa', 'manual', 'tree', 'inbox', 'expenses-log'
     ];
 
     allViews.forEach(v => {
@@ -616,7 +616,7 @@ function switchView(viewName, moduleCategory) {
     if (viewName === 'inbox') loadPendingExpensesInbox();
     if (viewName === 'tree') loadCategoriesTree();
     if (viewName === 'expenses-log') loadExpensesLog();
-    if (viewName === 'flujogramas') { if (window.mermaid) { setTimeout(() => { mermaid.run(); }, 50); } }
+    
 }
 
 // Carga Inicial de Datos Maestros

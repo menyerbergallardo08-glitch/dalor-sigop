@@ -13,7 +13,7 @@ from app.schemas.schemas import (
     ReceivableCreate, PayableCreate, FinancialPaymentCreate, 
     PartnerWithdrawalCreate, FixedExpenseSettingCreate
 )
-from app.services.bcv_scraper import BCVScraperService
+from app.services.bcv_scraper import BCVScraperService, BCVExchangeRateService
 
 router = APIRouter()
 
@@ -259,9 +259,35 @@ def record_payable_payment(payable_id: int, pay_in: FinancialPaymentCreate, db: 
 @router.get("/exchange-rate")
 @router.get("/exchange-rate/")
 def get_bcv_rate(force_refresh: bool = False):
-    return BCVExchangeRateService.get_current_rate(force_refresh=force_refresh)
+    try:
+        return BCVExchangeRateService.get_current_rate(force_refresh=force_refresh)
+    except Exception as e:
+        return {
+            "rate": 850.00,
+            "formatted_rate": "850.00",
+            "date_value": datetime.now().strftime("%d/%m/%Y"),
+            "source": "Tasa Base de Contingencia (Fallback)",
+            "source_tier": "fallback_base",
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "is_fallback": True,
+            "status": "warning",
+            "error": str(e)
+        }
 
 @router.post("/bcv-rate/sync")
 @router.post("/bcv-rate/sync/")
 def force_sync_bcv_rate():
-    return BCVExchangeRateService.get_current_rate(force_refresh=True)
+    try:
+        return BCVExchangeRateService.get_current_rate(force_refresh=True)
+    except Exception as e:
+        return {
+            "rate": 850.00,
+            "formatted_rate": "850.00",
+            "date_value": datetime.now().strftime("%d/%m/%Y"),
+            "source": "Tasa Base de Contingencia (Fallback)",
+            "source_tier": "fallback_base",
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "is_fallback": True,
+            "status": "warning",
+            "error": str(e)
+        }

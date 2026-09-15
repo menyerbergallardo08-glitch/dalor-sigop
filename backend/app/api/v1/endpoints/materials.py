@@ -13,6 +13,7 @@ from app.models.models import (
     ExpenseCategory,
     AccountPayable
 )
+from app.services.bcv_scraper import BCVScraperService
 
 router = APIRouter()
 
@@ -130,16 +131,24 @@ def create_material(m_in: MaterialCreate, db: Session = Depends(get_db)):
 # ------------------------------------------------------------------------------
 # 3. ENTRADA DE MATERIAL (COMPRA / INGRESO A ALMACEN)
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 3. ENTRADA DE MATERIAL (COMPRA / INGRESO A ALMACEN)
+# ------------------------------------------------------------------------------
 @router.post("/entry")
 def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_db)):
-    mat = db.query(Material).filter(Material.id == entry.material_id).first()
-    if not mat:
-        raise HTTPException(status_code=404, detail="Material no encontrado.")
-
     if entry.quantity <= 0:
         raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a cero.")
 
     try:
+        # Bloqueo de fila para concurrencia segura (Row-level Lock)
+        mat = db.query(Material).filter(Material.id == entry.material_id).with_for_update().first()
+        if not mat:
+            raise HTTPException(status_code=404, detail="Material no encontrado.")
+
+        # Obtener Tasa Oficial BCV Dinámica
+        bcv_data = BCVScraperService.get_official_rate()
+        current_rate = float(bcv_data.get("rate", 842.21))
+
         prev_stock = mat.stock_quantity
         prev_cost = mat.unit_cost_usd
         prev_total = prev_stock * prev_cost
@@ -179,10 +188,10 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
                 description=f"Compra Stock: {mat.name} ({new_qty} {mat.unit_measure})",
                 due_date=datetime.utcnow() + timedelta(days=entry.due_days),
                 amount_usd=entry_total,
-                amount_bs=entry_total * 800.0,
+                amount_bs=round(entry_total * current_rate, 2),
                 balance_usd=entry_total,
                 status="pendiente",
-                notes=f"Generado automaticamente desde entrada de almacen. {entry.notes or ''}"
+                notes=f"Generado automaticamente desde entrada de almacen (Tasa BCV: {current_rate} Bs/$). {entry.notes or ''}"
             )
             db.add(cxp)
 
@@ -207,20 +216,25 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
 # ------------------------------------------------------------------------------
 @router.post("/consume")
 def record_material_consumption(consume: MaterialConsumeCreate, db: Session = Depends(get_db)):
-    mat = db.query(Material).filter(Material.id == consume.material_id).first()
-    if not mat:
-        raise HTTPException(status_code=404, detail="Material no encontrado.")
-
     if consume.quantity <= 0:
         raise HTTPException(status_code=400, detail="La cantidad a despachar debe ser mayor a cero.")
 
-    if consume.quantity > mat.stock_quantity:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Stock insuficiente ({mat.stock_quantity} {mat.unit_measure} disponibles)."
-        )
-
     try:
+        # Bloqueo de fila para concurrencia segura (Row-level Lock with_for_update)
+        mat = db.query(Material).filter(Material.id == consume.material_id).with_for_update().first()
+        if not mat:
+            raise HTTPException(status_code=404, detail="Material no encontrado.")
+
+        if consume.quantity > mat.stock_quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Stock insuficiente ({mat.stock_quantity} {mat.unit_measure} disponibles en pañol)."
+            )
+
+        # Obtener Tasa Oficial BCV Dinámica
+        bcv_data = BCVScraperService.get_official_rate()
+        current_rate = float(bcv_data.get("rate", 842.21))
+
         consumed_total_usd = consume.quantity * mat.unit_cost_usd
         mat.stock_quantity -= consume.quantity
         mat.total_cost_usd = round(mat.stock_quantity * mat.unit_cost_usd, 2)
@@ -246,24 +260,29 @@ def record_material_consumption(consume: MaterialConsumeCreate, db: Session = De
         db.add(movement)
 
         if consume.project_id:
+            # Validación estricta de categoría contable (Sin comodines ni fallback arbitrario)
             cat = db.query(ExpenseCategory).filter(
                 (ExpenseCategory.name.ilike("%Insumos%")) | (ExpenseCategory.name.ilike("%Materiales%"))
             ).first()
-            cat_id = cat.id if cat else 1
+            if not cat:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Categoría contable de gasto para materiales e insumos no configurada en el catálogo."
+                )
 
             expense = Expense(
-                category_id=cat_id,
+                category_id=cat.id,
                 project_id=consume.project_id,
                 expense_type="costo_obra",
                 description=f"Consumo de Almacen: {consume.quantity} {mat.unit_measure} {mat.name}",
                 supplier_vendor="Almacen Central Dalor",
                 amount_usd=round(consumed_total_usd, 2),
-                amount_bs=round(consumed_total_usd * 800.0, 2),
-                exchange_rate=800.0,
+                amount_bs=round(consumed_total_usd * current_rate, 2),
+                exchange_rate=current_rate,
                 payment_method="consumo_inventario",
                 status="aprobado",
                 has_receipt=False,
-                alert_notes=f"Requisicion #{consume.reference_doc or 'INTERNA'}"
+                alert_notes=f"Requisicion #{consume.reference_doc or 'INTERNA'} (Tasa BCV: {current_rate} Bs/$)"
             )
             db.add(expense)
 

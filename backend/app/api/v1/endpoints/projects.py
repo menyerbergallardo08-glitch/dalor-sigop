@@ -147,6 +147,7 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
     }
 
 @router.post("/")
+@router.post("/", response_model=ProjectOut)
 def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
     existing = db.query(Project).filter(Project.code == project_in.code).first()
     if existing:
@@ -166,128 +167,160 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
         if client:
             client_name = client.name
 
-    new_project = Project(
-        code=project_in.code,
-        name=project_in.name,
-        client_id=project_in.client_id,
-        client_name=client_name or "Cliente General",
-        location=project_in.location or "Sede Central",
-        status=project_in.status or "activo",
-        scope_of_work=project_in.scope_of_work,
-        duration_days=project_in.duration_days,
-        contract_amount_usd=project_in.contract_amount_usd,
-        estimated_labor_usd=project_in.estimated_labor_usd,
-        estimated_fuel_usd=project_in.estimated_fuel_usd,
-        estimated_materials_usd=project_in.estimated_materials_usd,
-        estimated_tools_usd=project_in.estimated_tools_usd,
-        estimated_services_usd=project_in.estimated_services_usd,
-        budget_limit_usd=total_budget if total_budget > 0 else (project_in.contract_amount_usd * 0.70),
-        is_active=True
-    )
-    db.add(new_project)
-    db.commit()
-    db.refresh(new_project)
-
-    # 1. Crear Etapas / Fases del Proyecto si fueron suministradas
-    if project_in.phases and len(project_in.phases) > 0:
-        for idx, phase_data in enumerate(project_in.phases, start=1):
-            phase = ProjectPhase(
-                project_id=new_project.id,
-                phase_number=idx,
-                name=phase_data.name,
-                description=phase_data.description,
-                duration_days=phase_data.duration_days,
-                estimated_cost_usd=phase_data.estimated_cost_usd,
-                status=phase_data.status or "pendiente",
-                responsible_person=phase_data.responsible_person
-            )
-            db.add(phase)
-
-    # 2. Asignar Personal Seleccionado
-    if project_in.assigned_personnel_ids:
-        for pers_id in project_in.assigned_personnel_ids:
-            person = db.query(Personnel).filter(Personnel.id == pers_id).first()
-            if person:
-                person.current_project_id = new_project.id
-                person.status = "en_obra"
-                person.current_location = new_project.location
-                # Registro en bitácora
-                hist = ResourceAssignmentHistory(
-                    project_id=new_project.id,
-                    resource_type="personnel",
-                    resource_id=person.id,
-                    resource_code=person.code,
-                    resource_name=person.full_name,
-                    destination_location=new_project.location,
-                    status="en_obra",
-                    notes="Asignación inicial en planificación"
-                )
-                db.add(hist)
-
-    # 3. Asignar Vehículos Seleccionados
-    if project_in.assigned_vehicle_ids:
-        for veh_id in project_in.assigned_vehicle_ids:
-            asset = db.query(Asset).filter(Asset.id == veh_id).first()
-            if asset:
-                asset.current_project_id = new_project.id
-                asset.status = "en_obra"
-                asset.current_location = new_project.location
-                hist = ResourceAssignmentHistory(
-                    project_id=new_project.id,
-                    resource_type="asset",
-                    resource_id=asset.id,
-                    resource_code=asset.asset_code,
-                    resource_name=asset.name,
-                    start_odometer=asset.current_odometer,
-                    destination_location=new_project.location,
-                    status="en_obra",
-                    notes="Vehículo asignado en planificación de obra"
-                )
-                db.add(hist)
-
-    # 4. Asignar Herramientas Seleccionadas
-    if project_in.assigned_tool_ids:
-        for tool_id in project_in.assigned_tool_ids:
-            asset = db.query(Asset).filter(Asset.id == tool_id).first()
-            if asset:
-                asset.current_project_id = new_project.id
-                asset.status = "en_obra"
-                asset.current_location = new_project.location
-                hist = ResourceAssignmentHistory(
-                    project_id=new_project.id,
-                    resource_type="asset",
-                    resource_id=asset.id,
-                    resource_code=asset.asset_code,
-                    resource_name=asset.name,
-                    destination_location=new_project.location,
-                    status="en_obra",
-                    notes="Herramienta asignada en planificación de obra"
-                )
-                db.add(hist)
-
-    
-    # 5. Generar Automáticamente la Cuenta por Cobrar (CxC) asociada al contrato del proyecto
-    if new_project.contract_amount_usd and new_project.contract_amount_usd > 0:
-        from datetime import timedelta
-        cxc_entry = AccountReceivable(
-            project_id=new_project.id,
-            client_id=new_project.client_id,
-            invoice_number=f"VAL-{new_project.code}-01",
-            issue_date=datetime.utcnow(),
-            due_date=datetime.utcnow() + timedelta(days=new_project.duration_days or 30),
-            taxable_base_usd=new_project.contract_amount_usd,
-            tax_amount_usd=0.0,
-            total_amount_usd=new_project.contract_amount_usd,
-            amount_paid_usd=0.0,
-            net_amount_usd=new_project.contract_amount_usd,
-            status="pendiente",
-            concept=f"Contrato / Valuación Inicial: {new_project.name}"
+    try:
+        new_project = Project(
+            code=project_in.code,
+            name=project_in.name,
+            client_id=project_in.client_id,
+            client_name=client_name or "Cliente General",
+            location=project_in.location or "Sede Central",
+            status=project_in.status or "activo",
+            scope_of_work=project_in.scope_of_work,
+            duration_days=project_in.duration_days,
+            contract_amount_usd=project_in.contract_amount_usd,
+            estimated_labor_usd=project_in.estimated_labor_usd,
+            estimated_fuel_usd=project_in.estimated_fuel_usd,
+            estimated_materials_usd=project_in.estimated_materials_usd,
+            estimated_tools_usd=project_in.estimated_tools_usd,
+            estimated_services_usd=project_in.estimated_services_usd,
+            budget_limit_usd=total_budget if total_budget > 0 else (project_in.contract_amount_usd * 0.70),
+            is_active=True
         )
-        db.add(cxc_entry)
-        db.commit()
+        db.add(new_project)
+        db.flush() # Obtiene ID sin cerrar la transacción atómica
 
-    db.commit()
-    db.refresh(new_project)
+        # 1. Crear Etapas / Fases del Proyecto
+        if project_in.phases and len(project_in.phases) > 0:
+            for idx, phase_data in enumerate(project_in.phases, start=1):
+                phase = ProjectPhase(
+                    project_id=new_project.id,
+                    phase_number=idx,
+                    name=phase_data.name,
+                    description=phase_data.description,
+                    duration_days=phase_data.duration_days,
+                    estimated_cost_usd=phase_data.estimated_cost_usd,
+                    status=phase_data.status or "pendiente",
+                    responsible_person=phase_data.responsible_person
+                )
+                db.add(phase)
+
+        # 2. Asignar Personal Seleccionado
+        if project_in.assigned_personnel_ids:
+            for pers_id in project_in.assigned_personnel_ids:
+                person = db.query(Personnel).filter(Personnel.id == pers_id).first()
+                if person:
+                    person.current_project_id = new_project.id
+                    person.status = "en_obra"
+                    person.current_location = new_project.location
+                    hist = ResourceAssignmentHistory(
+                        project_id=new_project.id,
+                        resource_type="personnel",
+                        resource_id=person.id,
+                        resource_code=person.code,
+                        resource_name=person.full_name,
+                        destination_location=new_project.location,
+                        status="en_obra",
+                        notes="Asignación inicial en planificación"
+                    )
+                    db.add(hist)
+
+        # 3. Asignar Vehículos Seleccionados
+        if project_in.assigned_vehicle_ids:
+            for veh_id in project_in.assigned_vehicle_ids:
+                asset = db.query(Asset).filter(Asset.id == veh_id).first()
+                if asset:
+                    asset.current_project_id = new_project.id
+                    asset.status = "en_obra"
+                    asset.current_location = new_project.location
+                    hist = ResourceAssignmentHistory(
+                        project_id=new_project.id,
+                        resource_type="asset",
+                        resource_id=asset.id,
+                        resource_code=asset.asset_code,
+                        resource_name=asset.name,
+                        start_odometer=asset.current_odometer,
+                        destination_location=new_project.location,
+                        status="en_obra",
+                        notes="Vehículo asignado en planificación de obra"
+                    )
+                    db.add(hist)
+
+        # 4. Asignar Herramientas Seleccionadas
+        if project_in.assigned_tool_ids:
+            for tool_id in project_in.assigned_tool_ids:
+                asset = db.query(Asset).filter(Asset.id == tool_id).first()
+                if asset:
+                    asset.current_project_id = new_project.id
+                    asset.status = "en_obra"
+                    asset.current_location = new_project.location
+                    hist = ResourceAssignmentHistory(
+                        project_id=new_project.id,
+                        resource_type="asset",
+                        resource_id=asset.id,
+                        resource_code=asset.asset_code,
+                        resource_name=asset.name,
+                        destination_location=new_project.location,
+                        status="en_obra",
+                        notes="Herramienta asignada en planificación de obra"
+                    )
+                    db.add(hist)
+
+        # 5. Generar Automáticamente la Cuenta por Cobrar (CxC)
+        if new_project.contract_amount_usd and new_project.contract_amount_usd > 0:
+            from datetime import timedelta
+            from app.models.models import AccountReceivable
+            cxc_entry = AccountReceivable(
+                project_id=new_project.id,
+                client_id=new_project.client_id,
+                invoice_number=f"VAL-{new_project.code}-01",
+                issue_date=datetime.utcnow(),
+                due_date=datetime.utcnow() + timedelta(days=new_project.duration_days or 30),
+                taxable_base_usd=new_project.contract_amount_usd,
+                tax_amount_usd=0.0,
+                total_amount_usd=new_project.contract_amount_usd,
+                amount_paid_usd=0.0,
+                net_amount_usd=new_project.contract_amount_usd,
+                status="pendiente",
+                concept=f"Contrato / Valuación Inicial: {new_project.name}"
+            )
+            db.add(cxc_entry)
+
+        # Confirmar transacción atómica completa
+        db.commit()
+        db.refresh(new_project)
+
+        return {
+            "id": new_project.id,
+            "code": new_project.code,
+            "name": new_project.name,
+            "client_id": new_project.client_id,
+            "client_name": new_project.client_name,
+            "location": new_project.location,
+            "status": new_project.status,
+            "scope_of_work": new_project.scope_of_work,
+            "duration_days": new_project.duration_days,
+            "execution_time": new_project.execution_time,
+            "tracking_token": new_project.tracking_token,
+            "contract_amount_usd": new_project.contract_amount_usd,
+            "estimated_labor_usd": new_project.estimated_labor_usd,
+            "estimated_fuel_usd": new_project.estimated_fuel_usd,
+            "estimated_materials_usd": new_project.estimated_materials_usd,
+            "estimated_tools_usd": new_project.estimated_tools_usd,
+            "estimated_services_usd": new_project.estimated_services_usd,
+            "budget_limit_usd": new_project.budget_limit_usd,
+            "total_spent_usd": 0.0,
+            "progress_pct": 0.0,
+            "is_active": new_project.is_active,
+            "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
+            "phases": []
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Fallo en transacción atómica de proyecto: {str(e)}")
     
     return {
         "id": new_project.id,

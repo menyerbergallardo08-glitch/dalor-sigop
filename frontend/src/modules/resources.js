@@ -3,6 +3,23 @@
  * Extraído y desacoplado del monolito de producción (v94)
  */
 
+var API_BASE = window.API_BASE || (window.location.origin + "/api/v1");
+var allClients = window.allClients = window.allClients || [];
+var allServices = window.allServices = window.allServices || [];
+var allProjects = window.allProjects = window.allProjects || [];
+var allCategories = window.allCategories = window.allCategories || [];
+var allAssets = window.allAssets = window.allAssets || [];
+var allPersonnel = window.allPersonnel = window.allPersonnel || [];
+var allMaterials = window.allMaterials = window.allMaterials || [];
+var selectedPersonnelIds = window.selectedPersonnelIds = window.selectedPersonnelIds || [];
+var selectedVehicleIds = window.selectedVehicleIds = window.selectedVehicleIds || [];
+var selectedToolIds = window.selectedToolIds = window.selectedToolIds || [];
+var selectedMaterialIds = window.selectedMaterialIds = window.selectedMaterialIds || [];
+var EXCHANGE_RATE = window.EXCHANGE_RATE = window.EXCHANGE_RATE || 850.0;
+var BCV_DATA = window.BCV_DATA = window.BCV_DATA || { rate: 850.0, source: 'BCV Oficial' };
+var currentUser = window.currentUser || null;
+var authToken = window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+
 // --- BLOQUE L3480-L4951 ---
 // ----------------------------------------------------
 

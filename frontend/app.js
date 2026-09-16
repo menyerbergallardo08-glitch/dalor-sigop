@@ -11197,7 +11197,7 @@ function renderMaterialsTable(materials) {
 
                 <span style="font-weight: 800; font-size: 13px; color: ${isLow ? '#e11d48' : '#059669'};">
 
-                    ${([\'und\', \'unid\', \'unidad\', \'unidades\', \'pza\', \'pieza\', \'piezas\', \'rollo\', \'rollos\'].includes((m.unit_measure || \'\').toLowerCase()) ? Math.round(m.stock_quantity) : Number((m.stock_quantity || 0).toFixed(2))).toLocaleString()} ${m.unit_measure}
+                    ${(["und", "unid", "unidad", "unidades", "pza", "pieza", "piezas", "rollo", "rollos"].includes((m.unit_measure || "").toLowerCase()) ? Math.round(m.stock_quantity) : Number((m.stock_quantity || 0).toFixed(2))).toLocaleString()} ${m.unit_measure}
 
                 </span>
 

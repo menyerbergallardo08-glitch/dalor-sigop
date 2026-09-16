@@ -184,29 +184,29 @@ class BackupService:
             existing_tables = set(inspector.get_table_names())
 
             try:
-                # 0. En PostgreSQL, deshabilitar triggers y checks de FK durante restauración
-                if db.bind.name == "postgresql":
+                # 1. Purgar tablas en orden inverso de dependencias (hijos primero, padres después)
+                from app.core.database import Base
+                ordered_model_tables = [t.name for t in Base.metadata.sorted_tables]
+                non_model_tables = [t for t in tables_data.keys() if t not in ordered_model_tables]
+                
+                # Para eliminar: primero tablas hijas, luego padres
+                delete_order = [t for t in reversed(ordered_model_tables) if t in existing_tables] + [t for t in non_model_tables if t in existing_tables]
+                for t_name in delete_order:
                     try:
-                        db.execute(text("SET session_replication_role = 'replica';"))
-                    except Exception:
-                        pass
+                        if db.bind.name == "postgresql":
+                            db.execute(text(f'DELETE FROM "{t_name}"'))
+                        else:
+                            db.execute(text(f'DELETE FROM {t_name}'))
+                    except Exception as e:
+                        print(f"Warning purging {t_name}: {e}")
 
-                # 1. Purgar tablas en orden inverso
-                for t_name in reversed(list(tables_data.keys())):
-                    if t_name in existing_tables:
-                        try:
-                            if db.bind.name == "postgresql":
-                                db.execute(text(f'DELETE FROM "{t_name}"'))
-                            else:
-                                db.execute(text(f'DELETE FROM {t_name}'))
-                        except Exception:
-                            pass
-
-                # 2. Insertar filas
-                for t_name, t_content in tables_data.items():
+                # 2. Insertar filas en orden topológico (padres primero, hijos después)
+                insert_order = non_model_tables + [t for t in ordered_model_tables if t in tables_data]
+                for t_name in insert_order:
                     if t_name not in existing_tables:
                         continue
                     
+                    t_content = tables_data[t_name]
                     rows = t_content.get("rows", [])
                     cols = t_content.get("columns", [])
                     
@@ -218,10 +218,14 @@ class BackupService:
                         restored_counts[t_name] = 0
                         continue
 
+                    col_objs = {c["name"]: c for c in inspector.get_columns(t_name)}
+                    col_names_str = ", ".join([f'"{k}"' if db.bind.name == "postgresql" else f'"{k}"' for k in valid_cols])
+                    val_placeholders = ", ".join([f":{k}" for k in valid_cols])
+                    stmt = text(f'INSERT INTO "{t_name}" ({col_names_str}) VALUES ({val_placeholders})' if db.bind.name == "postgresql" else f'INSERT INTO {t_name} ({col_names_str}) VALUES ({val_placeholders})')
+
                     for r in rows:
                         filtered_row = {k: r[k] for k in valid_cols if k in r}
                         # Convertir ISO datetimes
-                        col_objs = {c["name"]: c for c in inspector.get_columns(t_name)}
                         for k, v in filtered_row.items():
                             if v is not None and k in col_objs:
                                 col_type = str(col_objs[k]["type"]).lower()
@@ -230,12 +234,20 @@ class BackupService:
                                         filtered_row[k] = datetime.fromisoformat(v)
                                     except Exception:
                                         pass
-                        
-                        col_names_str = ", ".join([f'"{k}"' if db.bind.name == "postgresql" else f'"{k}"' for k in filtered_row.keys()])
-                        val_placeholders = ", ".join([f":{k}" for k in filtered_row.keys()])
-                        stmt = text(f'INSERT INTO "{t_name}" ({col_names_str}) VALUES ({val_placeholders})' if db.bind.name == "postgresql" else f'INSERT INTO {t_name} ({col_names_str}) VALUES ({val_placeholders})')
                         db.execute(stmt, filtered_row)
                     
+                    # En PostgreSQL, sincronizar la secuencia del ID autoincremental
+                    if db.bind.name == "postgresql" and "id" in valid_cols:
+                        try:
+                            seq_sql = text(f"""
+                                SELECT setval(pg_get_serial_sequence('"{t_name}"', 'id'), 
+                                              COALESCE((SELECT MAX(id) FROM "{t_name}"), 1), 
+                                              (SELECT MAX(id) FROM "{t_name}") IS NOT NULL);
+                            """)
+                            db.execute(seq_sql)
+                        except Exception:
+                            pass
+
                     restored_counts[t_name] = len(rows)
 
                 db.commit()
@@ -252,18 +264,12 @@ class BackupService:
                 return {
                     "success": True,
                     "message": f"Base de datos restaurada con éxito desde '{filename}'.",
+                    "total_rows_restored": sum(restored_counts.values()),
                     "restored_counts": restored_counts
                 }
             except Exception as e:
                 db.rollback()
                 raise e
-            finally:
-                if db.bind.name == "postgresql":
-                    try:
-                        db.execute(text("SET session_replication_role = 'origin';"))
-                        db.commit()
-                    except Exception:
-                        pass
 
         elif filename.endswith(".db"):
             src_db = get_db_file_path()

@@ -2,6 +2,17 @@ import { Api } from './api.js';
 import { State } from './state.js';
 import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js';
 
+// Carga e Inicialización de Submódulos Especializados
+import './modules/core.js';
+import './modules/bcv.js';
+import './modules/maintenance.js';
+import './modules/projects.js';
+import './modules/resources.js';
+import './modules/quotations.js';
+import './modules/expenses.js';
+import './modules/financial.js';
+import './modules/materials.js';
+
 // Exportar al scope global para compatibilidad total con eventos inline de index.html
 window.Api = Api;
 window.State = State;

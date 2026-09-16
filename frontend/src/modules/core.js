@@ -34,7 +34,8 @@ function parseLocalizedNumber(val) {
 
 
 
-const API_BASE = window.location.origin + "/api/v1";
+window.API_BASE = window.location.origin + "/api/v1";
+var API_BASE = window.API_BASE;
 
 
 
@@ -1342,6 +1343,21 @@ setInterval(() => {
 
 // --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
 if (typeof window !== 'undefined') {
+    window.allClients = allClients;
+    window.allServices = allServices;
+    window.allProjects = allProjects;
+    window.allCategories = allCategories;
+    window.allAssets = allAssets;
+    window.allPersonnel = allPersonnel;
+    window.allMaterials = allMaterials;
+    window.selectedPersonnelIds = selectedPersonnelIds;
+    window.selectedVehicleIds = selectedVehicleIds;
+    window.selectedToolIds = selectedToolIds;
+    window.selectedMaterialIds = selectedMaterialIds;
+    window.EXCHANGE_RATE = EXCHANGE_RATE;
+    window.currentUser = currentUser;
+    window.authToken = authToken;
+
     window.closeAllDropdowns = closeAllDropdowns;
     window.closeMobileSubmenu = closeMobileSubmenu;
     window.closeModal = closeModal;

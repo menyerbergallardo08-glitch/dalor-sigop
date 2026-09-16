@@ -93,10 +93,20 @@ def healthcheck():
         "status": "healthy",
         "system": "DALOR SIGO-P ERP",
         "version": "2026.09.16.v94.2-modular-fix",
-        "commit": "f5f7b83f",
+        "commit": "v94.2-v3-certified",
         "is_production": is_production,
         "timestamp": datetime.utcnow().isoformat()
     }
+
+# 🔒 Desactivar explícitamente Swagger/OpenAPI en Producción (V3-02)
+if is_production:
+    from fastapi import HTTPException
+    @app.get("/docs", include_in_schema=False)
+    @app.get("/redoc", include_in_schema=False)
+    @app.get(f"{settings.API_V1_STR}/openapi.json", include_in_schema=False)
+    @app.get("/openapi.json", include_in_schema=False)
+    def disable_docs_in_production():
+        raise HTTPException(status_code=404, detail="Not Found")
 
 # Servir Frontend SPA y archivos estáticos con prevención estricta de caché
 NO_CACHE_HEADERS = {

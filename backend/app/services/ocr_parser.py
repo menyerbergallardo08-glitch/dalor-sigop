@@ -481,9 +481,7 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
         Extrae la lectura del odómetro (kilometraje total) desde una fotografía del tablero
         del vehículo mediante Visión Multimodal por IA (Gemini) o OCR local con filtros numéricos.
         """
-        import base64
-        fallback_k = base64.b64decode("QVEuQWI4Uk42S19taUF2OHQ5cGlra2plR3ZtamZTS2JFWW5jWFd5WFBJOGJUTUxGQ0hPR1E=").decode("utf-8")
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or fallback_k
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
         # 1. Intentar con Gemini Vision
         if api_key:

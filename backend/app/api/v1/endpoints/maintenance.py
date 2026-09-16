@@ -261,8 +261,8 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
 # ------------------------------------------------------------------------------
 # 5. 🌟 ESCENARIO MAESTRO DE DEMOSTRACIÓN INTEGRAL (GOLDEN THREAD)
 # ------------------------------------------------------------------------------
-@router.post("/seed-master-demo")
-def seed_master_demo(db: Session = Depends(get_db)):
+@router.post("/seed-master-demo", dependencies=[Depends(require_roles(["director_general", "director"]))])
+def seed_master_demo(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
         from app.models.models import (
             Expense, Quotation, QuotationItem, Project, ProjectPhase,

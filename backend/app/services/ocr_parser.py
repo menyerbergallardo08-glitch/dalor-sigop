@@ -38,9 +38,7 @@ class OCRReceiptParser:
 
     @staticmethod
     def extract_with_gemini(file_path: str, default_rate: float = 800.0) -> Optional[Dict[str, Any]]:
-        import base64
-        fallback_k = base64.b64decode("QVEuQWI4Uk42S19taUF2OHQ5cGlra2plR3ZtamZTS2JFWW5jWFd5WFBJOGJUTUxGQ0hPR1E=").decode("utf-8")
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or fallback_k
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not api_key:
             return None
 

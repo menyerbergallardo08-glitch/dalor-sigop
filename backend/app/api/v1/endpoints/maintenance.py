@@ -219,19 +219,22 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
     from app.models.models import (
         Expense, Quotation, QuotationItem, Project, ProjectPhase,
         AccountReceivable, AccountPayable, ResourceAssignmentHistory,
-        PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset
+        PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset,
+        DispatchGuide, DispatchGuideItem
     )
 
-    # 1. Purgar tablas operacionales
+    # 1. Purgar tablas operacionales en orden topológico inverso (hijos primero)
+    db.query(DispatchGuideItem).delete()
+    db.query(DispatchGuide).delete()
+    db.query(FinancialPayment).delete()
     db.query(Expense).delete()
-    db.query(QuotationItem).delete()
-    db.query(Quotation).delete()
     db.query(AccountReceivable).delete()
     db.query(AccountPayable).delete()
+    db.query(QuotationItem).delete()
+    db.query(Quotation).delete()
     db.query(ResourceAssignmentHistory).delete()
-    db.query(PartnerWithdrawal).delete()
-    db.query(FinancialPayment).delete()
     db.query(MaterialMovement).delete()
+    db.query(PartnerWithdrawal).delete()
     db.query(ProjectPhase).delete()
     db.query(Project).delete()
 
@@ -268,7 +271,8 @@ def seed_master_demo(db: Session = Depends(get_db), current_user: User = Depends
             Expense, Quotation, QuotationItem, Project, ProjectPhase,
             AccountReceivable, AccountPayable, ResourceAssignmentHistory,
             PartnerWithdrawal, FinancialPayment, MaterialMovement, Asset,
-            Personnel, Client, ExpenseCategory, User, AuditLog
+            Personnel, Client, ExpenseCategory, User, AuditLog,
+            DispatchGuide, DispatchGuideItem
         )
 
         # 1. Desvincular llaves foráneas de proyectos en activos y personal
@@ -285,16 +289,18 @@ def seed_master_demo(db: Session = Depends(get_db), current_user: User = Depends
         })
         db.commit()
 
-        # 2. Purgar tablas operacionales dependientes
+        # 2. Purgar tablas operacionales dependientes en orden topológico inverso
+        db.query(DispatchGuideItem).delete()
+        db.query(DispatchGuide).delete()
+        db.query(FinancialPayment).delete()
         db.query(Expense).delete()
-        db.query(QuotationItem).delete()
-        db.query(Quotation).delete()
         db.query(AccountReceivable).delete()
         db.query(AccountPayable).delete()
+        db.query(QuotationItem).delete()
+        db.query(Quotation).delete()
         db.query(ResourceAssignmentHistory).delete()
-        db.query(PartnerWithdrawal).delete()
-        db.query(FinancialPayment).delete()
         db.query(MaterialMovement).delete()
+        db.query(PartnerWithdrawal).delete()
         db.query(ProjectPhase).delete()
         db.query(Project).delete()
 

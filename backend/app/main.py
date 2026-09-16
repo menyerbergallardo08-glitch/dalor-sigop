@@ -13,7 +13,14 @@ from app.api.v1.api_router import api_router
 # Crear tablas en SQLite/PostgreSQL
 Base.metadata.create_all(bind=engine)
 
-is_production = os.getenv("ENVIRONMENT", "").lower() in ("production", "prod") or bool(os.getenv("RENDER"))
+is_production = (
+    os.getenv("ENVIRONMENT", "").lower() in ("production", "prod")
+    or "postgres" in os.getenv("DATABASE_URL", "").lower()
+    or bool(os.getenv("RENDER"))
+    or bool(os.getenv("RENDER_SERVICE_ID"))
+    or bool(os.getenv("RENDER_EXTERNAL_URL"))
+    or bool(os.getenv("RENDER_EXTERNAL_HOSTNAME"))
+)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

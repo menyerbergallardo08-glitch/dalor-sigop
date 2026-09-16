@@ -8,7 +8,7 @@ except ImportError:
 from datetime import datetime, timedelta
 
 
-SECRET_KEY = "DALOR_SIGOP_SUPER_SECRET_KEY_2026"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "DALOR_SIGOP_SUPER_SECRET_KEY_2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 días
 

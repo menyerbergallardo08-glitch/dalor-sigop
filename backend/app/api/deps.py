@@ -60,8 +60,7 @@ def require_roles(allowed_roles: List[str]):
         current_user: User = Depends(get_current_user)
     ) -> User:
         role = (current_user.role_name or "").lower()
-        uname = (current_user.username or "").lower()
-        if current_user.is_superuser or uname in ["director", "gerente", "admin"] or any(r.lower() in role for r in allowed_roles):
+        if current_user.is_superuser or any(r.lower() in role for r in allowed_roles):
             return current_user
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

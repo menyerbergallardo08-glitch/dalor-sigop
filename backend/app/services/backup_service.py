@@ -184,6 +184,13 @@ class BackupService:
             existing_tables = set(inspector.get_table_names())
 
             try:
+                # 0. En PostgreSQL, deshabilitar triggers y checks de FK durante restauración
+                if db.bind.name == "postgresql":
+                    try:
+                        db.execute(text("SET session_replication_role = 'replica';"))
+                    except Exception:
+                        pass
+
                 # 1. Purgar tablas en orden inverso
                 for t_name in reversed(list(tables_data.keys())):
                     if t_name in existing_tables:
@@ -250,6 +257,13 @@ class BackupService:
             except Exception as e:
                 db.rollback()
                 raise e
+            finally:
+                if db.bind.name == "postgresql":
+                    try:
+                        db.execute(text("SET session_replication_role = 'origin';"))
+                        db.commit()
+                    except Exception:
+                        pass
 
         elif filename.endswith(".db"):
             src_db = get_db_file_path()

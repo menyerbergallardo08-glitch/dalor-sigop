@@ -70,7 +70,7 @@ def healthcheck():
     return {
         "status": "healthy",
         "system": "DALOR SIGO-P ERP",
-        "version": "2026.09.15.v57-clean-project-out",
+        "version": "2026.09.16.v94.2-modular-fix",
         "timestamp": datetime.utcnow().isoformat()
     }
 

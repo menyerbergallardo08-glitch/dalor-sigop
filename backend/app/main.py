@@ -13,10 +13,13 @@ from app.api.v1.api_router import api_router
 # Crear tablas en SQLite/PostgreSQL
 Base.metadata.create_all(bind=engine)
 
+is_production = os.getenv("ENVIRONMENT", "").lower() in ("production", "prod") or bool(os.getenv("RENDER"))
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url="/docs",
+    openapi_url=None if is_production else f"{settings.API_V1_STR}/openapi.json",
+    docs_url=None if is_production else "/docs",
+    redoc_url=None if is_production else "/redoc",
     description="Sistema Integral de Gestión Operativa, Activos, Job Costing y Captura OCR para METALMECÁNICA DALOR C.A.."
 )
 
@@ -47,10 +50,22 @@ def on_startup():
     t = threading.Thread(target=keep_alive_heartbeat, daemon=True)
     t.start()
 
-# Habilitar CORS
+# Habilitar CORS seguro y restringido (SEC-04)
+allowed_origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://dalor-sigop.onrender.com",
+    "https://dalor-sigop.vercel.app"
+]
+extra_origins = os.getenv("ALLOWED_ORIGINS")
+if extra_origins:
+    allowed_origins.extend([o.strip() for o in extra_origins.split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

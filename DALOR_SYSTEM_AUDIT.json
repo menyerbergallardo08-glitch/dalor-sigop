@@ -1,0 +1,937 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "audit_report_info": {
+    "system_name": "DALOR SIGO-P ERP",
+    "report_type": "AUDITORIA TECNICA INTEGRAL (FRONTEND & BACKEND)",
+    "generated_at": "2026-09-16T12:30:00Z",
+    "current_version": "2026.09.16.v94.2-modular-fix",
+    "production_url": "https://dalor-sigop.onrender.com",
+    "github_repository": "menyerbergallardo08-glitch/dalor-sigop",
+    "branch": "main",
+    "architecture_status": "MONOLITH_SUCCESSFULLY_DECOUPLED_AND_HARDENED"
+  },
+  "frontend": {
+    "architecture": "Desacoplada ES6 Modular + Single Page Application (SPA)",
+    "entrypoint_html": "frontend/index.html",
+    "entrypoint_js": "frontend/src/main.js",
+    "legacy_bridge_proxy": "frontend/app.js (Proxy de compatibilidad retroactiva)",
+    "global_runtime_environment": {
+      "host_binding": "window",
+      "shared_state": [
+        "API_BASE",
+        "EXCHANGE_RATE",
+        "BCV_DATA",
+        "allClients",
+        "allProjects",
+        "allMaterials",
+        "allAssets",
+        "allPersonnel",
+        "allCategories"
+      ],
+      "strict_mode_compliance": "Preamble var bindings with window fallback across all 9 modules"
+    },
+    "registered_views": [
+      {
+        "id": "view-quotations",
+        "module": "quotations.js",
+        "description": "Cotizador comercial estilo LuloWin con APU y márgenes"
+      },
+      {
+        "id": "view-clients",
+        "module": "maintenance.js",
+        "description": "Gestión de cartera de clientes y RIF"
+      },
+      {
+        "id": "view-services",
+        "module": "maintenance.js",
+        "description": "Catálogo maestro de servicios especializados"
+      },
+      {
+        "id": "view-projects",
+        "module": "projects.js",
+        "description": "Planificación de obras (Paso 1-3), Gantt, fases y tracking"
+      },
+      {
+        "id": "view-dispatch",
+        "module": "materials.js",
+        "description": "Control de inventario, despachos y guías de traslado libres"
+      },
+      {
+        "id": "view-resources",
+        "module": "resources.js",
+        "description": "Maquinaria pesada, vehículos, herramientas y cuadrillas"
+      },
+      {
+        "id": "view-financial",
+        "module": "financial.js",
+        "description": "Flujo de caja, Tesorería, CxC, CxP, cobranzas y retiros"
+      },
+      {
+        "id": "view-maintenance",
+        "module": "maintenance.js",
+        "description": "Administración de usuarios, roles, permisos y respaldos de BD"
+      },
+      {
+        "id": "view-executive",
+        "module": "maintenance.js",
+        "description": "Dashboard gerencial, KPIs operativos y telemetría"
+      }
+    ],
+    "registered_modals_count": 41,
+    "registered_modals": [
+      "modalAssignResource",
+      "modalBadDebt",
+      "modalBcvCurrentRate",
+      "modalBcvDateValue",
+      "modalClient",
+      "modalConfirmDelivery",
+      "modalFinancialTransaction",
+      "modalManualTasa",
+      "modalMaterialConsume",
+      "modalMaterialDelivery",
+      "modalMaterialEntry",
+      "modalNewAsset",
+      "modalNewMaterial",
+      "modalNewPersonnel",
+      "modalNewUser",
+      "modalOdometerOcr",
+      "modalPayable",
+      "modalPrintPreview",
+      "modalPrintPreviewContent",
+      "modalProjectDetail",
+      "modalQuickFlow",
+      "modalQuotation",
+      "modalQuotationTitle",
+      "modalReceiptViewer",
+      "modalReceivable",
+      "modalReceiveClientPayment",
+      "modalService",
+      "modalTool",
+      "modalTransferGuide",
+      "modalUserManagement",
+      "modalValidateExpense",
+      "modalVehicle",
+      "modal_action_type",
+      "modal_custodian_container",
+      "modal_odometer_container",
+      "modal_res_custodian",
+      "modal_res_id",
+      "modal_res_location",
+      "modal_res_odometer",
+      "modal_res_type",
+      "modal_target_project_id"
+    ],
+    "modules_count": 9,
+    "modules": {
+      "bcv": {
+        "file": "frontend/src/modules/bcv.js",
+        "size_bytes": 5808,
+        "lines": 237,
+        "functions_count": 4,
+        "key_functions": [
+          "fetchAndApplyBcvRate",
+          "syncBcvRateFromBtn",
+          "openManualTasaModal",
+          "submitManualTasa"
+        ],
+        "endpoints_called": [],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      },
+      "core": {
+        "file": "frontend/src/modules/core.js",
+        "size_bytes": 32728,
+        "lines": 1383,
+        "functions_count": 20,
+        "key_functions": [
+          "roundNumber",
+          "parseLocalizedNumber",
+          "populateSelect",
+          "sortCategoriesNumerically",
+          "updateFieldTaxDisplays",
+          "isMobileViewport",
+          "toggleDropdown",
+          "openMobileSubmenu",
+          "closeMobileSubmenu",
+          "closeAllDropdowns",
+          "switchView",
+          "loadInitialMasterData"
+        ],
+        "endpoints_called": [
+          "/healthz"
+        ],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      },
+      "expenses": {
+        "file": "frontend/src/modules/expenses.js",
+        "size_bytes": 53955,
+        "lines": 2055,
+        "functions_count": 28,
+        "key_functions": [
+          "compressImageForOCR",
+          "triggerFileSelect",
+          "handleFileSelected",
+          "processOCRFile",
+          "toggleSplitMode",
+          "addSplitRow",
+          "removeSplitRow",
+          "updateSplitBalance",
+          "submitFieldExpense",
+          "calcManualBs",
+          "calcManualUsd",
+          "submitManualExpense"
+        ],
+        "endpoints_called": [],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      },
+      "financial": {
+        "file": "frontend/src/modules/financial.js",
+        "size_bytes": 43364,
+        "lines": 1627,
+        "functions_count": 24,
+        "key_functions": [
+          "openFinancialSubtab",
+          "switchFinancialSubtab",
+          "loadReceivablesList",
+          "openNewReceivableModal",
+          "submitCreateReceivable",
+          "loadPayablesList",
+          "openNewPayableModal",
+          "submitCreatePayable",
+          "openRecordPaymentModal",
+          "submitFinancialPayment",
+          "loadTreasurySummary",
+          "openQuickFlowModal"
+        ],
+        "endpoints_called": [],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      },
+      "maintenance": {
+        "file": "frontend/src/modules/maintenance.js",
+        "size_bytes": 68033,
+        "lines": 2779,
+        "functions_count": 40,
+        "key_functions": [
+          "showLoginError",
+          "loadClients",
+          "openNewClientModal",
+          "submitCreateClient",
+          "deleteClient",
+          "loadComparisonDashboard",
+          "loadCategoriesTree",
+          "checkAuthStatus",
+          "renderUserBadge",
+          "applyPermissionMap",
+          "loginDirectlyAs",
+          "fillQuickLogin"
+        ],
+        "endpoints_called": [],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      },
+      "materials": {
+        "file": "frontend/src/modules/materials.js",
+        "size_bytes": 76996,
+        "lines": 2662,
+        "functions_count": 37,
+        "key_functions": [
+          "loadMaterialsList",
+          "renderMaterialsTable",
+          "filterMaterialsTable",
+          "openNewMaterialModal",
+          "submitCreateMaterial",
+          "openMaterialEntryModal",
+          "calcMaterialEntryTotal",
+          "submitMaterialEntry",
+          "openMaterialConsumeModal",
+          "onConsumeMaterialSelected",
+          "calcMaterialConsumeTotal",
+          "submitMaterialConsume"
+        ],
+        "endpoints_called": [],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      },
+      "projects": {
+        "file": "frontend/src/modules/projects.js",
+        "size_bytes": 67463,
+        "lines": 2319,
+        "functions_count": 30,
+        "key_functions": [
+          "setProjectType",
+          "switchProjectSubtab",
+          "filterProjectsList",
+          "initProjectPlanningView",
+          "populatePlanDropdownSelectors",
+          "addPlanResource",
+          "removePlanResource",
+          "assignPersonnelTag",
+          "removePersonnelTag",
+          "assignVehicleTag",
+          "removeVehicleTag",
+          "assignToolTag"
+        ],
+        "endpoints_called": [],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      },
+      "quotations": {
+        "file": "frontend/src/modules/quotations.js",
+        "size_bytes": 48206,
+        "lines": 1425,
+        "functions_count": 18,
+        "key_functions": [
+          "loadQuotations",
+          "openNewQuotationModal",
+          "onTaxTypeChanged",
+          "addQuotationRow",
+          "removeQuotationRow",
+          "onServiceSelected",
+          "recalcQuotationTotals",
+          "editQuotation",
+          "submitCreateQuotation",
+          "cancelQuotationConversion",
+          "convertQuoteToProject",
+          "printQuotation"
+        ],
+        "endpoints_called": [],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      },
+      "resources": {
+        "file": "frontend/src/modules/resources.js",
+        "size_bytes": 48587,
+        "lines": 1833,
+        "functions_count": 27,
+        "key_functions": [
+          "openResourceSubtab",
+          "switchResourceSubtab",
+          "loadResourceDashboard",
+          "loadFleetList",
+          "openRecordServiceModal",
+          "submitRecordService",
+          "openOdometerOcrModal",
+          "handleOdometerImageSelected",
+          "submitConfirmOdometer",
+          "openNewVehicleModal",
+          "submitCreateVehicle",
+          "loadMachineryList"
+        ],
+        "endpoints_called": [],
+        "scope_isolation": "Strict Mode with Global Preamble Fallback",
+        "status": "MODULAR_ACTIVE"
+      }
+    }
+  },
+  "backend": {
+    "framework": "FastAPI 0.110+ (Asynchronous Python 3.12)",
+    "database_engine": "PostgreSQL (Producción Render) / SQLite (Desarrollo local)",
+    "orm": "SQLAlchemy 2.0 con transacciones atómicas y rollback de contingencia",
+    "api_version": "/api/v1",
+    "total_routes_count": 107,
+    "database_models_count": 23,
+    "database_models": [
+      "User",
+      "AuditLog",
+      "PartnerWithdrawal",
+      "FixedExpenseSetting",
+      "Client",
+      "ServiceItem",
+      "Quotation",
+      "QuotationItem",
+      "Project",
+      "ProjectPhase",
+      "CostCenter",
+      "Asset",
+      "Personnel",
+      "ResourceAssignmentHistory",
+      "ExpenseCategory",
+      "Expense",
+      "AccountReceivable",
+      "AccountPayable",
+      "FinancialPayment",
+      "Material",
+      "MaterialMovement",
+      "DispatchGuide",
+      "DispatchGuideItem"
+    ],
+    "endpoint_groups_count": 15,
+    "endpoint_groups": {
+      "assets": {
+        "file": "backend/app/api/v1/endpoints/assets.py",
+        "size_bytes": 17674,
+        "lines": 424,
+        "routes_count": 11,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "PUT",
+            "path": "/{asset_id}"
+          },
+          {
+            "method": "POST",
+            "path": "/{asset_id}/toggle-active"
+          },
+          {
+            "method": "DELETE",
+            "path": "/{asset_id}"
+          },
+          {
+            "method": "GET",
+            "path": "/fleet-summary"
+          },
+          {
+            "method": "POST",
+            "path": "/{asset_id}/record-service"
+          },
+          {
+            "method": "POST",
+            "path": "/{asset_id}/record-odometer"
+          },
+          {
+            "method": "GET",
+            "path": "/dispatch-guides"
+          },
+          {
+            "method": "POST",
+            "path": "/dispatch-guides/create"
+          },
+          {
+            "method": "POST",
+            "path": "/{asset_id}/record-maintenance"
+          }
+        ]
+      },
+      "auth": {
+        "file": "backend/app/api/v1/endpoints/auth.py",
+        "size_bytes": 9492,
+        "lines": 240,
+        "routes_count": 3,
+        "routes": [
+          {
+            "method": "POST",
+            "path": "/login"
+          },
+          {
+            "method": "GET",
+            "path": "/users"
+          },
+          {
+            "method": "POST",
+            "path": "/users"
+          }
+        ]
+      },
+      "clients": {
+        "file": "backend/app/api/v1/endpoints/clients.py",
+        "size_bytes": 2806,
+        "lines": 67,
+        "routes_count": 4,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "DELETE",
+            "path": "/{client_id}"
+          },
+          {
+            "method": "GET",
+            "path": "/{client_id}/history"
+          }
+        ]
+      },
+      "dispatch": {
+        "file": "backend/app/api/v1/endpoints/dispatch.py",
+        "size_bytes": 13687,
+        "lines": 346,
+        "routes_count": 5,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "GET",
+            "path": "/{guide_id}"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "PUT",
+            "path": "/{guide_id}/confirm-delivery"
+          },
+          {
+            "method": "DELETE",
+            "path": "/{guide_id}"
+          }
+        ]
+      },
+      "expenses": {
+        "file": "backend/app/api/v1/endpoints/expenses.py",
+        "size_bytes": 25011,
+        "lines": 635,
+        "routes_count": 11,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/{expense_id}/receipt"
+          },
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "GET",
+            "path": "/categories"
+          },
+          {
+            "method": "GET",
+            "path": "/categories-tree"
+          },
+          {
+            "method": "GET",
+            "path": "/inbox/pending"
+          },
+          {
+            "method": "POST",
+            "path": "/quick-upload"
+          },
+          {
+            "method": "PUT",
+            "path": "/inbox/{expense_id}/validate-impute"
+          },
+          {
+            "method": "PUT",
+            "path": "/inbox/{expense_id}/reject"
+          },
+          {
+            "method": "POST",
+            "path": "/import-batch"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/manual"
+          }
+        ]
+      },
+      "financial": {
+        "file": "backend/app/api/v1/endpoints/financial.py",
+        "size_bytes": 28823,
+        "lines": 659,
+        "routes_count": 20,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/summary"
+          },
+          {
+            "method": "POST",
+            "path": "/direct-collection"
+          },
+          {
+            "method": "GET",
+            "path": "/partners/withdrawals"
+          },
+          {
+            "method": "GET",
+            "path": "/withdrawals"
+          },
+          {
+            "method": "POST",
+            "path": "/partners/withdrawals"
+          },
+          {
+            "method": "POST",
+            "path": "/withdrawals"
+          },
+          {
+            "method": "GET",
+            "path": "/cxc"
+          },
+          {
+            "method": "POST",
+            "path": "/cxc"
+          },
+          {
+            "method": "POST",
+            "path": "/cxc/{receivable_id}/payment"
+          },
+          {
+            "method": "GET",
+            "path": "/cxp"
+          },
+          {
+            "method": "POST",
+            "path": "/cxp"
+          },
+          {
+            "method": "POST",
+            "path": "/cxp/{payable_id}/payment"
+          },
+          {
+            "method": "GET",
+            "path": "/bcv-rate"
+          },
+          {
+            "method": "GET",
+            "path": "/bcv-rate/"
+          },
+          {
+            "method": "GET",
+            "path": "/exchange-rate"
+          },
+          {
+            "method": "GET",
+            "path": "/exchange-rate/"
+          },
+          {
+            "method": "POST",
+            "path": "/bcv-rate/sync"
+          },
+          {
+            "method": "POST",
+            "path": "/bcv-rate/sync/"
+          },
+          {
+            "method": "DELETE",
+            "path": "/cxc/{cxc_id}"
+          },
+          {
+            "method": "POST",
+            "path": "/cxc/{receivable_id}/write-off"
+          }
+        ]
+      },
+      "maintenance": {
+        "file": "backend/app/api/v1/endpoints/maintenance.py",
+        "size_bytes": 33727,
+        "lines": 709,
+        "routes_count": 13,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/users"
+          },
+          {
+            "method": "POST",
+            "path": "/users"
+          },
+          {
+            "method": "PUT",
+            "path": "/users/{user_id}/permissions"
+          },
+          {
+            "method": "PUT",
+            "path": "/users/{user_id}/toggle-status"
+          },
+          {
+            "method": "GET",
+            "path": "/audit-logs"
+          },
+          {
+            "method": "GET",
+            "path": "/backups"
+          },
+          {
+            "method": "POST",
+            "path": "/backups/create"
+          },
+          {
+            "method": "GET",
+            "path": "/backups/download/{filename}"
+          },
+          {
+            "method": "POST",
+            "path": "/backups/restore/{filename}"
+          },
+          {
+            "method": "POST",
+            "path": "/reset-to-clean-slate"
+          },
+          {
+            "method": "POST",
+            "path": "/seed-master-demo"
+          },
+          {
+            "method": "GET",
+            "path": "/sync-dalor-catalog"
+          },
+          {
+            "method": "POST",
+            "path": "/sync-dalor-catalog"
+          }
+        ]
+      },
+      "materials": {
+        "file": "backend/app/api/v1/endpoints/materials.py",
+        "size_bytes": 13804,
+        "lines": 341,
+        "routes_count": 5,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/entry"
+          },
+          {
+            "method": "POST",
+            "path": "/consume"
+          },
+          {
+            "method": "GET",
+            "path": "/movements"
+          }
+        ]
+      },
+      "ocr": {
+        "file": "backend/app/api/v1/endpoints/ocr.py",
+        "size_bytes": 3523,
+        "lines": 94,
+        "routes_count": 2,
+        "routes": [
+          {
+            "method": "POST",
+            "path": "/scan-ticket"
+          },
+          {
+            "method": "POST",
+            "path": "/scan-odometer"
+          }
+        ]
+      },
+      "personnel": {
+        "file": "backend/app/api/v1/endpoints/personnel.py",
+        "size_bytes": 1764,
+        "lines": 48,
+        "routes_count": 2,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          }
+        ]
+      },
+      "projects": {
+        "file": "backend/app/api/v1/endpoints/projects.py",
+        "size_bytes": 25097,
+        "lines": 566,
+        "routes_count": 11,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "GET",
+            "path": "/{project_id}/details"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "PUT",
+            "path": "/{project_id}/phases/{phase_id}/status"
+          },
+          {
+            "method": "PUT",
+            "path": "/{project_id}/phases/{phase_id}/toggle-task"
+          },
+          {
+            "method": "GET",
+            "path": "/excel-template"
+          },
+          {
+            "method": "POST",
+            "path": "/import-excel"
+          },
+          {
+            "method": "DELETE",
+            "path": "/{project_id}"
+          },
+          {
+            "method": "POST",
+            "path": "/{project_id}/tracking-token"
+          },
+          {
+            "method": "GET",
+            "path": "/public-tracking/{token_or_code}"
+          }
+        ]
+      },
+      "quotations": {
+        "file": "backend/app/api/v1/endpoints/quotations.py",
+        "size_bytes": 7122,
+        "lines": 182,
+        "routes_count": 11,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "PUT",
+            "path": "/{quotation_id}"
+          },
+          {
+            "method": "PUT",
+            "path": "/{quotation_id}/"
+          },
+          {
+            "method": "POST",
+            "path": "/{quotation_id}"
+          },
+          {
+            "method": "POST",
+            "path": "/{quotation_id}/"
+          },
+          {
+            "method": "PATCH",
+            "path": "/{quotation_id}"
+          },
+          {
+            "method": "PATCH",
+            "path": "/{quotation_id}/"
+          },
+          {
+            "method": "GET",
+            "path": "/{quotation_id}"
+          },
+          {
+            "method": "POST",
+            "path": "/{quotation_id}/convert-to-project"
+          },
+          {
+            "method": "POST",
+            "path": "/{quotation_id}/approve"
+          }
+        ]
+      },
+      "reports": {
+        "file": "backend/app/api/v1/endpoints/reports.py",
+        "size_bytes": 3599,
+        "lines": 86,
+        "routes_count": 2,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/comparison-dashboard"
+          },
+          {
+            "method": "GET",
+            "path": "/company-overview"
+          }
+        ]
+      },
+      "resources": {
+        "file": "backend/app/api/v1/endpoints/resources.py",
+        "size_bytes": 8367,
+        "lines": 192,
+        "routes_count": 4,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/matrix-status"
+          },
+          {
+            "method": "POST",
+            "path": "/assign"
+          },
+          {
+            "method": "POST",
+            "path": "/transfer"
+          },
+          {
+            "method": "POST",
+            "path": "/return-to-base"
+          }
+        ]
+      },
+      "services": {
+        "file": "backend/app/api/v1/endpoints/services.py",
+        "size_bytes": 1515,
+        "lines": 37,
+        "routes_count": 3,
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/"
+          },
+          {
+            "method": "POST",
+            "path": "/"
+          },
+          {
+            "method": "DELETE",
+            "path": "/{service_id}"
+          }
+        ]
+      }
+    },
+    "core_services": {
+      "bcv_scraper": {
+        "file": "backend/app/services/bcv_scraper.py",
+        "purpose": "Extracción automatizada de tasa oficial BCV USD/VES en tiempo real con fallback resiliente"
+      },
+      "multimodal_ocr": {
+        "file": "backend/app/services/ocr_parser.py",
+        "purpose": "Extracción OCR de facturas y recibos con Gemini 1.5 Flash Vision y fallback a Tesseract"
+      },
+      "backup_service": {
+        "file": "backend/app/services/backup_service.py",
+        "purpose": "Generación y restauración transaccional de respaldos de base de datos (.json, .json.gz, .db)"
+      },
+      "anti_suspension_heartbeat": {
+        "file": "backend/app/main.py",
+        "purpose": "Hilo daemon en segundo plano que sondea /healthz periódicamente para mantener activa la instancia"
+      }
+    },
+    "security_and_hardening": {
+      "row_locking": "db.query(Material).with_for_update() en despachos para prevenir sobreventa/concurrencia",
+      "atomic_operations": "Rollback automático en creación compuesta de proyecto, fases, asignaciones y CxC",
+      "cache_control": "Headers 'Cache-Control: no-cache, no-store, must-revalidate' en todas las rutas estáticas",
+      "cors_policy": "Permisivo controlado para web y móvil"
+    }
+  }
+}

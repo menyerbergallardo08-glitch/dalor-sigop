@@ -1,3 +1,26 @@
+// DALOR SIGO-P | Global Environment Initializer
+window.API_BASE = window.API_BASE || (window.location.origin + "/api/v1");
+window.EXCHANGE_RATE = window.EXCHANGE_RATE || parseFloat(localStorage.getItem('dalor_exchange_rate')) || 850.0;
+window.BCV_DATA = window.BCV_DATA || { rate: 850.0, date_value: '', source: 'BCV Oficial', source_tier: 'oficial_directo' };
+window.allClients = window.allClients || [];
+window.allServices = window.allServices || [];
+window.allProjects = window.allProjects || [];
+window.allCategories = window.allCategories || [];
+window.allAssets = window.allAssets || [];
+window.allPersonnel = window.allPersonnel || [];
+window.allMaterials = window.allMaterials || [];
+window.quoteRowsCount = window.quoteRowsCount || 0;
+window.splitRowsCount = window.splitRowsCount || 0;
+window.phaseRowsCount = window.phaseRowsCount || 0;
+window.selectedPersonnelIds = window.selectedPersonnelIds || [];
+window.selectedVehicleIds = window.selectedVehicleIds || [];
+window.selectedToolIds = window.selectedToolIds || [];
+window.selectedMaterialIds = window.selectedMaterialIds || [];
+try {
+    window.currentUser = window.currentUser || JSON.parse(localStorage.getItem('dalor_user') || 'null');
+} catch(e) { window.currentUser = null; }
+window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+
 import { Api } from './api.js';
 import { State } from './state.js';
 import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js';

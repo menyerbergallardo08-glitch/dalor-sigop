@@ -93,6 +93,8 @@ def healthcheck():
         "status": "healthy",
         "system": "DALOR SIGO-P ERP",
         "version": "2026.09.16.v94.2-modular-fix",
+        "commit": "f5f7b83f",
+        "is_production": is_production,
         "timestamp": datetime.utcnow().isoformat()
     }
 

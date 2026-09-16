@@ -59,9 +59,36 @@ class BackupService:
                 "size_kb": round(size_bytes / 1024, 2),
                 "size_mb": round(size_bytes / (1024 * 1024), 2),
                 "created_at": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                "timestamp_epoch": mtime
+                "timestamp_epoch": mtime,
+                "storage_type": "LOCAL"
             })
         
+        # 2. Consultar y listar respaldos persistentes en Cloudflare R2
+        try:
+            from app.services.storage import R2StorageService, R2_BUCKET
+            r2_client = R2StorageService.get_client()
+            if r2_client:
+                r2_resp = r2_client.list_objects_v2(Bucket=R2_BUCKET, Prefix="backups/")
+                for obj in r2_resp.get("Contents", []):
+                    fname = os.path.basename(obj.get("Key", ""))
+                    if fname and fname.startswith("dalor_backup_"):
+                        # Si no está ya listado en local
+                        existing = next((b for b in backups if b["filename"] == fname), None)
+                        if existing:
+                            existing["storage_type"] = "LOCAL + R2 CLOUD"
+                        else:
+                            backups.append({
+                                "filename": fname,
+                                "file_type": "JSON (R2 CLOUD)",
+                                "size_kb": round(obj.get("Size", 0) / 1024, 2),
+                                "size_mb": round(obj.get("Size", 0) / (1024 * 1024), 2),
+                                "created_at": obj.get("LastModified").strftime("%Y-%m-%d %H:%M:%S") if obj.get("LastModified") else "Cloud",
+                                "timestamp_epoch": obj.get("LastModified").timestamp() if obj.get("LastModified") else 0,
+                                "storage_type": "R2 CLOUD"
+                            })
+        except Exception as e_r2_list:
+            print(f"[R2Backup] Warning al listar desde Cloudflare R2: {e_r2_list}")
+
         backups.sort(key=lambda x: x["timestamp_epoch"], reverse=True)
         return backups
 
@@ -137,13 +164,31 @@ class BackupService:
             except Exception:
                 pass
 
-        # 3. Registrar auditoría de respaldo
+        # 3. Subir copia automáticamente a Cloudflare R2 (Bóveda Segura Externa)
+        r2_uploaded = False
+        try:
+            from app.services.storage import R2StorageService, R2_BUCKET
+            r2_client = R2StorageService.get_client()
+            if r2_client:
+                r2_key = f"backups/{json_filename}"
+                r2_client.upload_file(
+                    Filename=json_path,
+                    Bucket=R2_BUCKET,
+                    Key=r2_key,
+                    ExtraArgs={"ContentType": "application/json"}
+                )
+                r2_uploaded = True
+                print(f"[R2Backup] Copia de seguridad '{json_filename}' replicada exitosamente en Cloudflare R2.")
+        except Exception as e_r2:
+            print(f"[R2Backup] Warning: No se pudo replicar en Cloudflare R2: {e_r2}")
+
+        # 4. Registrar auditoría de respaldo
         try:
             audit = AuditLog(
                 username=initiator_username,
                 module="mantenimiento",
                 action="crear_respaldo_bd",
-                details=f"Respaldo multi-tabla generado con éxito: {json_filename} ({json_kb} KB, {len(dump_data['tables'])} tablas respaldadas)."
+                details=f"Respaldo multi-tabla generado con éxito: {json_filename} ({json_kb} KB, {len(dump_data['tables'])} tablas respaldadas). Replicado en Cloudflare R2: {'SÍ' if r2_uploaded else 'NO'}."
             )
             db.add(audit)
             db.commit()
@@ -155,8 +200,9 @@ class BackupService:
             "primary_file": json_filename,
             "created_files": created_files,
             "size_kb": total_kb,
+            "replicated_to_r2": r2_uploaded,
             "tables_backed_up": list(dump_data["tables"].keys()),
-            "message": f"Copia de seguridad '{json_filename}' generada exitosamente con todas las tablas del sistema."
+            "message": f"Copia de seguridad '{json_filename}' generada exitosamente y {'asegurada en Cloudflare R2' if r2_uploaded else 'almacenada localmente'}."
         }
 
     @staticmethod
@@ -165,6 +211,21 @@ class BackupService:
         path = os.path.join(BACKUP_DIR, safe_name)
         if os.path.exists(path):
             return path
+        
+        # Recuperar automáticamente desde Cloudflare R2 si no está en disco local (después de reinicios de Render)
+        try:
+            from app.services.storage import R2StorageService, R2_BUCKET
+            r2_client = R2StorageService.get_client()
+            if r2_client:
+                r2_key = f"backups/{safe_name}"
+                os.makedirs(BACKUP_DIR, exist_ok=True)
+                r2_client.download_file(Bucket=R2_BUCKET, Key=r2_key, Filename=path)
+                if os.path.exists(path):
+                    print(f"[R2Backup] Respaldo '{safe_name}' recuperado exitosamente desde Cloudflare R2.")
+                    return path
+        except Exception as e_dl:
+            print(f"[R2Backup] Error al descargar '{safe_name}' desde Cloudflare R2: {e_dl}")
+            
         return None
 
     @staticmethod

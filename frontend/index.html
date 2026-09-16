@@ -98,6 +98,37 @@
             window.currentUser = JSON.parse(localStorage.getItem('dalor_user') || 'null');
         } catch(e) { window.currentUser = null; }
         window.authToken = localStorage.getItem('dalor_token') || null;
+
+        // 🔒 Interceptor Global de Seguridad: Inyección Automática de Bearer Token
+        const _nativeFetch = window.fetch;
+        window.fetch = async function(resource, init) {
+            init = init || {};
+            let headers = init.headers;
+            if (!headers) {
+                headers = {};
+            } else if (typeof Headers !== 'undefined' && headers instanceof Headers) {
+                const plain = {};
+                headers.forEach((v, k) => { plain[k] = v; });
+                headers = plain;
+            } else if (Array.isArray(headers)) {
+                const plain = {};
+                headers.forEach(([k, v]) => { plain[k] = v; });
+                headers = plain;
+            } else {
+                headers = { ...headers };
+            }
+            
+            const token = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token') || window.authToken;
+            const urlStr = typeof resource === 'string' ? resource : (resource && resource.url ? resource.url : '');
+            
+            if (token && (urlStr.includes('/api/v1') || urlStr.startsWith('/'))) {
+                if (!headers['Authorization'] && !headers['authorization']) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+            }
+            init.headers = headers;
+            return _nativeFetch(resource, init);
+        };
     </script>
 
     <!-- Estilos Nativos Modulares Tipo ERP (Profit Plus & PowerBI Style) -->
@@ -10562,8 +10593,6 @@
     <!-- 🚀 LÓGICA MODULAR ES6 DESACOPLADA (v94) -->
 
     <script type="module" src="/src/main.js?v=2026.09.16.v94.2"></script>
-
-    <script src="/app.js?v=2026.09.16.v94.2"></script>
 
 
 

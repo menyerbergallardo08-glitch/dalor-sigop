@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.config import settings
 from app.models.models import User, AuditLog
 from app.core.security import verify_password, get_password_hash, create_access_token
+from app.api.deps import get_current_user, require_roles
 
 router = APIRouter()
 
@@ -153,20 +154,25 @@ def get_audit_logs(db: Session = Depends(get_db)):
 # ------------------------------------------------------------------------------
 from app.services.backup_service import BackupService
 
-@router.get("/backups")
+@router.get("/backups", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "gerencia"]))])
 def list_backups():
     return BackupService.list_backups()
 
-@router.post("/backups/create")
-def create_backup(db: Session = Depends(get_db)):
+@router.post("/backups/create", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "gerencia"]))])
+def create_backup(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
-        res = BackupService.create_backup(db=db, initiator_username="admin")
+        res = BackupService.create_backup(db=db, initiator_username=current_user.username)
         return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar copia de seguridad: {str(e)}")
 
-@router.get("/backups/download/{filename}")
+@router.get("/backups/download/{filename}", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "gerencia"]))])
 def download_backup(filename: str):
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido. Intento de evasión o path traversal bloqueado.")
+    if not (filename.startswith("dalor_backup_") and (filename.endswith(".json") or filename.endswith(".db") or filename.endswith(".json.gz"))):
+        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Solo se admiten archivos de respaldo DALOR.")
+        
     file_path = BackupService.get_backup_path(filename)
     if not file_path:
         raise HTTPException(status_code=404, detail="Archivo de respaldo no encontrado.")
@@ -174,10 +180,15 @@ def download_backup(filename: str):
     media_type = "application/json" if filename.endswith(".json") else "application/octet-stream"
     return FileResponse(path=file_path, filename=filename, media_type=media_type)
 
-@router.post("/backups/restore/{filename}")
-def restore_backup(filename: str, db: Session = Depends(get_db)):
+@router.post("/backups/restore/{filename}", dependencies=[Depends(require_roles(["director_general", "director"]))])
+def restore_backup(filename: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido. Intento de evasión o path traversal bloqueado.")
+    if not (filename.startswith("dalor_backup_") and (filename.endswith(".json") or filename.endswith(".db") or filename.endswith(".json.gz"))):
+        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Solo se admiten archivos de respaldo DALOR.")
+        
     try:
-        res = BackupService.restore_backup(filename=filename, db=db, initiator_username="admin")
+        res = BackupService.restore_backup(filename=filename, db=db, initiator_username=current_user.username)
         return res
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"El archivo de respaldo '{filename}' no existe.")

@@ -324,6 +324,18 @@ def get_partner_withdrawals(db: Session = Depends(get_db)):
 @router.post("/partners/withdrawals")
 @router.post("/withdrawals")
 def create_partner_withdrawal(req: PartnerWithdrawalCreate, db: Session = Depends(get_db)):
+    if req.amount_usd <= 0:
+        raise HTTPException(status_code=400, detail="El monto del retiro debe ser mayor a cero.")
+
+    ref_clean = (req.reference_number or "").strip()
+    if ref_clean:
+        existing_w = db.query(PartnerWithdrawal).filter(PartnerWithdrawal.reference_number == ref_clean).first()
+        if existing_w:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Operación duplicada: El retiro con referencia '{ref_clean}' ya fue registrado previamente (Retiro #{existing_w.id} por ${existing_w.amount_usd:.2f})."
+            )
+
     amount_bs = req.amount_usd * req.exchange_rate
     new_w = PartnerWithdrawal(
         partner_name=req.partner_name.strip(),
@@ -332,7 +344,7 @@ def create_partner_withdrawal(req: PartnerWithdrawalCreate, db: Session = Depend
         amount_bs=amount_bs,
         exchange_rate=req.exchange_rate,
         payment_method=req.payment_method,
-        reference_number=req.reference_number,
+        reference_number=ref_clean,
         notes=req.notes
     )
     db.add(new_w)
@@ -430,7 +442,7 @@ def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
 
 @router.post("/cxc/{receivable_id}/payment")
 def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = Depends(get_db)):
-    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).with_for_update().first()
     if not r:
         raise HTTPException(status_code=404, detail="Factura no encontrada.")
 
@@ -439,6 +451,19 @@ def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = De
 
     if p_in.amount_usd > (r.balance_usd + 0.05):
         raise HTTPException(status_code=400, detail=f"El cobro (${p_in.amount_usd}) supera el saldo pendiente (${r.balance_usd}).")
+
+    # 🛡️ Idempotencia Transaccional: Rechazar duplicación de la misma referencia
+    ref_clean = (p_in.reference_number or p_in.voucher_number or "").strip()
+    if ref_clean:
+        existing_pay = db.query(FinancialPayment).filter(
+            FinancialPayment.receivable_id == receivable_id,
+            (FinancialPayment.reference_number == ref_clean) | (FinancialPayment.voucher_number == ref_clean)
+        ).first()
+        if existing_pay:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Operación duplicada: El cobro con referencia '{ref_clean}' ya fue procesado para esta factura (Pago #{existing_pay.id} por ${existing_pay.amount_usd:.2f})."
+            )
 
     payment = FinancialPayment(
         payment_type=p_in.payment_type or "cxc_cobro",
@@ -538,7 +563,7 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
 
 @router.post("/cxp/{payable_id}/payment")
 def record_cxp_payment(payable_id: int, p_in: PaymentCreate, db: Session = Depends(get_db)):
-    p = db.query(AccountPayable).filter(AccountPayable.id == payable_id).first()
+    p = db.query(AccountPayable).filter(AccountPayable.id == payable_id).with_for_update().first()
     if not p:
         raise HTTPException(status_code=404, detail="Deuda no encontrada.")
 
@@ -547,6 +572,19 @@ def record_cxp_payment(payable_id: int, p_in: PaymentCreate, db: Session = Depen
 
     if p_in.amount_usd > (p.balance_usd + 0.05):
         raise HTTPException(status_code=400, detail=f"El pago (${p_in.amount_usd}) supera la deuda (${p.balance_usd}).")
+
+    # 🛡️ Idempotencia Transaccional: Rechazar duplicación de la misma referencia
+    ref_clean = (p_in.reference_number or p_in.voucher_number or "").strip()
+    if ref_clean:
+        existing_pay = db.query(FinancialPayment).filter(
+            FinancialPayment.payable_id == payable_id,
+            (FinancialPayment.reference_number == ref_clean) | (FinancialPayment.voucher_number == ref_clean)
+        ).first()
+        if existing_pay:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Operación duplicada: El pago con referencia '{ref_clean}' ya fue procesado para esta deuda (Pago #{existing_pay.id} por ${existing_pay.amount_usd:.2f})."
+            )
 
     payment = FinancialPayment(
         payment_type=p_in.payment_type or "cxp_pago",

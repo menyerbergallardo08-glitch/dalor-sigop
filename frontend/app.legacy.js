@@ -1447,17 +1447,29 @@ async function loadInitialMasterData() {
 
 function populateSelectDropdowns() {
 
-    const safeClients = Array.isArray(allClients) ? allClients : [];
+    const safeClients = (window.allClients && window.allClients.length > 0) 
+        ? window.allClients 
+        : (Array.isArray(allClients) ? allClients : []);
 
-    const safeProjects = Array.isArray(allProjects) ? allProjects : [];
+    const safeProjects = (window.allProjects && window.allProjects.length > 0) 
+        ? window.allProjects 
+        : (Array.isArray(allProjects) ? allProjects : []);
 
-    const safeCategories = Array.isArray(allCategories) ? allCategories : [];
+    const safeCategories = (window.allCategories && window.allCategories.length > 0) 
+        ? window.allCategories 
+        : (Array.isArray(allCategories) ? allCategories : []);
 
-    const safeAssets = Array.isArray(allAssets) ? allAssets : [];
+    const safeAssets = (window.allAssets && window.allAssets.length > 0) 
+        ? window.allAssets 
+        : (Array.isArray(allAssets) ? allAssets : []);
 
-    const safeMaterials = Array.isArray(allMaterials) ? allMaterials : [];
+    const safeMaterials = (window.allMaterials && window.allMaterials.length > 0) 
+        ? window.allMaterials 
+        : (Array.isArray(allMaterials) ? allMaterials : []);
 
-    const safePersonnel = Array.isArray(allPersonnel) ? allPersonnel : [];
+    const safePersonnel = (window.allPersonnel && window.allPersonnel.length > 0) 
+        ? window.allPersonnel 
+        : (Array.isArray(allPersonnel) ? allPersonnel : []);
 
 
 
@@ -1478,6 +1490,13 @@ function populateSelectDropdowns() {
     setSafeOptions("new_proj_client_id", cliOptions);
     setSafeOptions("cxc_client_id", cliOptions);
     setSafeOptions("rcp_client_id", cliOptions);
+
+    if (safeClients.length === 1) {
+        const qCli = document.getElementById("quote_client_id");
+        if (qCli && !qCli.value) qCli.value = String(safeClients[0].id);
+        const npCli = document.getElementById("new_proj_client_id");
+        if (npCli && !npCli.value) npCli.value = String(safeClients[0].id);
+    }
 
 
 
@@ -5079,13 +5098,25 @@ async function openNewQuotationModal() {
 
     try {
 
-        if (!allClients || allClients.length === 0 || !allServices || allServices.length === 0) {
+        let currentClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
+
+        let currentServices = (window.allServices && window.allServices.length > 0) ? window.allServices : (allServices || []);
+
+
+
+        if (currentClients.length === 0 || currentServices.length === 0) {
+
+            const token = window.authToken || localStorage.getItem('dalor_token') || null;
+
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+
 
             const [resCli, resSrv] = await Promise.all([
 
-                fetch(`${API_BASE}/clients/`),
+                fetch(`${API_BASE}/clients/`, { headers }),
 
-                fetch(`${API_BASE}/services/`)
+                fetch(`${API_BASE}/services/`, { headers })
 
             ]);
 
@@ -5093,7 +5124,9 @@ async function openNewQuotationModal() {
 
                 const cData = await resCli.json();
 
-                allClients = Array.isArray(cData) ? cData : [];
+                allClients = window.allClients = Array.isArray(cData) ? cData : [];
+
+                currentClients = allClients;
 
             }
 
@@ -5101,7 +5134,9 @@ async function openNewQuotationModal() {
 
                 const sData = await resSrv.json();
 
-                allServices = Array.isArray(sData) ? sData : [];
+                allServices = window.allServices = Array.isArray(sData) ? sData : [];
+
+                currentServices = allServices;
 
             }
 
@@ -5116,6 +5151,34 @@ async function openNewQuotationModal() {
 
 
     populateSelectDropdowns();
+
+
+
+    // Asegurar explícitamente las opciones del selector de cliente en el modal de cotización
+
+    const qClientSelect = document.getElementById("quote_client_id");
+
+    if (qClientSelect) {
+
+        const availableClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
+
+        if (availableClients.length > 0) {
+
+            let opts = `<option value="">-- Seleccione Cliente --</option>` + 
+
+                availableClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
+
+            qClientSelect.innerHTML = opts;
+
+            if (availableClients.length === 1) {
+
+                qClientSelect.value = String(availableClients[0].id);
+
+            }
+
+        }
+
+    }
 
 
 

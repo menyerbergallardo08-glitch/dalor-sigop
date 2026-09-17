@@ -204,3 +204,14 @@ def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db
         "project_code": new_project.code,
         "project_name": new_project.name
     }
+
+@router.delete("/{quotation_id}")
+def delete_quotation(quotation_id: int, db: Session = Depends(get_db)):
+    quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada.")
+    db.query(QuotationItem).filter(QuotationItem.quotation_id == quotation_id).delete()
+    db.delete(quote)
+    db.commit()
+    return {"success": True, "message": f"Cotización {quote.quote_number} eliminada exitosamente."}
+

@@ -98,6 +98,9 @@ export async function performLogin(username, password) {
         redirectUserByRole(State.currentUser);
 
         // Inicializar cargas visuales si existen en app.js
+        if (typeof window.loadInitialMasterData === 'function') {
+            try { window.loadInitialMasterData(); } catch(e) { console.warn(e); }
+        }
         if (typeof window.loadExecutiveDashboard === 'function') {
             try { window.loadExecutiveDashboard(); } catch(e) {}
         }
@@ -116,7 +119,7 @@ export async function performLogin(username, password) {
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión Manual';
+            btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión';
         }
     }
 }

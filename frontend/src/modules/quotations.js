@@ -195,13 +195,25 @@ async function openNewQuotationModal() {
 
     try {
 
-        if (!allClients || allClients.length === 0 || !allServices || allServices.length === 0) {
+        let currentClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
+
+        let currentServices = (window.allServices && window.allServices.length > 0) ? window.allServices : (allServices || []);
+
+
+
+        if (currentClients.length === 0 || currentServices.length === 0) {
+
+            const token = window.authToken || localStorage.getItem('dalor_token') || null;
+
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+
 
             const [resCli, resSrv] = await Promise.all([
 
-                fetch(`${API_BASE}/clients/`),
+                fetch(`${API_BASE}/clients/`, { headers }),
 
-                fetch(`${API_BASE}/services/`)
+                fetch(`${API_BASE}/services/`, { headers })
 
             ]);
 
@@ -209,7 +221,9 @@ async function openNewQuotationModal() {
 
                 const cData = await resCli.json();
 
-                allClients = Array.isArray(cData) ? cData : [];
+                allClients = window.allClients = Array.isArray(cData) ? cData : [];
+
+                currentClients = allClients;
 
             }
 
@@ -217,7 +231,9 @@ async function openNewQuotationModal() {
 
                 const sData = await resSrv.json();
 
-                allServices = Array.isArray(sData) ? sData : [];
+                allServices = window.allServices = Array.isArray(sData) ? sData : [];
+
+                currentServices = allServices;
 
             }
 
@@ -232,6 +248,34 @@ async function openNewQuotationModal() {
 
 
     populateSelectDropdowns();
+
+
+
+    // Asegurar explícitamente las opciones del selector de cliente en el modal de cotización
+
+    const qClientSelect = document.getElementById("quote_client_id");
+
+    if (qClientSelect) {
+
+        const availableClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
+
+        if (availableClients.length > 0) {
+
+            let opts = `<option value="">-- Seleccione Cliente --</option>` + 
+
+                availableClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
+
+            qClientSelect.innerHTML = opts;
+
+            if (availableClients.length === 1) {
+
+                qClientSelect.value = String(availableClients[0].id);
+
+            }
+
+        }
+
+    }
 
 
 
@@ -473,13 +517,18 @@ function recalcQuotationTotals() {
 
 async function editQuotation(quoteId) {
     try {
-        if (!allClients || allClients.length === 0 || !allServices || allServices.length === 0) {
+        let currentClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
+        let currentServices = (window.allServices && window.allServices.length > 0) ? window.allServices : (allServices || []);
+
+        if (currentClients.length === 0 || currentServices.length === 0) {
+            const token = window.authToken || localStorage.getItem('dalor_token') || null;
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
             const [resCli, resSrv] = await Promise.all([
-                fetch(`${API_BASE}/clients/`),
-                fetch(`${API_BASE}/services/`)
+                fetch(`${API_BASE}/clients/`, { headers }),
+                fetch(`${API_BASE}/services/`, { headers })
             ]);
-            if (resCli.ok) allClients = await resCli.json();
-            if (resSrv.ok) allServices = await resSrv.json();
+            if (resCli.ok) allClients = window.allClients = await resCli.json();
+            if (resSrv.ok) allServices = window.allServices = await resSrv.json();
         }
         populateSelectDropdowns();
 
@@ -499,8 +548,16 @@ async function editQuotation(quoteId) {
 
         // 2. Pre-llenar datos principales y seleccionar cliente dinámicamente
         const clientSelect = document.getElementById("quote_client_id");
-        if (clientSelect && q.client_id) {
-            clientSelect.value = String(q.client_id);
+        if (clientSelect) {
+            const availableClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
+            if (availableClients.length > 0) {
+                let opts = `<option value="">-- Seleccione Cliente --</option>` + 
+                    availableClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
+                clientSelect.innerHTML = opts;
+            }
+            if (q.client_id) {
+                clientSelect.value = String(q.client_id);
+            }
         }
 
         if (document.getElementById("quote_title")) document.getElementById("quote_title").value = q.project_title || "";

@@ -132,6 +132,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderUserBadge();
         applyPermissionMap(State.currentUser);
         redirectUserByRole(State.currentUser);
+        if (typeof window.loadInitialMasterData === 'function') {
+            try { window.loadInitialMasterData(); } catch(e) { console.warn(e); }
+        }
     } else {
         document.body.classList.remove('authenticated');
         if (loginScreen) loginScreen.style.setProperty('display', 'flex', 'important');

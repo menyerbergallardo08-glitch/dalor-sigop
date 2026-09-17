@@ -252,19 +252,19 @@ let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 8
 
 
 
-let allClients = [];
+var allClients = window.allClients = window.allClients || [];
 
-let allServices = [];
+var allServices = window.allServices = window.allServices || [];
 
-let allProjects = [];
+var allProjects = window.allProjects = window.allProjects || [];
 
-let allCategories = [];
+var allCategories = window.allCategories = window.allCategories || [];
 
-let allAssets = [];
+var allAssets = window.allAssets = window.allAssets || [];
 
-let allPersonnel = [];
+var allPersonnel = window.allPersonnel = window.allPersonnel || [];
 
-let allMaterials = [];
+var allMaterials = window.allMaterials = window.allMaterials || [];
 
 let quoteRowsCount = 0;
 
@@ -662,31 +662,31 @@ async function loadInitialMasterData() {
 
         const cliData = await resCli.json();
 
-        allClients = Array.isArray(cliData) ? cliData : [];
+        window.allClients = allClients = Array.isArray(cliData) ? cliData : [];
 
         const srvData = await resSrv.json();
 
-        allServices = Array.isArray(srvData) ? srvData : [];
+        window.allServices = allServices = Array.isArray(srvData) ? srvData : [];
 
         const projData = await resProj.json();
 
-        allProjects = Array.isArray(projData) ? projData : [];
+        window.allProjects = allProjects = Array.isArray(projData) ? projData : [];
 
         const catData = await resCat.json();
 
-        allCategories = Array.isArray(catData) ? catData : [];
+        window.allCategories = allCategories = Array.isArray(catData) ? catData : [];
 
         const assData = await resAss.json();
 
-        allAssets = Array.isArray(assData) ? assData : [];
+        window.allAssets = allAssets = Array.isArray(assData) ? assData : [];
 
         const persData = await resPers.json();
 
-        allPersonnel = Array.isArray(persData) ? persData : [];
+        window.allPersonnel = allPersonnel = Array.isArray(persData) ? persData : [];
 
         const matData = await resMat.json();
 
-        allMaterials = Array.isArray(matData.materials) ? matData.materials : (Array.isArray(matData) ? matData : []);
+        window.allMaterials = allMaterials = Array.isArray(matData.materials) ? matData.materials : (Array.isArray(matData) ? matData : []);
 
 
 
@@ -708,17 +708,29 @@ async function loadInitialMasterData() {
 
 function populateSelectDropdowns() {
 
-    const safeClients = Array.isArray(allClients) ? allClients : [];
+    const safeClients = (window.allClients && window.allClients.length > 0) 
+        ? window.allClients 
+        : (Array.isArray(allClients) ? allClients : []);
 
-    const safeProjects = Array.isArray(allProjects) ? allProjects : [];
+    const safeProjects = (window.allProjects && window.allProjects.length > 0) 
+        ? window.allProjects 
+        : (Array.isArray(allProjects) ? allProjects : []);
 
-    const safeCategories = Array.isArray(allCategories) ? allCategories : [];
+    const safeCategories = (window.allCategories && window.allCategories.length > 0) 
+        ? window.allCategories 
+        : (Array.isArray(allCategories) ? allCategories : []);
 
-    const safeAssets = Array.isArray(allAssets) ? allAssets : [];
+    const safeAssets = (window.allAssets && window.allAssets.length > 0) 
+        ? window.allAssets 
+        : (Array.isArray(allAssets) ? allAssets : []);
 
-    const safeMaterials = Array.isArray(allMaterials) ? allMaterials : [];
+    const safeMaterials = (window.allMaterials && window.allMaterials.length > 0) 
+        ? window.allMaterials 
+        : (Array.isArray(allMaterials) ? allMaterials : []);
 
-    const safePersonnel = Array.isArray(allPersonnel) ? allPersonnel : [];
+    const safePersonnel = (window.allPersonnel && window.allPersonnel.length > 0) 
+        ? window.allPersonnel 
+        : (Array.isArray(allPersonnel) ? allPersonnel : []);
 
 
 
@@ -739,6 +751,14 @@ function populateSelectDropdowns() {
     setSafeOptions("new_proj_client_id", cliOptions);
     setSafeOptions("cxc_client_id", cliOptions);
     setSafeOptions("rcp_client_id", cliOptions);
+
+    // Auto-seleccionar si solo hay 1 cliente disponible (ej. OXICAR)
+    if (safeClients.length === 1) {
+        const qCli = document.getElementById("quote_client_id");
+        if (qCli && !qCli.value) qCli.value = String(safeClients[0].id);
+        const npCli = document.getElementById("new_proj_client_id");
+        if (npCli && !npCli.value) npCli.value = String(safeClients[0].id);
+    }
 
 
 

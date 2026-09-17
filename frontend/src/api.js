@@ -34,8 +34,8 @@ export class ApiClient {
             clearTimeout(timeoutId);
 
             // Interceptor de expiración de sesión (401 / 403)
-            if ((response.status === 401 || response.status === 403) && !endpoint.includes('/auth/login')) {
-                console.warn("[AUTH] Sesión expirada o no autorizada. Limpiando almacenamiento y redirigiendo a login.");
+            if ((response.status === 401 || response.status === 403) && !endpoint.includes('/auth/login') && !endpoint.includes('bcv-rate')) {
+                console.warn("[AUTH] Sesión expirada o no autorizada:", endpoint);
                 sessionStorage.removeItem('dalor_token');
                 sessionStorage.removeItem('dalor_user');
                 sessionStorage.removeItem('dalor_session_active');
@@ -46,7 +46,11 @@ export class ApiClient {
                 const authShell = document.getElementById('app-authenticated-shell');
                 if (loginScreen) loginScreen.style.setProperty('display', 'flex', 'important');
                 if (authShell) authShell.style.setProperty('display', 'none', 'important');
-                window.location.href = '/';
+                
+                // Evitar bucle infinito de recarga si ya estamos en la pantalla principal
+                if (window.location.pathname !== '/' && window.location.pathname !== '') {
+                    window.location.href = '/';
+                }
                 return null;
             }
 

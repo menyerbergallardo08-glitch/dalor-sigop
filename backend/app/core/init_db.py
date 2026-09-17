@@ -212,28 +212,46 @@ def init_db():
             db.commit()
 
         # 3. Assets, Heavy Machinery, Welding Rigs & Vehicles (Ensure real Dalor fleet & tools loaded)
-        if db.query(Asset).count() == 0 or db.query(Asset).filter(Asset.asset_code == "1-V-1-01").first() is None:
-            print("--> Seeding complete industrial catalog of tools, machinery, and vehicles...")
-            db.query(Asset).delete()
-            db.commit()
-
+        if db.query(Asset).count() < 916:
+            print("--> Seeding complete industrial catalog of tools, machinery, and vehicles (916 items)...")
             # 8 Vehículos Oficiales DALOR C.A. (Extracción certificada de VEHICULOS.xlsx)
             vehicles = [
-                Asset(asset_code="1-V-1-01", name="Camión NPR Baranda 350 Blanco 2013", asset_type="vehiculo", brand="CHEVROLET", model="NPR-350", license_plate="A47CC2V", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
-                Asset(asset_code="1-V-1-02", name="Camioneta Dodge RAM Doble Cabina Gris", asset_type="vehiculo", brand="DODGE", model="RAM-250", license_plate="A31AJ5B", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
-                Asset(asset_code="1-V-1-03", name="Camioneta Toyota Hilux Kavak Azul 2009", asset_type="vehiculo", brand="TOYOTA", model="HILUX KAVAK", license_plate="A45AC91", serial_number="8XA33ZV2599006549", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
-                Asset(asset_code="3-V-1-04", name="Carro Fiat Palio Gris 2003", asset_type="vehiculo", brand="FIAT", model="PALIO SX 1.3", license_plate="DBP20K", serial_number="6361720", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
-                Asset(asset_code="3-V-1-05", name="Montacargas Toyota 2005 3.5T", asset_type="maquinaria", brand="TOYOTA", model="7FGCU30", serial_number="67821", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=250, current_location="Sede Central Dalor", status="disponible_base"),
-                Asset(asset_code="3-V-1-06", name="Camioneta Toyota 4Runner Negra", asset_type="vehiculo", brand="TOYOTA", model="4RUNNER TRD", license_plate="AI619DK", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
-                Asset(asset_code="3-V-1-07", name="Carro SpaceFox Azul 2011", asset_type="vehiculo", brand="VOLKSWAGEN", model="SPACE FOX", license_plate="AA293TD", serial_number="CFZ277038", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
-                Asset(asset_code="3-V-1-08", name="Camión de Carga Doble Cabina Neptunia", asset_type="vehiculo", brand="BAW", model="NEPTUNIA D/C", license_plate="A41AE34", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base")
+                {"code": "1-V-1-01", "name": "Camión NPR Baranda 350 Blanco 2013", "type": "vehiculo", "brand": "CHEVROLET", "model": "NPR-350", "plate": "A47CC2V"},
+                {"code": "1-V-1-02", "name": "Camioneta Dodge RAM Doble Cabina Gris", "type": "vehiculo", "brand": "DODGE", "model": "RAM-250", "plate": "A31AJ5B"},
+                {"code": "1-V-1-03", "name": "Camioneta Toyota Hilux Kavak Azul 2009", "type": "vehiculo", "brand": "TOYOTA", "model": "HILUX KAVAK", "plate": "A45AC91"},
+                {"code": "3-V-1-04", "name": "Carro Fiat Palio Gris 2003", "type": "vehiculo", "brand": "FIAT", "model": "PALIO SX 1.3", "plate": "DBP20K"},
+                {"code": "3-V-1-05", "name": "Montacargas Toyota 2005 3.5T", "type": "maquinaria", "brand": "TOYOTA", "model": "7FGCU30", "plate": "MONT-01"},
+                {"code": "3-V-1-06", "name": "Camioneta Toyota 4Runner Negra", "type": "vehiculo", "brand": "TOYOTA", "model": "4RUNNER TRD", "plate": "AI619DK"},
+                {"code": "3-V-1-07", "name": "Carro SpaceFox Azul 2011", "type": "vehiculo", "brand": "VOLKSWAGEN", "model": "SPACE FOX", "plate": "AA293TD"},
+                {"code": "3-V-1-08", "name": "Camión de Carga Doble Cabina Neptunia", "type": "vehiculo", "brand": "BAW", "model": "NEPTUNIA D/C", "plate": "A41AE34"}
             ]
-            db.add_all(vehicles)
+            for v in vehicles:
+                existing_v = db.query(Asset).filter(Asset.asset_code == v["code"]).first()
+                if not existing_v:
+                    db.add(Asset(
+                        asset_code=v["code"],
+                        name=v["name"],
+                        asset_type=v["type"],
+                        brand=v["brand"],
+                        model=v["model"],
+                        license_plate=v["plate"],
+                        current_odometer=0.0,
+                        last_service_odometer=0.0,
+                        service_interval_km=5000.0,
+                        current_location="Sede Central Dalor",
+                        status="disponible_base",
+                        is_active=True
+                    ))
+                else:
+                    existing_v.is_active = True
+                    existing_v.status = "disponible_base"
+                    existing_v.current_location = "Sede Central Dalor"
 
             # Cargar herramientas y equipos desde clean_tools.json si existe
             tools_json_paths = [
                 os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "clean_tools.json"),
                 os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "clean_tools.json"),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "backend", "clean_tools.json"),
                 r"C:\Users\GATEWAY\Desktop\CLIENTES DE CONSULTORIA\Metalmecanica Dalor\clean_tools.json"
             ]
             loaded_tools = False
@@ -245,19 +263,24 @@ def init_db():
                             tools_data = json.load(tjf)
                         for t in tools_data:
                             code = t.get("code")
-                            if code and not db.query(Asset).filter(Asset.asset_code == code).first():
-                                db.add(Asset(
-                                    asset_code=code,
-                                    name=t.get("name"),
-                                    asset_type=t.get("asset_type", "herramienta"),
-                                    brand=t.get("brand"),
-                                    model=t.get("model"),
-                                    serial_number=t.get("serial_number"),
-                                    status=t.get("status", "disponible_base"),
-                                    current_location=t.get("location", "Sede Central Dalor"),
-                                    current_odometer=0.0,
-                                    last_service_odometer=0.0
-                                ))
+                            if code:
+                                existing_t = db.query(Asset).filter(Asset.asset_code == code).first()
+                                if not existing_t:
+                                    db.add(Asset(
+                                        asset_code=code,
+                                        name=t.get("name"),
+                                        asset_type=t.get("asset_type", "herramienta"),
+                                        brand=t.get("brand"),
+                                        model=t.get("model"),
+                                        serial_number=t.get("serial_number"),
+                                        status="disponible_base",
+                                        current_location=t.get("location", "Sede Central Dalor"),
+                                        current_odometer=0.0,
+                                        last_service_odometer=0.0,
+                                        is_active=True
+                                    ))
+                                else:
+                                    existing_t.is_active = True
                         loaded_tools = True
                         break
                     except Exception as e:

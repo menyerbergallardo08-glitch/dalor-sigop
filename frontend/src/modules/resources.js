@@ -1356,7 +1356,7 @@ async function loadPersonnelTableList() {
 
                 <td style="font-weight: 700; color: var(--dalor-navy);">${p.full_name}</td>
 
-                <td><span style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${p.role_title}</span></td>
+                <td><span style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${p.role_title || '-'}</span></td>
 
                 <td>${p.phone || '-'}</td>
 

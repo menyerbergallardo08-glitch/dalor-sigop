@@ -830,7 +830,7 @@ function populateSelectDropdowns() {
 
     if (allPersonnel && allPersonnel.length > 0) {
 
-        const persOptions = allPersonnel.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name} - ${p.role_title}</option>`).join('');
+        const persOptions = allPersonnel.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name}${p.role_title ? ' - ' + p.role_title : ''}</option>`).join('');
 
         if (document.getElementById("field_reported_by")) document.getElementById("field_reported_by").innerHTML = persOptions;
 

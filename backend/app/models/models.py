@@ -266,7 +266,7 @@ class Personnel(Base):
     code = Column(String(50), unique=True, index=True)
     full_name = Column(String(150), nullable=False)
     identification_id = Column(String(50), nullable=True)
-    role_title = Column(String(100), nullable=False)
+    role_title = Column(String(100), nullable=True, default="")
     phone = Column(String(50), nullable=True)
     
     status = Column(String(50), default="disponible_base")

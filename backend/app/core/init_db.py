@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from sqlalchemy import text
 from app.core.database import SessionLocal, engine, Base
@@ -184,21 +185,21 @@ def init_db():
             # Keep existing IDs or clean and insert full roster
             existing_codes = {p.code for p in db.query(Personnel.code).all()}
             full_roster = [
-                Personnel(code="PERS-001", full_name="Robert Rodríguez", role_title="Ingeniero Residente de Proyecto", identification_id="V-18450123", phone="0414-1234567", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-002", full_name="Carlos Hurtado", role_title="Supervisor de Soldadura y Montaje CWI", identification_id="V-16982341", phone="0412-9876543", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-003", full_name="Julio Saavedra", role_title="Custodio de Almacén & Pañol Central", identification_id="V-20114562", phone="0414-5558899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-004", full_name="Vicente Rodríguez", role_title="Conductor de Carga Pesada & Equipos", identification_id="V-15332901", phone="0424-7778899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-005", full_name="Hender Rodríguez", role_title="Soldador Especialista 6G / TIG-ASME", identification_id="V-19345612", phone="0414-3334455", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-006", full_name="Herby Rodríguez", role_title="Soldador Estructural & Calderería", identification_id="V-21098432", phone="0412-6667788", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-007", full_name="Eliú Suárez", role_title="Pailero / Calderero Especialista A36-Hardox", identification_id="V-17849201", phone="0424-1112233", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-008", full_name="Danny Chaparro", role_title="Montador Mecánico / Armador de Estructuras", identification_id="V-22119045", phone="0416-9990011", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-009", full_name="Ernesto Chaparro", role_title="Oxicortista / Ayudante Técnico Especializado", identification_id="V-24558912", phone="0414-8889900", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-010", full_name="Mervis Parra", role_title="Operador de Sandblasting & Pintura Airless", identification_id="V-18776234", phone="0412-4445566", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-011", full_name="Paola Garay", role_title="Administradora de Obra & Costos", identification_id="V-20334891", phone="0414-2223344", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-012", full_name="Geraldine Páez", role_title="Procura & Compras de Materiales", identification_id="V-23450912", phone="0424-5556677", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-013", full_name="Eleonora Galetti", role_title="Inspectora de Seguridad Industrial SHA", identification_id="V-19882314", phone="0412-1110099", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-014", full_name="José Gregorio Mendoza", role_title="Tornero & Mecánico Ajustador Taller", identification_id="V-14998231", phone="0416-3332211", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-015", full_name="Wilmer Albornoz", role_title="Electricista Industrial & Generadores", identification_id="V-16773412", phone="0414-7776655", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo")
+                Personnel(code="PERS-001", full_name="Robert Rodríguez", role_title="", identification_id="V-18450123", phone="0414-1234567", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-002", full_name="Carlos Hurtado", role_title="", identification_id="V-16982341", phone="0412-9876543", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-003", full_name="Julio Saavedra", role_title="", identification_id="V-20114562", phone="0414-5558899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-004", full_name="Vicente Rodríguez", role_title="", identification_id="V-15332901", phone="0424-7778899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-005", full_name="Hender Rodríguez", role_title="", identification_id="V-19345612", phone="0414-3334455", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-006", full_name="Herby Rodríguez", role_title="", identification_id="V-21098432", phone="0412-6667788", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-007", full_name="Eliú Suárez", role_title="", identification_id="V-17849201", phone="0424-1112233", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-008", full_name="Danny Chaparro", role_title="", identification_id="V-22119045", phone="0416-9990011", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-009", full_name="Ernesto Chaparro", role_title="", identification_id="V-24558912", phone="0414-8889900", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-010", full_name="Mervis Parra", role_title="", identification_id="V-18776234", phone="0412-4445566", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-011", full_name="Paola Garay", role_title="", identification_id="V-20334891", phone="0414-2223344", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-012", full_name="Geraldine Páez", role_title="", identification_id="V-23450912", phone="0424-5556677", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-013", full_name="Eleonora Galetti", role_title="", identification_id="V-19882314", phone="0412-1110099", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-014", full_name="José Gregorio Mendoza", role_title="", identification_id="V-14998231", phone="0416-3332211", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
+                Personnel(code="PERS-015", full_name="Wilmer Albornoz", role_title="", identification_id="V-16773412", phone="0414-7776655", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo")
             ]
             for p in full_roster:
                 if p.code not in existing_codes:
@@ -207,8 +208,9 @@ def init_db():
                     existing = db.query(Personnel).filter(Personnel.code == p.code).first()
                     if existing:
                         existing.full_name = p.full_name
-                        existing.role_title = p.role_title
+                        existing.role_title = ""
                         existing.current_location = p.current_location
+            db.query(Personnel).update({"role_title": ""})
             db.commit()
 
         # 3. Assets, Heavy Machinery, Welding Rigs & Vehicles (Ensure real Dalor fleet & tools loaded)
@@ -403,78 +405,31 @@ def init_db():
                 db.flush()
         db.commit()
 
-        # 6. Clients & Corporate Directory
-        # Fix any legacy clients with missing codes
-        null_code_clients = db.query(Client).filter((Client.code == None) | (Client.code == "")).all()
-        for nc in null_code_clients:
-            nc.code = f"CLI-LEGACY-{nc.id}"
+        # 6. Clients & Corporate Directory: ONLY OXICAR
+        db.query(Client).filter(Client.code != "MDCLI-001", Client.code != "CLI-OXICAR").delete(synchronize_session=False)
         db.commit()
 
-        official_clients = [
-            Client(
-                code="CLI-POLAR",
-                name="Cervecería Polar, C.A. / Alimentos Polar",
-                rif="J-00006547-2",
-                contact_name="Gerencia de Planta & Proyectos",
-                contact_phone="+58 241-8712200",
-                contact_email="proyectos.metalmecanicos@empresaspolar.com",
-                address="Zona Industrial Los Cortijos / San Joaquín, Edo. Carabobo",
-                industry="Alimentos y Bebidas"
-            ),
-            Client(
-                code="CLI-PIRELLI",
-                name="Pirelli de Venezuela, C.A.",
-                rif="J-00018902-3",
-                contact_name="Ingeniería de Planta y Mantenimiento",
-                contact_phone="+58 245-5601100",
-                contact_email="mantenimiento.industrial@pirelli.com.ve",
-                address="Zona Industrial Guacara, Edo. Carabobo",
-                industry="Manufactura y Neumáticos"
-            ),
-            Client(
-                code="CLI-REGIONAL",
-                name="Cervecería Regional, C.A.",
-                rif="J-00034125-9",
-                contact_name="Dpto. de Calderas y Estructuras",
-                contact_phone="+58 244-3951000",
-                contact_email="operaciones@cerveceriaregional.com",
-                address="Cagua, Edo. Aragua",
-                industry="Bebidas y Cervecería"
-            ),
-            Client(
-                code="CLI-CORPOELEC",
-                name="CORPOELEC INDUSTRIAL / PDVSA",
-                rif="J-30004567-8",
-                contact_name="Gerencia de Proyectos Mayores",
-                contact_phone="+58 212-5071111",
-                contact_email="proyectos@corpoelec.gob.ve",
-                address="Av. Sanz, Edif. Corpoelec, Caracas",
-                industry="Energía y Petróleo"
-            ),
-            Client(
-                code="CLI-PROTINAL",
-                name="Protinal Proagro, C.A.",
-                rif="J-00021543-1",
-                contact_name="Supervisión de Silos y Mantenimiento",
-                contact_phone="+58 241-8395500",
-                contact_email="ingenieria@protinal-proagro.com",
-                address="Valencia, Edo. Carabobo",
-                industry="Agroindustria y Alimentos"
-            ),
-        ]
-
-        for oc in official_clients:
-            existing = db.query(Client).filter(Client.code == oc.code).first()
-            if not existing:
-                db.add(oc)
-            else:
-                existing.name = oc.name
-                existing.rif = oc.rif
-                existing.contact_name = oc.contact_name
-                existing.contact_phone = oc.contact_phone
-                existing.contact_email = oc.contact_email
-                existing.address = oc.address
-                existing.industry = oc.industry
+        oxicar = db.query(Client).filter((Client.code == "MDCLI-001") | (Client.code == "CLI-OXICAR")).first()
+        if not oxicar:
+            oxicar = Client(
+                code="MDCLI-001",
+                name="OXICAR (Oxígenos Carabobo C.A.)",
+                rif="J-07509812-4",
+                contact_name="Gerencia de Planta & Mantenimiento",
+                contact_phone="+58 241-8710000",
+                contact_email="operaciones@oxicar.com.ve",
+                address="Zona Industrial Municipal Sur, Valencia, Edo. Carabobo",
+                industry="Gases Industriales / Metalmecánica",
+                is_active=True
+            )
+            db.add(oxicar)
+        else:
+            oxicar.code = "MDCLI-001"
+            oxicar.name = "OXICAR (Oxígenos Carabobo C.A.)"
+            oxicar.rif = "J-07509812-4"
+            oxicar.address = "Zona Industrial Municipal Sur, Valencia, Edo. Carabobo"
+            oxicar.industry = "Gases Industriales / Metalmecánica"
+            oxicar.is_active = True
         db.commit()
 
         # 7. Catalogo de Servicios / Partidas APU

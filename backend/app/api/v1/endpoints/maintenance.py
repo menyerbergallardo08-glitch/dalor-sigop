@@ -238,40 +238,44 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
     db.query(ProjectPhase).delete()
     db.query(Project).delete()
 
-    # 2. Purgar clientes de prueba / impurezas
+    # 2. Purgar todos los clientes que no sean OXICAR
     db.query(Client).filter(
-        (Client.code.like("CLI-TEST%")) |
-        (Client.code.like("CLI-SID%")) |
-        (Client.code.like("CLI-PEQ%")) |
-        (Client.code.like("CLI-MON%")) |
-        (Client.code.like("CLI-DAN%")) |
-        (Client.name.ilike("%Prueba%")) |
-        (Client.name.ilike("%Stress%"))
+        Client.code != "MDCLI-001",
+        Client.code != "CLI-OXICAR"
     ).delete(synchronize_session=False)
 
-    # 3. Asegurar Clientes Corporativos Oficiales
-    real_clients = [
-        {"code": "CLI-CORPOELEC", "name": "CORPOELEC INDUSTRIAL / PDVSA", "rif": "G-20010014-1", "address": "Planta Centro, Morón, Edo. Carabobo", "industry": "Energía & Petróleo"},
-        {"code": "MDCLI-001", "name": "OXICAR (Oxígenos Carabobo C.A.)", "rif": "J-07509812-4", "address": "Zona Industrial Municipal Sur, Valencia", "industry": "Gases Industriales"},
-        {"code": "CLI-POLAR", "name": "Empresas Polar C.A. (Cervecería Modelo)", "rif": "J-00041372-8", "address": "Carretera Nacional San Joaquín, Carabobo", "industry": "Alimentos y Bebidas / Industrial"},
-        {"code": "CLI-PIRELLI", "name": "Pirelli de Venezuela C.A.", "rif": "J-00012984-1", "address": "Zona Industrial Guacara, Edo. Carabobo", "industry": "Manufactura / Automotriz"}
-    ]
-    for rc in real_clients:
-        c = db.query(Client).filter(Client.code == rc["code"]).first()
-        if not c:
-            db.add(Client(
-                code=rc["code"],
-                name=rc["name"],
-                rif=rc["rif"],
-                address=rc["address"],
-                industry=rc["industry"],
-                is_active=True
-            ))
-        else:
-            c.name = rc["name"]
-            c.is_active = True
+    # 3. Asegurar que el ÚNICO cliente corporativo oficial sea OXICAR
+    oxicar = db.query(Client).filter((Client.code == "MDCLI-001") | (Client.code == "CLI-OXICAR")).first()
+    if not oxicar:
+        oxicar = Client(
+            code="MDCLI-001",
+            name="OXICAR (Oxígenos Carabobo C.A.)",
+            rif="J-07509812-4",
+            contact_name="Gerencia de Planta & Mantenimiento",
+            contact_phone="+58 241-8710000",
+            contact_email="operaciones@oxicar.com.ve",
+            address="Zona Industrial Municipal Sur, Valencia, Edo. Carabobo",
+            industry="Gases Industriales / Metalmecánica",
+            is_active=True
+        )
+        db.add(oxicar)
+    else:
+        oxicar.code = "MDCLI-001"
+        oxicar.name = "OXICAR (Oxígenos Carabobo C.A.)"
+        oxicar.rif = "J-07509812-4"
+        oxicar.address = "Zona Industrial Municipal Sur, Valencia, Edo. Carabobo"
+        oxicar.industry = "Gases Industriales / Metalmecánica"
+        oxicar.is_active = True
 
-    # 4. Resetear activos a su estado base disponible en Sede y asegurar 916 items
+    # 4. Asegurar que al personal no se le asigne ningún cargo (solo sus nombres)
+    db.query(Personnel).update({
+        "role_title": "",
+        "status": "disponible_base",
+        "current_location": "Sede Central Dalor",
+        "current_project_id": None
+    })
+
+    # 5. Resetear activos a su estado base disponible en Sede y asegurar 916 items
     db.query(Asset).update({
         "status": "disponible_base",
         "current_location": "Sede Central Dalor",
@@ -716,23 +720,23 @@ def sync_dalor_catalog(db: Session = Depends(get_db)):
     """
     Sincroniza y asegura que los 15 integrantes operativos y los 15 materiales industriales existan en la BD.
     """
-    # 1. Personal
+    # 1. Personal (Solo nombres, sin cargos asignados)
     full_roster = [
-        {"code": "PERS-001", "full_name": "Robert Rodríguez", "role_title": "Ingeniero Residente de Proyecto", "phone": "0414-1234567"},
-        {"code": "PERS-002", "full_name": "Carlos Hurtado", "role_title": "Supervisor de Soldadura y Montaje CWI", "phone": "0412-9876543"},
-        {"code": "PERS-003", "full_name": "Julio Saavedra", "role_title": "Custodio de Almacén & Pañol Central", "phone": "0414-5558899"},
-        {"code": "PERS-004", "full_name": "Vicente Rodríguez", "role_title": "Conductor de Carga Pesada & Equipos", "phone": "0424-7778899"},
-        {"code": "PERS-005", "full_name": "Hender Rodríguez", "role_title": "Soldador Especialista 6G / TIG-ASME", "phone": "0414-3334455"},
-        {"code": "PERS-006", "full_name": "Herby Rodríguez", "role_title": "Soldador Estructural & Calderería", "phone": "0412-6667788"},
-        {"code": "PERS-007", "full_name": "Eliú Suárez", "role_title": "Pailero / Calderero Especialista A36-Hardox", "phone": "0424-1112233"},
-        {"code": "PERS-008", "full_name": "Danny Chaparro", "role_title": "Montador Mecánico / Armador de Estructuras", "phone": "0416-9990011"},
-        {"code": "PERS-009", "full_name": "Ernesto Chaparro", "role_title": "Oxicortista / Ayudante Técnico Especializado", "phone": "0414-8889900"},
-        {"code": "PERS-010", "full_name": "Mervis Parra", "role_title": "Operador de Sandblasting & Pintura Airless", "phone": "0412-4445566"},
-        {"code": "PERS-011", "full_name": "Paola Garay", "role_title": "Administradora de Obra & Costos", "phone": "0414-2223344"},
-        {"code": "PERS-012", "full_name": "Geraldine Páez", "role_title": "Procura & Compras de Materiales", "phone": "0424-5556677"},
-        {"code": "PERS-013", "full_name": "Eleonora Galetti", "role_title": "Inspectora de Seguridad Industrial SHA", "phone": "0412-1110099"},
-        {"code": "PERS-014", "full_name": "José Gregorio Mendoza", "role_title": "Tornero & Mecánico Ajustador Taller", "phone": "0416-3332211"},
-        {"code": "PERS-015", "full_name": "Wilmer Albornoz", "role_title": "Electricista Industrial & Generadores", "phone": "0414-7776655"}
+        {"code": "PERS-001", "full_name": "Robert Rodríguez", "role_title": "", "phone": "0414-1234567"},
+        {"code": "PERS-002", "full_name": "Carlos Hurtado", "role_title": "", "phone": "0412-9876543"},
+        {"code": "PERS-003", "full_name": "Julio Saavedra", "role_title": "", "phone": "0414-5558899"},
+        {"code": "PERS-004", "full_name": "Vicente Rodríguez", "role_title": "", "phone": "0424-7778899"},
+        {"code": "PERS-005", "full_name": "Hender Rodríguez", "role_title": "", "phone": "0414-3334455"},
+        {"code": "PERS-006", "full_name": "Herby Rodríguez", "role_title": "", "phone": "0412-6667788"},
+        {"code": "PERS-007", "full_name": "Eliú Suárez", "role_title": "", "phone": "0424-1112233"},
+        {"code": "PERS-008", "full_name": "Danny Chaparro", "role_title": "", "phone": "0416-9990011"},
+        {"code": "PERS-009", "full_name": "Ernesto Chaparro", "role_title": "", "phone": "0414-8889900"},
+        {"code": "PERS-010", "full_name": "Mervis Parra", "role_title": "", "phone": "0412-4445566"},
+        {"code": "PERS-011", "full_name": "Paola Garay", "role_title": "", "phone": "0414-2223344"},
+        {"code": "PERS-012", "full_name": "Geraldine Páez", "role_title": "", "phone": "0424-5556677"},
+        {"code": "PERS-013", "full_name": "Eleonora Galetti", "role_title": "", "phone": "0412-1110099"},
+        {"code": "PERS-014", "full_name": "José Gregorio Mendoza", "role_title": "", "phone": "0416-3332211"},
+        {"code": "PERS-015", "full_name": "Wilmer Albornoz", "role_title": "", "phone": "0414-7776655"}
     ]
     for p_data in full_roster:
         p = db.query(Personnel).filter(Personnel.code == p_data["code"]).first()
@@ -740,7 +744,7 @@ def sync_dalor_catalog(db: Session = Depends(get_db)):
             p = Personnel(
                 code=p_data["code"],
                 full_name=p_data["full_name"],
-                role_title=p_data["role_title"],
+                role_title="",
                 phone=p_data["phone"],
                 status="disponible_base",
                 current_location="Sede Central Dalor",
@@ -749,7 +753,7 @@ def sync_dalor_catalog(db: Session = Depends(get_db)):
             db.add(p)
         else:
             p.full_name = p_data["full_name"]
-            p.role_title = p_data["role_title"]
+            p.role_title = ""
             p.is_active = True
 
     # 2. Materiales

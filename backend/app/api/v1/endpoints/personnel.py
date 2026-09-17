@@ -10,7 +10,7 @@ router = APIRouter()
 class PersonnelCreate(BaseModel):
     code: str
     full_name: str
-    role_title: str
+    role_title: Optional[str] = ""
     identification_id: Optional[str] = None
     phone: Optional[str] = None
     roster_type: Optional[str] = "guacara_fijo"
@@ -32,7 +32,7 @@ def create_personnel(person_in: PersonnelCreate, db: Session = Depends(get_db)):
     new_person = Personnel(
         code=person_in.code,
         full_name=person_in.full_name,
-        role_title=person_in.role_title,
+        role_title=person_in.role_title or "",
         identification_id=person_in.identification_id,
         phone=person_in.phone,
         roster_type=person_in.roster_type or "guacara_fijo",

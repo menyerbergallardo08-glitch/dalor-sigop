@@ -223,20 +223,36 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
         DispatchGuide, DispatchGuideItem, Client, Material
     )
 
+    # 0. Desvincular referencias a proyectos en Activos y Personal para satisfacer FKs de PostgreSQL
+    db.query(Asset).update({
+        "status": "disponible_base",
+        "current_location": "Sede Central Dalor",
+        "current_project_id": None,
+        "current_custodian_name": None
+    }, synchronize_session=False)
+
+    db.query(Personnel).update({
+        "status": "disponible_base",
+        "current_location": "Sede Central Dalor",
+        "current_project_id": None,
+        "role_title": ""
+    }, synchronize_session=False)
+    db.flush()
+
     # 1. Purgar tablas operacionales en orden topológico inverso (hijos primero)
-    db.query(DispatchGuideItem).delete()
-    db.query(DispatchGuide).delete()
-    db.query(FinancialPayment).delete()
-    db.query(Expense).delete()
-    db.query(AccountReceivable).delete()
-    db.query(AccountPayable).delete()
-    db.query(QuotationItem).delete()
-    db.query(Quotation).delete()
-    db.query(ResourceAssignmentHistory).delete()
-    db.query(MaterialMovement).delete()
-    db.query(PartnerWithdrawal).delete()
-    db.query(ProjectPhase).delete()
-    db.query(Project).delete()
+    db.query(DispatchGuideItem).delete(synchronize_session=False)
+    db.query(DispatchGuide).delete(synchronize_session=False)
+    db.query(FinancialPayment).delete(synchronize_session=False)
+    db.query(Expense).delete(synchronize_session=False)
+    db.query(AccountReceivable).delete(synchronize_session=False)
+    db.query(AccountPayable).delete(synchronize_session=False)
+    db.query(QuotationItem).delete(synchronize_session=False)
+    db.query(Quotation).delete(synchronize_session=False)
+    db.query(ResourceAssignmentHistory).delete(synchronize_session=False)
+    db.query(MaterialMovement).delete(synchronize_session=False)
+    db.query(PartnerWithdrawal).delete(synchronize_session=False)
+    db.query(ProjectPhase).delete(synchronize_session=False)
+    db.query(Project).delete(synchronize_session=False)
 
     # 2. Purgar todos los clientes que no sean OXICAR
     db.query(Client).filter(

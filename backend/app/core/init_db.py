@@ -249,9 +249,15 @@ def init_db():
 
             # Cargar herramientas y equipos desde clean_tools.json si existe
             tools_json_paths = [
+                "/app/backend/clean_tools.json",
+                "/app/backend/app/data/clean_tools.json",
+                "/app/clean_tools.json",
                 os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "clean_tools.json"),
                 os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "clean_tools.json"),
                 os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "backend", "clean_tools.json"),
+                os.path.join(os.getcwd(), "clean_tools.json"),
+                os.path.join(os.getcwd(), "backend", "clean_tools.json"),
+                os.path.join(os.getcwd(), "backend", "app", "data", "clean_tools.json"),
                 r"C:\Users\GATEWAY\Desktop\CLIENTES DE CONSULTORIA\Metalmecanica Dalor\clean_tools.json"
             ]
             loaded_tools = False

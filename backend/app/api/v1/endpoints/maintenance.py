@@ -312,9 +312,15 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
     # Cargar 908 herramientas desde clean_tools.json si faltan
     if db.query(Asset).count() < 916:
         tools_json_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "clean_tools.json"),
+            "/app/backend/clean_tools.json",
+            "/app/backend/app/data/clean_tools.json",
+            "/app/clean_tools.json",
             os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "clean_tools.json"),
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "backend", "clean_tools.json"),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))), "clean_tools.json"),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "data", "clean_tools.json"),
+            os.path.join(os.getcwd(), "clean_tools.json"),
+            os.path.join(os.getcwd(), "backend", "clean_tools.json"),
+            os.path.join(os.getcwd(), "backend", "app", "data", "clean_tools.json"),
             r"C:\Users\GATEWAY\Desktop\CLIENTES DE CONSULTORIA\Metalmecanica Dalor\clean_tools.json"
         ]
         for tjp in tools_json_paths:

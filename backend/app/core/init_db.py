@@ -207,14 +207,6 @@ def init_db():
                         existing.role_title = p.role_title
                         existing.current_location = p.current_location
             db.commit()
-            personnel = [
-                Personnel(code="PERS-001", full_name="Ingeniero Residente de Proyecto", role_title="Ingeniero Residente", identification_id="V-18450123", phone="0414-1234567", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-002", full_name="Supervisor de Soldadura y Montaje CWI", role_title="Supervisor de Obra", identification_id="V-16982341", phone="0412-9876543", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-003", full_name="Custodio y Despachador de Almacén Central", role_title="Custodio de Almacén", identification_id="V-20114562", phone="0414-5558899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-004", full_name="Conductor de Carga Pesada y Equipos", role_title="Chofer / Conductor", identification_id="V-15332901", phone="0424-7778899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-            ]
-            db.add_all(personnel)
-            db.commit()
 
         # 3. Assets, Heavy Machinery, Welding Rigs & Vehicles (Ensure real Dalor fleet & tools loaded)
         if db.query(Asset).count() == 0 or db.query(Asset).filter(Asset.asset_code == "1-V-1-01").first() is None:

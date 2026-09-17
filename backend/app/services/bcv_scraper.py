@@ -123,17 +123,15 @@ class BCVExchangeRateService:
             "status": "warning"
         }
 
-# Alias de compatibilidad universal
+    @classmethod
+    def get_official_rate(cls, force_refresh: bool = False) -> Dict[str, Any]:
+        return cls.get_current_rate(force_refresh=force_refresh)
 
     @classmethod
-    def get_official_rate(cls) -> Dict[str, Any]:
-        return cls.get_current_rate(force_refresh=False)
-
-    @classmethod
-    def force_scrape_bcv(cls) -> Dict[str, Any]:
-        return cls.get_current_rate(force_refresh=True)
+    def get_rate(cls, force_refresh: bool = False) -> float:
+        data = cls.get_current_rate(force_refresh=force_refresh)
+        return float(data.get("rate", 850.00))
 
 # Alias de compatibilidad universal
 BCVScraperService = BCVExchangeRateService
-
 

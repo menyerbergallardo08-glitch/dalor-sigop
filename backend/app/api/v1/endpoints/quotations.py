@@ -26,6 +26,10 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
     subtotal = 0.0
     items_objs = []
     for it in quote_in.items:
+        if it.quantity <= 0:
+            raise HTTPException(status_code=400, detail=f"La cantidad de la partida '{it.description}' debe ser mayor a cero.")
+        if it.unit_price_usd < 0:
+            raise HTTPException(status_code=400, detail=f"El precio unitario de la partida '{it.description}' no puede ser negativo.")
         line_total = round(it.quantity * it.unit_price_usd, 2)
         subtotal += line_total
         items_objs.append(QuotationItem(
@@ -137,6 +141,26 @@ def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db
     quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada.")
+
+    # 🛡️ Idempotencia: Bloquear duplicación si la cotización ya fue aprobada
+    if quote.status == "aprobado":
+        existing_p = db.query(Project).filter(
+            Project.client_id == quote.client_id,
+            Project.name == quote.project_title
+        ).first()
+        if existing_p:
+            return {
+                "success": True,
+                "message": f"Esta cotización ya fue aprobada previamente y está vinculada al Proyecto {existing_p.code}.",
+                "project_id": existing_p.id,
+                "project_code": existing_p.code,
+                "project_name": existing_p.name,
+                "already_approved": True
+            }
+        raise HTTPException(
+            status_code=400,
+            detail=f"La cotización {quote.quote_number} ya fue aprobada previamente y no puede duplicarse."
+        )
 
     # Generar código de proyecto correlativo
     proj_count = db.query(Project).count() + 1

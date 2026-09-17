@@ -3,93 +3,46 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from app.core.database import get_db
-from app.models.models import Personnel, AuditLog
+from app.models.models import Personnel
 
 router = APIRouter()
 
 class PersonnelCreate(BaseModel):
     code: str
     full_name: str
-    identification_id: Optional[str] = None
     role_title: str
+    identification_id: Optional[str] = None
     phone: Optional[str] = None
+    roster_type: Optional[str] = "guacara_fijo"
+    monthly_salary_usd: Optional[float] = 0.0
+    daily_rate_usd: Optional[float] = 0.0
     current_location: Optional[str] = "Sede Central"
     status: Optional[str] = "disponible_base"
 
-class PersonnelUpdate(BaseModel):
-    full_name: Optional[str] = None
-    identification_id: Optional[str] = None
-    role_title: Optional[str] = None
-    phone: Optional[str] = None
-    current_location: Optional[str] = None
-    status: Optional[str] = None
-    is_active: Optional[bool] = None
-
-from sqlalchemy import or_
-
 @router.get("/")
 def get_personnel(db: Session = Depends(get_db)):
-    return db.query(Personnel).filter(or_(Personnel.is_active == True, Personnel.is_active == None)).order_by(Personnel.code.asc()).all()
-
-@router.get("/{personnel_id}")
-def get_personnel_by_id(personnel_id: int, db: Session = Depends(get_db)):
-    p = db.query(Personnel).filter(Personnel.id == personnel_id).first()
-    if not p:
-        raise HTTPException(status_code=404, detail="Trabajador no encontrado.")
-    return p
+    return db.query(Personnel).filter(Personnel.is_active == True).order_by(Personnel.code.asc()).all()
 
 @router.post("/")
-def create_personnel(personnel_in: PersonnelCreate, db: Session = Depends(get_db)):
-    existing = db.query(Personnel).filter(Personnel.code == personnel_in.code).first()
+def create_personnel(person_in: PersonnelCreate, db: Session = Depends(get_db)):
+    existing = db.query(Personnel).filter(Personnel.code == person_in.code).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Ya existe un trabajador con este código.")
+        raise HTTPException(status_code=400, detail=f"Ya existe un empleado con el código {person_in.code}.")
     
-    new_p = Personnel(
-        code=personnel_in.code.strip(),
-        full_name=personnel_in.full_name.strip(),
-        identification_id=personnel_in.identification_id,
-        role_title=personnel_in.role_title.strip(),
-        phone=personnel_in.phone,
-        current_location=personnel_in.current_location or "Sede Central (Guacara)",
-        status=personnel_in.status or "disponible_base",
-        is_active=True
+    new_person = Personnel(
+        code=person_in.code,
+        full_name=person_in.full_name,
+        role_title=person_in.role_title,
+        identification_id=person_in.identification_id,
+        phone=person_in.phone,
+        roster_type=person_in.roster_type or "guacara_fijo",
+        monthly_salary_usd=person_in.monthly_salary_usd or 0.0,
+        daily_rate_usd=person_in.daily_rate_usd or 0.0,
+        current_location=person_in.current_location or "Sede Central",
+        status=person_in.status or "disponible_base"
     )
-    db.add(new_p)
+    db.add(new_person)
     db.commit()
-    db.refresh(new_p)
-    return new_p
-
-@router.put("/{personnel_id}")
-def update_personnel(personnel_id: int, personnel_in: PersonnelUpdate, db: Session = Depends(get_db)):
-    p = db.query(Personnel).filter(Personnel.id == personnel_id).first()
-    if not p:
-        raise HTTPException(status_code=404, detail="Trabajador no encontrado.")
-    
-    if personnel_in.full_name is not None:
-        p.full_name = personnel_in.full_name.strip()
-    if personnel_in.identification_id is not None:
-        p.identification_id = personnel_in.identification_id.strip()
-    if personnel_in.role_title is not None:
-        p.role_title = personnel_in.role_title.strip()
-    if personnel_in.phone is not None:
-        p.phone = personnel_in.phone.strip()
-    if personnel_in.current_location is not None:
-        p.current_location = personnel_in.current_location.strip()
-    if personnel_in.status is not None:
-        p.status = personnel_in.status
-    if personnel_in.is_active is not None:
-        p.is_active = personnel_in.is_active
-        
-    db.commit()
-    db.refresh(p)
-    return p
-
-@router.delete("/{personnel_id}")
-def delete_personnel(personnel_id: int, db: Session = Depends(get_db)):
-    p = db.query(Personnel).filter(Personnel.id == personnel_id).first()
-    if not p:
-        raise HTTPException(status_code=404, detail="Trabajador no encontrado.")
-    p.is_active = False
-    db.commit()
-    return {"success": True, "message": f"Trabajador '{p.full_name}' inactivado correctamente."}
+    db.refresh(new_person)
+    return new_person
 

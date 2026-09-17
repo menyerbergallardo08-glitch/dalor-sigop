@@ -17,6 +17,7 @@ from app.models.models import (
     FixedExpenseSetting,
     AuditLog
 )
+from app.api.deps import require_roles
 
 router = APIRouter()
 
@@ -304,8 +305,8 @@ def direct_client_collection(p_in: DirectCollectionCreate, db: Session = Depends
         "receipt_number": ref_num
     }
 
-@router.get("/partners/withdrawals")
-@router.get("/withdrawals")
+@router.get("/partners/withdrawals", dependencies=[Depends(require_roles(["director_general", "administrador_financiero"]))])
+@router.get("/withdrawals", dependencies=[Depends(require_roles(["director_general", "administrador_financiero"]))])
 def get_partner_withdrawals(db: Session = Depends(get_db)):
     rows = db.query(PartnerWithdrawal).order_by(PartnerWithdrawal.withdrawal_date.desc()).all()
     return [{
@@ -321,8 +322,8 @@ def get_partner_withdrawals(db: Session = Depends(get_db)):
         "date": r.withdrawal_date.strftime("%Y-%m-%d %H:%M")
     } for r in rows]
 
-@router.post("/partners/withdrawals")
-@router.post("/withdrawals")
+@router.post("/partners/withdrawals", dependencies=[Depends(require_roles(["director_general"]))])
+@router.post("/withdrawals", dependencies=[Depends(require_roles(["director_general"]))])
 def create_partner_withdrawal(req: PartnerWithdrawalCreate, db: Session = Depends(get_db)):
     if req.amount_usd <= 0:
         raise HTTPException(status_code=400, detail="El monto del retiro debe ser mayor a cero.")

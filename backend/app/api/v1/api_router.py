@@ -18,10 +18,21 @@ from app.api.v1.endpoints import (
     dispatch
 )
 
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+
 api_router = APIRouter()
 
 # 🔓 Rutas Públicas (Sin Token Requerido para Login/Acceso Inicial)
 api_router.include_router(auth.router, prefix="/auth", tags=["Autenticación"])
+
+@api_router.get("/financial/bcv-rate", tags=["Financiero Público"])
+@api_router.get("/financial/bcv-rate/", tags=["Financiero Público"])
+def public_bcv_rate(force_refresh: bool = False):
+    from app.services.bcv_scraper import BCVExchangeRateService
+    return BCVExchangeRateService.get_current_rate(force_refresh=force_refresh)
+
+api_router.include_router(projects.public_router, prefix="/projects", tags=["Seguimiento Público"])
 
 # 🔒 Rutas Protegidas por Autenticación JWT (SEC-01: Exigen Bearer Token Válido)
 api_router.include_router(maintenance.router, prefix="/maintenance", tags=["Mantenimiento & Usuarios"], dependencies=[Depends(get_current_active_user)])

@@ -4,7 +4,7 @@ from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.models.models import (
     User, Client, Project, ProjectPhase, Asset, Personnel, Material,
-    ExpenseCategory, CostCenter
+    ExpenseCategory, CostCenter, ServiceItem
 )
 
 def init_db():
@@ -64,8 +64,11 @@ def init_db():
             "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS end_odometer FLOAT DEFAULT 0.0;",
             "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS start_hourmeter FLOAT DEFAULT 0.0;",
             "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS end_hourmeter FLOAT DEFAULT 0.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS fuel_level_percent FLOAT DEFAULT 100.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS cargo_manifest_details TEXT;"
+            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS cargo_manifest_details TEXT;",
+            "ALTER TABLE resource_assignment_history ALTER COLUMN project_id DROP NOT NULL;",
+            "ALTER TABLE resource_assignment_history ALTER COLUMN client_id DROP NOT NULL;",
+            "ALTER TABLE dispatch_guides ALTER COLUMN project_id DROP NOT NULL;",
+            "ALTER TABLE dispatch_guides ALTER COLUMN client_id DROP NOT NULL;"
         ]:
             try:
                 conn.execute(text(stmt))
@@ -207,55 +210,59 @@ def init_db():
                         existing.role_title = p.role_title
                         existing.current_location = p.current_location
             db.commit()
-            personnel = [
-                Personnel(code="PERS-001", full_name="Ingeniero Residente de Proyecto", role_title="Ingeniero Residente", identification_id="V-18450123", phone="0414-1234567", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-002", full_name="Supervisor de Soldadura y Montaje CWI", role_title="Supervisor de Obra", identification_id="V-16982341", phone="0412-9876543", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-003", full_name="Custodio y Despachador de Almacén Central", role_title="Custodio de Almacén", identification_id="V-20114562", phone="0414-5558899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-004", full_name="Conductor de Carga Pesada y Equipos", role_title="Chofer / Conductor", identification_id="V-15332901", phone="0424-7778899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-            ]
-            db.add_all(personnel)
-            db.commit()
 
-        # 3. Assets, Heavy Machinery, Welding Rigs & Vehicles (Ensure all 27 assets loaded)
-        if db.query(Asset).count() == 0 or db.query(Asset).filter(Asset.asset_code == "EQ-SOL-01").first() is None:
+        # 3. Assets, Heavy Machinery, Welding Rigs & Vehicles (Ensure real Dalor fleet & tools loaded)
+        if db.query(Asset).count() == 0 or db.query(Asset).filter(Asset.asset_code == "1-V-1-01").first() is None:
             print("--> Seeding complete industrial catalog of tools, machinery, and vehicles...")
             db.query(Asset).delete()
             db.commit()
 
+            # 8 Vehículos Oficiales DALOR C.A. (Extracción certificada de VEHICULOS.xlsx)
             vehicles = [
-                Asset(asset_code="VEH-01", name="Camión Chuto Mack Granite", asset_type="vehiculo", brand="Mack", model="Granite 2018", license_plate="A12BC34", current_odometer=142000, last_service_odometer=140000, service_interval_km=5000, current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="VEH-02", name="Batea 3 Ejes Plataforma Carga", asset_type="vehiculo", brand="Randon", model="Plataforma 13.5m", license_plate="B56CD78", current_odometer=85000, last_service_odometer=83500, service_interval_km=5000, current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="VEH-03", name="Camión Grúa Ford F-750 Brazo Telescópico", asset_type="vehiculo", brand="Ford / Hiab", model="F-750 12T", license_plate="C90EF12", current_odometer=118000, last_service_odometer=114000, service_interval_km=5000, current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="VEH-04", name="Camión 350 Super Duty Plataforma", asset_type="vehiculo", brand="Ford", model="F-350 Tritón", license_plate="D34GH56", current_odometer=195000, last_service_odometer=190200, service_interval_km=5000, current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="VEH-05", name="Camión 350 Chevrolet C-30 Estacas", asset_type="vehiculo", brand="Chevrolet", model="C-30 Heavy Duty", license_plate="E78IJ90", current_odometer=240000, last_service_odometer=234800, service_interval_km=5000, current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="VEH-06", name="Camioneta Pick-up Toyota Hilux 4x4", asset_type="vehiculo", brand="Toyota", model="Hilux Doble Cabina", license_plate="F12KL34", current_odometer=165000, last_service_odometer=162500, service_interval_km=5000, current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="VEH-07", name="Camioneta Pick-up Ford Ranger 4x4", asset_type="vehiculo", brand="Ford", model="Ranger XLT", license_plate="G56MN78", current_odometer=132000, last_service_odometer=129000, service_interval_km=5000, current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="VEH-08", name="Montacargas Industrial TCM 3.5 Toneladas", asset_type="maquinaria", brand="TCM", model="FD35T", serial_number="TCM-88231", current_odometer=4200, last_service_odometer=3800, service_interval_km=500, current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="VEH-09", name="Generador Eléctrico Móvil Diésel 150 kVA", asset_type="maquinaria", brand="Cummins", model="C150D5", serial_number="CUM-44910", current_odometer=1850, last_service_odometer=1600, service_interval_km=500, current_location="Sede Central", status="disponible_base"),
+                Asset(asset_code="1-V-1-01", name="Camión NPR Baranda 350 Blanco 2013", asset_type="vehiculo", brand="CHEVROLET", model="NPR-350", license_plate="A47CC2V", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
+                Asset(asset_code="1-V-1-02", name="Camioneta Dodge RAM Doble Cabina Gris", asset_type="vehiculo", brand="DODGE", model="RAM-250", license_plate="A31AJ5B", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
+                Asset(asset_code="1-V-1-03", name="Camioneta Toyota Hilux Kavak Azul 2009", asset_type="vehiculo", brand="TOYOTA", model="HILUX KAVAK", license_plate="A45AC91", serial_number="8XA33ZV2599006549", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
+                Asset(asset_code="3-V-1-04", name="Carro Fiat Palio Gris 2003", asset_type="vehiculo", brand="FIAT", model="PALIO SX 1.3", license_plate="DBP20K", serial_number="6361720", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
+                Asset(asset_code="3-V-1-05", name="Montacargas Toyota 2005 3.5T", asset_type="maquinaria", brand="TOYOTA", model="7FGCU30", serial_number="67821", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=250, current_location="Sede Central Dalor", status="disponible_base"),
+                Asset(asset_code="3-V-1-06", name="Camioneta Toyota 4Runner Negra", asset_type="vehiculo", brand="TOYOTA", model="4RUNNER TRD", license_plate="AI619DK", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
+                Asset(asset_code="3-V-1-07", name="Carro SpaceFox Azul 2011", asset_type="vehiculo", brand="VOLKSWAGEN", model="SPACE FOX", license_plate="AA293TD", serial_number="CFZ277038", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base"),
+                Asset(asset_code="3-V-1-08", name="Camión de Carga Doble Cabina Neptunia", asset_type="vehiculo", brand="BAW", model="NEPTUNIA D/C", license_plate="A41AE34", current_odometer=0.0, last_service_odometer=0.0, service_interval_km=5000, current_location="Sede Central Dalor", status="disponible_base")
             ]
             db.add_all(vehicles)
 
-            tools = [
-                Asset(asset_code="EQ-SOL-01", name="Máquina de Soldar Miller Big Blue 500X Diésel", asset_type="maquinaria", brand="Miller", model="Big Blue 500X", serial_number="MIL-5501", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-SOL-02", name="Máquina de Soldar Lincoln Ranger 305D", asset_type="maquinaria", brand="Lincoln Electric", model="Ranger 305D", serial_number="LNC-3051", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-SOL-03", name="Soldadora Inversora Miller Multiproceso 350A", asset_type="herramienta_mayor", brand="Miller", model="XMT 350 CC/CV", serial_number="MIL-XMT-1", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-SOL-04", name="Soldadora Inversora Lincoln Invertec V350-Pro", asset_type="herramienta_mayor", brand="Lincoln Electric", model="V350-PRO", serial_number="LNC-INV-1", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-COR-01", name="Equipo de Oxicorte Completo con Reguladores Victor y Carro", asset_type="herramienta_mayor", brand="Victor", model="Medalist 350", serial_number="VIC-OXI-01", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-COR-02", name="Equipo de Oxicorte Portátil con Cilindros", asset_type="herramienta_mayor", brand="Harris", model="Port-A-Torch", serial_number="HAR-OXI-02", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-COR-03", name="Cortadora de Plasma Hypertherm Powermax 85A", asset_type="herramienta_mayor", brand="Hypertherm", model="Powermax 85", serial_number="HYP-85-01", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-CMP-01", name="Compresor de Aire Diésel Sullair 185 CFM Remolcable", asset_type="maquinaria", brand="Sullair", model="185 T4F", serial_number="SUL-185-01", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-SAN-01", name="Tolva de Sandblasting 600 lbs con Manguera y Boquilla Venturi", asset_type="herramienta_mayor", brand="Clemco", model="Classic 600", serial_number="CLM-600-01", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="EQ-AIR-01", name="Bomba de Pintura Airless Graco King 60:1 Neumática", asset_type="herramienta_mayor", brand="Graco", model="King Xtreme 60:1", serial_number="GRC-601-01", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="HR-ESM-01", name="Esmeril Angular 9\" Bosch GWS 22-230 Heavy Duty (x4)", asset_type="herramienta_mayor", brand="Bosch", model="GWS 22-230", serial_number="BSH-9-SET1", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="HR-ESM-02", name="Esmeril Angular 4-1/2\" DeWalt DWE4020 (x6)", asset_type="herramienta_menor", brand="DeWalt", model="DWE4020", serial_number="DWT-45-SET1", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="HR-TAL-01", name="Taladro Magnético Industrial Euroboor ECO 50", asset_type="herramienta_mayor", brand="Euroboor", model="ECO.50+", serial_number="EUR-ECO-50", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="HR-ROT-01", name="Rotomartillo SDS-Max Bosch GBH 8-45 D", asset_type="herramienta_mayor", brand="Bosch", model="GBH 8-45 D", serial_number="BSH-ROTO-01", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="HR-IZA-01", name="Señorita / Tecle de Cadena Manual 5 Ton Yale (x2)", asset_type="herramienta_mayor", brand="Yale", model="Yalelift 360 5T", serial_number="YAL-5T-SET1", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="HR-IZA-02", name="Señorita / Tecle de Palanca (Tirfor / Ratchet) 3 Ton Harrington (x3)", asset_type="herramienta_mayor", brand="Harrington", model="LB 3T", serial_number="HAR-3T-SET1", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="HR-GAT-01", name="Gatos Hidráulicos Tipo Botella 20 Toneladas (Juego x4)", asset_type="herramienta_mayor", brand="Enerpac", model="GB-20T", serial_number="ENR-20T-SET", current_location="Sede Central", status="disponible_base"),
-                Asset(asset_code="HR-TOR-01", name="Torquímetro Industrial 1\" Proto 100-600 ft-lb con Calibración", asset_type="herramienta_mayor", brand="Proto", model="J6014C", serial_number="PRT-TORQ-01", current_location="Sede Central", status="disponible_base"),
+            # Cargar herramientas y equipos desde clean_tools.json si existe
+            tools_json_paths = [
+                os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "clean_tools.json"),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "clean_tools.json"),
+                r"C:\Users\GATEWAY\Desktop\CLIENTES DE CONSULTORIA\Metalmecanica Dalor\clean_tools.json"
             ]
-            db.add_all(tools)
+            loaded_tools = False
+            for tjp in tools_json_paths:
+                if os.path.exists(tjp):
+                    try:
+                        import json
+                        with open(tjp, "r", encoding="utf-8") as tjf:
+                            tools_data = json.load(tjf)
+                        for t in tools_data:
+                            code = t.get("code")
+                            if code and not db.query(Asset).filter(Asset.asset_code == code).first():
+                                db.add(Asset(
+                                    asset_code=code,
+                                    name=t.get("name"),
+                                    asset_type=t.get("asset_type", "herramienta"),
+                                    brand=t.get("brand"),
+                                    model=t.get("model"),
+                                    serial_number=t.get("serial_number"),
+                                    status=t.get("status", "disponible_base"),
+                                    current_location=t.get("location", "Sede Central Dalor"),
+                                    current_odometer=0.0,
+                                    last_service_odometer=0.0
+                                ))
+                        loaded_tools = True
+                        break
+                    except Exception as e:
+                        print(f"Warning loading clean_tools: {e}")
+
             db.commit()
 
                 # 4. Materials & Consumables Catalog (Ensure 15 materials exist)
@@ -367,28 +374,155 @@ def init_db():
                 db.flush()
         db.commit()
 
-        # 6. Client & Active Project
+        # 6. Clients & Corporate Directory
+        # Fix any legacy clients with missing codes
+        null_code_clients = db.query(Client).filter((Client.code == None) | (Client.code == "")).all()
+        for nc in null_code_clients:
+            nc.code = f"CLI-LEGACY-{nc.id}"
+        db.commit()
+
+        official_clients = [
+            Client(
+                code="CLI-POLAR",
+                name="Cervecería Polar, C.A. / Alimentos Polar",
+                rif="J-00006547-2",
+                contact_name="Gerencia de Planta & Proyectos",
+                contact_phone="+58 241-8712200",
+                contact_email="proyectos.metalmecanicos@empresaspolar.com",
+                address="Zona Industrial Los Cortijos / San Joaquín, Edo. Carabobo",
+                industry="Alimentos y Bebidas"
+            ),
+            Client(
+                code="CLI-PIRELLI",
+                name="Pirelli de Venezuela, C.A.",
+                rif="J-00018902-3",
+                contact_name="Ingeniería de Planta y Mantenimiento",
+                contact_phone="+58 245-5601100",
+                contact_email="mantenimiento.industrial@pirelli.com.ve",
+                address="Zona Industrial Guacara, Edo. Carabobo",
+                industry="Manufactura y Neumáticos"
+            ),
+            Client(
+                code="CLI-REGIONAL",
+                name="Cervecería Regional, C.A.",
+                rif="J-00034125-9",
+                contact_name="Dpto. de Calderas y Estructuras",
+                contact_phone="+58 244-3951000",
+                contact_email="operaciones@cerveceriaregional.com",
+                address="Cagua, Edo. Aragua",
+                industry="Bebidas y Cervecería"
+            ),
+            Client(
+                code="CLI-CORPOELEC",
+                name="CORPOELEC INDUSTRIAL / PDVSA",
+                rif="J-30004567-8",
+                contact_name="Gerencia de Proyectos Mayores",
+                contact_phone="+58 212-5071111",
+                contact_email="proyectos@corpoelec.gob.ve",
+                address="Av. Sanz, Edif. Corpoelec, Caracas",
+                industry="Energía y Petróleo"
+            ),
+            Client(
+                code="CLI-PROTINAL",
+                name="Protinal Proagro, C.A.",
+                rif="J-00021543-1",
+                contact_name="Supervisión de Silos y Mantenimiento",
+                contact_phone="+58 241-8395500",
+                contact_email="ingenieria@protinal-proagro.com",
+                address="Valencia, Edo. Carabobo",
+                industry="Agroindustria y Alimentos"
+            ),
+        ]
+
+        for oc in official_clients:
+            existing = db.query(Client).filter(Client.code == oc.code).first()
+            if not existing:
+                db.add(oc)
+            else:
+                existing.name = oc.name
+                existing.rif = oc.rif
+                existing.contact_name = oc.contact_name
+                existing.contact_phone = oc.contact_phone
+                existing.contact_email = oc.contact_email
+                existing.address = oc.address
+                existing.industry = oc.industry
+        db.commit()
+
+        # 7. Catalogo de Servicios / Partidas APU
+        if db.query(ServiceItem).count() < 5:
+            print("--> Seeding standard metalmechanical APU service items...")
+            apu_services = [
+                ServiceItem(
+                    code="SRV-FAB-01",
+                    name="Fabricación de Estructuras Metálicas en Taller (Vigas, Columnas, Cerchas)",
+                    description="Fabricación bajo especificación AWS D1.1 en perfiles estructurales ASTM A36/A572, incluye corte, perforación, armado, soldadura y limpieza mecánica.",
+                    unit_measure="Kg",
+                    category="Metalmecánica / Taller",
+                    base_cost_usd=1.85,
+                    unit_price_usd=3.40
+                ),
+                ServiceItem(
+                    code="SRV-MON-02",
+                    name="Montaje Mecánico y Elevación de Estructuras en Obra",
+                    description="Montaje en sitio con grúa telescópica, alineación topográfica, torqueo de pernos de alta resistencia A325/A490 y soldadura en posición.",
+                    unit_measure="Ton",
+                    category="Montaje Mecánico",
+                    base_cost_usd=450.0,
+                    unit_price_usd=780.0
+                ),
+                ServiceItem(
+                    code="SRV-SOL-03",
+                    name="Soldadura Calificada ASME 6G / TIG-SMAW en Tuberías de Proceso",
+                    description="Pase de raíz con proceso GTAW (TIG) Argón y relleno con electrodo E-7018 en tuberías ASTM A106 Gr.B SCH 40/80 con inspección radiográfica 100%.",
+                    unit_measure="Pulg-Diam",
+                    category="Soldadura Especializada",
+                    base_cost_usd=12.50,
+                    unit_price_usd=24.00
+                ),
+                ServiceItem(
+                    code="SRV-SAN-04",
+                    name="Sandblasting Grado Comercial SSPC-SP6 y Esquema Epóxico de Alto Sólidos",
+                    description="Preparación de superficie con granalla metálica y aplicación de fondo anticorrosivo poliamida 4 mils EPS + acabado poliuretano alifático 3 mils EPS.",
+                    unit_measure="m2",
+                    category="Tratamiento Superficial & Pintura",
+                    base_cost_usd=14.00,
+                    unit_price_usd=26.50
+                ),
+                ServiceItem(
+                    code="SRV-CAL-05",
+                    name="Reparación, Pailería y Revestimiento de Tolvas y Calderas Industriales",
+                    description="Corte térmico de planchas fatigadas, conformación de virolas y colocación de planchas de desgaste Hardox 450 con soldadura especial antiabrasión.",
+                    unit_measure="Global",
+                    category="Calderería y Pailería Pesada",
+                    base_cost_usd=3800.0,
+                    unit_price_usd=6900.0
+                ),
+                ServiceItem(
+                    code="SRV-TUB-06",
+                    name="Tendido e Interconexión de Tuberías de Vapor y Condensado",
+                    description="Suministro de mano de obra especializada para trazado, soportería tipo resorte, juntas de expansión y pruebas hidrostáticas a 1.5x presión de diseño.",
+                    unit_measure="Metro Lineal",
+                    category="Tuberías Industriales",
+                    base_cost_usd=28.00,
+                    unit_price_usd=52.00
+                )
+            ]
+            for srv in apu_services:
+                if not db.query(ServiceItem).filter(ServiceItem.code == srv.code).first():
+                    db.add(srv)
+            db.commit()
+
+        # 8. Client & Active Project
         if db.query(Project).count() == 0:
             client = db.query(Client).filter(Client.code == "CLI-CORPOELEC").first()
             if not client:
-                client = Client(
-                    code="CLI-CORPOELEC",
-                    name="CORPOELEC INDUSTRIAL / PDVSA",
-                    rif="J-30004567-8",
-                    contact_name="Gerencia de Proyectos Mayores",
-                    contact_phone="+58 212-5071111",
-                    contact_email="proyectos@corpoelec.gob.ve",
-                    address="Av. Sanz, Edif. Corpoelec, Caracas",
-                    industry="Energía y Petróleo"
-                )
-                db.add(client)
-                db.flush()
+                client = db.query(Client).first()
 
             project = Project(
                 code="DAL-2026-001",
                 name="Mantenimiento Mayor de Estructuras y Calderas Planta Centro",
-                client_id=client.id,
-                client_name=client.name,
+                client_id=client.id if client else 1,
+                client_name=client.name if client else "Cliente General",
                 location="Planta Termoeléctrica Planta Centro, Morón, Edo. Carabobo",
                 status="activo",
                 scope_of_work="Desmontaje, fabricación y montaje de tolvas de ceniza, vigas de soporte y ductos de gases de alta temperatura.",

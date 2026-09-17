@@ -57,7 +57,7 @@ def list_users(db: Session = Depends(get_db)):
         "created_at": u.created_at.strftime("%Y-%m-%d %H:%M")
     } for u in users]
 
-@router.post("/users")
+@router.post("/users", dependencies=[Depends(require_roles(["director_general"]))])
 def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.username == user_in.username).first()
     if existing:
@@ -92,7 +92,7 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
 
     return {"success": True, "message": f"Usuario '{new_user.username}' creado con éxito.", "id": new_user.id}
 
-@router.put("/users/{user_id}/permissions")
+@router.put("/users/{user_id}/permissions", dependencies=[Depends(require_roles(["director_general"]))])
 def update_user_permissions(user_id: int, perm_in: UserPermissionsUpdate, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -113,7 +113,7 @@ def update_user_permissions(user_id: int, perm_in: UserPermissionsUpdate, db: Se
 
     return {"success": True, "message": f"Permisos actualizados para '{user.username}'."}
 
-@router.put("/users/{user_id}/toggle-status")
+@router.put("/users/{user_id}/toggle-status", dependencies=[Depends(require_roles(["director_general"]))])
 def toggle_user_status(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -304,15 +304,10 @@ def seed_master_demo(db: Session = Depends(get_db), current_user: User = Depends
         db.query(ProjectPhase).delete()
         db.query(Project).delete()
 
-        # 2.0 Calibrar odómetros y servicios de flota para semáforos limpios
-        db.query(Asset).filter(Asset.asset_code == "VEH-001").update({"current_odometer": 142500.0, "last_service_odometer": 141000.0, "service_interval_km": 5000.0})
-        db.query(Asset).filter(Asset.asset_code == "VEH-01").update({"current_odometer": 142000.0, "last_service_odometer": 140000.0, "service_interval_km": 5000.0})
-        db.query(Asset).filter(Asset.asset_code == "VEH-02").update({"current_odometer": 85000.0, "last_service_odometer": 83500.0, "service_interval_km": 5000.0})
-        db.query(Asset).filter(Asset.asset_code == "VEH-03").update({"current_odometer": 118000.0, "last_service_odometer": 114000.0, "service_interval_km": 5000.0})
-        db.query(Asset).filter(Asset.asset_code == "VEH-04").update({"current_odometer": 195000.0, "last_service_odometer": 190200.0, "service_interval_km": 5000.0}) # Amarillo 200 km
-        db.query(Asset).filter(Asset.asset_code == "VEH-05").update({"current_odometer": 240000.0, "last_service_odometer": 234800.0, "service_interval_km": 5000.0}) # Rojo -200 km
-        db.query(Asset).filter(Asset.asset_code == "VEH-06").update({"current_odometer": 165000.0, "last_service_odometer": 162500.0, "service_interval_km": 5000.0})
-        db.query(Asset).filter(Asset.asset_code == "VEH-07").update({"current_odometer": 132000.0, "last_service_odometer": 129000.0, "service_interval_km": 5000.0})
+        # 2.0 Asegurar intervalos de servicio limpios para la flota real
+        db.query(Asset).filter(
+            (Asset.asset_type.in_(["vehiculo", "camioneta", "maquinaria"])) | (Asset.asset_code.like("%-V-%"))
+        ).update({"service_interval_km": 5000.0}, synchronize_session=False)
         db.commit()
         # 2.1 Asegurar Usuario Almacén
         from app.core.security import get_password_hash
@@ -365,53 +360,13 @@ def seed_master_demo(db: Session = Depends(get_db), current_user: User = Depends
             db.commit()
             db.refresh(cli_pirelli)
 
-        # 4. Asegurar Activos y Herramientas Maestras en Almacén
-        hilux = db.query(Asset).filter(Asset.asset_code == "VEH-001").first()
+        # 4. Asegurar Activos y Herramientas Maestras en Almacén (Usar flota y herramientas reales)
+        hilux = db.query(Asset).filter(Asset.asset_code == "1-V-1-03").first() or db.query(Asset).filter(Asset.asset_code == "VEH-001").first()
         if not hilux:
-            hilux = Asset(
-                asset_code="VEH-001",
-                name="Camioneta Toyota Hilux 4x4 Doble Cabina",
-                asset_type="vehiculo",
-                brand="Toyota",
-                model="Hilux D-4D 3.0",
-                serial_number="8AJBA3CD9E1029384",
-                license_plate="A12BC3D",
-                current_odometer=142500.0,
-                status="disponible_base",
-                current_location="Sede Central (Almacén)",
-                is_active=True
-            )
-            db.add(hilux)
+            hilux = db.query(Asset).filter(Asset.asset_type.in_(["vehiculo", "camioneta"])).first()
 
-        megger = db.query(Asset).filter(Asset.asset_code == "HER-001").first()
-        if not megger:
-            megger = Asset(
-                asset_code="HER-001",
-                name="Megóhmetro Digital de Aislamiento 10kV Megger",
-                asset_type="herramienta_mayor",
-                brand="Megger",
-                model="MIT515",
-                serial_number="MG-10KV-90823",
-                status="disponible_base",
-                current_location="Sede Central (Almacén)",
-                is_active=True
-            )
-            db.add(megger)
-
-        fluke = db.query(Asset).filter(Asset.asset_code == "HER-002").first()
-        if not fluke:
-            fluke = Asset(
-                asset_code="HER-002",
-                name="Analizador de Calidad de Energía y Redes Fluke",
-                asset_type="herramienta_mayor",
-                brand="Fluke",
-                model="435 Series II",
-                serial_number="FLK-435-77491",
-                status="disponible_base",
-                current_location="Sede Central (Almacén)",
-                is_active=True
-            )
-            db.add(fluke)
+        megger = db.query(Asset).filter(Asset.asset_code == "HER-001").first() or db.query(Asset).filter(Asset.asset_type == "herramienta").first()
+        fluke = db.query(Asset).filter(Asset.asset_code == "HER-002").first() or db.query(Asset).filter(Asset.asset_type == "herramienta").offset(1).first()
 
         db.commit()
 

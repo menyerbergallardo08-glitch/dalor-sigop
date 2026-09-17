@@ -165,28 +165,50 @@ def transfer_resource(req: ResourceTransferRequest, db: Session = Depends(get_db
     return {"success": True, "message": f"{resource_name} transferido a {target_project.code} ({req.destination_location})."}
 
 @router.post("/return-to-base")
+@router.post("/return")
 def return_resource_to_base(req: ResourceReturnRequest, db: Session = Depends(get_db)):
     resource_name = ""
+    resource_code = ""
+    last_proj_id = 1
     if req.resource_type == "asset":
         asset = db.query(Asset).filter(Asset.id == req.resource_id).first()
         if not asset:
             raise HTTPException(status_code=404, detail="Activo no encontrado.")
+        last_proj_id = asset.current_project_id or 1
         asset.status = "disponible_base"
         asset.current_project_id = None
-        asset.current_location = req.return_location or "Sede Central"
+        asset.current_location = req.return_location or "Sede Central Dalor"
         asset.current_custodian_name = "Disponible en Base"
         if req.end_odometer:
             asset.current_odometer = req.end_odometer
         resource_name = asset.name
+        resource_code = asset.asset_code
 
     elif req.resource_type == "personnel":
         person = db.query(Personnel).filter(Personnel.id == req.resource_id).first()
         if not person:
             raise HTTPException(status_code=404, detail="Personal no encontrado.")
+        last_proj_id = person.current_project_id or 1
         person.status = "disponible_base"
         person.current_project_id = None
-        person.current_location = req.return_location or "Sede Central"
+        person.current_location = req.return_location or "Sede Central Dalor"
         resource_name = person.full_name
+        resource_code = person.code
 
+    # Bitácora de retorno
+    history = ResourceAssignmentHistory(
+        project_id=last_proj_id,
+        resource_type=req.resource_type,
+        resource_id=req.resource_id,
+        resource_code=resource_code,
+        resource_name=resource_name,
+        custodian_name="Custodio Base",
+        start_odometer=req.end_odometer,
+        origin_location="Planta / Obra",
+        destination_location=req.return_location or "Sede Central Dalor",
+        status="disponible_base",
+        notes="Desmovilización y retorno conforme a Base Central"
+    )
+    db.add(history)
     db.commit()
-    return {"success": True, "message": f"{resource_name} retornado exitosamente a {req.return_location} (Disponible)."}
+    return {"success": True, "message": f"{resource_name} retornado exitosamente a {req.return_location or 'Sede Central Dalor'} (Disponible)."}

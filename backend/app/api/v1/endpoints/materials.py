@@ -295,6 +295,7 @@ def record_material_consumption(consume: MaterialConsumeCreate, db: Session = De
         return {
             "success": True,
             "message": f"Despacho procesado: -{consume.quantity} {mat.unit_measure} imputados a {project_name}.",
+            "new_stock": mat.stock_quantity,
             "remaining_stock": mat.stock_quantity,
             "total_cost_imputed_usd": round(consumed_total_usd, 2)
         }

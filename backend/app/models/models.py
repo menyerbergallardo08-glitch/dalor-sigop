@@ -284,7 +284,7 @@ class ResourceAssignmentHistory(Base):
     __tablename__ = "resource_assignment_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     transfer_code = Column(String(50), nullable=True)
     resource_type = Column(String(50), nullable=False)
     resource_id = Column(Integer, nullable=False)

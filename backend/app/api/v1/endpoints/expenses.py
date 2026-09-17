@@ -419,14 +419,33 @@ def import_batch_expenses(rows: List[BatchExpenseRow], db: Session = Depends(get
 
 @router.post("/", response_model=List[ExpenseOut])
 def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
+    # 🛡️ Validación Estricta Contable: Rechazar montos negativos o en cero
+    if (expense_in.amount_usd is not None and expense_in.amount_usd < 0) or (expense_in.amount_bs is not None and expense_in.amount_bs < 0):
+        raise HTTPException(status_code=400, detail="El monto del comprobante o gasto no puede ser negativo.")
+
+    raw_usd = float(expense_in.amount_usd or 0.0)
+    raw_bs = float(expense_in.amount_bs or 0.0)
+    if raw_usd <= 0 and raw_bs <= 0:
+        raise HTTPException(status_code=400, detail="El monto del comprobante/gasto debe ser estrictamente mayor a cero.")
+
+    # 🛡️ Validación de Gastos Divididos (Split Items)
+    if expense_in.split_items and len(expense_in.split_items) > 0:
+        split_sum = sum(float(s.amount_usd or 0.0) for s in expense_in.split_items)
+        target_total = raw_usd if raw_usd > 0 else round(raw_bs / float(expense_in.exchange_rate or 800.0), 2)
+        if abs(split_sum - target_total) > 0.05:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Descuadre en gasto dividido: La suma de las partes (${split_sum:.2f}) no coincide con el total declarado (${target_total:.2f})."
+            )
+
     try:
         # 🛡️ FILTRO ANTI-DUPLICADOS DALOR: Detección preventiva sin bloquear al supervisor
         alert_flag = False
         alert_notes = None
 
         clean_vendor = (expense_in.supplier_vendor or "Comercio General").strip()
-        amt_usd = float(expense_in.amount_usd or 0.0)
-        amt_bs = float(expense_in.amount_bs or 0.0)
+        amt_usd = raw_usd
+        amt_bs = raw_bs
         rate = float(expense_in.exchange_rate or 800.0)
 
         if amt_usd <= 0 and amt_bs > 0:

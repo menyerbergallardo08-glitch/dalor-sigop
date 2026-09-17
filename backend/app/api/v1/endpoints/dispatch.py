@@ -33,7 +33,7 @@ class DispatchItemIn(BaseModel):
 class DispatchGuideCreate(BaseModel):
     guide_number: Optional[str] = None
     project_id: Optional[int] = None
-    client_id: int
+    client_id: Optional[int] = None
     dispatch_date: Optional[datetime] = None
     destination_address: str
     destination_plant: Optional[str] = None
@@ -181,9 +181,12 @@ def get_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
 
 @router.post("/")
 def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_db)):
-    client = db.query(Client).filter(Client.id == g_in.client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+    if g_in.client_id:
+        client = db.query(Client).filter(Client.id == g_in.client_id).first()
+    else:
+        client = db.query(Client).first()
+    client_id_val = client.id if client else 1
+    client_name = client.name if client else "DALOR Interno / Sin Cliente"
 
     # Correlativo automático si no viene provisto
     guide_num = g_in.guide_number
@@ -200,7 +203,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     new_guide = DispatchGuide(
         guide_number=guide_num,
         project_id=g_in.project_id,
-        client_id=g_in.client_id,
+        client_id=client_id_val,
         dispatch_date=g_in.dispatch_date or datetime.utcnow(),
         destination_address=g_in.destination_address.strip(),
         destination_plant=g_in.destination_plant.strip() if g_in.destination_plant else None,
@@ -285,6 +288,29 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
         db.add(new_cxc)
         db.flush()
         new_guide.receivable_id = new_cxc.id
+
+    # 3. 🚛 Acoplamiento Logístico: Actualizar estatus y ubicación de vehículo DALOR en la Matriz
+    if g_in.transport_type == "propio_dalor" and g_in.asset_id:
+        veh = db.query(Asset).filter(Asset.id == g_in.asset_id).first()
+        if veh:
+            dest = g_in.destination_plant or g_in.destination_address or "En Tránsito / Despacho"
+            veh.status = "en_obra"
+            veh.current_location = f"En ruta: {dest}"
+            from app.models.models import ResourceAssignmentHistory
+            hist = ResourceAssignmentHistory(
+                resource_type="asset",
+                resource_id=veh.id,
+                resource_code=veh.asset_code,
+                resource_name=veh.name,
+                project_id=g_in.project_id,
+                origin_location="Sede Central Dalor",
+                destination_location=dest,
+                custodian_name=g_in.driver_name,
+                driver_name=g_in.driver_name,
+                transfer_code=guide_num,
+                notes=f"Guía {guide_num} para {client.name}"
+            )
+            db.add(hist)
 
     # Auditoría
     audit = AuditLog(

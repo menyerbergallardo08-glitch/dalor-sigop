@@ -4,7 +4,7 @@ from datetime import datetime
 
 # --- CLIENTES ---
 class ClientBase(BaseModel):
-    code: str
+    code: Optional[str] = None
     name: str
     rif: Optional[str] = None
     contact_name: Optional[str] = None
@@ -26,7 +26,7 @@ class ClientOut(ClientBase):
 
 # --- SERVICIOS (PARTIDAS APU) ---
 class ServiceItemBase(BaseModel):
-    code: str
+    code: Optional[str] = None
     name: str
     description: Optional[str] = None
     unit_measure: str = "Global"

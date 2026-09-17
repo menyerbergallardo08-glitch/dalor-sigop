@@ -38,7 +38,7 @@ class OCRReceiptParser:
 
     @staticmethod
     def extract_with_gemini(file_path: str, default_rate: float = 800.0) -> Optional[Dict[str, Any]]:
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or getattr(settings, "GEMINI_API_KEY", None)
         if not api_key:
             return None
 
@@ -120,10 +120,10 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
             }
 
             candidate_models = [
-                "models/gemini-flash-latest",
-                "models/gemini-3.5-flash",
-                "models/gemini-2.5-pro",
-                "models/gemini-2.5-flash-lite"
+                "models/gemini-3.5-flash-lite",
+                "models/gemini-3.6-flash",
+                "models/gemini-3.7-flash",
+                "models/gemini-flash-latest"
             ]
             text_resp = None
             for model_name in candidate_models:
@@ -209,7 +209,13 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
                 img = ImageOps.exif_transpose(img)
                 img = img.convert("RGB")
                 
-                # Redimensionar si la resolución es muy alta
+                # Si la imagen es muy pequeña (<800px), escalar para mejorar legibilidad OCR
+                min_dim = min(img.width, img.height)
+                if min_dim < 800:
+                    scale = 800 / max(min_dim, 1)
+                    img = img.resize((int(img.width * scale), int(img.height * scale)), Image.Resampling.LANCZOS)
+                
+                # Redimensionar si la resolución es muy alta (>2000px)
                 max_dim = max(img.width, img.height)
                 if max_dim > 2000:
                     scale = 2000 / max_dim
@@ -232,7 +238,7 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
                 except Exception as t_err:
                     print("PyTesseract OCR error:", t_err)
 
-            # Intento B: Windows WinSDK (Windows local)
+            # Intento B: Windows WinSDK (Windows local con auto-rotación)
             if WINSDK_AVAILABLE:
                 try:
                     abs_path = os.path.abspath(clean_temp_path)
@@ -245,6 +251,32 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
                     if engine:
                         result = await engine.recognize_async(bitmap)
                         extracted = result.text or ""
+                        
+                        # Si no detectó texto o la foto fue tomada de lado, intentar rotaciones 90°, 270°, 180°
+                        if not extracted or len(extracted.strip()) < 5:
+                            for angle in [90, 270, 180]:
+                                try:
+                                    rot_path = clean_temp_path + f"_rot{angle}.png"
+                                    with Image.open(clean_temp_path) as r_img:
+                                        r_img.rotate(angle, expand=True).save(rot_path, "PNG")
+                                    rot_abs = os.path.abspath(rot_path)
+                                    rot_file = await storage.StorageFile.get_file_from_path_async(rot_abs)
+                                    rot_stream = await rot_file.open_async(storage.FileAccessMode.READ)
+                                    rot_dec = await imaging.BitmapDecoder.create_async(rot_stream)
+                                    rot_bm = await rot_dec.get_software_bitmap_async()
+                                    rot_res = await engine.recognize_async(rot_bm)
+                                    try:
+                                        if os.path.exists(rot_path):
+                                            os.remove(rot_path)
+                                    except Exception:
+                                        pass
+                                    if rot_res.text and len(rot_res.text.strip()) > len(extracted):
+                                        extracted = rot_res.text
+                                        if len(extracted.strip()) > 10:
+                                            break
+                                except Exception:
+                                    pass
+
                         try:
                             if os.path.exists(clean_temp_path):
                                 os.remove(clean_temp_path)
@@ -481,7 +513,7 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
         Extrae la lectura del odómetro (kilometraje total) desde una fotografía del tablero
         del vehículo mediante Visión Multimodal por IA (Gemini) o OCR local con filtros numéricos.
         """
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or getattr(settings, "GEMINI_API_KEY", None)
 
         # 1. Intentar con Gemini Vision
         if api_key:
@@ -542,10 +574,10 @@ Responde ÚNICAMENTE con este JSON válido:
                 }
 
                 candidate_models = [
-                    "models/gemini-flash-latest",
-                    "models/gemini-3.5-flash",
-                    "models/gemini-2.5-pro",
-                    "models/gemini-2.5-flash-lite"
+                    "models/gemini-3.5-flash-lite",
+                    "models/gemini-3.6-flash",
+                    "models/gemini-3.7-flash",
+                    "models/gemini-flash-latest"
                 ]
                 for model_name in candidate_models:
                     try:

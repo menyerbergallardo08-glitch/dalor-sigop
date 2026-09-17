@@ -16,5 +16,6 @@ class Settings(BaseModel):
     MAX_DAILY_FOOD_ALLOWANCE_USD: float = 25.00  # Tope por día por técnico
     
     UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
 settings = Settings()

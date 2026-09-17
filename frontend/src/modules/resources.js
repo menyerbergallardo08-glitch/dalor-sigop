@@ -228,125 +228,68 @@ async function loadFleetList() {
     try {
 
         const res = await fetch(`${API_BASE}/assets/fleet-summary`);
-
         const fleet = await res.json();
-
-        const vehicles = fleet.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
-
-
+        const vehicles = fleet.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta' || (a.asset_code && a.asset_code.includes('-V-')));
 
         if (vehicles.length === 0) {
-
             tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No hay vehículos registrados en la flota.</td></tr>`;
-
             return;
-
         }
 
-
-
         tbody.innerHTML = vehicles.map(v => {
-
             let semColor = '#166534';
-
             let semBg = '#dcfce7';
-
             if (v.traffic_light === 'ROJO_VENCIDO') {
-
                 semColor = '#991b1b';
-
                 semBg = '#fee2e2';
-
             } else if (v.traffic_light === 'AMARILLO_PROXIMO') {
-
                 semColor = '#92400e';
-
                 semBg = '#fef3c7';
-
             }
-
-
 
             const inBase = v.status === 'disponible_base' || !v.current_project_id;
 
-
-
             return `
-
             <tr>
-
                 <td style="font-weight: 800; color: var(--dalor-blue);">${v.asset_code}</td>
-
                 <td style="font-weight: 700; color: var(--dalor-navy);">${v.name} ${v.brand ? `(${v.brand})` : ''}</td>
-
                 <td style="font-weight: 800; font-family: monospace;">${v.license_plate || '-'}</td>
-
                 <td style="font-weight: 800;">${v.current_odometer.toLocaleString()} Km</td>
-
                 <td>En ${v.remaining_km_to_service.toLocaleString()} Km</td>
-
                 <td>
-
                     <span style="font-size: 10px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${semBg}; color: ${semColor};">
-
                         ${v.traffic_light.replace('_', ' ')}
-
                     </span>
-
                 </td>
-
                 <td>
-
                     <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
-
                         ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA'}
-
                     </span>
-
                 </td>
-
                 <td>${v.current_location}</td>
-
                 <td>${v.custodian}</td>
-
                 <td style="text-align: center; white-space: nowrap;">
-
                     <button onclick="openOdometerOcrModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', '${v.license_plate || ''}', ${v.current_odometer})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
-
                         <i class="fa-solid fa-camera"></i> Odómetro
-
                     </button>
-
+                    <button onclick="openCalibrateOdometerModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Resetear Odómetro con Clave de Director">
+                        <i class="fa-solid fa-key"></i> Calibrar
+                    </button>
                     <button onclick="openRecordServiceModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
-
                         <i class="fa-solid fa-wrench"></i> Servicio
-
                     </button>
-
                     ${inBase ? `
-
                         <button onclick="openAssignModal('asset', ${v.id}, '${v.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
-
                             Asignar a Obra
-
                         </button>
-
                     ` : `
-
                         <button onclick="openAssignModal('asset', ${v.id}, '${v.name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
-
                             <i class="fa-solid fa-arrows-split-up-and-left"></i>
-
                         </button>
-
                         <button onclick="returnResourceToBase('asset', ${v.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
-
                             <i class="fa-solid fa-warehouse"></i>
-
                         </button>
-
                     `}
-
                     <button onclick="deleteAssetItem(${v.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Vehículo">
 
                         <i class="fa-solid fa-trash"></i>
@@ -772,19 +715,187 @@ async function submitConfirmOdometer(event) {
         const data = await res.json();
 
         closeModal("modalOdometerOcr");
-
         showRealtimeToast(`✅ Odómetro registrado: ${reading.toLocaleString()} Km (${data.traffic_light.replace('_', ' ')})`, 'flota', 'success');
-
         await loadFleetList();
-
     } catch (err) {
-
         alert("Error al guardar odómetro: " + err.message);
-
     }
-
 }
 
+
+function openCalibrateOdometerModal(assetId, code, name, currentKm) {
+    let modal = document.getElementById("modalCalibrateOdometer");
+    if (!modal) {
+        const div = document.createElement("div");
+        div.id = "modalCalibrateOdometer";
+        div.className = "modal-overlay hidden";
+        div.innerHTML = `
+        <div class="modal-card" style="max-width: 460px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 800; color: #7c3aed; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-key"></i> Calibrar / Resetear Odómetro
+                </h3>
+                <button onclick="closeModal('modalCalibrateOdometer')" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">
+                Esta función permite a la Dirección General calibrar o resetear a cero el odómetro base del vehículo mediante autorización criptográfica.
+            </p>
+            <form id="formCalibrateOdometer" onsubmit="submitCalibrateOdometer(event)">
+                <input type="hidden" id="calib_asset_id">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Vehículo Seleccionado:</label>
+                    <div id="calib_veh_label" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px; padding: 8px; background: #f1f5f9; border-radius: 6px;"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Nuevo Odómetro Actual (Km) *</label>
+                    <input type="number" step="1" id="calib_new_odometer" class="form-control" required placeholder="0">
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Odómetro de Último Servicio (Km) *</label>
+                    <input type="number" step="1" id="calib_service_odometer" class="form-control" required placeholder="0">
+                    <small style="color: #64748b; font-size: 10px;">Si es puesta a cero, coloca el mismo valor que el odómetro actual.</small>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Motivo / Nota de Calibración</label>
+                    <input type="text" id="calib_notes" class="form-control" value="Calibración y puesta a punto de odómetro por Dirección">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px; background: #faf5ff; padding: 10px; border-radius: 6px; border: 1px solid #e9d5ff;">
+                    <label style="font-size: 12px; font-weight: 800; color: #6b21a8;"><i class="fa-solid fa-lock"></i> Contraseña de Director General *</label>
+                    <input type="password" id="calib_director_password" class="form-control" required placeholder="Ingresa clave de director (dalor2026)" style="border-color: #c4b5fd;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalCalibrateOdometer')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #7c3aed;">Confirmar Calibración</button>
+                </div>
+            </form>
+        </div>
+        `;
+        document.body.appendChild(div);
+    }
+
+    document.getElementById("calib_asset_id").value = assetId;
+    document.getElementById("calib_veh_label").innerText = `[${code}] ${name}`;
+    document.getElementById("calib_new_odometer").value = currentKm || 0;
+    document.getElementById("calib_service_odometer").value = currentKm || 0;
+    document.getElementById("calib_director_password").value = "";
+    openModal("modalCalibrateOdometer");
+}
+
+async function submitCalibrateOdometer(event) {
+    event.preventDefault();
+    const assetId = document.getElementById("calib_asset_id").value;
+    const newKm = parseFloat(document.getElementById("calib_new_odometer").value);
+    const servKm = parseFloat(document.getElementById("calib_service_odometer").value);
+    const notes = document.getElementById("calib_notes").value;
+    const password = document.getElementById("calib_director_password").value;
+
+    if (isNaN(newKm) || newKm < 0) {
+        alert("Por favor ingresa un odómetro válido.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/assets/${assetId}/calibrate-odometer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                director_password: password,
+                new_odometer: newKm,
+                new_last_service_odometer: servKm,
+                notes: notes
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || "Error al calibrar odómetro");
+        }
+
+        closeModal("modalCalibrateOdometer");
+        showRealtimeToast(data.message || "Odómetro calibrado exitosamente.", "flota", "success");
+        await loadFleetList();
+    } catch (err) {
+        alert("Error de autorización o calibración: " + err.message);
+    }
+}
+
+function openCalibrateAllOdometersModal() {
+    let modal = document.getElementById("modalCalibrateAllOdometers");
+    if (!modal) {
+        const div = document.createElement("div");
+        div.id = "modalCalibrateAllOdometers";
+        div.className = "modal-overlay hidden";
+        div.innerHTML = `
+        <div class="modal-card" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 800; color: #7c3aed; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-gauge-high"></i> Puesta a Cero / Calibrar Todos los Odómetros
+                </h3>
+                <button onclick="closeModal('modalCalibrateAllOdometers')" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+            <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                <span style="color: #9d174d; font-size: 12px; font-weight: 700;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Calibración Masiva de Flota:
+                </span>
+                <p style="color: #475569; font-size: 11px; margin-top: 4px;">
+                    Esta acción calibrará simultáneamente los 8 vehículos oficiales de DALOR al kilometraje seleccionado (ej: 0 Km para arranque limpio de operación).
+                </p>
+            </div>
+            <form id="formCalibrateAllOdometers" onsubmit="submitCalibrateAllOdometers(event)">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Kilometraje Base Objetivo (Km) *</label>
+                    <input type="number" step="1" id="bulk_target_odometer" class="form-control" value="0" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px; background: #faf5ff; padding: 10px; border-radius: 6px; border: 1px solid #e9d5ff;">
+                    <label style="font-size: 12px; font-weight: 800; color: #6b21a8;"><i class="fa-solid fa-lock"></i> Contraseña de Director General *</label>
+                    <input type="password" id="bulk_director_password" class="form-control" required placeholder="Ingresa clave de director (dalor2026)" style="border-color: #c4b5fd;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalCalibrateAllOdometers')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #7c3aed;">Ejecutar Calibración Masiva</button>
+                </div>
+            </form>
+        </div>
+        `;
+        document.body.appendChild(div);
+    }
+    document.getElementById("bulk_director_password").value = "";
+    openModal("modalCalibrateAllOdometers");
+}
+
+async function submitCalibrateAllOdometers(event) {
+    event.preventDefault();
+    const targetKm = parseFloat(document.getElementById("bulk_target_odometer").value);
+    const password = document.getElementById("bulk_director_password").value;
+
+    if (isNaN(targetKm) || targetKm < 0) {
+        alert("Por favor ingresa un kilometraje válido.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/assets/calibrate-all-odometers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                director_password: password,
+                target_odometer: targetKm,
+                notes: "Calibración masiva de flota por Dirección General"
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || "Error en calibración masiva");
+        }
+
+        closeModal("modalCalibrateAllOdometers");
+        showRealtimeToast(data.message || "Flota calibrada exitosamente.", "flota", "success");
+        await loadFleetList();
+    } catch (err) {
+        alert("Error de autorización: " + err.message);
+    }
+}
 
 
 function openNewVehicleModal() {
@@ -1828,6 +1939,10 @@ if (typeof window !== 'undefined') {
     window.submitRecordService = submitRecordService;
     window.submitResourceAction = submitResourceAction;
     window.switchResourceSubtab = switchResourceSubtab;
+    window.openCalibrateOdometerModal = openCalibrateOdometerModal;
+    window.submitCalibrateOdometer = submitCalibrateOdometer;
+    window.openCalibrateAllOdometersModal = openCalibrateAllOdometersModal;
+    window.submitCalibrateAllOdometers = submitCalibrateAllOdometers;
 }
 
-export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab };
+export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, submitCalibrateAllOdometers };

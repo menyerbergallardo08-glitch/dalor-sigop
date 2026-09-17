@@ -5847,15 +5847,13 @@
                         </h3>
 
                         <div style="display: flex; gap: 8px;">
-
-                            <button onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background: #6366f1; font-size: 12px;">
-
-                                <i class="fa-solid fa-plus"></i> + Nuevo Vehículo
-
+                            <button onclick="openCalibrateAllOdometersModal()" class="btn-secondary" style="color: #7c3aed; border-color: #c4b5fd; font-size: 12px;" title="Resetear o calibrar odómetros de toda la flota con clave de Director">
+                                <i class="fa-solid fa-gauge-high"></i> Calibrar Flota (Director)
                             </button>
-
+                            <button onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background: #6366f1; font-size: 12px;">
+                                <i class="fa-solid fa-plus"></i> + Nuevo Vehículo
+                            </button>
                             <button onclick="loadFleetList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
-
                         </div>
 
                     </div>

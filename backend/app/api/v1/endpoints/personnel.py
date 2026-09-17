@@ -46,3 +46,13 @@ def create_personnel(person_in: PersonnelCreate, db: Session = Depends(get_db)):
     db.refresh(new_person)
     return new_person
 
+@router.delete("/{personnel_id}")
+def delete_personnel(personnel_id: int, db: Session = Depends(get_db)):
+    p = db.query(Personnel).filter(Personnel.id == personnel_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado.")
+    db.delete(p)
+    db.commit()
+    return {"success": True, "message": f"Empleado {p.full_name} eliminado con éxito."}
+
+

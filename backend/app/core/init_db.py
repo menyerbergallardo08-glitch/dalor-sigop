@@ -209,7 +209,14 @@ def init_db():
                     if existing:
                         existing.full_name = p.full_name
                         existing.role_title = ""
-                        existing.current_location = p.current_location
+            db.query(Personnel).filter(
+                (Personnel.full_name.ilike("%prueba%")) |
+                (Personnel.full_name.ilike("%test%")) |
+                (Personnel.code.ilike("%prueba%")) |
+                (Personnel.code.ilike("%test%")) |
+                (Personnel.code == "per 001") |
+                (Personnel.code == "PERS-999")
+            ).delete(synchronize_session=False)
             db.query(Personnel).update({"role_title": ""})
             db.commit()
 

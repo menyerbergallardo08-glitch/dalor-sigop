@@ -267,7 +267,16 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
         oxicar.industry = "Gases Industriales / Metalmecánica"
         oxicar.is_active = True
 
-    # 4. Asegurar que al personal no se le asigne ningún cargo (solo sus nombres)
+    # 4. Asegurar que al personal no se le asigne ningún cargo (solo sus nombres) y purgar impurezas
+    db.query(Personnel).filter(
+        (Personnel.full_name.ilike("%prueba%")) |
+        (Personnel.full_name.ilike("%test%")) |
+        (Personnel.code.ilike("%prueba%")) |
+        (Personnel.code.ilike("%test%")) |
+        (Personnel.code == "per 001") |
+        (Personnel.code == "PERS-999")
+    ).delete(synchronize_session=False)
+
     db.query(Personnel).update({
         "role_title": "",
         "status": "disponible_base",

@@ -283,7 +283,7 @@ async function openNewQuotationModal() {
 
     if (document.getElementById("quote_tax_percent")) document.getElementById("quote_tax_percent").value = "16";
 
-    if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "15 días hábiles a partir del anticipo";
+    if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "";
 
     if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = "USD";
 
@@ -321,9 +321,11 @@ function addQuotationRow(itemData = null) {
 
     const rowId = `quote_row_${quoteRowsCount}`;
 
+    const srvPlaceholder = (allServices && allServices.length > 0) 
+        ? '-- Partida del Catálogo --' 
+        : '-- Catálogo en blanco (escriba partida manual) --';
 
-
-    const srvOptions = `<option value="">-- Partida del Catálogo --</option>` + 
+    const srvOptions = `<option value="">${srvPlaceholder}</option>` + 
 
         (allServices || []).map(s => {
 
@@ -363,7 +365,7 @@ function addQuotationRow(itemData = null) {
 
             </select>
 
-            <input type="text" class="form-input q-desc" placeholder="Descripción detallada de la partida / APU" value="${descVal}" style="font-size: 11px; padding: 4px 6px; margin-top: 4px;" required>
+            <input type="text" class="form-input q-desc" placeholder="Descripción detallada de la partida / APU" value="${descVal}" autocomplete="off" style="font-size: 11px; padding: 4px 6px; margin-top: 4px;" required>
 
         </div>
 
@@ -391,13 +393,13 @@ function addQuotationRow(itemData = null) {
 
         <div>
 
-            <input type="number" step="0.01" class="form-input q-qty" placeholder="Cant" value="${qtyVal}" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
+            <input type="number" step="0.01" class="form-input q-qty" placeholder="Cant" value="${qtyVal}" oninput="recalcQuotationTotals()" autocomplete="off" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
 
         </div>
 
         <div>
 
-            <input type="number" step="0.01" class="form-input q-price" placeholder="P. Unit ($)" value="${priceVal}" oninput="recalcQuotationTotals()" style="font-size: 11px; padding: 5px; font-weight: bold; color: var(--dalor-blue);" required>
+            <input type="number" step="0.01" class="form-input q-price" placeholder="P. Unit ($)" value="${priceVal}" oninput="recalcQuotationTotals()" autocomplete="off" style="font-size: 11px; padding: 5px; font-weight: bold; color: var(--dalor-blue);" required>
 
         </div>
 
@@ -649,7 +651,7 @@ async function submitCreateQuotation(event) {
         client_id: clientId,
         project_title: document.getElementById("quote_title").value,
         location: document.getElementById("quote_location").value || "Sede Central",
-        execution_time: document.getElementById("quote_execution_time").value || "15 días hábiles a partir del anticipo",
+        execution_time: (document.getElementById("quote_execution_time").value || "").trim() || "A convenir",
         currency: document.getElementById("quote_currency").value || "USD",
         validity_days: parseInt(document.getElementById("quote_validity") ? document.getElementById("quote_validity").value : 15) || 15,
         tax_percent: parseLocalizedNumber(document.getElementById("quote_tax_percent")?.value) || 0.0,
@@ -1307,7 +1309,14 @@ async function loadServices() {
 
         allServices = await res.json();
 
-
+        if (!allServices || allServices.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: #64748b; font-weight: 500;">
+                <i class="fa-solid fa-folder-open" style="font-size: 26px; color: #94a3b8; margin-bottom: 10px; display: block;"></i>
+                <span style="font-size: 13px; font-weight: 700; color: #475569;">No hay partidas registradas en el catálogo (Catálogo en blanco).</span><br>
+                <span style="font-size: 11px; color: #94a3b8;">Usa el botón "+ Nueva Partida" para registrar partidas oficiales de Metalmecánica Dalor.</span>
+            </td></tr>`;
+            return;
+        }
 
         tbody.innerHTML = allServices.map(s => {
 
@@ -1471,19 +1480,27 @@ async function submitCreateService(event) {
 
 async function deleteService(serviceId) {
 
-    if (!confirm("¿Deseas inactivar esta partida de servicio? (Se conservará la traza histórica)")) return;
+    if (!confirm("¿Deseas eliminar permanentemente esta partida de servicio del catálogo?")) return;
 
     try {
 
-        await fetch(`${API_BASE}/services/${serviceId}`, { method: "DELETE" });
+        const res = await fetch(`${API_BASE}/services/${serviceId}?permanent=true`, { method: "DELETE" });
 
-        await loadInitialMasterData();
+        if (res.ok) {
 
-        loadServices();
+            await loadInitialMasterData();
+
+            loadServices();
+
+        } else {
+
+            alert("Error al eliminar partida.");
+
+        }
 
     } catch (e) {
 
-        alert("Error al inactivar servicio.");
+        alert("Error de conexión al eliminar servicio.");
 
     }
 

@@ -8077,7 +8077,7 @@
 
 
 
-            <form id="quoteForm" onsubmit="submitCreateQuotation(event)">
+            <form id="quoteForm" onsubmit="submitCreateQuotation(event)" autocomplete="off">
 
                 <input type="hidden" id="edit_quotation_id" value="">
 
@@ -8097,7 +8097,7 @@
 
                         <label class="form-label">Título del Proyecto / Obra *</label>
 
-                        <input type="text" id="quote_title" placeholder="Ej: Adecuación de Subestación y Líneas" class="form-input" required autocomplete="off">
+                        <input type="text" id="quote_title" placeholder="Ej: Fabricación de Tanque" class="form-input" required autocomplete="off">
 
                     </div>
 
@@ -8111,7 +8111,7 @@
 
                         <label class="form-label">Ubicación de la Obra</label>
 
-                        <input type="text" id="quote_location" placeholder="Ciudad / Planta" class="form-input">
+                        <input type="text" id="quote_location" placeholder="Ciudad / Planta" class="form-input" autocomplete="off">
 
                     </div>
 
@@ -8119,7 +8119,7 @@
 
                         <label class="form-label">Tiempo de Ejecución *</label>
 
-                        <input type="text" id="quote_execution_time" value="15 días hábiles a partir del anticipo" class="form-input" required>
+                        <input type="text" id="quote_execution_time" value="" placeholder="Ej: 15 días hábiles" class="form-input" autocomplete="off" required>
 
                     </div>
 
@@ -8421,13 +8421,13 @@
 
             </div>
 
-            <form id="serviceForm" onsubmit="submitCreateService(event)" style="display: flex; flex-direction: column; gap: 10px;">
+            <form id="serviceForm" onsubmit="submitCreateService(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 10px;">
 
                 <div>
 
                     <label class="form-label">Código de Partida *</label>
 
-                    <input type="text" id="srv_code" placeholder="Ej: SER-ELEC-03" class="form-input" required>
+                    <input type="text" id="srv_code" placeholder="Ej: SER-ELEC-03" class="form-input" autocomplete="off" required>
 
                 </div>
 
@@ -8435,7 +8435,7 @@
 
                     <label class="form-label">Nombre del Servicio *</label>
 
-                    <input type="text" id="srv_name" placeholder="Ej: Calibración y Pruebas de Relés" class="form-input" required>
+                    <input type="text" id="srv_name" placeholder="Ej: Calibración y Pruebas de Relés" class="form-input" autocomplete="off" required>
 
                 </div>
 
@@ -8461,7 +8461,7 @@
 
                         </select>
 
-                        <input type="text" id="srv_new_category" placeholder="Escribe el nombre de la nueva categoría..." class="form-input hidden" style="margin-top: 6px;">
+                        <input type="text" id="srv_new_category" placeholder="Escribe el nombre de la nueva categoría..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
 
                     </div>
 
@@ -8495,7 +8495,7 @@
 
                         <label class="form-label">Costo Base ($)</label>
 
-                        <input type="number" step="0.01" id="srv_cost" placeholder="0.00" class="form-input" required>
+                        <input type="number" step="0.01" id="srv_cost" placeholder="0.00" class="form-input" autocomplete="off" required>
 
                     </div>
 
@@ -8503,7 +8503,7 @@
 
                         <label class="form-label">Precio de Venta ($) *</label>
 
-                        <input type="number" step="0.01" id="srv_price" placeholder="0.00" class="form-input" style="font-weight: 800; color: var(--dalor-blue);" required>
+                        <input type="number" step="0.01" id="srv_price" placeholder="0.00" class="form-input" autocomplete="off" style="font-weight: 800; color: var(--dalor-blue);" required>
 
                     </div>
 

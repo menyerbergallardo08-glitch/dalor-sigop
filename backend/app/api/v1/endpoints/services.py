@@ -26,12 +26,25 @@ def create_service_item(item_in: ServiceItemCreate, db: Session = Depends(get_db
     db.refresh(new_item)
     return new_item
 
+@router.delete("/purge/all")
+def purge_all_service_items(db: Session = Depends(get_db)):
+    from app.models.models import QuotationItem
+    db.query(QuotationItem).filter(QuotationItem.service_id != None).update({QuotationItem.service_id: None})
+    count = db.query(ServiceItem).delete()
+    db.commit()
+    return {"message": f"Catálogo vaciado por completo. {count} partidas eliminadas.", "count": count}
+
 @router.delete("/{service_id}")
-def delete_service_item(service_id: int, db: Session = Depends(get_db)):
+def delete_service_item(service_id: int, permanent: bool = True, db: Session = Depends(get_db)):
     item = db.query(ServiceItem).filter(ServiceItem.id == service_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Partida de servicio no encontrada.")
     
-    item.is_active = False
+    from app.models.models import QuotationItem
+    db.query(QuotationItem).filter(QuotationItem.service_id == service_id).update({QuotationItem.service_id: None})
+    if permanent:
+        db.delete(item)
+    else:
+        item.is_active = False
     db.commit()
-    return {"message": "Partida de servicio inactivada exitosamente (traza histórica preservada)."}
+    return {"message": "Partida de servicio eliminada exitosamente."}

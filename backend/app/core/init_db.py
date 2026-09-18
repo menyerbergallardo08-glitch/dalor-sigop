@@ -440,68 +440,8 @@ def init_db():
         db.commit()
 
         # 7. Catalogo de Servicios / Partidas APU
-        if db.query(ServiceItem).count() < 5:
-            print("--> Seeding standard metalmechanical APU service items...")
-            apu_services = [
-                ServiceItem(
-                    code="SRV-FAB-01",
-                    name="Fabricación de Estructuras Metálicas en Taller (Vigas, Columnas, Cerchas)",
-                    description="Fabricación bajo especificación AWS D1.1 en perfiles estructurales ASTM A36/A572, incluye corte, perforación, armado, soldadura y limpieza mecánica.",
-                    unit_measure="Kg",
-                    category="Metalmecánica / Taller",
-                    base_cost_usd=1.85,
-                    unit_price_usd=3.40
-                ),
-                ServiceItem(
-                    code="SRV-MON-02",
-                    name="Montaje Mecánico y Elevación de Estructuras en Obra",
-                    description="Montaje en sitio con grúa telescópica, alineación topográfica, torqueo de pernos de alta resistencia A325/A490 y soldadura en posición.",
-                    unit_measure="Ton",
-                    category="Montaje Mecánico",
-                    base_cost_usd=450.0,
-                    unit_price_usd=780.0
-                ),
-                ServiceItem(
-                    code="SRV-SOL-03",
-                    name="Soldadura Calificada ASME 6G / TIG-SMAW en Tuberías de Proceso",
-                    description="Pase de raíz con proceso GTAW (TIG) Argón y relleno con electrodo E-7018 en tuberías ASTM A106 Gr.B SCH 40/80 con inspección radiográfica 100%.",
-                    unit_measure="Pulg-Diam",
-                    category="Soldadura Especializada",
-                    base_cost_usd=12.50,
-                    unit_price_usd=24.00
-                ),
-                ServiceItem(
-                    code="SRV-SAN-04",
-                    name="Sandblasting Grado Comercial SSPC-SP6 y Esquema Epóxico de Alto Sólidos",
-                    description="Preparación de superficie con granalla metálica y aplicación de fondo anticorrosivo poliamida 4 mils EPS + acabado poliuretano alifático 3 mils EPS.",
-                    unit_measure="m2",
-                    category="Tratamiento Superficial & Pintura",
-                    base_cost_usd=14.00,
-                    unit_price_usd=26.50
-                ),
-                ServiceItem(
-                    code="SRV-CAL-05",
-                    name="Reparación, Pailería y Revestimiento de Tolvas y Calderas Industriales",
-                    description="Corte térmico de planchas fatigadas, conformación de virolas y colocación de planchas de desgaste Hardox 450 con soldadura especial antiabrasión.",
-                    unit_measure="Global",
-                    category="Calderería y Pailería Pesada",
-                    base_cost_usd=3800.0,
-                    unit_price_usd=6900.0
-                ),
-                ServiceItem(
-                    code="SRV-TUB-06",
-                    name="Tendido e Interconexión de Tuberías de Vapor y Condensado",
-                    description="Suministro de mano de obra especializada para trazado, soportería tipo resorte, juntas de expansión y pruebas hidrostáticas a 1.5x presión de diseño.",
-                    unit_measure="Metro Lineal",
-                    category="Tuberías Industriales",
-                    base_cost_usd=28.00,
-                    unit_price_usd=52.00
-                )
-            ]
-            for srv in apu_services:
-                if not db.query(ServiceItem).filter(ServiceItem.code == srv.code).first():
-                    db.add(srv)
-            db.commit()
+        # Catálogo en blanco: No se autogeneran ni precargan partidas estándar.
+        # Las partidas de servicio y APU deben ser registradas manualmente por Dalor.
 
         print("--> Dalor SIGO-P Database successfully verified & synced!")
     except Exception as e:

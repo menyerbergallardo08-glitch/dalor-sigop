@@ -2087,84 +2087,49 @@ async function deleteProject(projectId) {
 
 
 
-// Copiar Enlace de Seguimiento Público de Proyecto para Clientes
-
+/// Copiar Enlace de Seguimiento Público de Proyecto para Clientes
 // Enlace de Seguimiento Público de Proyecto para Clientes (Portal Ciego a Costos)
-
-window.copyProjectClientTrackingLink = async function(projIdOrCode) {
-
+async function copyProjectClientTrackingLink(projIdOrCode) {
     let token = null;
-
     let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
-
     
-
     // Si se pasa un código de proyecto string que no sea número
-
     if (typeof projIdOrCode === 'string' && isNaN(parseInt(projIdOrCode))) {
-
         token = projIdOrCode;
-
     } else if (projIdOrCode && !isNaN(parseInt(projIdOrCode))) {
-
         projId = parseInt(projIdOrCode);
-
     }
-
-
 
     if (projId) {
-
         try {
-
             const res = await fetch(`${API_BASE}/projects/${projId}/tracking-token`, { method: 'POST' });
-
             if (res.ok) {
-
                 const data = await res.json();
-
                 token = data.tracking_token || data.project_code;
-
             }
-
         } catch(e) {
-
             console.error('Error generating token:', e);
-
         }
-
     }
-
-
 
     if (!token && window.allProjects && projId) {
-
         const p = window.allProjects.find(x => x.id == projId);
-
         if (p) token = p.tracking_token || p.code;
-
     }
-
     
-
     const url = window.location.origin + '/seguimiento/' + (token || 'PRJ-2026-001');
-
     if (navigator.clipboard) {
-
         await navigator.clipboard.writeText(url);
-
     }
-
     
-
     if (typeof showToastNotification === 'function') {
         showToastNotification(`🔗 Enlace copiado al portapapeles: ${url}`, 'success');
     } else {
         alert(`🔗 Enlace de Seguimiento para Cliente copiado al portapapeles:\n\n${url}`);
     }
-};
+}
 
-window.shareProjectViaWhatsApp = async function(projIdOrCode) {
+async function shareProjectViaWhatsApp(projIdOrCode) {
     let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
     let proj = (window.allProjects || []).find(p => p.id == projId) || { name: 'Proyecto', code: 'PRJ' };
 
@@ -2182,9 +2147,9 @@ window.shareProjectViaWhatsApp = async function(projIdOrCode) {
     const trackingUrl = `${window.location.origin}/seguimiento/${token}`;
     const text = `*Metalmecánica Dalor, C.A.*%0A%0AEstimado cliente, puede consultar el avance en tiempo real y cronograma del proyecto *${encodeURIComponent(proj.name)}* en el siguiente enlace oficial:%0A${encodeURIComponent(trackingUrl)}%0A%0AGracias por confiar en nuestros servicios.`;
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-};
+}
 
-window.printProjectProgressReport = async function(projIdOrCode) {
+async function printProjectProgressReport(projIdOrCode) {
     let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
     if (!projId) return;
     try {
@@ -2399,6 +2364,7 @@ if (typeof window !== 'undefined') {
     window.viewProjectDetails = viewProjectDetails;
     window.shareProjectViaWhatsApp = shareProjectViaWhatsApp;
     window.printProjectProgressReport = printProjectProgressReport;
+    window.copyProjectClientTrackingLink = copyProjectClientTrackingLink;
 }
 
-export { addPlanResource, addProjectPhaseRow, addProjectPhaseTask, addProjectPhaseTaskRow, assignPersonnelTag, assignToolTag, assignVehicleTag, deleteProject, deleteReceivable, downloadExcelTemplate, filterProjectsList, handleExcelFileSelected, initProjectPlanningView, loadProjectsList, populatePlanDropdownSelectors, recalcProjectBudgetPreview, removePersonnelTag, removePlanResource, removeProjectPhaseRow, removeToolTag, removeVehicleTag, renderAssignedTags, renumberPhasesAndTasks, setProjectType, submitCreateProject, switchProjectSubtab, toggleProjectTask, triggerExcelImport, updatePhaseStatus, viewProjectDetails, shareProjectViaWhatsApp, printProjectProgressReport };
+export { addPlanResource, addProjectPhaseRow, addProjectPhaseTask, addProjectPhaseTaskRow, assignPersonnelTag, assignToolTag, assignVehicleTag, copyProjectClientTrackingLink, deleteProject, deleteReceivable, downloadExcelTemplate, filterProjectsList, handleExcelFileSelected, initProjectPlanningView, loadProjectsList, populatePlanDropdownSelectors, recalcProjectBudgetPreview, removePersonnelTag, removePlanResource, removeProjectPhaseRow, removeToolTag, removeVehicleTag, renderAssignedTags, renumberPhasesAndTasks, setProjectType, submitCreateProject, switchProjectSubtab, toggleProjectTask, triggerExcelImport, updatePhaseStatus, viewProjectDetails, shareProjectViaWhatsApp, printProjectProgressReport };

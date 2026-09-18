@@ -1740,58 +1740,101 @@ async function toggleUserStatus(userId) {
 
 
 
+let allAuditLogsCache = [];
+
 async function loadMaintenanceAuditLogs() {
-
     const tbody = document.getElementById('maintenanceAuditTableBody');
-
     if (!tbody) return;
-
     tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando bitácora de eventos...</td></tr>`;
 
-
-
     try {
-
         const res = await fetch(`${API_BASE}/maintenance/audit-logs`);
-
         const logs = await res.json();
+        allAuditLogsCache = Array.isArray(logs) ? logs : [];
 
-
-
-        if (logs.length === 0) {
-
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">No hay eventos registrados en la bitácora.</td></tr>`;
-
-            return;
-
-        }
-
-
-
-        tbody.innerHTML = logs.map(l => `
-
-            <tr>
-
-                <td style="font-weight: 700; color: #64748b; font-size: 11px;">${l.timestamp}</td>
-
-                <td style="font-weight: 800; color: var(--dalor-navy);">${l.username}</td>
-
-                <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px; text-transform: uppercase;">${l.module}</span></td>
-
-                <td style="font-weight: 700; color: #0284c7;">${l.action}</td>
-
-                <td style="color: #334155; font-size: 11px;">${l.details || '-'}</td>
-
-            </tr>
-
-        `).join('');
-
+        renderMaintenanceAuditLogs(allAuditLogsCache);
     } catch (e) {
-
         tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar bitácora.</td></tr>`;
+    }
+}
 
+function renderMaintenanceAuditLogs(logs) {
+    const tbody = document.getElementById('maintenanceAuditTableBody');
+    if (!tbody) return;
+
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">No hay eventos registrados que coincidan con la búsqueda.</td></tr>`;
+        return;
     }
 
+    tbody.innerHTML = logs.map(l => {
+        const rawDate = l.created_at || l.timestamp || '';
+        let displayDate = rawDate;
+        if (rawDate) {
+            try {
+                // If it already contains YYYY-MM-DD HH:MM:SS
+                if (rawDate.includes(' ') && rawDate.length >= 19) {
+                    const [dPart, tPart] = rawDate.split(' ');
+                    const [y, m, d] = dPart.split('-');
+                    displayDate = `${d}/${m}/${y} ${tPart}`;
+                } else {
+                    const dt = new Date(rawDate);
+                    if (!isNaN(dt.getTime())) {
+                        displayDate = dt.toLocaleString('es-VE', {
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit', second: '2-digit',
+                            hour12: true
+                        });
+                    }
+                }
+            } catch(e) {}
+        }
+        return `
+            <tr>
+                <td style="font-weight: 700; color: #334155; font-size: 11px; white-space: nowrap;">
+                    <i class="fa-regular fa-clock" style="color: #0284c7; margin-right: 4px;"></i>${displayDate}
+                </td>
+                <td style="font-weight: 800; color: var(--dalor-navy);">${l.username || 'Sistema'}</td>
+                <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px; text-transform: uppercase;">${l.module || 'General'}</span></td>
+                <td style="font-weight: 700; color: #0284c7;">${l.action || '-'}</td>
+                <td style="color: #334155; font-size: 11px;">${l.details || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterMaintenanceAuditLogs() {
+    const userFilter = (document.getElementById('auditFilterUser')?.value || '').toLowerCase().trim();
+    const dateFrom = document.getElementById('auditFilterDateFrom')?.value || '';
+    const dateTo = document.getElementById('auditFilterDateTo')?.value || '';
+    const query = (document.getElementById('auditFilterQuery')?.value || '').toLowerCase().trim();
+
+    let filtered = allAuditLogsCache.filter(l => {
+        if (userFilter && !(l.username || '').toLowerCase().includes(userFilter)) return false;
+        if (query) {
+            const matchAction = (l.action || '').toLowerCase().includes(query);
+            const matchDetails = (l.details || '').toLowerCase().includes(query);
+            const matchModule = (l.module || '').toLowerCase().includes(query);
+            if (!matchAction && !matchDetails && !matchModule) return false;
+        }
+        if (dateFrom || dateTo) {
+            const raw = l.created_at || l.timestamp || '';
+            const logDateStr = (raw.split(' ')[0] || raw.split('T')[0]).trim();
+            if (dateFrom && logDateStr < dateFrom) return false;
+            if (dateTo && logDateStr > dateTo) return false;
+        }
+        return true;
+    });
+
+    renderMaintenanceAuditLogs(filtered);
+}
+
+function resetMaintenanceAuditFilters() {
+    if (document.getElementById('auditFilterUser')) document.getElementById('auditFilterUser').value = '';
+    if (document.getElementById('auditFilterDateFrom')) document.getElementById('auditFilterDateFrom').value = '';
+    if (document.getElementById('auditFilterDateTo')) document.getElementById('auditFilterDateTo').value = '';
+    if (document.getElementById('auditFilterQuery')) document.getElementById('auditFilterQuery').value = '';
+    renderMaintenanceAuditLogs(allAuditLogsCache);
 }
 
 
@@ -2772,8 +2815,10 @@ if (typeof window !== 'undefined') {
     window.submitCreateUser_v2 = submitCreateUser_v2;
     window.submitLogin = submitLogin;
     window.submitSaveUserPermissions = submitSaveUserPermissions;
+    window.filterMaintenanceAuditLogs = filterMaintenanceAuditLogs;
+    window.resetMaintenanceAuditFilters = resetMaintenanceAuditFilters;
     window.switchMaintenanceSubtab = switchMaintenanceSubtab;
     window.toggleUserStatus = toggleUserStatus;
 }
 
-export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, renderCleanRadialCharts, renderUserBadge, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus };
+export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus };

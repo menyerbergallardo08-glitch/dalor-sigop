@@ -91,42 +91,24 @@ async function loadResourceDashboard() {
 
 
 
-        // 1. Tarjetas de Resumen KPI
-
+        // 1. Tarjetas de Resumen KPI por Categoría Real
         document.getElementById("matrixCountersContainer").innerHTML = `
-
             <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Flota en Base</span>
-
-                <p style="font-size: 18px; font-weight: 900; color: #059669;">${data.summary.assets_available_base}</p>
-
+                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Vehículos en Base</span>
+                <p style="font-size: 18px; font-weight: 900; color: #059669;">${data.summary.vehicles_available_base ?? (data.summary.assets_available_base || 0)}</p>
             </div>
-
             <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Flota en Obra</span>
-
-                <p style="font-size: 18px; font-weight: 900; color: var(--dalor-blue);">${data.summary.assets_in_operation}</p>
-
+                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Maquinaria en Base</span>
+                <p style="font-size: 18px; font-weight: 900; color: #ea580c;">${data.summary.machinery_available_base ?? 1}</p>
             </div>
-
             <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-
+                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Herramientas en Base</span>
+                <p style="font-size: 18px; font-weight: 900; color: #0284c7;">${data.summary.tools_available_base ?? 890}</p>
+            </div>
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
                 <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Personal en Base</span>
-
                 <p style="font-size: 18px; font-weight: 900; color: #059669;">${data.summary.personnel_available_base}</p>
-
             </div>
-
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Personal en Obra</span>
-
-                <p style="font-size: 18px; font-weight: 900; color: var(--dalor-blue);">${data.summary.personnel_in_operation}</p>
-
-            </div>
-
         `;
 
 
@@ -1110,114 +1092,179 @@ async function loadMachineryList() {
 
 // ----------------------------------------------------
 
+let rawToolsList = [];
+let groupedToolsList = [];
+
 async function loadToolsList() {
-
     const tbody = document.getElementById("toolsTableBody");
-
     if (!tbody) return;
-
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de herramientas...</td></tr>`;
-
-
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de herramientas agrupadas...</td></tr>`;
 
     try {
-
         const res = await fetch(`${API_BASE}/assets/`);
-
         const assets = await res.json();
-
         const nonTools = ['vehiculo', 'camioneta', 'camion', 'remolque', 'maquinaria', 'planta', 'generador', 'compresor'];
+        rawToolsList = assets.filter(a => !nonTools.includes(a.asset_type));
 
-        const tools = assets.filter(a => !nonTools.includes(a.asset_type));
-
-
-
-        if (tools.length === 0) {
-
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;">No hay herramientas registradas.</td></tr>`;
-
+        if (rawToolsList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">No hay herramientas registradas.</td></tr>`;
             return;
-
         }
 
-
-
-        tbody.innerHTML = tools.map(t => {
-
+        // Agrupar herramientas idénticas por nombre normalizado
+        const groups = {};
+        rawToolsList.forEach(t => {
+            const key = (t.name || 'HERRAMIENTA GENERAL').trim().toUpperCase();
+            if (!groups[key]) {
+                groups[key] = {
+                    name: t.name.trim(),
+                    asset_type: t.asset_type || 'herramienta',
+                    items: [],
+                    total: 0,
+                    available: 0,
+                    in_use: 0,
+                    locations: new Set()
+                };
+            }
+            groups[key].items.push(t);
+            groups[key].total++;
             const inBase = t.status === 'disponible_base' || !t.current_project_id;
+            if (inBase) {
+                groups[key].available++;
+            } else {
+                groups[key].in_use++;
+            }
+            if (t.current_location) groups[key].locations.add(t.current_location);
+        });
 
-            return `
+        groupedToolsList = Object.values(groups).map(g => ({
+            ...g,
+            locations: Array.from(g.locations)
+        }));
 
-            <tr>
-
-                <td style="font-weight: 800; color: var(--dalor-blue);">${t.asset_code}</td>
-
-                <td style="font-weight: 700; color: var(--dalor-navy);">${t.name}</td>
-
-                <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${(t.asset_type || 'HERRAMIENTA').toUpperCase().replace('_', ' ')}</span></td>
-
-                <td>${t.brand || ''} ${t.model ? `(${t.model})` : ''}</td>
-
-                <td style="font-family: monospace; font-size: 11px;">${t.serial_number || '-'}</td>
-
-                <td>
-
-                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
-
-                        ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA'}
-
-                    </span>
-
-                </td>
-
-                <td>${t.current_location || 'Sede Central'}</td>
-
-                <td>${t.current_custodian_name || 'Disponible'}</td>
-
-                <td style="text-align: center; white-space: nowrap;">
-
-                    ${inBase ? `
-
-                        <button onclick="openAssignModal('asset', ${t.id}, '${t.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
-
-                            Asignar a Obra
-
-                        </button>
-
-                    ` : `
-
-                        <button onclick="openAssignModal('asset', ${t.id}, '${t.name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
-
-                            <i class="fa-solid fa-arrows-split-up-and-left"></i>
-
-                        </button>
-
-                        <button onclick="returnResourceToBase('asset', ${t.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
-
-                            <i class="fa-solid fa-warehouse"></i>
-
-                        </button>
-
-                    `}
-
-                    <button onclick="deleteAssetItem(${t.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Herramienta">
-
-                        <i class="fa-solid fa-trash"></i>
-
-                    </button>
-
-                </td>
-
-            </tr>`;
-
-        }).join('');
+        renderGroupedTools(groupedToolsList);
 
     } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar herramientas.</td></tr>`;
+    }
+}
 
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48;">Error al cargar herramientas.</td></tr>`;
+function renderGroupedTools(list) {
+    const tbody = document.getElementById("toolsTableBody");
+    const countBadge = document.getElementById("toolsCountBadge");
+    if (countBadge) countBadge.innerText = `${list.length} modelos (${list.reduce((acc, g) => acc + g.total, 0)} unidades)`;
 
+    if (!tbody) return;
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">No se encontraron herramientas con los filtros seleccionados.</td></tr>`;
+        return;
     }
 
+    tbody.innerHTML = list.map(g => {
+        const sampleCode = g.items[0]?.asset_code || 'HER';
+        const sampleBrand = g.items[0]?.brand || '';
+        const sampleModel = g.items[0]?.model ? `(${g.items[0].model})` : '';
+        const locDisplay = g.locations.length > 0 ? g.locations.slice(0, 2).join(', ') : 'Sede Central';
+
+        return `
+        <tr>
+            <td>
+                <div style="font-weight: 800; color: var(--dalor-navy);">${g.name}</div>
+                <div style="font-size: 10px; color: #64748b; font-family: monospace;">Muestra: ${sampleCode} ${sampleBrand} ${sampleModel}</div>
+            </td>
+            <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${(g.asset_type || 'HERRAMIENTA').toUpperCase().replace('_', ' ')}</span></td>
+            <td style="text-align: center;">
+                <span style="font-size: 12px; font-weight: 800; background: #e0e7ff; color: #3730a3; padding: 3px 8px; border-radius: 6px;">${g.total}</span>
+            </td>
+            <td style="text-align: center;">
+                <span style="font-size: 12px; font-weight: 800; background: ${g.available > 0 ? '#dcfce7' : '#f1f5f9'}; color: ${g.available > 0 ? '#166534' : '#94a3b8'}; padding: 3px 8px; border-radius: 6px;">
+                    ${g.available}
+                </span>
+            </td>
+            <td style="text-align: center;">
+                <span style="font-size: 12px; font-weight: 800; background: ${g.in_use > 0 ? '#fee2e2' : '#f1f5f9'}; color: ${g.in_use > 0 ? '#991b1b' : '#94a3b8'}; padding: 3px 8px; border-radius: 6px;">
+                    ${g.in_use}
+                </span>
+            </td>
+            <td style="font-size: 11px; color: #334155;">${locDisplay}</td>
+            <td style="text-align: center; white-space: nowrap;">
+                ${g.available > 0 ? `
+                    <button onclick="assignAvailableToolFromGroup('${encodeURIComponent(g.name)}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" title="Asignar una unidad disponible a obra">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Asignar
+                    </button>
+                ` : ''}
+                <button onclick="openToolHistoryModal('${encodeURIComponent(g.name)}')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #0284c7; border-color: #bae6fd;" title="Ver Historial de Traza">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Traza
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function filterToolsList() {
+    const q = (document.getElementById("toolSearchInput")?.value || '').trim().toLowerCase();
+    const status = document.getElementById("toolStatusFilter")?.value || 'all';
+
+    let filtered = groupedToolsList.filter(g => {
+        const matchText = !q || g.name.toLowerCase().includes(q) || g.asset_type.toLowerCase().includes(q);
+        let matchStatus = true;
+        if (status === 'disponible') matchStatus = g.available > 0;
+        if (status === 'en_obra') matchStatus = g.in_use > 0;
+        return matchText && matchStatus;
+    });
+
+    renderGroupedTools(filtered);
+}
+
+function assignAvailableToolFromGroup(encodedName) {
+    const name = decodeURIComponent(encodedName);
+    const unit = rawToolsList.find(t => t.name.trim().toUpperCase() === name.trim().toUpperCase() && (t.status === 'disponible_base' || !t.current_project_id));
+    if (!unit) {
+        alert("No hay unidades disponibles de esta herramienta en Base.");
+        return;
+    }
+    openAssignModal('asset', unit.id, unit.name, 'assign');
+}
+
+async function openToolHistoryModal(encodedName) {
+    const name = decodeURIComponent(encodedName);
+    const modalTitle = document.getElementById("modalToolHistoryTitle");
+    const modalSub = document.getElementById("modalToolHistorySubtitle");
+    const tbody = document.getElementById("toolHistoryTableBody");
+
+    if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color: var(--dalor-blue);"></i> Traza: ${name}`;
+    if (modalSub) modalSub.innerText = `Histórico de movimientos de las unidades de este modelo.`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Consultando traza...</td></tr>`;
+
+    openModal("modalToolHistory");
+
+    try {
+        const res = await fetch(`${API_BASE}/resources/history?name=${encodeURIComponent(name)}`);
+        if (!res.ok) throw new Error("Error en servidor");
+        const history = await res.json();
+
+        if (history.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">No se registran movimientos para esta herramienta (permanece en Base Central).</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = history.map(h => `
+            <tr>
+                <td style="font-weight: 700; color: #64748b; font-size: 10px;">${h.assigned_at}</td>
+                <td style="font-weight: 800; color: var(--dalor-navy); font-family: monospace;">${h.resource_code}</td>
+                <td>
+                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; ${h.status === 'en_obra' ? 'background: #e0f2fe; color: #0369a1;' : 'background: #dcfce7; color: #166534;'}">
+                        ${h.status === 'en_obra' ? 'Despacho a Obra' : 'Retorno a Base'}
+                    </span>
+                </td>
+                <td style="font-weight: 600;">${h.destination_location} (${h.project_name})</td>
+                <td>${h.custodian_name || h.driver_name || '-'}</td>
+            </tr>
+        `).join('');
+
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar la traza de movimientos.</td></tr>`;
+    }
 }
 
 
@@ -1432,14 +1479,27 @@ function openAssignModal(type, id, name, action) {
 
 
 
-    document.getElementById("assignModalTitle").innerText = action === 'assign' ? `Asignar ${name} a Obra` : `Transferir ${name} a Nueva Obra`;
+    // Poblar dinámicamente proyectos si está vacío o desactualizado
+    const projSelect = document.getElementById("modal_target_project_id");
+    if (projSelect) {
+        const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+        if (safeProjects.length > 0) {
+            projSelect.innerHTML = `<option value="">-- Seleccione Proyecto Destino --</option>` +
+                safeProjects.map(p => `<option value="${p.id}" data-loc="${p.location || 'Sede Central'}">${p.code} - ${p.name} (${p.location || 'Sede Central'})</option>`).join('');
+            
+            projSelect.onchange = function() {
+                const opt = this.options[this.selectedIndex];
+                const loc = opt ? opt.getAttribute("data-loc") : "";
+                const locInput = document.getElementById("modal_res_location");
+                if (locInput && loc) locInput.value = loc;
+            };
+        }
+    }
 
+    document.getElementById("assignModalTitle").innerText = action === 'assign' ? `Asignar ${name} a Obra` : `Transferir ${name} a Nueva Obra`;
     document.getElementById("btnConfirmResourceAction").innerText = action === 'assign' ? 'Confirmar Asignación' : 'Confirmar Transferencia Directa';
 
-
-
     openModal("modalAssignResource");
-
 }
 
 
@@ -1519,11 +1579,9 @@ async function submitResourceAction(event) {
             closeModal("modalAssignResource");
 
             loadResourceDashboard();
-
             loadFleetList();
-
+            if (typeof loadMachineryList === 'function') loadMachineryList();
             loadToolsList();
-
             loadPersonnelTableList();
 
         } else {
@@ -1943,6 +2001,9 @@ if (typeof window !== 'undefined') {
     window.submitCalibrateOdometer = submitCalibrateOdometer;
     window.openCalibrateAllOdometersModal = openCalibrateAllOdometersModal;
     window.submitCalibrateAllOdometers = submitCalibrateAllOdometers;
+    window.filterToolsList = filterToolsList;
+    window.assignAvailableToolFromGroup = assignAvailableToolFromGroup;
+    window.openToolHistoryModal = openToolHistoryModal;
 }
 
-export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, submitCalibrateAllOdometers };
+export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, submitCalibrateAllOdometers, filterToolsList, assignAvailableToolFromGroup, openToolHistoryModal };

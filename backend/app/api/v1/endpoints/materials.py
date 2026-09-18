@@ -40,6 +40,8 @@ class MaterialEntryCreate(BaseModel):
     performed_by: Optional[str] = "Custodio de Almacen"
     register_in_cxp: bool = False
     due_days: int = 15
+    payment_channel: Optional[str] = "caja_chica_usd"
+    payment_ref: Optional[str] = None
 
 class MaterialConsumeCreate(BaseModel):
     material_id: int
@@ -158,18 +160,16 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
         entry_total = new_qty * new_unit_cost
 
         total_qty = prev_stock + new_qty
-        if total_qty > 0:
-            weighted_cost = (prev_total + entry_total) / total_qty
-        else:
-            weighted_cost = new_unit_cost
 
         is_discrete = (mat.unit_measure or "").strip().lower() in ["und", "unid", "unidad", "unidades", "pza", "pieza", "piezas", "rollo", "rollos"]
         if is_discrete:
             mat.stock_quantity = float(round(total_qty))
         else:
             mat.stock_quantity = round(total_qty, 2)
-        mat.unit_cost_usd = round(weighted_cost, 4)
-        mat.total_cost_usd = round(total_qty * mat.unit_cost_usd, 2)
+        
+        # Actualización al último costo registrado de reposición (Item 13)
+        mat.unit_cost_usd = round(new_unit_cost, 4)
+        mat.total_cost_usd = round(mat.stock_quantity * mat.unit_cost_usd, 2)
 
         movement = MaterialMovement(
             material_id=mat.id,
@@ -184,20 +184,42 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
         )
         db.add(movement)
 
-        if entry.register_in_cxp and entry.reference_doc:
+        cash_expense = None
+        if entry.register_in_cxp:
+            # Registrar como Cuenta por Pagar a Proveedores a crédito (Item 12)
+            due_date = datetime.utcnow() + timedelta(days=entry.due_days or 15)
             cxp = AccountPayable(
-                invoice_number=entry.reference_doc,
+                invoice_number=entry.reference_doc or f"CXP-MAT-{mat.id}-{int(datetime.utcnow().timestamp())}",
                 supplier_name=entry.supplier_name or "Proveedor Materiales",
                 payable_type="stock_almacen",
-                description=f"Compra Stock: {mat.name} ({new_qty} {mat.unit_measure})",
-                due_date=datetime.utcnow() + timedelta(days=entry.due_days),
+                description=f"Compra de Material: {mat.name} (Cant: {new_qty} {mat.unit_measure})",
+                due_date=due_date,
                 amount_usd=entry_total,
                 amount_bs=round(entry_total * current_rate, 2),
+                exchange_rate=current_rate,
                 balance_usd=entry_total,
                 status="pendiente",
-                notes=f"Generado automaticamente desde entrada de almacen (Tasa BCV: {current_rate} Bs/$). {entry.notes or ''}"
+                notes=f"Generado automáticamente desde entrada de almacén (Tasa BCV: {current_rate} Bs/$). {entry.notes or ''}"
             )
             db.add(cxp)
+        else:
+            # Compra de Contado: Egresa de Caja/Banco inmediatamente (Item 12)
+            cat = db.query(ExpenseCategory).filter(ExpenseCategory.code == "10.0").first() or db.query(ExpenseCategory).first()
+            ref_info = f"Ref: {entry.payment_ref or entry.reference_doc or 'Contado Almacén'}."
+            note_info = f" {entry.notes}" if entry.notes else ""
+            cash_expense = Expense(
+                category_id=cat.id if cat else 1,
+                expense_type="costo_obra" if mat.location != "Almacén Central Dalor" else "gasto_sede",
+                expense_date=datetime.utcnow(),
+                description=f"Compra Contado Stock: {mat.name} ({new_qty} {mat.unit_measure}). {ref_info}{note_info}",
+                supplier_vendor=entry.supplier_name or "Proveedor Materiales",
+                amount_usd=entry_total,
+                amount_bs=round(entry_total * current_rate, 2),
+                exchange_rate=current_rate,
+                payment_method=entry.payment_channel or "caja_chica_usd",
+                status="aprobado"
+            )
+            db.add(cash_expense)
 
         db.commit()
 
@@ -206,7 +228,8 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
             "message": f"Entrada registrada: +{new_qty} {mat.unit_measure} de {mat.name}.",
             "new_stock": mat.stock_quantity,
             "new_unit_cost_usd": mat.unit_cost_usd,
-            "total_value_usd": mat.total_cost_usd
+            "total_value_usd": mat.total_cost_usd,
+            "expense_id": cash_expense.id if cash_expense else None
         }
     except HTTPException:
         db.rollback()

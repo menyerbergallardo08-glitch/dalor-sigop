@@ -489,6 +489,40 @@ def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = De
     db.commit()
     return {"success": True, "message": "Cobro / Comprobante aplicado con éxito.", "new_balance_usd": r.balance_usd, "status": r.status}
 
+class BadDebtRequest(BaseModel):
+    reason: str
+    notes: Optional[str] = None
+
+@router.post("/cxc/{receivable_id}/declare-bad-debt")
+def declare_cxc_bad_debt(receivable_id: int, req: BadDebtRequest, db: Session = Depends(get_db)):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura no encontrada.")
+    if r.status in ["cobrado_total", "cobrado"]:
+        raise HTTPException(status_code=400, detail="No se puede castigar una factura ya cobrada en su totalidad.")
+
+    amount_written_off = r.balance_usd
+    r.is_bad_debt = True
+    r.bad_debt_amount_usd = amount_written_off
+    r.bad_debt_reason = req.reason.strip()
+    r.bad_debt_date = datetime.utcnow()
+    r.balance_usd = 0.0
+    r.status = "incobrable"
+
+    audit = AuditLog(
+        username="Finanzas",
+        module="Finanzas / CxC",
+        action="Declarar Cartera Incobrable",
+        details=f"Factura {r.invoice_number} ({r.client.name if r.client else 'Cliente'}) castigada por ${amount_written_off:,.2f} USD. Motivo: {req.reason}. Notas: {req.notes or 'N/A'}"
+    )
+    db.add(audit)
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Factura {r.invoice_number} declarada incobrable por ${amount_written_off:,.2f} USD.",
+        "amount_written_off": amount_written_off
+    }
+
 # ------------------------------------------------------------------------------
 # 4. ENDPOINTS DE CUENTAS POR PAGAR (CxP PROVEEDORES)
 # ------------------------------------------------------------------------------

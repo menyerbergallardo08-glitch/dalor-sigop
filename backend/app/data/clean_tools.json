@@ -168,30 +168,6 @@
     "quantity": 1
   },
   {
-    "code": "HERR-0015",
-    "name": "FECHA",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": "KILOS",
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "Electrodos stoc (CONSUMO ELEC.)",
-    "quantity": 1
-  },
-  {
-    "code": "HERR-0016",
-    "name": "SOLO SALIO PARA ANACO Y REGRESO",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": "HERBY",
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "Electrodos stoc (CONSUMO ELEC.)",
-    "quantity": 1
-  },
-  {
     "code": "HERR-0017",
     "name": "ELECTRODO E-6010",
     "asset_type": "herramienta",
@@ -213,30 +189,6 @@
     "serial_number": null,
     "status": "disponible_base",
     "location": "Electrodos stoc (CONSUMO ELEC.)",
-    "quantity": 1
-  },
-  {
-    "code": "HERR-0019",
-    "name": "16/062026",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": "ELECTRODO E-7018 GRIS",
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "Electrodos stoc (CONSUMO ELEC.)",
-    "quantity": 1
-  },
-  {
-    "code": "HERR-0020",
-    "name": "DESCRIPCCION",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": null,
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "Electrodos stoc (...)",
     "quantity": 1
   },
   {
@@ -2021,18 +1973,6 @@
     "asset_type": "herramienta",
     "category": "herramienta",
     "brand": null,
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "EQUIPO CAJA FUERTE (MATERIALES)",
-    "quantity": 1
-  },
-  {
-    "code": "HERR-0170",
-    "name": "ITEM",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": "DESCRIPCCION",
     "model": null,
     "serial_number": null,
     "status": "disponible_base",
@@ -7080,18 +7020,6 @@
     "quantity": 1
   },
   {
-    "code": "HERR-0591",
-    "name": "ART.",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": "DESCRIPCCION",
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "EQUIPOS DE PASILLO ALM-1 (HIST.EQUIPOS)",
-    "quantity": 1
-  },
-  {
     "code": "1-P-1-01-2",
     "name": "MAQUINA DE SOLDAR MILLER 500; ESTA MAQUINA SE LE REALIZO SERVICIO CAMBIO DE FILTRO Y",
     "asset_type": "herramienta",
@@ -7173,18 +7101,6 @@
     "serial_number": null,
     "status": "disponible_base",
     "location": "EQUIPOS DE PASILLO ALM-1 (HIST.EQUIPOS)",
-    "quantity": 1
-  },
-  {
-    "code": "HERR-0599",
-    "name": "ITEM",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": "DESCRIPCCION",
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "EQUIPOS DEL CONTENEDOR (3-X-1 L.COMBIN.)",
     "quantity": 1
   },
   {
@@ -7416,18 +7332,6 @@
     "quantity": 1
   },
   {
-    "code": "HERR-0619",
-    "name": "ITEM",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": "DESCRIPCCION",
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "EQUIPOS DEL CONTENEDOR (3-X-2ESLINGAS)",
-    "quantity": 1
-  },
-  {
     "code": "3-X-2-01",
     "name": "ESLINGA (CINTA) 4\" X 6 MTS. LARGO",
     "asset_type": "herramienta",
@@ -7497,18 +7401,6 @@
     "serial_number": null,
     "status": "disponible_base",
     "location": "EQUIPOS DEL CONTENEDOR (3-X-2ESLINGAS)",
-    "quantity": 1
-  },
-  {
-    "code": "HERR-0626",
-    "name": "ITEM",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": "DESCRIPCCION",
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "EQUIPOS DEL CONTENEDOR (3-X-3 L.IMPAC.MANDAR..)",
     "quantity": 1
   },
   {
@@ -10881,18 +10773,6 @@
     "serial_number": null,
     "status": "disponible_base",
     "location": "Extintores (EXTINTORES)",
-    "quantity": 1
-  },
-  {
-    "code": "HERR-0908",
-    "name": "DESCRIPCCION",
-    "asset_type": "herramienta",
-    "category": "herramienta",
-    "brand": null,
-    "model": null,
-    "serial_number": null,
-    "status": "disponible_base",
-    "location": "Extintores (...)",
     "quantity": 1
   }
 ]

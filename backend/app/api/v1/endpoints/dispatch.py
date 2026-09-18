@@ -181,12 +181,18 @@ def get_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
 
 @router.post("/")
 def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_db)):
+    client = None
     if g_in.client_id:
         client = db.query(Client).filter(Client.id == g_in.client_id).first()
-    else:
+    if not client:
         client = db.query(Client).first()
-    client_id_val = client.id if client else 1
-    client_name = client.name if client else "DALOR Interno / Sin Cliente"
+    if not client:
+        client = Client(name="OXICAR (Cliente Principal)", code="CLI-OXICAR", rif="J-31601195-0")
+        db.add(client)
+        db.commit()
+        db.refresh(client)
+    client_id_val = client.id
+    client_name = client.name
 
     # Correlativo automático si no viene provisto
     guide_num = g_in.guide_number

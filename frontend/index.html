@@ -3701,6 +3701,27 @@
 
                     </div>
 
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 14px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 700; color: #475569;"><i class="fa-solid fa-user"></i> Usuario:</label>
+                            <input type="text" id="auditFilterUser" class="form-input" placeholder="Ej: admin..." oninput="filterMaintenanceAuditLogs()" style="max-width: 140px; font-size: 11px; padding: 4px 8px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 700; color: #475569;"><i class="fa-regular fa-calendar"></i> Desde:</label>
+                            <input type="date" id="auditFilterDateFrom" class="form-input" onchange="filterMaintenanceAuditLogs()" style="font-size: 11px; padding: 4px 8px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 700; color: #475569;"><i class="fa-regular fa-calendar-check"></i> Hasta:</label>
+                            <input type="date" id="auditFilterDateTo" class="form-input" onchange="filterMaintenanceAuditLogs()" style="font-size: 11px; padding: 4px 8px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 180px;">
+                            <input type="text" id="auditFilterQuery" class="form-input" placeholder="Buscar por módulo, acción o detalles..." oninput="filterMaintenanceAuditLogs()" style="font-size: 11px; padding: 4px 8px; width: 100%;">
+                        </div>
+                        <button onclick="resetMaintenanceAuditFilters()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: white;" title="Restablecer filtros">
+                            <i class="fa-solid fa-filter-circle-xmark"></i> Limpiar
+                        </button>
+                    </div>
+
                     <div class="table-wrapper">
 
                         <table>
@@ -5222,43 +5243,32 @@
                             <div class="grid-4" style="margin-bottom: 10px;">
 
                                 <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente Destinatario *</label>
-
-                                    <select id="disp_client_id" required onchange="onDispatchClientChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-
-                                        <option value="">-- Seleccionar Cliente --</option>
-
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente / Destinatario *</label>
+                                    <select id="disp_client_id" onchange="onDispatchClientChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+                                        <option value="">-- Seleccionar Cliente Registrado --</option>
+                                        <option value="libre">📝 Destinatario Libre / No Registrado</option>
                                     </select>
-
+                                    <input type="text" id="disp_freeform_client" placeholder="Escribe el nombre del cliente / empresa" class="hidden" style="width: 100%; border: 1px solid #93c5fd; border-radius: 6px; padding: 6px 10px; font-size: 12px; margin-top: 4px; background: #eff6ff;">
                                 </div>
 
                                 <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Proyecto / Obra Imputable</label>
-
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Proyecto / Obra (Opcional)</label>
                                     <select id="disp_project_id" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-
-                                        <option value="">-- Servicio Directo de Taller / Sin Obra --</option>
-
+                                        <option value="">-- Despacho Puntual Libre / Sin Obra --</option>
                                     </select>
-
+                                    <button type="button" onclick="loadProjectResourcesIntoDispatch()" class="btn-secondary" style="margin-top: 4px; font-size: 10px; padding: 3px 6px; color: #0284c7; border-color: #bae6fd; width: 100%; font-weight: 700;">
+                                        <i class="fa-solid fa-list-check"></i> Cargar Insumos del Proyecto
+                                    </button>
                                 </div>
 
                                 <div>
-
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Planta / Frente de Entrega</label>
-
                                     <input type="text" id="disp_destination_plant" placeholder="Ej: Planta Guacara / Patio 3" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
                                 </div>
 
                                 <div>
-
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Dirección Completa de Destino *</label>
-
                                     <input type="text" id="disp_destination_address" required placeholder="Ej: Zona Industrial San Joaquín, Edo. Carabobo" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
                                 </div>
 
                             </div>
@@ -5924,6 +5934,21 @@
 
                     </div>
 
+                    <!-- Filtros y Búsqueda en Tiempo Real -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 250px; position: relative;">
+                            <input type="text" id="toolSearchInput" oninput="filterToolsList()" placeholder="🔍 Buscar herramienta por nombre, modelo o tipo..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="toolStatusFilter" onchange="filterToolsList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
+                                <option value="all">Todas las Disponibilidades</option>
+                                <option value="disponible">Con Disponibles en Base</option>
+                                <option value="en_obra">Con Unidades en Obra</option>
+                            </select>
+                            <span id="toolsCountBadge" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 6px 10px; border-radius: 6px;">0 modelos</span>
+                        </div>
+                    </div>
+
                     <div class="table-wrapper">
 
                         <table>
@@ -5932,23 +5957,19 @@
 
                                 <tr>
 
-                                    <th>Código</th>
-
                                     <th>Herramienta / Equipo</th>
 
-                                    <th>Tipo</th>
+                                    <th>Tipo / Categoría</th>
 
-                                    <th>Marca / Modelo</th>
+                                    <th style="text-align: center;">Cant. Total</th>
 
-                                    <th>Serial</th>
+                                    <th style="text-align: center;">Disponibles Base</th>
 
-                                    <th>Estado</th>
+                                    <th style="text-align: center;">En Obra</th>
 
-                                    <th>Ubicación Actual</th>
+                                    <th>Ubicación</th>
 
-                                    <th>Custodio</th>
-
-                                    <th style="text-align: center;">Acciones</th>
+                                    <th style="text-align: center;">Acciones & Traza</th>
 
                                 </tr>
 
@@ -7440,17 +7461,9 @@
 
                 <div id="qf_details_socio" class="hidden" style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 12px;">
 
-                    <label class="form-label" style="color: #6b21a8;">¿Qué Socio / Dueño realizó el retiro? *</label>
+                    <label class="form-label" style="color: #6b21a8;">Nombre de la Persona / Accionista que retira *</label>
 
-                    <select id="qf_partner_name" class="form-select" style="background: white; margin-bottom: 8px;">
-
-                        <option value="Ing. David Dalor (Socio Principal)">👑 Ing. David Dalor (Socio Principal)</option>
-
-                        <option value="Socio B (Operaciones)">💼 Socio B (Operaciones)</option>
-
-                        <option value="Socio C (Administración)">👤 Socio C (Administración)</option>
-
-                    </select>
+                    <input type="text" id="qf_partner_name" placeholder="Escribe el nombre del accionista o titular" class="form-input" style="background: white; margin-bottom: 8px;">
 
                     <label class="form-label" style="color: #6b21a8;">Motivo / Detalle del Retiro</label>
 
@@ -7806,6 +7819,77 @@
 
     </div>
 
+    <!-- MODAL: HISTORIAL DE PAGOS DE CUENTA POR PAGAR (CxP) -->
+    <div id="modalPayableHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 620px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <h3 id="payableHistoryTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: #e11d48;"></i> Historial de Pagos / Abonos
+                    </h3>
+                    <p id="payableHistorySubtitle" style="font-size: 11px; color: #64748b;">Detalle de cuotas y transferencias aplicadas a la factura.</p>
+                </div>
+                <button onclick="closeModal('modalPayableHistory')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div class="table-container" style="max-height: 320px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 8px; text-align: left;">Método / Canal</th>
+                            <th style="padding: 8px; text-align: left;">N° Referencia</th>
+                            <th style="padding: 8px; text-align: right;">Monto Abonado</th>
+                            <th style="padding: 8px; text-align: left;">Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payableHistoryTableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">Cargando historial de abonos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 14px; text-align: right;">
+                <button type="button" onclick="closeModal('modalPayableHistory')" class="btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DECLARAR CARTERA INCOBRABLE (CxC) -->
+    <div id="modalDeclareBadDebt" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 460px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #fee2e2; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #991b1b;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Declarar Cartera Incobrable
+                </h3>
+                <button onclick="closeModal('modalDeclareBadDebt')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form onsubmit="submitDeclareBadDebt(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="bad_debt_target_id">
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px; font-size: 12px; color: #991b1b;">
+                    ¿Confirmas castigar la factura <b id="bad_debt_inv_label"></b> por un saldo de <b id="bad_debt_amount_label"></b>? El saldo pasará a $0 y quedará asentado en pérdidas de cartera sin afectar caja real.
+                </div>
+                <div>
+                    <label class="form-label">Motivo de la Incobrabilidad *</label>
+                    <select id="bad_debt_reason" class="form-select" required>
+                        <option value="Quiebra o Cierre de Operaciones del Cliente">Quiebra o Cierre de Operaciones del Cliente</option>
+                        <option value="Disputa Legal / Dictamen Jurídico">Disputa Legal / Dictamen Jurídico</option>
+                        <option value="Acuerdo de Castigo de Cartera">Acuerdo de Castigo de Cartera</option>
+                        <option value="Insolvencia Prolongada (> 180 días)">Insolvencia Prolongada (> 180 días)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Detalle / Notas Adicionales</label>
+                    <input type="text" id="bad_debt_notes" placeholder="Ej: Aprobado en acta de junta directiva..." class="form-input">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalDeclareBadDebt')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #dc2626; color: white; font-weight: 800;">
+                        <i class="fa-solid fa-ban"></i> Confirmar Castigo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
 
     <!-- MODAL: DETALLE COMPLETO Y SEGUIMIENTO DEL PROYECTO (FICHA DE OBRA) -->
@@ -7826,16 +7910,17 @@
 
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 8px;">
-
-                    <button type="button" onclick="copyProjectClientTrackingLink()" class="btn-primary" style="background: #059669; font-size: 11px; padding: 5px 10px;">
-
-                        <i class="fa-solid fa-share-nodes"></i> Enlace para Cliente (Ciego a Costos)
-
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" onclick="copyProjectClientTrackingLink()" class="btn-primary" style="background: #059669; font-size: 11px; padding: 5px 10px;" title="Copiar enlace web de seguimiento">
+                        <i class="fa-solid fa-link"></i> Copiar Enlace
                     </button>
-
+                    <button type="button" onclick="shareProjectViaWhatsApp()" class="btn-primary" style="background: #16a34a; font-size: 11px; padding: 5px 10px;" title="Compartir avance al cliente por WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </button>
+                    <button type="button" onclick="printProjectProgressReport()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; font-weight: 700;" title="Descargar e Imprimir Reporte de Avance">
+                        <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i> Imprimir PDF
+                    </button>
                     <button onclick="closeModal('modalProjectDetail')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
-
                 </div>
 
             </div>
@@ -8039,39 +8124,37 @@
                     </div>
 
                     <div>
-
                         <label class="form-label">Moneda de Emisión *</label>
-
                         <select id="quote_currency" class="form-select" onchange="onQuotationCurrencyChanged()">
-
                             <option value="USD">Dólares (USD $)</option>
-
                             <option value="VES">Bolívares (Bs. BCV)</option>
-
                             <option value="EUR">Euros (EUR €)</option>
-
                         </select>
-
                     </div>
 
                     <div>
-
                         <label class="form-label">Tratamiento de IVA</label>
-
                         <select id="quote_tax_type" class="form-select" onchange="onTaxTypeChanged()">
-
                             <option value="16">IVA General (16%)</option>
-
                             <option value="8">IVA Reducido (8%)</option>
-
                             <option value="0">Exento de IVA (0% - Sin IVA)</option>
-
                         </select>
-
                         <input type="hidden" id="quote_tax_percent" value="16">
-
                     </div>
 
+                </div>
+
+                <!-- Banner Cláusula Cambiaria Oficial BCV para Presupuestos en Bolívares -->
+                <div id="quote_bcv_banner_box" style="display: none; background: #fefce8; border: 1.5px solid #facc15; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-scale-balanced" style="color: #b45309; font-size: 18px;"></i>
+                        <div>
+                            <span style="color: #854d0e; font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">Cláusula de Conversión Oficial BCV:</span>
+                            <p style="margin: 2px 0 0 0; color: #713f12; font-size: 11px; font-weight: 600; line-height: 1.35;">
+                                Monto cotizado expresado en USD y pagadero en Bolívares (VES) a la Tasa Oficial del Banco Central de Venezuela (BCV) vigente a la fecha efectiva de pago.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
 
@@ -8843,15 +8926,32 @@
 
 
                 <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px;">
-
                     <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #166534; cursor: pointer;">
-
-                        <input type="checkbox" id="me_register_cxp" style="width: 16px; height: 16px;">
-
+                        <input type="checkbox" id="me_register_cxp" onchange="toggleMaterialEntryPaymentBox()" style="width: 16px; height: 16px;">
                         <span>Registrar como Deuda Pendiente en Cuentas por Pagar (CxP a Crédito)</span>
-
                     </label>
+                </div>
 
+                <!-- Pago de Contado: Se descuenta inmediatamente de la Caja/Banco seleccionada -->
+                <div id="me_cash_payment_box" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #1e40af; display: block; margin-bottom: 6px;">
+                        <i class="fa-solid fa-money-bill-wave"></i> Compra de Contado: Egreso Inmediato de Caja / Banco
+                    </span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div>
+                            <label class="form-label">Cuenta / Caja de Origen *</label>
+                            <select id="me_payment_channel" class="form-select">
+                                <option value="caja_chica_usd">💵 Caja Chica USD (Efectivo)</option>
+                                <option value="banco_mercantil">🏦 Banco Mercantil (VES/BCV)</option>
+                                <option value="banco_banesco">🏦 Banesco (VES/BCV)</option>
+                                <option value="zelle">📱 Zelle DALOR</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">N° Referencia Pago / Recibo *</label>
+                            <input type="text" id="me_payment_ref" placeholder="Ej: REF-9831 / Efectivo" class="form-input">
+                        </div>
+                    </div>
                 </div>
 
 
@@ -9584,9 +9684,15 @@
 
                         <select id="npers_roster" class="form-select" required>
 
+                            <option value="fijo_mensual" selected>Fijo Mensual (Sueldo Ordinario Base)</option>
+
+                            <option value="destajo_obra">Destajo por Obra / Por Avance</option>
+
+                            <option value="bono_viatico">Bono o Viático de Campo / Temporal</option>
+
                             <option value="guacara_fijo">Nómina Fija Sede Central</option>
 
-                            <option value="proyecto_obra">Nómina por Obra / Destajo</option>
+                            <option value="proyecto_obra">Nómina por Proyecto / Cuadrilla</option>
 
                         </select>
 
@@ -9638,8 +9744,41 @@
 
 
 
-    <!-- MODAL: GESTIÓN DE USUARIOS DE SISTEMA -->
+    <!-- MODAL: HISTORIAL DE TRAZA DE HERRAMIENTA / EQUIPO -->
+    <div id="modalToolHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 680px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="modalToolHistoryTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: var(--dalor-blue);"></i> Historial de Traza de Herramienta
+                    </h3>
+                    <p id="modalToolHistorySubtitle" style="font-size: 11px; color: #64748b;">Movimientos, obras, custodios y estados registrados.</p>
+                </div>
+                <button onclick="closeModal('modalToolHistory')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 8px; text-align: left;">Cód. / Unidad</th>
+                            <th style="padding: 8px; text-align: left;">Evento / Movimiento</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Responsable</th>
+                        </tr>
+                    </thead>
+                    <tbody id="toolHistoryTableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">Cargando historial...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 14px; text-align: right;">
+                <button type="button" onclick="closeModal('modalToolHistory')" class="btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- MODAL: GESTIÓN DE USUARIOS DE SISTEMA -->
     <div id="modalUserManagement" class="modal-overlay hidden">
 
         <div class="modal-content" style="max-width: 780px;">

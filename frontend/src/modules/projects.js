@@ -345,106 +345,79 @@ function populatePlanDropdownSelectors() {
 
 
     // 3. Desplegable de Herramientas & Equipos (Mostrando cantidades y ubicación)
-
     const toolSel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
-
     const tools = safeAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
-
     if (toolSel) {
-
         toolSel.innerHTML = `<option value="">-- Seleccionar Herramienta / Equipo Mayor (${tools.length} disp.) --</option>` + 
-
             tools.map(t => `<option value="${t.id}">[${t.asset_code}] ${t.name} (Cant: 1 disp. | S/N: ${t.serial_number || 'S/N'})</option>`).join('');
-
         toolSel.onchange = function() {
-
             if (this.value) addPlanResource('tools');
-
         };
-
     }
 
+    // 4. Desplegable de Materiales & Insumos de Almacén
+    const matSel = document.getElementById("plan_select_materials") || document.getElementById("plan_mat_select");
+    const safeMats = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+    if (matSel) {
+        matSel.innerHTML = `<option value="">-- Seleccionar Material / Insumo (${safeMats.length} disponibles) --</option>` +
+            safeMats.map(m => `<option value="${m.id}">[${m.code}] ${m.name} (Stock: ${m.stock_quantity} ${m.unit_measure || 'UND'})</option>`).join('');
+        matSel.onchange = function() {
+            if (this.value) addPlanResource('material');
+        };
+    }
 }
-
-
 
 // Handler universal para asignación y desasignación de recursos en proyectos
-
 function addPlanResource(type) {
-
     if (type === 'personnel') {
-
         const sel = document.getElementById("plan_select_personnel") || document.getElementById("plan_pers_select");
-
         const val = parseInt(sel?.value);
-
         if (val && !selectedPersonnelIds.includes(val)) {
-
             selectedPersonnelIds.push(val);
-
             renderAssignedTags();
-
         }
-
         if (sel) sel.value = "";
-
     } else if (type === 'fleet' || type === 'vehicle') {
-
         const sel = document.getElementById("plan_select_fleet") || document.getElementById("plan_veh_select");
-
         const val = parseInt(sel?.value);
-
         if (val && !selectedVehicleIds.includes(val)) {
-
             selectedVehicleIds.push(val);
-
             renderAssignedTags();
-
         }
-
         if (sel) sel.value = "";
-
     } else if (type === 'tools' || type === 'tool') {
-
         const sel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
-
         const val = parseInt(sel?.value);
-
         if (val && !selectedToolIds.includes(val)) {
-
             selectedToolIds.push(val);
-
             renderAssignedTags();
-
         }
-
         if (sel) sel.value = "";
-
+    } else if (type === 'material' || type === 'materials') {
+        const sel = document.getElementById("plan_select_materials") || document.getElementById("plan_mat_select");
+        const val = parseInt(sel?.value);
+        if (val && !selectedMaterialIds.includes(val)) {
+            selectedMaterialIds.push(val);
+            renderAssignedTags();
+        }
+        if (sel) sel.value = "";
     }
-
 }
-
-
 
 function removePlanResource(type, id) {
-
     if (type === 'personnel') {
-
         selectedPersonnelIds = selectedPersonnelIds.filter(i => i !== id);
-
     } else if (type === 'fleet' || type === 'vehicle') {
-
         selectedVehicleIds = selectedVehicleIds.filter(i => i !== id);
-
     } else if (type === 'tools' || type === 'tool') {
-
         selectedToolIds = selectedToolIds.filter(i => i !== id);
-
+    } else if (type === 'material' || type === 'materials') {
+        selectedMaterialIds = selectedMaterialIds.filter(i => i !== id);
     }
-
     renderAssignedTags();
-
 }
+
+
 
 
 
@@ -655,11 +628,28 @@ function renderAssignedTags() {
                 `;
 
             }).join('');
-
         }
-
     }
 
+    // 4. Materiales Tags
+    const matContainer = document.getElementById("plan_tags_materials") || document.getElementById("plan_mat_tags");
+    if (matContainer) {
+        const safeMats = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+        if (selectedMaterialIds.length === 0) {
+            matContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">Sin materiales seleccionados. Selecciona arriba y pulsa '+'.</span>`;
+        } else {
+            matContainer.innerHTML = selectedMaterialIds.map(id => {
+                const m = safeMats.find(item => item.id === id);
+                if (!m) return '';
+                return `
+                    <span class="resource-tag-pill" style="display:inline-flex; align-items:center; gap:6px; background:#f0fdfa; color:#0f766e; border:1px solid #99f6e4; padding:3px 8px; border-radius:9999px; font-size:11px; font-weight:700; margin:2px;">
+                        <i class="fa-solid fa-boxes-stacked"></i> [${m.code}] ${m.name}
+                        <button type="button" onclick="removePlanResource('material', ${m.id})" style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:bold; font-size:12px; line-height:1;">&times;</button>
+                    </span>
+                `;
+            }).join('');
+        }
+    }
 }
 
 
@@ -2168,21 +2158,114 @@ window.copyProjectClientTrackingLink = async function(projIdOrCode) {
     
 
     if (typeof showToastNotification === 'function') {
-
         showToastNotification(`🔗 Enlace copiado al portapapeles: ${url}`, 'success');
-
     } else {
+        alert(`🔗 Enlace de Seguimiento para Cliente copiado al portapapeles:\n\n${url}`);
+    }
+};
 
-        alert(`🔗 Enlace de Seguimiento para Cliente copiado al portapapeles:
+window.shareProjectViaWhatsApp = async function(projIdOrCode) {
+    let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
+    let proj = (window.allProjects || []).find(p => p.id == projId) || { name: 'Proyecto', code: 'PRJ' };
 
-
-
-${url}`);
-
+    let token = proj.tracking_token || proj.code;
+    if (projId) {
+        try {
+            const res = await fetch(`${API_BASE}/projects/${projId}/tracking-token`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                token = data.tracking_token || token;
+            }
+        } catch(e) {}
     }
 
-    window.open(url, '_blank');
+    const trackingUrl = `${window.location.origin}/seguimiento/${token}`;
+    const text = `*Metalmecánica Dalor, C.A.*%0A%0AEstimado cliente, puede consultar el avance en tiempo real y cronograma del proyecto *${encodeURIComponent(proj.name)}* en el siguiente enlace oficial:%0A${encodeURIComponent(trackingUrl)}%0A%0AGracias por confiar en nuestros servicios.`;
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+};
 
+window.printProjectProgressReport = async function(projIdOrCode) {
+    let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
+    if (!projId) return;
+    try {
+        const res = await fetch(`${API_BASE}/projects/${projId}/details`);
+        if (!res.ok) throw new Error("Error al obtener datos");
+        const proj = await res.json();
+
+        let phasesRows = (proj.phases || []).map((ph, idx) => `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px; font-weight: 800; color: #002B49;">Etapa ${idx + 1}</td>
+                <td style="padding: 8px; font-weight: 700;">${ph.name}</td>
+                <td style="padding: 8px; text-align: center;">${ph.duration_days} días</td>
+                <td style="padding: 8px; text-align: center;">
+                    <span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 800; ${ph.status === 'completado' ? 'background: #dcfce7; color: #166534;' : (ph.status === 'en_progreso' ? 'background: #e0f2fe; color: #0369a1;' : 'background: #f1f5f9; color: #64748b;')}">
+                        ${ph.status === 'completado' ? '✅ Culminada' : (ph.status === 'en_progreso' ? '🔄 En Progreso' : '⏳ Pendiente')}
+                    </span>
+                </td>
+            </tr>
+        `).join('');
+
+        const printHtml = `
+        <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 800px; margin: auto; padding: 24px; border: 1px solid #cbd5e1; background: #fff;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F5B800; padding-bottom: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <img src="logo_dalor.jpg" alt="DALOR" style="height: 50px; max-width: 140px; object-fit: contain;" onerror="this.style.display='none'">
+                    <div>
+                        <h1 style="font-size: 18px; font-weight: 900; color: #002B49; margin: 0; text-transform: uppercase;">Metalmecánica Dalor, C.A.</h1>
+                        <p style="font-size: 11px; color: #0284c7; margin: 2px 0 0 0; font-weight: 700;">RIF: J-31601195-0 &bull; Guacara, Edo. Carabobo</p>
+                    </div>
+                </div>
+                <div style="text-align: right; border: 2px solid #002B49; padding: 6px 12px; border-radius: 6px; background: #f8fafc;">
+                    <div style="font-size: 10px; font-weight: 900; color: #002B49;">REPORTE OFICIAL DE AVANCE DE OBRA</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #0284c7;">${proj.code}</div>
+                    <div style="font-size: 10px; color: #64748b;">Fecha: ${new Date().toLocaleDateString('es-VE')}</div>
+                </div>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                <h2 style="font-size: 15px; font-weight: 800; color: #002B49; margin: 0 0 6px 0;">${proj.name}</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                    <div><b>Cliente:</b> ${proj.client_name || 'General'}</div>
+                    <div><b>Ubicación:</b> ${proj.location || 'Sede Central'}</div>
+                    <div><b>Duración Estimada:</b> ${proj.duration_days} días</div>
+                    <div><b>Avance Físico Global:</b> <span style="font-weight: 800; color: #059669;">${proj.progress_pct || 0}%</span></div>
+                </div>
+                ${proj.scope_of_work ? `<p style="font-size: 11px; color: #475569; margin: 8px 0 0 0; border-top: 1px dashed #cbd5e1; padding-top: 6px;"><b>Alcance del Trabajo:</b> ${proj.scope_of_work}</p>` : ''}
+            </div>
+
+            <h3 style="font-size: 13px; font-weight: 800; color: #002B49; margin-bottom: 8px;">Desglose de Fases y Cronograma de Ejecución:</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 24px;">
+                <thead style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                    <tr>
+                        <th style="padding: 8px; text-align: left;">Fase</th>
+                        <th style="padding: 8px; text-align: left;">Descripción de la Actividad</th>
+                        <th style="padding: 8px; text-align: center;">Duración</th>
+                        <th style="padding: 8px; text-align: center;">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${phasesRows}
+                </tbody>
+            </table>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 40px; padding-top: 10px;">
+                <div style="text-align: center; width: 45%; border-top: 1px solid #94a3b8; padding-top: 6px; font-size: 11px;">
+                    <b>Ingeniero Residente / Supervisor DALOR</b><br>Firma y Sello
+                </div>
+                <div style="text-align: center; width: 45%; border-top: 1px solid #94a3b8; padding-top: 6px; font-size: 11px;">
+                    <b>Inspector Técnico del Cliente</b><br>Firma y Conformidad
+                </div>
+            </div>
+        </div>
+        `;
+
+        const w = window.open('', '_blank');
+        w.document.write(`<html><head><title>Avance de Obra - ${proj.code}</title></head><body style="margin: 20px;">${printHtml}</body></html>`);
+        w.document.close();
+        setTimeout(() => { w.focus(); w.print(); }, 400);
+    } catch(e) {
+        alert("Error al generar reporte PDF: " + e.message);
+    }
 };
 
 
@@ -2314,6 +2397,8 @@ if (typeof window !== 'undefined') {
     window.triggerExcelImport = triggerExcelImport;
     window.updatePhaseStatus = updatePhaseStatus;
     window.viewProjectDetails = viewProjectDetails;
+    window.shareProjectViaWhatsApp = shareProjectViaWhatsApp;
+    window.printProjectProgressReport = printProjectProgressReport;
 }
 
-export { addPlanResource, addProjectPhaseRow, addProjectPhaseTask, addProjectPhaseTaskRow, assignPersonnelTag, assignToolTag, assignVehicleTag, deleteProject, deleteReceivable, downloadExcelTemplate, filterProjectsList, handleExcelFileSelected, initProjectPlanningView, loadProjectsList, populatePlanDropdownSelectors, recalcProjectBudgetPreview, removePersonnelTag, removePlanResource, removeProjectPhaseRow, removeToolTag, removeVehicleTag, renderAssignedTags, renumberPhasesAndTasks, setProjectType, submitCreateProject, switchProjectSubtab, toggleProjectTask, triggerExcelImport, updatePhaseStatus, viewProjectDetails };
+export { addPlanResource, addProjectPhaseRow, addProjectPhaseTask, addProjectPhaseTaskRow, assignPersonnelTag, assignToolTag, assignVehicleTag, deleteProject, deleteReceivable, downloadExcelTemplate, filterProjectsList, handleExcelFileSelected, initProjectPlanningView, loadProjectsList, populatePlanDropdownSelectors, recalcProjectBudgetPreview, removePersonnelTag, removePlanResource, removeProjectPhaseRow, removeToolTag, removeVehicleTag, renderAssignedTags, renumberPhasesAndTasks, setProjectType, submitCreateProject, switchProjectSubtab, toggleProjectTask, triggerExcelImport, updatePhaseStatus, viewProjectDetails, shareProjectViaWhatsApp, printProjectProgressReport };

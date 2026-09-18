@@ -165,15 +165,25 @@ async function loadReceivablesList() {
 
                 <td style="text-align: center;">
 
-                    ${r.balance_usd > 0 ? `
+                    ${r.balance_usd > 0 && !isIncobrable ? `
 
-                        <button onclick="openRecordPaymentModal('cobro_cxc', ${r.id}, ${r.balance_usd})" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669;">
+                        <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
 
-                            <i class="fa-solid fa-hand-holding-dollar"></i> Cobrar
+                            <button onclick="openRecordPaymentModal('cobro_cxc', ${r.id}, ${r.balance_usd})" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669;" title="Registrar Cobro">
 
-                        </button>
+                                <i class="fa-solid fa-hand-holding-dollar"></i> Cobrar
 
-                    ` : `<span style="color: #059669; font-weight: 800; font-size: 11px;"><i class="fa-solid fa-check-double"></i> Al Día</span>`}
+                            </button>
+
+                            <button onclick="openDeclareBadDebtModal(${r.id}, '${(r.invoice_number || '').replace(/'/g, "\\'")}', '${(r.client_name || '').replace(/'/g, "\\'")}', ${r.balance_usd})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;" title="Declarar Incobrable / Castigar">
+
+                                <i class="fa-solid fa-ban"></i> Incobrable
+
+                            </button>
+
+                        </div>
+
+                    ` : isIncobrable ? `<span style="color: #dc2626; font-weight: 800; font-size: 11px;"><i class="fa-solid fa-ban"></i> Castigada</span>` : `<span style="color: #059669; font-weight: 800; font-size: 11px;"><i class="fa-solid fa-check-double"></i> Al Día</span>`}
 
                 </td>
 
@@ -247,6 +257,24 @@ async function submitCreateReceivable(e) {
 
     if (e && e.preventDefault) e.preventDefault();
 
+
+
+    const submitBtn = e && e.target ? e.target.querySelector('button[type="submit"]') : null;
+
+    if (submitBtn) {
+
+        if (submitBtn.disabled) return;
+
+        submitBtn.disabled = true;
+
+        submitBtn.dataset.origText = submitBtn.innerHTML;
+
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+
+    }
+
+
+
     const invoiceNum = document.getElementById("cxc_invoice_number").value.trim();
 
     const clientId = parseInt(document.getElementById("cxc_client_id").value);
@@ -266,6 +294,14 @@ async function submitCreateReceivable(e) {
     if (!invoiceNum || !clientId || !dueDateVal || isNaN(amountVal) || amountVal <= 0) {
 
         alert("Por favor completa todos los campos requeridos (*): N° Factura, Cliente, Fecha de Vencimiento y Monto válido.");
+
+        if (submitBtn) {
+
+            submitBtn.disabled = false;
+
+            if (submitBtn.dataset.origText) submitBtn.innerHTML = submitBtn.dataset.origText;
+
+        }
 
         return;
 
@@ -375,6 +411,16 @@ async function submitCreateReceivable(e) {
 
         alert("Error al guardar cuenta por cobrar: " + err.message);
 
+    } finally {
+
+        if (submitBtn) {
+
+            submitBtn.disabled = false;
+
+            if (submitBtn.dataset.origText) submitBtn.innerHTML = submitBtn.dataset.origText;
+
+        }
+
     }
 
 }
@@ -386,6 +432,8 @@ async function submitCreateReceivable(e) {
 // CUENTAS POR PAGAR (CxP)
 
 // ----------------------------------------------------
+
+let lastPayablesList = [];
 
 async function loadPayablesList() {
 
@@ -402,6 +450,7 @@ async function loadPayablesList() {
         if (!res.ok) throw new Error("Error en servidor");
 
         const list = await res.json();
+        lastPayablesList = Array.isArray(list) ? list : [];
 
 
 
@@ -419,11 +468,11 @@ async function loadPayablesList() {
 
             let badgeBg = '#fef3c7', badgeColor = '#92400e', statusLabel = 'Pendiente';
 
-            if (p.status === 'pagado') { badgeBg = '#d1fae5'; badgeColor = '#065f46'; statusLabel = 'Pagado Total'; }
+            if (p.status === 'pagado' || p.status === 'pagado_total' || p.balance_usd <= 0.01) { badgeBg = '#d1fae5'; badgeColor = '#065f46'; statusLabel = 'Pagado Total'; }
 
-            if (p.status === 'parcial') { badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; statusLabel = 'Pago Parcial'; }
+            else if (p.status === 'parcial' || p.status === 'abono_parcial') { badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; statusLabel = 'Pago Parcial'; }
 
-            if (p.status === 'vencido') { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '⚠️ Vencida'; }
+            else if (p.status === 'vencido' || (p.due_date && new Date(p.due_date) < new Date())) { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '⚠️ Vencida'; }
 
 
 
@@ -435,7 +484,7 @@ async function loadPayablesList() {
 
                 <td style="font-weight: 700;">${p.supplier_name}</td>
 
-                <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;">${p.project_code}</span></td>
+                <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;">${p.project_code || p.project_name || 'General'}</span></td>
 
                 <td>${p.description}</td>
 
@@ -461,15 +510,25 @@ async function loadPayablesList() {
 
                 <td style="text-align: center;">
 
-                    ${p.balance_usd > 0 ? `
+                    <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
 
-                        <button onclick="openRecordPaymentModal('pago_cxp', ${p.id}, ${p.balance_usd})" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #e11d48;">
+                        ${p.balance_usd > 0.01 ? `
 
-                            <i class="fa-solid fa-money-bill-wave"></i> Pagar
+                            <button onclick="openRecordPaymentModal('pago_cxp', ${p.id}, ${p.balance_usd})" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #e11d48;" title="Registrar Pago">
+
+                                <i class="fa-solid fa-money-bill-wave"></i> Pagar
+
+                            </button>
+
+                        ` : `<span style="color: #059669; font-weight: 800; font-size: 11px; margin-right: 4px;"><i class="fa-solid fa-check-double"></i> Solventado</span>`}
+
+                        <button onclick="openPayableHistoryModal(${p.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; background: #f1f5f9; color: #475569;" title="Ver Historial de Abonos">
+
+                            <i class="fa-solid fa-clock-rotate-left"></i> Historial
 
                         </button>
 
-                    ` : `<span style="color: #059669; font-weight: 800; font-size: 11px;"><i class="fa-solid fa-check-double"></i> Solventado</span>`}
+                    </div>
 
                 </td>
 
@@ -509,7 +568,15 @@ function openNewPayableModal() {
 
 async function submitCreatePayable(e) {
 
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+
+    const submitBtn = e && e.target ? e.target.querySelector('button[type="submit"]') : null;
+    if (submitBtn) {
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        submitBtn.dataset.origText = submitBtn.innerHTML;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Registrando...`;
+    }
 
     const payload = {
 
@@ -549,7 +616,7 @@ async function submitCreatePayable(e) {
 
         document.getElementById("payableForm").reset();
 
-        loadPayablesList();
+        await loadPayablesList();
 
         alert("✅ Cuenta por pagar registrada exitosamente.");
 
@@ -557,8 +624,101 @@ async function submitCreatePayable(e) {
 
         alert("Error: " + err.message);
 
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            if (submitBtn.dataset.origText) submitBtn.innerHTML = submitBtn.dataset.origText;
+        }
     }
 
+}
+
+function openPayableHistoryModal(payableId) {
+    const p = (lastPayablesList || []).find(x => x.id === payableId);
+    if (!p) {
+        alert("No se pudo localizar el detalle de esta factura.");
+        return;
+    }
+
+    const titleEl = document.getElementById("payableHistoryTitle");
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color: #e11d48;"></i> Historial de Abonos &bull; Factura [${p.invoice_number}]`;
+    }
+
+    const subtitleEl = document.getElementById("payableHistorySubtitle");
+    if (subtitleEl) {
+        subtitleEl.textContent = `Proveedor: ${p.supplier_name} | Total Factura: $${Number(p.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} | Saldo Pendiente: $${Number(p.balance_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    }
+
+    const tbody = document.getElementById("payableHistoryTableBody");
+    if (tbody) {
+        const payments = p.payments || [];
+        if (payments.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">No se han registrado abonos ni pagos aún para esta factura.</td></tr>`;
+        } else {
+            tbody.innerHTML = payments.map(pm => `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 8px; font-weight: 600; color: #334155;">${pm.payment_date || '-'}</td>
+                    <td style="padding: 8px; text-transform: capitalize;">${(pm.payment_method || '-').replace(/_/g, ' ')}</td>
+                    <td style="padding: 8px; font-family: monospace; font-weight: 700; color: #0284c7;">${pm.voucher_number || '-'}</td>
+                    <td style="padding: 8px; text-align: right; font-weight: 800; color: #059669;">$${Number(pm.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td style="padding: 8px; color: #64748b;">${pm.notes || '-'}</td>
+                </tr>
+            `).join('');
+        }
+    }
+    openModal("modalPayableHistory");
+}
+
+function openDeclareBadDebtModal(recId, invoiceNum, clientName, balanceUsd) {
+    const targetInput = document.getElementById("bad_debt_target_id") || document.getElementById("bad_debt_cxc_id");
+    if (targetInput) targetInput.value = recId;
+
+    const invLabel = document.getElementById("bad_debt_inv_label");
+    if (invLabel) invLabel.textContent = `[${invoiceNum}] ${clientName ? '- ' + clientName : ''}`;
+
+    const amountLabel = document.getElementById("bad_debt_amount_label");
+    if (amountLabel) amountLabel.textContent = `$${parseFloat(balanceUsd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD`;
+
+    const notesInput = document.getElementById("bad_debt_notes");
+    if (notesInput) notesInput.value = "";
+
+    openModal("modalDeclareBadDebt");
+}
+
+async function submitDeclareBadDebt(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const targetInput = document.getElementById("bad_debt_target_id") || document.getElementById("bad_debt_cxc_id");
+    const id = targetInput ? targetInput.value : null;
+    const reason = document.getElementById("bad_debt_reason")?.value || "Insolvencia Prolongada";
+    const notes = document.getElementById("bad_debt_notes")?.value?.trim() || "";
+
+    if (!id) {
+        alert("Error: No se identificó la cuenta por cobrar.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/financial/cxc/${id}/declare-bad-debt`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason, notes })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || data.error || "Error al declarar incobrable");
+
+        closeModal("modalDeclareBadDebt");
+        if (typeof showToastNotification === 'function') {
+            showToastNotification("✅ Factura declarada como Incobrable / Cartera Castigada con éxito.", "success");
+        } else {
+            alert("✅ Factura declarada como Incobrable / Cartera Castigada con éxito.");
+        }
+        await loadReceivablesList();
+        if (typeof loadFinancialSummary === 'function') await loadFinancialSummary();
+        if (typeof loadTreasurySummary === 'function') await loadTreasurySummary();
+    } catch (err) {
+        alert("Error: " + err.message);
+    }
 }
 
 
@@ -993,8 +1153,7 @@ async function submitQuickFlow(event) {
 
             // Registrar como Retiro de Socio
 
-            const partner_name = document.getElementById('qf_partner_name').value;
-
+            const partner_name = (document.getElementById('qf_partner_name')?.value || '').trim() || 'Accionista';
             const concept = document.getElementById('qf_partner_concept').value.trim() || description;
 
 
@@ -1622,6 +1781,9 @@ if (typeof window !== 'undefined') {
     window.submitFinancialPayment = submitFinancialPayment;
     window.submitQuickFlow = submitQuickFlow;
     window.switchFinancialSubtab = switchFinancialSubtab;
+    window.openDeclareBadDebtModal = openDeclareBadDebtModal;
+    window.submitDeclareBadDebt = submitDeclareBadDebt;
+    window.openPayableHistoryModal = openPayableHistoryModal;
 }
 
-export { calcClientPaymentBs, calcQuickBs, loadPartnersWithdrawalsList, loadPayablesList, loadReceivablesList, loadTreasurySummary, openBadDebtModal, openCreateCxCForProject, openFinancialSubtab, openMaterialConsumeModalWithProject, openNewPartnerWithdrawalModal, openNewPayableModal, openNewReceivableModal, openQuickFlowModal, openReceiveClientPaymentModal, openRecordPaymentModal, selectQuickType, submitBadDebtWriteOff, submitCreatePayable, submitCreateReceivable, submitDirectClientPayment, submitFinancialPayment, submitQuickFlow, switchFinancialSubtab };
+export { calcClientPaymentBs, calcQuickBs, loadPartnersWithdrawalsList, loadPayablesList, loadReceivablesList, loadTreasurySummary, openBadDebtModal, openCreateCxCForProject, openDeclareBadDebtModal, openFinancialSubtab, openMaterialConsumeModalWithProject, openNewPartnerWithdrawalModal, openNewPayableModal, openNewReceivableModal, openPayableHistoryModal, openQuickFlowModal, openReceiveClientPaymentModal, openRecordPaymentModal, selectQuickType, submitBadDebtWriteOff, submitCreatePayable, submitCreateReceivable, submitDeclareBadDebt, submitDirectClientPayment, submitFinancialPayment, submitQuickFlow, switchFinancialSubtab };

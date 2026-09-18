@@ -309,50 +309,44 @@ function calcMaterialEntryTotal() {
 
 
 
+function toggleMaterialEntryPaymentBox() {
+    const isCxp = document.getElementById("me_register_cxp")?.checked || false;
+    const cashBox = document.getElementById("me_cash_payment_box");
+    if (cashBox) {
+        if (isCxp) {
+            cashBox.classList.add("hidden");
+        } else {
+            cashBox.classList.remove("hidden");
+        }
+    }
+}
+
 async function submitMaterialEntry(event) {
-
     event.preventDefault();
-
     const matId = parseInt(document.getElementById("me_material_id").value);
-
     const qty = parseFloat(document.getElementById("me_quantity").value) || 0.0;
-
     const cost = parseFloat(document.getElementById("me_unit_cost").value) || 0.0;
-
     const registerCxp = document.getElementById("me_register_cxp")?.checked || false;
-
-
+    const paymentChannel = document.getElementById("me_payment_channel")?.value || "caja_chica_usd";
+    const paymentRef = document.getElementById("me_payment_ref")?.value.trim() || "";
 
     if (!matId || qty <= 0) {
-
         alert("Selecciona un material y cantidad válida.");
-
         return;
-
     }
 
-
-
     const payload = {
-
         material_id: matId,
-
         quantity: qty,
-
         unit_cost_usd: cost,
-
         supplier_name: document.getElementById("me_supplier").value.trim() || "Proveedor General",
-
         reference_doc: document.getElementById("me_doc").value.trim() || "Compra Almacén",
-
         notes: document.getElementById("me_notes").value.trim(),
-
         performed_by: "Custodio de Almacén",
-
         register_in_cxp: registerCxp,
-
-        due_days: 15
-
+        due_days: 15,
+        payment_channel: paymentChannel,
+        payment_ref: paymentRef
     };
 
 
@@ -1608,27 +1602,67 @@ function setDispatchTransportMode(mode) {
 
 
 function onDispatchClientChanged() {
-
-    const cId = parseInt(document.getElementById("disp_client_id")?.value);
-
-    const client = (allClients || []).find(c => c.id === cId);
-
-    if (client) {
-
-        if (client.address && document.getElementById("disp_destination_address")) {
-
-            document.getElementById("disp_destination_address").value = client.address;
-
-        }
-
-        if (client.industry && document.getElementById("disp_destination_plant")) {
-
-            document.getElementById("disp_destination_plant").value = `Planta ${client.name}`;
-
-        }
-
+    const val = document.getElementById("disp_client_id")?.value;
+    const freeformInput = document.getElementById("disp_freeform_client");
+    if (val === 'libre') {
+        if (freeformInput) freeformInput.classList.remove("hidden");
+        return;
+    } else {
+        if (freeformInput) freeformInput.classList.add("hidden");
     }
 
+    const cId = parseInt(val);
+    const client = (allClients || []).find(c => c.id === cId);
+    if (client) {
+        if (client.address && document.getElementById("disp_destination_address")) {
+            document.getElementById("disp_destination_address").value = client.address;
+        }
+        if (client.industry && document.getElementById("disp_destination_plant")) {
+            document.getElementById("disp_destination_plant").value = `Planta ${client.name}`;
+        }
+    }
+}
+
+async function loadProjectResourcesIntoDispatch() {
+    const projId = document.getElementById("disp_project_id")?.value;
+    if (!projId) {
+        alert("Selecciona un proyecto para cargar sus recursos.");
+        return;
+    }
+    try {
+        const res = await fetch(`${API_BASE}/projects/${projId}`);
+        if (!res.ok) throw new Error("No se pudo obtener la información del proyecto.");
+        const proj = await res.json();
+        
+        let added = 0;
+        if (proj.phases && proj.phases.length > 0) {
+            proj.phases.forEach(ph => {
+                addDispatchItemRow({
+                    description: `${proj.name} - Fase ${ph.phase_number}: ${ph.name}`,
+                    quantity: 1,
+                    unit: "Servicios",
+                    condition_status: "Aprobado para Ejecución / Montaje",
+                    approx_weight_kg: 0
+                });
+                added++;
+            });
+        }
+
+        if (added > 0) {
+            alert(`✅ Se cargaron ${added} ítems correspondientes a las fases y trabajos del proyecto.`);
+        } else {
+            addDispatchItemRow({
+                description: `Estructura / Servicio Integral: ${proj.name}`,
+                quantity: 1,
+                unit: "Pzas",
+                condition_status: "Fabricado / Listo para Entrega",
+                approx_weight_kg: 100
+            });
+            alert(`✅ Se cargó el ítem principal del proyecto "${proj.name}".`);
+        }
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
 }
 
 
@@ -1784,25 +1818,23 @@ function removeDispatchItemRow(btn) {
 
 
 async function submitCreateDispatchGuide(event) {
-
     event.preventDefault();
 
     const mode = document.getElementById("disp_transport_type").value;
+    const clientSelectVal = document.getElementById("disp_client_id")?.value;
+    const isLibre = clientSelectVal === 'libre' || !clientSelectVal;
+    const freeformClient = (document.getElementById("disp_freeform_client")?.value || "").trim();
+    const clientId = (!isLibre && !isNaN(parseInt(clientSelectVal))) ? parseInt(clientSelectVal) : null;
 
-    const clientId = parseInt(document.getElementById("disp_client_id").value);
-
-    const projIdVal = document.getElementById("disp_project_id").value;
-
+    const projIdVal = document.getElementById("disp_project_id")?.value;
     const projId = projIdVal ? parseInt(projIdVal) : null;
-
     const destAddr = document.getElementById("disp_destination_address").value.trim();
-
-    const destPlant = document.getElementById("disp_destination_plant").value.trim();
-
-
+    let destPlant = document.getElementById("disp_destination_plant").value.trim();
+    if (isLibre && freeformClient) {
+        destPlant = destPlant ? `${destPlant} [Destinatario: ${freeformClient}]` : `Destinatario: ${freeformClient}`;
+    }
 
     let driverName = "", driverDoc = "", plate = "", carrierComp = null, assetId = null;
-
     let freightCost = 0.0, freightCharged = 0.0;
 
 
@@ -2655,8 +2687,9 @@ if (typeof window !== 'undefined') {
     window.submitGenerateMaterialDeliveryGuide = submitGenerateMaterialDeliveryGuide;
     window.submitGenerateTransferGuide = submitGenerateTransferGuide;
     window.submitMaterialConsume = submitMaterialConsume;
-    window.submitMaterialEntry = submitMaterialEntry;
     window.switchDispatchSubtab = switchDispatchSubtab;
+    window.toggleMaterialEntryPaymentBox = toggleMaterialEntryPaymentBox;
+    window.loadProjectResourcesIntoDispatch = loadProjectResourcesIntoDispatch;
 }
 
-export { addDispatchItemRow, addMaterialDeliveryRow, calcMaterialConsumeTotal, calcMaterialEntryTotal, deleteDispatchGuide, filterDispatchList, filterMaterialsTable, filterTransferToolsChecklist, initDispatchForm, initDispatchView, loadDispatchGuidesList, loadMaterialsList, onConsumeMaterialSelected, onDispatchAssetChanged, onDispatchClientChanged, onMaterialDeliveryProjectChanged, onTransferGuideProjectChanged, openConfirmDeliveryModal, openMaterialConsumeModal, openMaterialDeliveryModal, openMaterialEntryModal, openNewMaterialModal, openTransferGuideModal, printOfficialDispatchGuide, removeDispatchItemRow, renderInitialMaterialDeliveryRows, renderMaterialsTable, renderTransferToolsChecklist, setDispatchTransportMode, submitConfirmDelivery, submitCreateDispatchGuide, submitCreateMaterial, submitGenerateMaterialDeliveryGuide, submitGenerateTransferGuide, submitMaterialConsume, submitMaterialEntry, switchDispatchSubtab };
+export { addDispatchItemRow, addMaterialDeliveryRow, calcMaterialConsumeTotal, calcMaterialEntryTotal, deleteDispatchGuide, filterDispatchList, filterMaterialsTable, filterTransferToolsChecklist, initDispatchForm, initDispatchView, loadDispatchGuidesList, loadMaterialsList, onConsumeMaterialSelected, onDispatchAssetChanged, onDispatchClientChanged, onMaterialDeliveryProjectChanged, onTransferGuideProjectChanged, openConfirmDeliveryModal, openMaterialConsumeModal, openMaterialDeliveryModal, openMaterialEntryModal, openNewMaterialModal, openTransferGuideModal, printOfficialDispatchGuide, removeDispatchItemRow, renderInitialMaterialDeliveryRows, renderMaterialsTable, renderTransferToolsChecklist, setDispatchTransportMode, submitConfirmDelivery, submitCreateDispatchGuide, submitCreateMaterial, submitGenerateMaterialDeliveryGuide, submitGenerateTransferGuide, submitMaterialConsume, submitMaterialEntry, switchDispatchSubtab, toggleMaterialEntryPaymentBox, loadProjectResourcesIntoDispatch };

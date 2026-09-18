@@ -16,17 +16,31 @@ def get_resource_matrix_status(db: Session = Depends(get_db)):
     assets = db.query(Asset).filter(Asset.is_active == True).all()
     personnel = db.query(Personnel).filter(Personnel.is_active == True).all()
 
-    assets_in_base = [a for a in assets if not a.current_project_id or a.status == "disponible_base"]
-    assets_in_project = [a for a in assets if a.current_project_id and a.status == "en_obra"]
-    
+    vehicles = [a for a in assets if a.asset_type in ["vehiculo", "camioneta", "camion", "remolque"]]
+    machinery = [a for a in assets if a.asset_type in ["maquinaria", "generador", "compresor", "planta"]]
+    tools = [a for a in assets if a.asset_type not in ["vehiculo", "camioneta", "camion", "remolque", "maquinaria", "generador", "compresor", "planta"]]
+
+    veh_in_base = [v for v in vehicles if not v.current_project_id or v.status == "disponible_base"]
+    veh_in_project = [v for v in vehicles if v.current_project_id and v.status == "en_obra"]
+
+    mach_in_base = [m for m in machinery if not m.current_project_id or m.status == "disponible_base"]
+    mach_in_project = [m for m in machinery if m.current_project_id and m.status == "en_obra"]
+
+    tools_in_base = [t for t in tools if not t.current_project_id or t.status == "disponible_base"]
+    tools_in_project = [t for t in tools if t.current_project_id and t.status == "en_obra"]
+
     personnel_in_base = [p for p in personnel if not p.current_project_id or p.status == "disponible_base"]
     personnel_in_project = [p for p in personnel if p.current_project_id and p.status == "en_obra"]
 
     return {
         "summary": {
             "total_assets": len(assets),
-            "assets_available_base": len(assets_in_base),
-            "assets_in_operation": len(assets_in_project),
+            "vehicles_available_base": len(veh_in_base),
+            "vehicles_in_operation": len(veh_in_project),
+            "machinery_available_base": len(mach_in_base),
+            "machinery_in_operation": len(mach_in_project),
+            "tools_available_base": len(tools_in_base),
+            "tools_in_operation": len(tools_in_project),
             "total_personnel": len(personnel),
             "personnel_available_base": len(personnel_in_base),
             "personnel_in_operation": len(personnel_in_project),
@@ -212,3 +226,29 @@ def return_resource_to_base(req: ResourceReturnRequest, db: Session = Depends(ge
     db.add(history)
     db.commit()
     return {"success": True, "message": f"{resource_name} retornado exitosamente a {req.return_location or 'Sede Central Dalor'} (Disponible)."}
+
+@router.get("/history")
+def get_resource_history(name: str = None, query: str = None, resource_id: int = None, db: Session = Depends(get_db)):
+    q = db.query(ResourceAssignmentHistory)
+    if resource_id:
+        q = q.filter(ResourceAssignmentHistory.resource_id == resource_id)
+    search_term = name or query
+    if search_term:
+        term = f"%{search_term.strip()}%"
+        q = q.filter((ResourceAssignmentHistory.resource_name.ilike(term)) | (ResourceAssignmentHistory.resource_code.ilike(term)))
+    records = q.order_by(ResourceAssignmentHistory.assigned_at.desc()).limit(100).all()
+    return [{
+        "id": r.id,
+        "transfer_code": r.transfer_code or "S/C",
+        "resource_code": r.resource_code or "-",
+        "resource_name": r.resource_name or "-",
+        "resource_type": r.resource_type,
+        "project_name": r.project.name if r.project else "Sede Central",
+        "custodian_name": r.custodian_name or "-",
+        "driver_name": r.driver_name or "-",
+        "origin_location": r.origin_location,
+        "destination_location": r.destination_location,
+        "status": r.status,
+        "notes": r.notes or "-",
+        "assigned_at": r.assigned_at.strftime("%Y-%m-%d %H:%M:%S") if r.assigned_at else ""
+    } for r in records]

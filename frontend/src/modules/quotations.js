@@ -495,20 +495,30 @@ function recalcQuotationTotals() {
 
 
 
-    const subEl = document.getElementById("quote_subtotal_display");
+    const curr = (document.getElementById("quote_currency")?.value || "USD").toUpperCase();
+    const bcvBanner = document.getElementById("quote_bcv_banner_box");
+    if (bcvBanner) {
+        bcvBanner.style.display = (curr === 'VES') ? 'block' : 'none';
+    }
 
-    const taxEl = document.getElementById("quote_tax_display");
+    const rate = (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0);
 
-    const totEl = document.getElementById("quote_total_display");
+    if (curr === 'VES') {
+        const subBs = subtotal * rate;
+        const taxBs = taxUsd * rate;
+        const grandBs = grandTotal * rate;
+        if (subEl) subEl.innerHTML = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br><span style="font-size:11px; color:#fde047;">Bs. ${subBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+        if (taxEl) taxEl.innerHTML = taxPercent === 0 ? "EXENTO (0%)" : `$${taxUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br><span style="font-size:11px; color:#fde047;">Bs. ${taxBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+        if (totEl) totEl.innerHTML = `$${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br><span style="font-size:12px; color:#fde047;">Bs. ${grandBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+    } else {
+        if (subEl) subEl.innerText = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (taxEl) taxEl.innerText = taxPercent === 0 ? "EXENTO (0%)" : `$${taxUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (totEl) totEl.innerText = `$${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+}
 
-
-
-    if (subEl) subEl.innerText = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-    if (taxEl) taxEl.innerText = taxPercent === 0 ? "EXENTO (0%)" : `$${taxUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-    if (totEl) totEl.innerText = `$${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+function onQuotationCurrencyChanged() {
+    recalcQuotationTotals();
 }
 
 
@@ -780,13 +790,44 @@ async function convertQuoteToProject(quoteId) {
         }
         if (document.getElementById("new_proj_scope")) document.getElementById("new_proj_scope").value = itemsScope;
 
-        // Auto-distribuir bolsas de costo estimadas
+        // Auto-distribuir bolsas de costo estimadas respetando el límite financiero (65% del contrato)
+        const subtotal = q.subtotal_usd || q.total_usd || 0;
         const total = q.total_usd || 0;
-        if (document.getElementById("new_proj_labor")) document.getElementById("new_proj_labor").value = (total * 0.30).toFixed(2);
-        if (document.getElementById("new_proj_fuel")) document.getElementById("new_proj_fuel").value = (total * 0.08).toFixed(2);
-        if (document.getElementById("new_proj_materials")) document.getElementById("new_proj_materials").value = (total * 0.20).toFixed(2);
-        if (document.getElementById("new_proj_tools")) document.getElementById("new_proj_tools").value = (total * 0.04).toFixed(2);
-        if (document.getElementById("new_proj_services")) document.getElementById("new_proj_services").value = (total * 0.03).toFixed(2);
+        const targetBudgetLimit = subtotal * 0.65; // Margen protegido 35%
+
+        if (document.getElementById("new_proj_labor")) document.getElementById("new_proj_labor").value = (subtotal * 0.30).toFixed(2);
+        if (document.getElementById("new_proj_fuel")) document.getElementById("new_proj_fuel").value = (subtotal * 0.08).toFixed(2);
+        if (document.getElementById("new_proj_materials")) document.getElementById("new_proj_materials").value = (subtotal * 0.20).toFixed(2);
+        if (document.getElementById("new_proj_tools")) document.getElementById("new_proj_tools").value = (subtotal * 0.04).toFixed(2);
+        if (document.getElementById("new_proj_services")) document.getElementById("new_proj_services").value = (subtotal * 0.03).toFixed(2);
+
+        // Reconstruir las fases para que la suma de sus costos no exceda el límite presupuestario
+        const phasesContainer = document.getElementById("projectPhasesContainer");
+        if (phasesContainer && typeof addProjectPhaseRow === 'function') {
+            phasesContainer.innerHTML = "";
+            window.phaseRowsCount = 0;
+            const pDays = Math.max(7, Math.round(durDays / 4));
+            addProjectPhaseRow("Fase 1: Movilización, Permisos & Seguridad SHA", [
+                "Gestión de pases y autorizaciones",
+                "Charla de inducción y seguridad industrial SHA",
+                "Movilización de cuadrilla y equipos a planta"
+            ], pDays, Number((targetBudgetLimit * 0.20).toFixed(2)));
+
+            addProjectPhaseRow("Fase 2: Ejecución Operativa / Desmontaje", [
+                "Desmontaje, cortes y maniobras mecánicas",
+                "Alineación y preparación de superficies"
+            ], pDays, Number((targetBudgetLimit * 0.35).toFixed(2)));
+
+            addProjectPhaseRow("Fase 3: Montaje, Armado & Ajustes", [
+                "Soldadura, calderería e instalación de piezas nuevas",
+                "Torque y fijación de soportería estructural"
+            ], pDays, Number((targetBudgetLimit * 0.30).toFixed(2)));
+
+            addProjectPhaseRow("Fase 4: Ensayos, Pintura & Entrega Conforme", [
+                "Inspección de calidad y recubrimiento anticorrosivo",
+                "Pruebas de servicio y firma de acta de entrega"
+            ], pDays, Number((targetBudgetLimit * 0.15).toFixed(2)));
+        }
 
         recalcProjectBudgetPreview();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -949,13 +990,9 @@ async function printQuotation(quoteId) {
 
 
             currencyNotesHtml = `
-
-                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
-
-                    <p style="margin: 0;"><b>Condición de Facturación:</b> Precios expresados en Bolívares (VES). Facturación oficial sujeta a comprobantes de retención de IVA e ISLR según normativa SENIAT vigente.</p>
-
+                <div style="background: #fefce8; border: 1.5px solid #facc15; border-left: 5px solid #d97706; padding: 10px 14px; border-radius: 6px; margin-bottom: 18px; font-size: 11px; color: #713f12; line-height: 1.45;">
+                    <p style="margin: 0;"><b><i class="fa-solid fa-scale-balanced" style="color: #b45309;"></i> Membrete Oficial & Cláusula Cambiaria BCV:</b> Monto cotizado expresado en USD y pagadero en Bolívares (VES) a la Tasa Oficial del Banco Central de Venezuela (BCV) vigente a la fecha efectiva de pago. Operación amparada bajo el régimen cambiario y fiscal venezolano vigente.</p>
                 </div>
-
             `;
 
         } else {
@@ -1466,6 +1503,7 @@ if (typeof window !== 'undefined') {
     window.editQuotation = editQuotation;
     window.loadQuotations = loadQuotations;
     window.loadServices = loadServices;
+    window.onQuotationCurrencyChanged = onQuotationCurrencyChanged;
     window.onServiceCategoryChanged = onServiceCategoryChanged;
     window.onServiceSelected = onServiceSelected;
     window.onTaxTypeChanged = onTaxTypeChanged;
@@ -1479,4 +1517,4 @@ if (typeof window !== 'undefined') {
     window.triggerPrintFromModal = triggerPrintFromModal;
 }
 
-export { addQuotationRow, cancelQuotationConversion, convertQuoteToProject, deleteService, editQuotation, loadQuotations, loadServices, onServiceCategoryChanged, onServiceSelected, onTaxTypeChanged, openNewQuotationModal, openNewServiceModal, printQuotation, recalcQuotationTotals, removeQuotationRow, submitCreateQuotation, submitCreateService, triggerPrintFromModal };
+export { addQuotationRow, cancelQuotationConversion, convertQuoteToProject, deleteService, editQuotation, loadQuotations, loadServices, onQuotationCurrencyChanged, onServiceCategoryChanged, onServiceSelected, onTaxTypeChanged, openNewQuotationModal, openNewServiceModal, printQuotation, recalcQuotationTotals, removeQuotationRow, submitCreateQuotation, submitCreateService, triggerPrintFromModal };

@@ -99,7 +99,7 @@
         } catch(e) { window.currentUser = null; }
         window.authToken = localStorage.getItem('dalor_token') || null;
 
-        // 🔒 Interceptor Global de Seguridad: Inyección Automática de Bearer Token
+        // 🔒 Interceptor Global de Seguridad: Inyección Automática de Bearer Token y Manejo de Sesión 401
         const _nativeFetch = window.fetch;
         window.fetch = async function(resource, init) {
             init = init || {};
@@ -118,7 +118,11 @@
                 headers = { ...headers };
             }
             
-            const token = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token') || window.authToken;
+            let token = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token') || window.authToken;
+            if (token === 'null' || token === 'undefined' || typeof token !== 'string' || !token.trim()) {
+                token = null;
+            }
+            
             const urlStr = typeof resource === 'string' ? resource : (resource && resource.url ? resource.url : '');
             
             if (token && (urlStr.includes('/api/v1') || urlStr.startsWith('/'))) {
@@ -127,7 +131,36 @@
                 }
             }
             init.headers = headers;
-            return _nativeFetch(resource, init);
+            
+            const response = await _nativeFetch(resource, init);
+            
+            // Interceptor Reactivo de Expiración / No Autorizado (401 / 403)
+            if ((response.status === 401 || response.status === 403) && urlStr.includes('/api/v1') && !urlStr.includes('/auth/login') && !urlStr.includes('bcv-rate')) {
+                console.warn("[AUTH] Sesión expirada o no autorizada (HTTP " + response.status + ") en:", urlStr);
+                localStorage.removeItem('dalor_token');
+                sessionStorage.removeItem('dalor_token');
+                window.authToken = null;
+                if (window.State) window.State.authToken = null;
+                
+                document.body.classList.remove('authenticated');
+                const loginScreen = document.getElementById('app-login-screen');
+                const authShell = document.getElementById('app-authenticated-shell');
+                if (loginScreen) {
+                    loginScreen.style.setProperty('display', 'flex', 'important');
+                    loginScreen.classList.remove('hidden');
+                    const errBox = document.getElementById('loginErrorMessage');
+                    const errTxt = document.getElementById('loginErrorText');
+                    if (errBox && errTxt) {
+                        errTxt.textContent = "Tu sesión ha expirado o requiere autenticación. Por favor inicia sesión.";
+                        errBox.style.display = 'block';
+                    }
+                }
+                if (authShell) {
+                    authShell.style.setProperty('display', 'none', 'important');
+                }
+            }
+            
+            return response;
         };
     </script>
 
@@ -2354,121 +2387,92 @@
         document.addEventListener("DOMContentLoaded", function() {
 
             const savedUser = localStorage.getItem('dalor_user') || sessionStorage.getItem('dalor_user');
+            let savedToken = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token');
 
-            const savedToken = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token');
+            if (savedToken === 'null' || savedToken === 'undefined' || typeof savedToken !== 'string' || !savedToken.trim()) {
+                savedToken = null;
+                localStorage.removeItem('dalor_token');
+                sessionStorage.removeItem('dalor_token');
+                window.authToken = null;
+            }
 
             if (savedUser && savedToken) {
-
                 try {
-
                     const u = JSON.parse(savedUser);
-
                     window.currentUser = u;
-
                     window.authToken = savedToken;
-
                     document.body.classList.add('authenticated');
-
                     const loginScreen = document.getElementById('app-login-screen');
-
                     if (loginScreen) {
-
                         loginScreen.style.setProperty('display', 'none', 'important');
-
                         loginScreen.classList.add('hidden');
-
                     }
-
-                    
+                    const authShell = document.getElementById('app-authenticated-shell');
+                    if (authShell) {
+                        authShell.style.setProperty('display', 'block', 'important');
+                    }
 
                     const nameEl = document.getElementById('userFullNameDisplay');
-
                     const roleEl = document.getElementById('userRoleDisplay');
-
                     if (nameEl) nameEl.textContent = u.full_name || u.username;
-
                     if (roleEl) {
-
                         const r = (u.role_name || '').toLowerCase();
-
                         if (r.includes('director') || r.includes('admin')) roleEl.textContent = '👑 Director General';
-
                         else if (r.includes('finanzas') || r.includes('administracion')) roleEl.textContent = '💼 Administración';
-
                         else if (r.includes('ingeniero') || r.includes('obra')) roleEl.textContent = '👷 Ing. Residente';
-
                         else if (r.includes('campo') || r.includes('supervisor')) roleEl.textContent = '📱 Supervisor Campo';
-
                         else if (r.includes('almacen')) roleEl.textContent = '📦 Almacén Central';
-
                         else roleEl.textContent = u.role_name || 'Usuario';
-
                     }
 
-
-
                     // Aplicar permisos de visibilidad por rol
-
                     const role = (u.role_name || u.username || '').toLowerCase();
-
                     const isDirector = role.includes('director') || role.includes('admin') || u.is_superuser;
-
                     const isAdmin = isDirector || role.includes('finanzas') || role.includes('administracion');
-
                     const isIngeniero = isDirector || isAdmin || role.includes('ingeniero') || role.includes('obra');
-
                     document.querySelectorAll('.role-director-only').forEach(el => el.style.display = isDirector ? '' : 'none');
-
                     document.querySelectorAll('.role-admin-only').forEach(el => el.style.display = isAdmin ? '' : 'none');
-
                     document.querySelectorAll('.role-eng-only').forEach(el => el.style.display = isIngeniero ? '' : 'none');
 
-
-
                     // Enrutar a vista inicial tras 100ms
-
                     setTimeout(() => {
-
                         if (typeof window.loadInitialMasterData === 'function') {
-
                             try { window.loadInitialMasterData(); } catch(e) {}
-
                         }
-
                         if (role.includes('almacen')) {
-
                             if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('materials');
-
                             else if (typeof window.switchView === 'function') window.switchView('resources', 'recursos');
-
                         } else if (role.includes('supervisor') || role.includes('campo')) {
-
                             if (typeof window.switchView === 'function') window.switchView('pwa', 'gastos');
-
                         } else if (role.includes('admin') || role.includes('finanzas')) {
-
                             if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab('cxc');
-
                             else if (typeof window.switchView === 'function') window.switchView('financial', 'finanzas');
-
                         } else if (role.includes('ingeniero') || role.includes('obra')) {
-
                             if (typeof window.switchView === 'function') window.switchView('projects', 'proyectos');
-
                         } else {
-
                             if (typeof window.switchView === 'function') window.switchView('executive', 'gerencia');
-
                         }
-
                     }, 100);
-
                 } catch(e) {
-
                     console.warn("Error reanudando sesión:", e);
-
+                    document.body.classList.remove('authenticated');
+                    const loginScreen = document.getElementById('app-login-screen');
+                    if (loginScreen) {
+                        loginScreen.style.setProperty('display', 'flex', 'important');
+                        loginScreen.classList.remove('hidden');
+                    }
                 }
-
+            } else {
+                document.body.classList.remove('authenticated');
+                const loginScreen = document.getElementById('app-login-screen');
+                if (loginScreen) {
+                    loginScreen.style.setProperty('display', 'flex', 'important');
+                    loginScreen.classList.remove('hidden');
+                }
+                const authShell = document.getElementById('app-authenticated-shell');
+                if (authShell) {
+                    authShell.style.setProperty('display', 'none', 'important');
+                }
             }
 
         });
@@ -2570,13 +2574,27 @@
 
 
                 <button type="button" id="btnSubmitPortalLogin" onclick="handlePortalLogin(event)"
-
                     style="width: 100%; background: #002b49; color: #ffffff; padding: 13px; font-size: 14px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35);">
-
                     <i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión
-
                 </button>
 
+                <div style="margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <span style="display: block; font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 8px; text-align: center;">⚡ Acceso Rápido por Rol Oficial (1 Toque):</span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                        <button type="button" onclick="window.executePortalLogin('director', 'admin2026')" style="font-size: 11px; padding: 8px 6px; text-align: left; font-weight: 700; color: #002b49; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer;">
+                            👑 Director General
+                        </button>
+                        <button type="button" onclick="window.executePortalLogin('administracion', 'admin2026')" style="font-size: 11px; padding: 8px 6px; text-align: left; font-weight: 700; color: #002b49; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer;">
+                            💼 Administración
+                        </button>
+                        <button type="button" onclick="window.executePortalLogin('ingeniero', 'admin2026')" style="font-size: 11px; padding: 8px 6px; text-align: left; font-weight: 700; color: #002b49; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer;">
+                            👷 Ing. Residente
+                        </button>
+                        <button type="button" onclick="window.executePortalLogin('almacen', 'admin2026')" style="font-size: 11px; padding: 8px 6px; text-align: left; font-weight: 700; color: #002b49; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer;">
+                            📦 Almacén Central
+                        </button>
+                    </div>
+                </div>
             </form>
 
         </div>

@@ -660,32 +660,25 @@ async function loadInitialMasterData() {
 
 
 
-        const cliData = await resCli.json();
-
+        const cliData = resCli.ok ? await resCli.json() : [];
         window.allClients = allClients = Array.isArray(cliData) ? cliData : [];
 
-        const srvData = await resSrv.json();
-
+        const srvData = resSrv.ok ? await resSrv.json() : [];
         window.allServices = allServices = Array.isArray(srvData) ? srvData : [];
 
-        const projData = await resProj.json();
-
+        const projData = resProj.ok ? await resProj.json() : [];
         window.allProjects = allProjects = Array.isArray(projData) ? projData : [];
 
-        const catData = await resCat.json();
-
+        const catData = resCat.ok ? await resCat.json() : [];
         window.allCategories = allCategories = Array.isArray(catData) ? catData : [];
 
-        const assData = await resAss.json();
-
+        const assData = resAss.ok ? await resAss.json() : [];
         window.allAssets = allAssets = Array.isArray(assData) ? assData : [];
 
-        const persData = await resPers.json();
-
+        const persData = resPers.ok ? await resPers.json() : [];
         window.allPersonnel = allPersonnel = Array.isArray(persData) ? persData : [];
 
-        const matData = await resMat.json();
-
+        const matData = resMat.ok ? await resMat.json() : {};
         window.allMaterials = allMaterials = Array.isArray(matData.materials) ? matData.materials : (Array.isArray(matData) ? matData : []);
 
 

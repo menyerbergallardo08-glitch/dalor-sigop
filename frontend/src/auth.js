@@ -3,7 +3,13 @@ import { State } from './state.js';
 
 export function checkAuthStatus() {
     const savedUser = localStorage.getItem('dalor_user') || sessionStorage.getItem('dalor_user');
-    const savedToken = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token');
+    let savedToken = localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token');
+    
+    if (savedToken === 'null' || savedToken === 'undefined' || typeof savedToken !== 'string' || !savedToken.trim()) {
+        savedToken = null;
+        localStorage.removeItem('dalor_token');
+        sessionStorage.removeItem('dalor_token');
+    }
     
     if (savedUser && savedToken) {
         try {

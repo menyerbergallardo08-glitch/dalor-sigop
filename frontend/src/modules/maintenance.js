@@ -307,12 +307,15 @@ async function loadClients() {
 
 
     try {
-
         const res = await fetch(`${API_BASE}/clients/`);
+        if (!res.ok) throw new Error("Error HTTP " + res.status);
+        const data = await res.json();
+        allClients = Array.isArray(data) ? data : [];
 
-        allClients = await res.json();
-
-
+        if (allClients.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">No hay clientes registrados en el directorio. Usa '+ Nuevo Cliente' para agregar.</td></tr>`;
+            return;
+        }
 
         tbody.innerHTML = allClients.map(c => `
 

@@ -42,6 +42,7 @@ import './modules/rentals.js';
 window.Api = Api;
 window.State = State;
 window.performLogin = performLogin;
+window.executePortalLogin = (u, p) => performLogin(u, p);
 window.quickFillAndLogin = (u, p) => performLogin(u, p);
 window.loginDirectlyAs = (u, p) => performLogin(u, p);
 window.handlePortalLogin = (e) => {

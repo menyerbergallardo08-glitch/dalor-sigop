@@ -1141,19 +1141,14 @@ async function loadProjectsList() {
 
 
     try {
-
         const res = await fetch(`${API_BASE}/projects/`);
-
-        allProjects = await res.json();
-
-
+        if (!res.ok) throw new Error("Error HTTP " + res.status);
+        const data = await res.json();
+        allProjects = Array.isArray(data) ? data : [];
 
         if (allProjects.length === 0) {
-
             container.innerHTML = `<div style="grid-column: span 2; text-align: center; padding: 20px; color: #94a3b8;">No hay proyectos registrados. Diligencia el formulario superior o importa desde Excel.</div>`;
-
             return;
-
         }
 
 
@@ -1607,6 +1602,35 @@ async function viewProjectDetails(projectId) {
         document.getElementById("detail_proj_spent").innerText = `$${data.total_spent_usd.toLocaleString()}`;
 
         document.getElementById("detail_proj_margin").innerText = `$${data.gross_margin_usd.toLocaleString()}`;
+
+        const colEl = document.getElementById("detail_proj_collected");
+        if (colEl) colEl.innerText = `$${(data.total_collected_usd || 0).toLocaleString()}`;
+
+        const recBalEl = document.getElementById("detail_proj_receivable_bal");
+        if (recBalEl) recBalEl.innerText = `$${(data.balance_receivable_usd || 0).toLocaleString()}`;
+
+        // Renderizar Trazabilidad de Cobros & Abonos
+        const colCountEl = document.getElementById("detail_proj_collections_count");
+        const colBodyEl = document.getElementById("detail_proj_collections_body");
+        if (colBodyEl) {
+            const collections = data.collections || [];
+            if (colCountEl) colCountEl.innerText = `${collections.length} abono(s) registrado(s)`;
+
+            if (collections.length === 0) {
+                colBodyEl.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran abonos ni cobros para esta obra (Facturado: $${(data.total_billed_cxc_usd || 0).toLocaleString()}).</td></tr>`;
+            } else {
+                colBodyEl.innerHTML = collections.map(c => `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; font-weight: 600; color: #334155;">${c.payment_date}</td>
+                        <td style="padding: 6px 8px; font-weight: 800; color: var(--dalor-navy);">${c.invoice_number}</td>
+                        <td style="padding: 6px 8px; text-transform: capitalize;">${(c.payment_method || '-').replace(/_/g, ' ')}</td>
+                        <td style="padding: 6px 8px; font-family: monospace; font-weight: 700; color: #0284c7;">${c.reference_number}</td>
+                        <td style="padding: 6px 8px; text-align: right; font-weight: 800; color: #059669;">$${Number(c.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td style="padding: 6px 8px; color: #64748b;">${c.notes || '-'}</td>
+                    </tr>
+                `).join('');
+            }
+        }
 
 
 

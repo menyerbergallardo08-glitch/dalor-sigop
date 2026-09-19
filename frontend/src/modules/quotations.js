@@ -71,16 +71,13 @@ async function loadQuotations() {
 
 
 
-        const quotes = await resQuotes.json();
-
-
+        if (!resQuotes.ok) throw new Error("Error HTTP " + resQuotes.status);
+        const quotesData = await resQuotes.json();
+        const quotes = Array.isArray(quotesData) ? quotesData : [];
 
         if (quotes.length === 0) {
-
             tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;">No hay cotizaciones emitidas. Haz clic en '+ Nueva Cotización' para armar una.</td></tr>`;
-
             return;
-
         }
 
 
@@ -164,90 +161,51 @@ async function loadQuotations() {
 
 
 async function openNewQuotationModal() {
-
     quoteRowsCount = 0;
-
     const editInput = document.getElementById("edit_quotation_id");
-
     if (editInput) editInput.value = "";
-
     
-
     const titleEl = document.getElementById("modalQuotationTitle");
-
     if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-calculator" style="color: var(--dalor-blue);"></i> Armar Presupuesto / Cotización Formal (APU)`;
-
     
-
     const btnSubmit = document.getElementById("btnSubmitQuotation");
-
     if (btnSubmit) btnSubmit.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Presupuesto`;
 
+    const quoteForm = document.getElementById("quoteForm");
+    if (quoteForm) quoteForm.reset();
 
+    const itemsContainer = document.getElementById("quoteItemsList");
+    if (itemsContainer) itemsContainer.innerHTML = "";
 
-    document.getElementById("quoteForm").reset();
-
-    document.getElementById("quoteItemsList").innerHTML = "";
-
-
-
-    // Garantizar carga fresca de clientes y servicios si no están en memoria
-
+    // Carga de clientes y servicios si no están en memoria
     try {
-
         let currentClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
-
-        let currentServices = (window.allServices && window.allServices.length > 0) ? window.allServices : (allServices || []);
-
-
-
-        if (currentClients.length === 0 || currentServices.length === 0) {
-
+        if (currentClients.length === 0) {
             const token = window.authToken || localStorage.getItem('dalor_token') || null;
-
             const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-
-
-            const [resCli, resSrv] = await Promise.all([
-
-                fetch(`${API_BASE}/clients/`, { headers }),
-
-                fetch(`${API_BASE}/services/`, { headers })
-
-            ]);
-
+            const resCli = await fetch(`${API_BASE}/clients/`, { headers });
             if (resCli.ok) {
-
                 const cData = await resCli.json();
-
                 allClients = window.allClients = Array.isArray(cData) ? cData : [];
-
-                currentClients = allClients;
-
             }
-
-            if (resSrv.ok) {
-
-                const sData = await resSrv.json();
-
-                allServices = window.allServices = Array.isArray(sData) ? sData : [];
-
-                currentServices = allServices;
-
-            }
-
         }
-
+        if (!window._servicesLoaded) {
+            const token = window.authToken || localStorage.getItem('dalor_token') || null;
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+            const resSrv = await fetch(`${API_BASE}/services/`, { headers });
+            if (resSrv.ok) {
+                const sData = await resSrv.json();
+                allServices = window.allServices = Array.isArray(sData) ? sData : [];
+                window._servicesLoaded = true;
+            }
+        }
     } catch(e) {
-
-        console.warn("Error cargando clientes para cotización:", e);
-
+        console.warn("Error cargando clientes o servicios para cotización:", e);
     }
 
-
-
-    populateSelectDropdowns();
+    if (typeof window.populateSelectDropdowns === 'function') {
+        window.populateSelectDropdowns();
+    }
 
 
 
@@ -293,7 +251,11 @@ async function openNewQuotationModal() {
 
     onQuotationCurrencyChanged();
 
-    openModal("modalQuotation");
+    if (typeof window.openModal === 'function') {
+        window.openModal("modalQuotation");
+    } else {
+        document.getElementById("modalQuotation")?.classList.remove("hidden");
+    }
 
 }
 
@@ -370,25 +332,26 @@ function addQuotationRow(itemData = null) {
         </div>
 
         <div>
-
-            <select class="form-select q-unit" style="font-size: 11px; padding: 5px;">
-
-                <option value="Global" ${unitVal === 'Global' ? 'selected' : ''}>Global</option>
-
-                <option value="Ton" ${unitVal === 'Ton' ? 'selected' : ''}>Ton</option>
-
-                <option value="m²" ${unitVal === 'm²' ? 'selected' : ''}>m²</option>
-
-                <option value="ml" ${unitVal === 'ml' ? 'selected' : ''}>ml</option>
-
-                <option value="Und" ${unitVal === 'Und' ? 'selected' : ''}>Und</option>
-
-                <option value="Horas" ${unitVal === 'Horas' ? 'selected' : ''}>Horas</option>
-
-                <option value="Días" ${unitVal === 'Días' ? 'selected' : ''}>Días</option>
-
-            </select>
-
+            <input type="text" class="form-input q-unit" list="datalist_units" placeholder="Und / Medida" value="${unitVal}" style="font-size: 11px; padding: 5px; font-weight: 700; color: #1e293b;" title="Selecciona o escribe cualquier unidad de medida (ej: Ton, Kg, m, Pulg-Diam, HH, Und)">
+            <datalist id="datalist_units">
+                <option value="Global">
+                <option value="Und">
+                <option value="Pza">
+                <option value="m">
+                <option value="m²">
+                <option value="m³">
+                <option value="ml">
+                <option value="Kg">
+                <option value="Ton">
+                <option value="Litro">
+                <option value="Galón">
+                <option value="Horas">
+                <option value="HH">
+                <option value="Días">
+                <option value="Punto">
+                <option value="Juego">
+                <option value="Pulg-Diam">
+            </datalist>
         </div>
 
         <div>
@@ -495,7 +458,9 @@ function recalcQuotationTotals() {
 
     const grandTotal = subtotal + taxUsd;
 
-
+    const subEl = document.getElementById("quote_subtotal_display");
+    const taxEl = document.getElementById("quote_tax_display");
+    const totEl = document.getElementById("quote_total_display");
 
     const curr = (document.getElementById("quote_currency")?.value || "USD").toUpperCase();
     const bcvBanner = document.getElementById("quote_bcv_banner_box");
@@ -529,22 +494,30 @@ function onQuotationCurrencyChanged() {
 
 async function editQuotation(quoteId) {
     try {
+        const token = window.authToken || localStorage.getItem('dalor_token') || null;
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
         let currentClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
-        let currentServices = (window.allServices && window.allServices.length > 0) ? window.allServices : (allServices || []);
-
-        if (currentClients.length === 0 || currentServices.length === 0) {
-            const token = window.authToken || localStorage.getItem('dalor_token') || null;
-            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-            const [resCli, resSrv] = await Promise.all([
-                fetch(`${API_BASE}/clients/`, { headers }),
-                fetch(`${API_BASE}/services/`, { headers })
-            ]);
-            if (resCli.ok) allClients = window.allClients = await resCli.json();
-            if (resSrv.ok) allServices = window.allServices = await resSrv.json();
+        if (currentClients.length === 0) {
+            const resCli = await fetch(`${API_BASE}/clients/`, { headers });
+            if (resCli.ok) {
+                const cData = await resCli.json();
+                allClients = window.allClients = Array.isArray(cData) ? cData : [];
+            }
         }
-        populateSelectDropdowns();
+        if (!window._servicesLoaded) {
+            const resSrv = await fetch(`${API_BASE}/services/`, { headers });
+            if (resSrv.ok) {
+                const sData = await resSrv.json();
+                allServices = window.allServices = Array.isArray(sData) ? sData : [];
+                window._servicesLoaded = true;
+            }
+        }
+        if (typeof window.populateSelectDropdowns === 'function') {
+            window.populateSelectDropdowns();
+        }
 
-        const res = await fetch(`${API_BASE}/quotations/${quoteId}`);
+        const res = await fetch(`${API_BASE}/quotations/${quoteId}`, { headers });
         if (!res.ok) throw new Error('No se pudo cargar la cotización para edición.');
         const q = await res.json();
 
@@ -587,6 +560,7 @@ async function editQuotation(quoteId) {
         const container = document.getElementById("quoteItemsList");
         if (container) {
             container.innerHTML = "";
+            quoteRowsCount = 0;
             if (q.items && q.items.length > 0) {
                 q.items.forEach(it => addQuotationRow(it));
             } else {
@@ -595,7 +569,11 @@ async function editQuotation(quoteId) {
         }
 
         recalcQuotationTotals();
-        openModal("modalQuotation");
+        if (typeof window.openModal === 'function') {
+            window.openModal("modalQuotation");
+        } else {
+            document.getElementById("modalQuotation")?.classList.remove("hidden");
+        }
     } catch(err) {
         console.error("Error al re-editar presupuesto:", err);
         alert("Error cargando presupuesto: " + err.message);
@@ -1304,12 +1282,12 @@ async function loadServices() {
 
 
     try {
-
         const res = await fetch(`${API_BASE}/services/`);
+        if (!res.ok) throw new Error("Error HTTP " + res.status);
+        const srvData = await res.json();
+        allServices = Array.isArray(srvData) ? srvData : [];
 
-        allServices = await res.json();
-
-        if (!allServices || allServices.length === 0) {
+        if (allServices.length === 0) {
             tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: #64748b; font-weight: 500;">
                 <i class="fa-solid fa-folder-open" style="font-size: 26px; color: #94a3b8; margin-bottom: 10px; display: block;"></i>
                 <span style="font-size: 13px; font-weight: 700; color: #475569;">No hay partidas registradas en el catálogo (Catálogo en blanco).</span><br>
@@ -1389,51 +1367,51 @@ function onServiceCategoryChanged(val) {
         newCatInput.focus();
 
     } else {
-
         newCatInput.classList.add("hidden");
-
     }
-
 }
 
-
+function onServiceUnitChanged(val) {
+    const newUnitInput = document.getElementById("srv_new_unit");
+    if (!newUnitInput) return;
+    if (val === '__NEW__') {
+        newUnitInput.classList.remove("hidden");
+        newUnitInput.focus();
+    } else {
+        newUnitInput.classList.add("hidden");
+        newUnitInput.value = "";
+    }
+}
 
 async function submitCreateService(event) {
-
-    event.preventDefault();
-
+    if (event && event.preventDefault) event.preventDefault();
     let selectedCat = document.getElementById("srv_category").value;
-
     if (selectedCat === '__NEW__') {
-
         const customCat = (document.getElementById("srv_new_category")?.value || "").trim();
-
         if (!customCat) {
-
             alert("Por favor escribe el nombre de la nueva categoría.");
-
             return;
-
         }
-
         selectedCat = customCat;
+    }
 
+    let selectedUnit = document.getElementById("srv_unit").value;
+    if (selectedUnit === '__NEW__') {
+        const customUnit = (document.getElementById("srv_new_unit")?.value || "").trim();
+        if (!customUnit) {
+            alert("Por favor escribe la unidad de medida (ej: Kg, Ton, Pulg-Diam).");
+            return;
+        }
+        selectedUnit = customUnit;
     }
 
     const payload = {
-
-        code: document.getElementById("srv_code").value,
-
-        name: document.getElementById("srv_name").value,
-
+        code: document.getElementById("srv_code").value.trim(),
+        name: document.getElementById("srv_name").value.trim(),
         category: selectedCat,
-
-        unit_measure: document.getElementById("srv_unit").value,
-
+        unit_measure: selectedUnit,
         base_cost_usd: parseFloat(document.getElementById("srv_cost").value) || 0.0,
-
         unit_price_usd: parseFloat(document.getElementById("srv_price").value) || 0.0
-
     };
 
 
@@ -1522,6 +1500,7 @@ if (typeof window !== 'undefined') {
     window.loadServices = loadServices;
     window.onQuotationCurrencyChanged = onQuotationCurrencyChanged;
     window.onServiceCategoryChanged = onServiceCategoryChanged;
+    window.onServiceUnitChanged = onServiceUnitChanged;
     window.onServiceSelected = onServiceSelected;
     window.onTaxTypeChanged = onTaxTypeChanged;
     window.openNewQuotationModal = openNewQuotationModal;
@@ -1534,4 +1513,4 @@ if (typeof window !== 'undefined') {
     window.triggerPrintFromModal = triggerPrintFromModal;
 }
 
-export { addQuotationRow, cancelQuotationConversion, convertQuoteToProject, deleteService, editQuotation, loadQuotations, loadServices, onQuotationCurrencyChanged, onServiceCategoryChanged, onServiceSelected, onTaxTypeChanged, openNewQuotationModal, openNewServiceModal, printQuotation, recalcQuotationTotals, removeQuotationRow, submitCreateQuotation, submitCreateService, triggerPrintFromModal };
+export { addQuotationRow, cancelQuotationConversion, convertQuoteToProject, deleteService, editQuotation, loadQuotations, loadServices, onQuotationCurrencyChanged, onServiceCategoryChanged, onServiceUnitChanged, onServiceSelected, onTaxTypeChanged, openNewQuotationModal, openNewServiceModal, printQuotation, recalcQuotationTotals, removeQuotationRow, submitCreateQuotation, submitCreateService, triggerPrintFromModal };

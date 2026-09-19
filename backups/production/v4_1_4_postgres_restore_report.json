@@ -1,0 +1,251 @@
+{
+  "status": "PASSED",
+  "execution_timestamps": {
+    "start": "2026-09-19T18:32:16.447547",
+    "end": "2026-09-19T18:32:17.857562",
+    "duration_seconds": 1.41
+  },
+  "database_engine": {
+    "engine": "PostgreSQL",
+    "version": "PostgreSQL 16.1, compiled by Visual C++ build 1937, 64-bit",
+    "target_url_masked": "postgresql+psycopg2://postgres:********@127.0.0.1:5433/dalor_isolated_restore_test",
+    "is_isolated": true
+  },
+  "restored_summary": {
+    "total_tables": 24,
+    "total_records": 1470,
+    "table_counts": {
+      "clients": 3,
+      "cost_centers": 0,
+      "expense_categories": 43,
+      "fixed_expense_settings": 0,
+      "materials": 16,
+      "partner_withdrawals": 8,
+      "service_items": 8,
+      "users": 9,
+      "audit_logs": 307,
+      "projects": 7,
+      "quotations": 8,
+      "accounts_payable": 11,
+      "accounts_receivable": 10,
+      "assets": 907,
+      "material_movements": 6,
+      "personnel": 16,
+      "project_phases": 3,
+      "quotation_items": 10,
+      "resource_assignment_history": 17,
+      "asset_rentals_loans": 11,
+      "dispatch_guides": 13,
+      "expenses": 6,
+      "financial_payments": 26,
+      "dispatch_guide_items": 25
+    }
+  },
+  "sequence_verification": {
+    "total_sequences": 24,
+    "all_sequences_ok": true,
+    "no_collision_smoke_test": "PASSED",
+    "details": [
+      {
+        "table": "clients",
+        "sequence": "public.clients_id_seq",
+        "max_id": 3,
+        "last_value": 3,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "cost_centers",
+        "sequence": "public.cost_centers_id_seq",
+        "max_id": 0,
+        "last_value": 1,
+        "is_called": false,
+        "status": "OK"
+      },
+      {
+        "table": "assets",
+        "sequence": "public.assets_id_seq",
+        "max_id": 917,
+        "last_value": 917,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "project_phases",
+        "sequence": "public.project_phases_id_seq",
+        "max_id": 3,
+        "last_value": 3,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "material_movements",
+        "sequence": "public.material_movements_id_seq",
+        "max_id": 6,
+        "last_value": 6,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "audit_logs",
+        "sequence": "public.audit_logs_id_seq",
+        "max_id": 307,
+        "last_value": 307,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "projects",
+        "sequence": "public.projects_id_seq",
+        "max_id": 7,
+        "last_value": 7,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "fixed_expense_settings",
+        "sequence": "public.fixed_expense_settings_id_seq",
+        "max_id": 0,
+        "last_value": 1,
+        "is_called": false,
+        "status": "OK"
+      },
+      {
+        "table": "partner_withdrawals",
+        "sequence": "public.partner_withdrawals_id_seq",
+        "max_id": 8,
+        "last_value": 8,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "dispatch_guide_items",
+        "sequence": "public.dispatch_guide_items_id_seq",
+        "max_id": 25,
+        "last_value": 25,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "materials",
+        "sequence": "public.materials_id_seq",
+        "max_id": 16,
+        "last_value": 16,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "dispatch_guides",
+        "sequence": "public.dispatch_guides_id_seq",
+        "max_id": 13,
+        "last_value": 13,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "resource_assignment_history",
+        "sequence": "public.resource_assignment_history_id_seq",
+        "max_id": 61,
+        "last_value": 61,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "asset_rentals_loans",
+        "sequence": "public.asset_rentals_loans_id_seq",
+        "max_id": 11,
+        "last_value": 11,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "expenses",
+        "sequence": "public.expenses_id_seq",
+        "max_id": 6,
+        "last_value": 6,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "expense_categories",
+        "sequence": "public.expense_categories_id_seq",
+        "max_id": 43,
+        "last_value": 43,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "service_items",
+        "sequence": "public.service_items_id_seq",
+        "max_id": 8,
+        "last_value": 8,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "quotation_items",
+        "sequence": "public.quotation_items_id_seq",
+        "max_id": 10,
+        "last_value": 10,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "accounts_receivable",
+        "sequence": "public.accounts_receivable_id_seq",
+        "max_id": 10,
+        "last_value": 10,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "quotations",
+        "sequence": "public.quotations_id_seq",
+        "max_id": 8,
+        "last_value": 8,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "financial_payments",
+        "sequence": "public.financial_payments_id_seq",
+        "max_id": 26,
+        "last_value": 26,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "personnel",
+        "sequence": "public.personnel_id_seq",
+        "max_id": 16,
+        "last_value": 16,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "users",
+        "sequence": "public.users_id_seq",
+        "max_id": 10,
+        "last_value": 10,
+        "is_called": true,
+        "status": "OK"
+      },
+      {
+        "table": "accounts_payable",
+        "sequence": "public.accounts_payable_id_seq",
+        "max_id": 11,
+        "last_value": 11,
+        "is_called": true,
+        "status": "OK"
+      }
+    ]
+  },
+  "functional_smoke_tests": {
+    "assets_total": 907,
+    "assets_herramientas": 898,
+    "projects_total": 7,
+    "users_total": 9,
+    "cxc_total": 10,
+    "cxp_total": 11
+  }
+}

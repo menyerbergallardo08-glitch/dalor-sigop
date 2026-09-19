@@ -282,6 +282,16 @@ class BackupService:
                     except Exception as e:
                         print(f"Warning purging {t_name}: {e}")
 
+                # Habilitar modo réplica si PostgreSQL lo permite para evitar trabas en restauración masiva
+                if db.bind.name == "postgresql":
+                    try:
+                        db.execute(text("SET session_replication_role = 'replica';"))
+                    except Exception:
+                        pass
+
+                model_table_map = {t.name: t for t in Base.metadata.sorted_tables}
+                inserted_ids = {}
+
                 # 2. Insertar filas en orden topológico (padres primero, hijos después)
                 insert_order = non_model_tables + [t for t in ordered_model_tables if t in tables_data]
                 for t_name in insert_order:
@@ -298,7 +308,14 @@ class BackupService:
                     
                     if not valid_cols or not rows:
                         restored_counts[t_name] = 0
+                        inserted_ids[t_name] = set()
                         continue
+
+                    # Identificar FKs nulables de esta tabla para sanitizar huérfanos históricos
+                    nullable_fks = {}
+                    if t_name in model_table_map:
+                        table_obj = model_table_map[t_name]
+                        nullable_fks = {fk.parent.name: fk.column.table.name for fk in table_obj.foreign_keys if fk.parent.nullable}
 
                     col_objs = {c["name"]: c for c in inspector.get_columns(t_name)}
                     col_names_str = ", ".join([f'"{k}"' if db.bind.name == "postgresql" else f'"{k}"' for k in valid_cols])
@@ -307,15 +324,32 @@ class BackupService:
 
                     for r in rows:
                         filtered_row = {k: r[k] for k in valid_cols if k in r}
-                        # Convertir ISO datetimes
                         for k, v in filtered_row.items():
                             if v is not None and k in col_objs:
                                 col_type = str(col_objs[k]["type"]).lower()
+                                # Conversión tipada para TIMESTAMP / DATETIME
                                 if ("datetime" in col_type or "timestamp" in col_type) and isinstance(v, str):
                                     try:
                                         filtered_row[k] = datetime.fromisoformat(v)
                                     except Exception:
                                         pass
+                                # Conversión tipada para DATE
+                                elif "date" in col_type and isinstance(v, str) and len(v) == 10:
+                                    try:
+                                        filtered_row[k] = date.fromisoformat(v)
+                                    except Exception:
+                                        pass
+                                # Conversión tipada para BOOLEAN (PostgreSQL exige bool nativo, no 0/1)
+                                elif ("bool" in col_type or "boolean" in col_type) and not isinstance(v, bool):
+                                    filtered_row[k] = bool(v) if v not in (0, "0", "false", "False", False) else False
+
+                        # Sanitizar FKs nulables si apuntan a IDs de usuarios/padres borrados previamente
+                        for fk_col, parent_t in nullable_fks.items():
+                            if fk_col in filtered_row and filtered_row[fk_col] is not None:
+                                valid_parent_ids = inserted_ids.get(parent_t, set())
+                                if valid_parent_ids and filtered_row[fk_col] not in valid_parent_ids:
+                                    filtered_row[fk_col] = None
+
                         db.execute(stmt, filtered_row)
                     
                     # En PostgreSQL, sincronizar la secuencia del ID autoincremental
@@ -331,6 +365,14 @@ class BackupService:
                             pass
 
                     restored_counts[t_name] = len(rows)
+                    inserted_ids[t_name] = set(r["id"] for r in rows if "id" in r)
+
+                # Restaurar modo réplica a normal
+                if db.bind.name == "postgresql":
+                    try:
+                        db.execute(text("SET session_replication_role = 'origin';"))
+                    except Exception:
+                        pass
 
                 db.commit()
 

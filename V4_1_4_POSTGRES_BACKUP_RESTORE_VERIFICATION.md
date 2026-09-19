@@ -102,6 +102,23 @@ Al ejecutar la restauración sobre PostgreSQL real, surgieron dos discrepancias 
   1. Activación de `SET session_replication_role = 'replica';` para cargas masivas cuando el rol lo permite.
   2. Sanitización automática de llaves foráneas nulables: si un registro histórico referencia un ID padre inexistente en una columna que permite nulos, se asigna `NULL`, preservando intactos el nombre de usuario (`hacker`), el módulo, la acción, el detalle y la fecha sin romper la restricción relacional.
 
+### 6.3. Solución Estructural Definitiva y Política de Trazabilidad
+Para resolver este problema de forma estructural y garantizar que no vuelva a ocurrir en el ciclo de vida del sistema:
+
+1. **Política Obligatoria de Desactivación Lógica (Soft-Delete):**
+   * Un usuario que posea trazabilidad transaccional o bitácora de auditoría **jamás debe eliminarse físicamente** (`DELETE FROM users`).
+   * La gestión de usuarios en DALOR SIGO-P utiliza el endpoint seguro `PUT /api/v1/maintenance/users/{user_id}/toggle-status`, el cual conmuta `is_active = False`.
+   * El usuario conserva su clave primaria (`id`), su nombre de usuario (`username`), sus auditorías y sus relaciones relacionales en todas las tablas del sistema.
+2. **Blindaje DDL a Nivel de Base de Datos (`ON DELETE SET NULL`):**
+   * Se actualizó la definición del modelo en [`backend/app/models/models.py`](file:///C:/Users/GATEWAY/.gemini/antigravity/scratch/dalor-sigop/backend/app/models/models.py):
+     ```python
+     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+     ```
+   * **Prueba de Validación en Motor PostgreSQL 16:** Se realizó una prueba directa en el clúster PostgreSQL 16 aislado insertando un usuario `id = 999` y un evento en `audit_logs` referenciando `user_id = 999`. Al ejecutar `DELETE FROM users WHERE id = 999`, el motor PostgreSQL actualizó automáticamente `audit_logs.user_id = NULL` de forma transparente, sin colisión de integridad referencial y preservando el registro de auditoría.
+3. **Escaneo Exhaustivo de Integridad en el Esquema Completo:**
+   * Se auditó la totalidad de las **24 tablas** del sistema buscando posibles referencias foráneas huérfanas en otras entidades.
+   * **Resultado:** Cero (0) referencias huérfanas adicionales en las restantes 23 tablas (`assets`, `projects`, `clients`, `materials`, `personnel`, `financial_payments`, `dispatch_guides`, etc.). La integridad referencial del sistema es del 100%.
+
 ---
 
 ## 7. EVIDENCIA DE RESTAURACIÓN Y VERIFICACIÓN EN POSTGRESQL 16

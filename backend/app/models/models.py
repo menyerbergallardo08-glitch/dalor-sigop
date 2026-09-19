@@ -44,7 +44,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     username = Column(String(50), nullable=False)
     module = Column(String(50), nullable=False)
     action = Column(String(100), nullable=False)
@@ -160,7 +160,7 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, index=True)
     name = Column(String(200), nullable=False)
-    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True, index=True)
     client_name = Column(String(150), nullable=True)
     location = Column(String(200), default="Sede Central")
     status = Column(String(50), default="activo")
@@ -209,7 +209,7 @@ class ProjectPhase(Base):
     __tablename__ = "project_phases"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     phase_number = Column(Integer, default=1)
     name = Column(String(150), nullable=False)
     description = Column(Text, nullable=True)
@@ -271,7 +271,7 @@ class Personnel(Base):
     
     status = Column(String(50), default="disponible_base")
     current_location = Column(String(150), default="Sede Central")
-    current_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    current_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     roster_type = Column(String(50), default="guacara_fijo")
     monthly_salary_usd = Column(Float, default=0.0)
     daily_rate_usd = Column(Float, default=0.0)
@@ -324,7 +324,7 @@ class Expense(Base):
     category_id = Column(Integer, ForeignKey("expense_categories.id"), nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     cost_center_id = Column(Integer, ForeignKey("cost_centers.id"), nullable=True)
-    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True, index=True)
     reported_by_id = Column(Integer, ForeignKey("personnel.id"), nullable=True)
     
     # Clasificación de Alto Nivel
@@ -489,13 +489,13 @@ class MaterialMovement(Base):
     __tablename__ = "material_movements"
 
     id = Column(Integer, primary_key=True, index=True)
-    material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=False, index=True)
     movement_type = Column(String(50), nullable=False) # entrada_compra, despacho_obra, ajuste_inventario, devolucion_obra
     quantity = Column(Float, nullable=False)
     unit_cost_usd = Column(Float, default=0.0)
     total_cost_usd = Column(Float, default=0.0)
     
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     destination = Column(String(150), default="Sede Central")
     reference_doc = Column(String(100), nullable=True) # Factura, Vale interno, Guía
     notes = Column(Text, nullable=True)
@@ -512,7 +512,10 @@ class DispatchGuide(Base):
     id = Column(Integer, primary_key=True, index=True)
     guide_number = Column(String(50), unique=True, index=True) # GD-2026-001
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
-    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True)
+    recipient_name = Column(String(150), nullable=True) # Nombre libre para formato abierto
+    transfer_reason = Column(String(100), default="Despacho de Producción") # Traslado entre obras, Taller externo, etc.
+    is_freeform = Column(Boolean, default=False)
     
     dispatch_date = Column(DateTime, default=datetime.utcnow)
     destination_address = Column(String(255), nullable=False)
@@ -520,7 +523,7 @@ class DispatchGuide(Base):
     
     # Modalidad de Transporte (Propio DALOR vs Tercerizado Flete vs Retiro Cliente)
     transport_type = Column(String(50), default="propio_dalor") # propio_dalor, tercerizado_flete, retiro_cliente
-    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True, index=True)
     carrier_company = Column(String(150), nullable=True)
     driver_name = Column(String(150), nullable=False)
     driver_id_doc = Column(String(50), nullable=False) # C.I.
@@ -555,7 +558,7 @@ class DispatchGuideItem(Base):
     __tablename__ = "dispatch_guide_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    dispatch_guide_id = Column(Integer, ForeignKey("dispatch_guides.id"), nullable=False)
+    dispatch_guide_id = Column(Integer, ForeignKey("dispatch_guides.id"), nullable=False, index=True)
     item_number = Column(Integer, default=1)
     description = Column(String(255), nullable=False)
     quantity = Column(Float, default=1.0)
@@ -564,3 +567,42 @@ class DispatchGuideItem(Base):
     approx_weight_kg = Column(Float, default=0.0)
 
     dispatch_guide = relationship("DispatchGuide", back_populates="items")
+
+
+class AssetRentalLoan(Base):
+    __tablename__ = "asset_rentals_loans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    operation_code = Column(String(50), unique=True, index=True) # ALQ-2026-001 / PRE-2026-001
+    direction = Column(String(50), nullable=False) # 'dalor_a_tercero' (salida) o 'tercero_a_dalor' (entrada)
+    operation_type = Column(String(50), nullable=False) # 'alquiler' o 'prestamo'
+    
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True) # Si es activo propio de DALOR
+    equipment_name = Column(String(150), nullable=False) # Nombre del equipo/herramienta
+    equipment_code = Column(String(50), nullable=True) # Código interno o serial
+    
+    external_entity = Column(String(150), nullable=False) # Cliente, Proveedor o Subcontratista
+    contact_person = Column(String(100), nullable=True) # Custodio / Chofer / Encargado
+    contact_phone = Column(String(50), nullable=True)
+    
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True) # Obra asignada (opcional)
+    
+    start_date = Column(DateTime, default=datetime.utcnow) # Fecha de entrega o recepción
+    expected_return_date = Column(DateTime, nullable=True) # Fecha límite prevista de retorno
+    actual_return_date = Column(DateTime, nullable=True) # Fecha real de devolución
+    
+    rate_usd = Column(Float, default=0.0) # Tarifa de alquiler (0 si es préstamo)
+    rate_period = Column(String(50), default="dia") # dia, semana, mes, global
+    total_amount_usd = Column(Float, default=0.0)
+    
+    receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
+    payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
+    
+    status = Column(String(50), default="activo") # activo, devuelto_conforme, devuelto_con_novedad, vencido
+    return_notes = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    asset = relationship("Asset")
+    project = relationship("Project")
+

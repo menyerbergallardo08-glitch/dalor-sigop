@@ -69,7 +69,21 @@ def init_db():
             "ALTER TABLE resource_assignment_history ALTER COLUMN project_id DROP NOT NULL;",
             "ALTER TABLE resource_assignment_history ALTER COLUMN client_id DROP NOT NULL;",
             "ALTER TABLE dispatch_guides ALTER COLUMN project_id DROP NOT NULL;",
-            "ALTER TABLE dispatch_guides ALTER COLUMN client_id DROP NOT NULL;"
+            "ALTER TABLE dispatch_guides ALTER COLUMN client_id DROP NOT NULL;",
+            "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(150);",
+            "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS transfer_reason VARCHAR(100) DEFAULT 'Despacho de Producción';",
+            "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS is_freeform BOOLEAN DEFAULT FALSE;",
+            # V4.1.2: Índices corregidos y FKs justificadas
+            "DROP INDEX IF EXISTS idx_dispatch_items_guide_id;",
+            "CREATE INDEX IF NOT EXISTS idx_dispatch_items_guide_id ON dispatch_guide_items (dispatch_guide_id);",
+            "CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);",
+            "CREATE INDEX IF NOT EXISTS idx_project_phases_project_id ON project_phases (project_id);",
+            "CREATE INDEX IF NOT EXISTS idx_mat_movements_project_id ON material_movements (project_id);",
+            "CREATE INDEX IF NOT EXISTS idx_mat_movements_material_id ON material_movements (material_id);",
+            "CREATE INDEX IF NOT EXISTS idx_personnel_project_id ON personnel (current_project_id);",
+            "CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);",
+            "CREATE INDEX IF NOT EXISTS idx_expenses_asset_id ON expenses (asset_id);",
+            "CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id);"
         ]:
             try:
                 conn.execute(text(stmt))

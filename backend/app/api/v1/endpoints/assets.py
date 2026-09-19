@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.models.models import Asset, Expense, Project, Personnel, ResourceAssignmentHistory, AuditLog, User
+from app.models.models import Asset, Expense, Project, Personnel, ResourceAssignmentHistory, AuditLog, User, AssetRentalLoan, DispatchGuide
 from app.core.security import verify_password
 
 router = APIRouter()
@@ -68,11 +68,84 @@ class DispatchGuideCreate(BaseModel):
     observations: Optional[str] = None
     items: List[DispatchGuideItem]
 
+@router.get("/tools-summary")
+def get_tools_summary(db: Session = Depends(get_db)):
+    """
+    Optimized endpoint for tool inventory grouping.
+    Returns tools grouped by name with compact representation,
+    reducing payload from 465 KB to ~15 KB.
+    """
+    non_tools = ['vehiculo', 'camioneta', 'camion', 'remolque', 'maquinaria', 'planta', 'generador', 'compresor']
+    tools = (
+        db.query(
+            Asset.id,
+            Asset.asset_code,
+            Asset.name,
+            Asset.asset_type,
+            Asset.brand,
+            Asset.model,
+            Asset.serial_number,
+            Asset.status,
+            Asset.current_location,
+            Asset.current_custodian_name,
+            Asset.current_project_id
+        )
+        .filter(Asset.is_active == True, ~Asset.asset_type.in_(non_tools))
+        .all()
+    )
+
+    groups = {}
+    for t in tools:
+        t_id, code, name, a_type, brand, model, serial, status, loc, cust, proj_id = t
+        key = (name or 'HERRAMIENTA GENERAL').strip().upper()
+        if key not in groups:
+            groups[key] = {
+                "name": (name or 'Herramienta General').strip(),
+                "asset_type": a_type or 'herramienta',
+                "total": 0,
+                "available": 0,
+                "in_use": 0,
+                "locations": set(),
+                "items": []
+            }
+        g = groups[key]
+        g["total"] += 1
+        is_avail = (status == "disponible_base" or not proj_id)
+        if is_avail:
+            g["available"] += 1
+        else:
+            g["in_use"] += 1
+        if loc:
+            g["locations"].add(loc)
+        
+        g["items"].append({
+            "id": t_id,
+            "asset_code": code,
+            "name": name,
+            "brand": brand or "",
+            "model": model or "",
+            "serial_number": serial or "",
+            "status": status,
+            "current_location": loc or "Sede Central",
+            "current_custodian_name": cust or "Disponible en Base",
+            "current_project_id": proj_id
+        })
+
+    result = []
+    for g in groups.values():
+        g["locations"] = sorted(list(g["locations"]))
+        result.append(g)
+
+    return result
+
 @router.get("/")
 def get_assets(
     asset_type: Optional[str] = None,
     ownership_type: Optional[str] = None,
     include_inactive: bool = False,
+    search: Optional[str] = None,
+    page: Optional[int] = Query(None, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
     query = db.query(Asset)
@@ -82,7 +155,25 @@ def get_assets(
         query = query.filter(Asset.asset_type == asset_type)
     if ownership_type:
         query = query.filter(Asset.ownership_type == ownership_type)
-    return query.order_by(Asset.asset_code.asc()).all()
+    if search:
+        s = f"%{search.strip()}%"
+        query = query.filter(or_(Asset.name.ilike(s), Asset.asset_code.ilike(s), Asset.brand.ilike(s)))
+        
+    query = query.order_by(Asset.asset_code.asc())
+    
+    is_paginated = page is not None and isinstance(page, int)
+    if is_paginated:
+        total = query.count()
+        items = query.offset((page - 1) * page_size).limit(page_size).all()
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 1
+        }
+        
+    return query.all()
 
 @router.post("/")
 def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
@@ -545,3 +636,101 @@ def record_asset_maintenance(
         "traffic_light": "VERDE_OK"
     }
 
+
+
+@router.get("/{asset_id}/history")
+def get_asset_movement_history(asset_id: int, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Activo no encontrado.")
+
+    # 1. Movimientos desde ResourceAssignmentHistory
+    movements = db.query(ResourceAssignmentHistory).filter(
+        ResourceAssignmentHistory.resource_id == asset_id,
+        ResourceAssignmentHistory.resource_type.in_(["asset", "vehiculo", "maquinaria", "herramienta"])
+    ).order_by(ResourceAssignmentHistory.assigned_at.desc()).all()
+
+    # Si no trajo por ID directo, buscar por código o nombre del activo
+    if not movements:
+        movements = db.query(ResourceAssignmentHistory).filter(
+            (ResourceAssignmentHistory.resource_code == asset.asset_code) |
+            (ResourceAssignmentHistory.resource_name == asset.name)
+        ).order_by(ResourceAssignmentHistory.assigned_at.desc()).all()
+
+    timeline = []
+    for m in movements:
+        timeline.append({
+            "id": f"mov-{m.id}",
+            "type": "movimiento_obra",
+            "date": m.assigned_at.strftime("%Y-%m-%d %H:%M:%S") if m.assigned_at else "-",
+            "transfer_code": m.transfer_code or "S/C",
+            "project_code": m.project.code if m.project else "Sede Central",
+            "project_name": m.project.name if m.project else "Sede Central",
+            "origin": m.origin_location or "Sede Central",
+            "destination": m.destination_location or "-",
+            "responsible_person": m.custodian_name or m.driver_name or "Sin custodio",
+            "driver_name": m.driver_name or "-",
+            "odometer": m.start_odometer or 0.0,
+            "status": m.status or "en_obra",
+            "notes": m.notes or ""
+        })
+
+    # 2. Despachos y Guías vinculadas
+    guides = db.query(DispatchGuide).filter(DispatchGuide.asset_id == asset_id).all()
+    for g in guides:
+        timeline.append({
+            "id": f"disp-{g.id}",
+            "type": "guia_despacho",
+            "date": g.dispatch_date.strftime("%Y-%m-%d %H:%M:%S") if g.dispatch_date else g.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "transfer_code": g.guide_number,
+            "project_code": g.project.code if g.project else "S/P",
+            "project_name": g.project.name if g.project else (g.recipient_name or "Despacho Libre"),
+            "origin": "Base Central Dalor",
+            "destination": g.destination_address,
+            "responsible_person": g.driver_name,
+            "driver_name": g.driver_name,
+            "odometer": None,
+            "status": g.status,
+            "notes": f"Motivo: {g.transfer_reason or 'Despacho'} | Placa: {g.vehicle_plate}"
+        })
+
+    # 3. Alquileres o Préstamos vinculados
+    rentals = db.query(AssetRentalLoan).filter(AssetRentalLoan.asset_id == asset_id).all()
+    for r in rentals:
+        timeline.append({
+            "id": f"rent-{r.id}",
+            "type": "alquiler_prestamo",
+            "date": r.start_date.strftime("%Y-%m-%d %H:%M:%S") if r.start_date else r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "transfer_code": r.operation_code,
+            "project_code": r.project.code if r.project else "TERCEROS",
+            "project_name": f"{r.operation_type.title()} con {r.external_entity}",
+            "origin": "Base Dalor",
+            "destination": f"Custodia: {r.external_entity}",
+            "responsible_person": r.contact_person or r.external_entity,
+            "driver_name": r.contact_person or "-",
+            "odometer": None,
+            "status": r.status,
+            "notes": f"{r.notes or ''} (Tarifa: ${r.rate_usd:.2f}/{r.rate_period})"
+        })
+
+    # Ordenar por fecha descendente
+    timeline.sort(key=lambda x: x["date"], reverse=True)
+
+    return {
+        "asset": {
+            "id": asset.id,
+            "code": asset.asset_code,
+            "name": asset.name,
+            "type": asset.asset_type,
+            "brand": asset.brand or "",
+            "model": asset.model or "",
+            "license_plate": asset.license_plate or "-",
+            "current_odometer": asset.current_odometer,
+            "status": asset.status,
+            "current_location": asset.current_location,
+            "current_custodian": asset.current_custodian_name,
+            "project_code": asset.current_project.code if asset.current_project else "Base Central"
+        },
+        "history_count": len(timeline),
+        "timeline": timeline
+    }

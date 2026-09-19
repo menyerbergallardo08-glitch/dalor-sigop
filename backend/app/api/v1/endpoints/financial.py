@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func
 from datetime import datetime
 from typing import List, Optional
@@ -96,8 +96,8 @@ class PartnerWithdrawalCreate(BaseModel):
 # ------------------------------------------------------------------------------
 @router.get("/summary")
 def get_financial_summary(db: Session = Depends(get_db)):
-    # 1. Cuentas por Cobrar (CxC Clientes)
-    r_query = db.query(AccountReceivable).all()
+    # 1. Cuentas por Cobrar (CxC Clientes) - Eager load client to eliminate N+1 in alerts
+    r_query = db.query(AccountReceivable).options(joinedload(AccountReceivable.client)).all()
     total_invoiced_cxc = sum(r.amount_usd for r in r_query)
     total_collected_cxc = sum(r.paid_amount_usd for r in r_query)
     pending_cxc = sum(r.balance_usd for r in r_query)
@@ -132,8 +132,8 @@ def get_financial_summary(db: Session = Depends(get_db)):
     # Cobertura de Gastos Fijos (Punto de Equilibrio del mes)
     fixed_overhead_covered_pct = min(100, round((net_accrual_profit / monthly_fixed_budget) * 100)) if monthly_fixed_budget > 0 and net_accrual_profit > 0 else 0
 
-    # 8. Estado de Resultados (P&L) Limpio Obra por Obra
-    projects = db.query(Project).filter(Project.is_active == True).all()
+    # 8. Estado de Resultados (P&L) Limpio Obra por Obra - Eager load client to eliminate N+1
+    projects = db.query(Project).options(joinedload(Project.client)).filter(Project.is_active == True).all()
     projects_pnl = []
     total_contracted = 0.0
 
@@ -353,13 +353,38 @@ def create_partner_withdrawal(req: PartnerWithdrawalCreate, db: Session = Depend
     db.refresh(new_w)
     return {"success": True, "message": f"Retiro de socio registrado por ${req.amount_usd:,.2f} USD.", "id": new_w.id}
 
+@router.delete("/partners/withdrawals/{withdrawal_id}", dependencies=[Depends(require_roles(["director_general", "administrador_financiero"]))])
+def delete_partner_withdrawal(withdrawal_id: int, db: Session = Depends(get_db)):
+    w = db.query(PartnerWithdrawal).filter(PartnerWithdrawal.id == withdrawal_id).first()
+    if not w:
+        raise HTTPException(status_code=404, detail="Retiro de socio no encontrado.")
+    db.delete(w)
+    db.commit()
+    return {"success": True, "message": f"Retiro #{withdrawal_id} anulado correctamente."}
+
 # ------------------------------------------------------------------------------
 # 3. ENDPOINTS DE CUENTAS POR COBRAR (CxC)
 # ------------------------------------------------------------------------------
 @router.get("/cxc")
-def get_receivables(db: Session = Depends(get_db)):
-    rows = db.query(AccountReceivable).order_by(AccountReceivable.due_date.asc()).all()
-    return [{
+def get_receivables(
+    page: Optional[int] = Query(None, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    query = (
+        db.query(AccountReceivable)
+        .options(
+            joinedload(AccountReceivable.client),
+            joinedload(AccountReceivable.project),
+            selectinload(AccountReceivable.payments)
+        )
+        .order_by(AccountReceivable.due_date.asc())
+    )
+    is_paginated = page is not None and isinstance(page, int)
+    total = query.count() if is_paginated else None
+    rows = query.offset((page - 1) * page_size).limit(page_size).all() if is_paginated else query.all()
+
+    items = [{
         "id": r.id,
         "invoice_number": r.invoice_number,
         "client_name": r.client.name if r.client else "General",
@@ -391,6 +416,16 @@ def get_receivables(db: Session = Depends(get_db)):
             "notes": p.notes
         } for p in r.payments]
     } for r in rows]
+
+    if is_paginated:
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 1
+        }
+    return items
 
 @router.post("/cxc")
 def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
@@ -527,9 +562,24 @@ def declare_cxc_bad_debt(receivable_id: int, req: BadDebtRequest, db: Session = 
 # 4. ENDPOINTS DE CUENTAS POR PAGAR (CxP PROVEEDORES)
 # ------------------------------------------------------------------------------
 @router.get("/cxp")
-def get_payables(db: Session = Depends(get_db)):
-    rows = db.query(AccountPayable).order_by(AccountPayable.due_date.asc()).all()
-    return [{
+def get_payables(
+    page: Optional[int] = Query(None, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    query = (
+        db.query(AccountPayable)
+        .options(
+            joinedload(AccountPayable.project),
+            selectinload(AccountPayable.payments)
+        )
+        .order_by(AccountPayable.due_date.asc())
+    )
+    is_paginated = page is not None and isinstance(page, int)
+    total = query.count() if is_paginated else None
+    rows = query.offset((page - 1) * page_size).limit(page_size).all() if is_paginated else query.all()
+
+    items = [{
         "id": p.id,
         "invoice_number": p.invoice_number,
         "supplier_name": p.supplier_name,
@@ -558,7 +608,17 @@ def get_payables(db: Session = Depends(get_db)):
             "payment_date": pm.payment_date.strftime("%d/%m/%Y"),
             "notes": pm.notes
         } for pm in p.payments]
-    } for p in rows]
+    } for r, p in enumerate(rows)]
+
+    if is_paginated:
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 1
+        }
+    return items
 
 @router.post("/cxp")
 def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):

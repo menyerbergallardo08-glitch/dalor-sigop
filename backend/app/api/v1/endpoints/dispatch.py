@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel
@@ -34,6 +34,9 @@ class DispatchGuideCreate(BaseModel):
     guide_number: Optional[str] = None
     project_id: Optional[int] = None
     client_id: Optional[int] = None
+    recipient_name: Optional[str] = None # Nombre libre para formato abierto
+    transfer_reason: Optional[str] = "Despacho de Producción" # Motivo de traslado
+    is_freeform: Optional[bool] = False
     dispatch_date: Optional[datetime] = None
     destination_address: str
     destination_plant: Optional[str] = None
@@ -57,8 +60,9 @@ class DispatchGuideCreate(BaseModel):
     items: List[DispatchItemIn] = []
 
 class DeliveryConfirmIn(BaseModel):
-    received_by_client_name: str
-    received_by_client_id_doc: str
+    received_by_client_name: Optional[str] = None
+    received_by: Optional[str] = None
+    received_by_client_id_doc: Optional[str] = "V-Receptor"
     reception_date: Optional[datetime] = None
     notes: Optional[str] = None
 
@@ -76,9 +80,16 @@ def list_dispatch_guides(
     project_id: Optional[int] = None,
     client_id: Optional[int] = None,
     status: Optional[str] = None,
+    page: Optional[int] = Query(None, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    q = db.query(DispatchGuide)
+    q = db.query(DispatchGuide).options(
+        joinedload(DispatchGuide.project),
+        joinedload(DispatchGuide.client),
+        joinedload(DispatchGuide.asset),
+        selectinload(DispatchGuide.items)
+    )
     if project_id:
         q = q.filter(DispatchGuide.project_id == project_id)
     if client_id:
@@ -86,7 +97,10 @@ def list_dispatch_guides(
     if status:
         q = q.filter(DispatchGuide.status == status)
         
-    guides = q.order_by(DispatchGuide.created_at.desc()).all()
+    q = q.order_by(DispatchGuide.created_at.desc())
+    is_paginated = page is not None and isinstance(page, int)
+    total = q.count() if is_paginated else None
+    guides = q.offset((page - 1) * page_size).limit(page_size).all() if is_paginated else q.all()
     
     results = []
     for g in guides:
@@ -97,7 +111,10 @@ def list_dispatch_guides(
             "project_code": g.project.code if g.project else "S/P",
             "project_name": g.project.name if g.project else "Servicio Directo de Taller",
             "client_id": g.client_id,
-            "client_name": g.client.name if g.client else "Cliente General",
+            "client_name": g.recipient_name if (g.is_freeform and g.recipient_name) else (g.client.name if g.client else (g.recipient_name or "Cliente General")),
+            "recipient_name": g.recipient_name or (g.client.name if g.client else "Destinatario Libre"),
+            "transfer_reason": g.transfer_reason or "Despacho de Producción",
+            "is_freeform": g.is_freeform or False,
             "client_rif": g.client.rif if g.client else "-",
             "dispatch_date": g.dispatch_date.strftime("%Y-%m-%d %H:%M") if g.dispatch_date else "",
             "destination_address": g.destination_address,
@@ -128,12 +145,30 @@ def list_dispatch_guides(
             } for it in g.items],
             "notes": g.notes or ""
         })
+    if is_paginated:
+        return {
+            "items": results,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 1
+        }
     return results
 
 
 @router.get("/{guide_id}")
 def get_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
-    g = db.query(DispatchGuide).filter(DispatchGuide.id == guide_id).first()
+    g = (
+        db.query(DispatchGuide)
+        .options(
+            joinedload(DispatchGuide.project),
+            joinedload(DispatchGuide.client),
+            joinedload(DispatchGuide.asset),
+            selectinload(DispatchGuide.items)
+        )
+        .filter(DispatchGuide.id == guide_id)
+        .first()
+    )
     if not g:
         raise HTTPException(status_code=404, detail="Guía de despacho no encontrada.")
         
@@ -144,7 +179,10 @@ def get_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
         "project_code": g.project.code if g.project else "S/P",
         "project_name": g.project.name if g.project else "Servicio Directo de Taller",
         "client_id": g.client_id,
-        "client_name": g.client.name if g.client else "Cliente General",
+        "client_name": g.recipient_name if (g.is_freeform and g.recipient_name) else (g.client.name if g.client else (g.recipient_name or "Cliente General")),
+        "recipient_name": g.recipient_name or (g.client.name if g.client else "Destinatario Libre"),
+        "transfer_reason": g.transfer_reason or "Despacho de Producción",
+        "is_freeform": g.is_freeform or False,
         "client_rif": g.client.rif if g.client else "-",
         "dispatch_date": g.dispatch_date.strftime("%Y-%m-%d %H:%M") if g.dispatch_date else "",
         "destination_address": g.destination_address,
@@ -184,15 +222,15 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     client = None
     if g_in.client_id:
         client = db.query(Client).filter(Client.id == g_in.client_id).first()
-    if not client:
-        client = db.query(Client).first()
-    if not client:
-        client = Client(name="OXICAR (Cliente Principal)", code="CLI-OXICAR", rif="J-31601195-0")
-        db.add(client)
-        db.commit()
-        db.refresh(client)
-    client_id_val = client.id
-    client_name = client.name
+    
+    is_free = bool(g_in.is_freeform or (g_in.recipient_name and not g_in.client_id))
+    recipient = (g_in.recipient_name or "").strip()
+    if not recipient and client:
+        recipient = client.name
+    elif not recipient and not client:
+        recipient = "Destinatario Libre / Particular"
+
+    client_id_val = client.id if client else None
 
     # Correlativo automático si no viene provisto
     guide_num = g_in.guide_number
@@ -210,6 +248,9 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
         guide_number=guide_num,
         project_id=g_in.project_id,
         client_id=client_id_val,
+        recipient_name=recipient,
+        transfer_reason=(g_in.transfer_reason or "Despacho de Producción").strip(),
+        is_freeform=is_free,
         dispatch_date=g_in.dispatch_date or datetime.utcnow(),
         destination_address=g_in.destination_address.strip(),
         destination_plant=g_in.destination_plant.strip() if g_in.destination_plant else None,
@@ -253,7 +294,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
             supplier_name=carrier_name,
             project_id=g_in.project_id,
             payable_type="costo_material_obra" if g_in.project_id else "gasto_fijo_sede",
-            description=f"Flete / Transporte Tercerizado Guía {guide_num} para {client.name}",
+            description=f"Flete / Transporte Tercerizado Guía {guide_num} para {recipient}",
             due_date=datetime.utcnow(),
             amount_usd=f_cost,
             balance_usd=f_cost,
@@ -314,7 +355,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
                 custodian_name=g_in.driver_name,
                 driver_name=g_in.driver_name,
                 transfer_code=guide_num,
-                notes=f"Guía {guide_num} para {client.name}"
+                notes=f"Guía {guide_num} para {recipient}"
             )
             db.add(hist)
 
@@ -323,7 +364,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
         username="despacho",
         module="despachos_taller",
         action="emitir_guia_despacho",
-        details=f"Guía de Despacho {guide_num} emitida para cliente '{client.name}' ({len(g_in.items)} ítems, Modalidad: {g_in.transport_type})"
+        details=f"Guía de Despacho {guide_num} emitida para cliente '{recipient}' ({len(g_in.items)} ítems, Modalidad: {g_in.transport_type})"
     )
     db.add(audit)
     db.commit()
@@ -337,6 +378,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
 
 
 @router.put("/{guide_id}/confirm-delivery")
+@router.post("/{guide_id}/confirm-delivery")
 def confirm_dispatch_delivery(
     guide_id: int,
     conf_in: DeliveryConfirmIn,
@@ -346,9 +388,12 @@ def confirm_dispatch_delivery(
     if not g:
         raise HTTPException(status_code=404, detail="Guía no encontrada.")
 
+    recv_name = (conf_in.received_by_client_name or conf_in.received_by or "Receptor Conforme").strip()
+    recv_doc = (conf_in.received_by_client_id_doc or "V-Receptor").strip()
+
     g.status = "entregado_conforme"
-    g.received_by_client_name = conf_in.received_by_client_name.strip()
-    g.received_by_client_id_doc = conf_in.received_by_client_id_doc.strip()
+    g.received_by_client_name = recv_name
+    g.received_by_client_id_doc = recv_doc
     g.reception_date = conf_in.reception_date or datetime.utcnow()
     if conf_in.notes:
         g.notes = (g.notes or "") + f"\n[Recepción: {conf_in.notes}]"

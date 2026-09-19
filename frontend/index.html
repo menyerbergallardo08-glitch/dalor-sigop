@@ -5250,11 +5250,6 @@
 
 
 
-            <!-- SUBPESTAÑA 2: FORMULARIO DE NUEVA GUÍA DE DESPACHO -->
-
-            import re
-
-freeform_html = '''
             <!-- SUBPESTAÑA: GUÍA DE DESPACHO DE FORMATO ABIERTO (LIBRE EDICIÓN) -->
             <div id="subtab-disp-freeform" class="hidden">
                 <div class="card" style="margin-bottom: 16px; border-top: 4px solid var(--dalor-gold); background: #ffffff;">
@@ -5430,30 +5425,8 @@ freeform_html = '''
                     </form>
                 </div>
             </div>
-'''
 
-with open('frontend/index.html', 'r', encoding='utf-8') as f:
-    html = f.read()
-
-target = '<div id="subtab-disp-form" class="hidden">'
-if target in html:
-    html = html.replace(target, freeform_html + '\n            ' + target)
-    with open('frontend/index.html', 'w', encoding='utf-8') as f:
-        f.write(html)
-    print("Successfully inserted subtab-disp-freeform into index.html")
-else:
-    print("Target string not found!")
-'''
-with open('scratch/insert_freeform_subtab.py', 'w', encoding='utf-8') as f:
-    f.write(freeform_html)
-'''
-'''
-
-with open(r'scratch/run_insert_freeform.py', 'w', encoding='utf-8') as f:
-    f.write(freeform_html)
-print("Insertion script ready")
-
-
+            <!-- SUBPESTAÑA 2: FORMULARIO DE NUEVA GUÍA DE DESPACHO ESTÁNDAR -->
             <div id="subtab-disp-form" class="hidden">
 
                 <div class="card" style="margin-bottom: 16px; border-top: 4px solid var(--dalor-blue);">

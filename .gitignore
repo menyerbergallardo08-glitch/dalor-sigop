@@ -11,3 +11,4 @@ temp_ocr_preprocessed.png
 *.wav
 cloudflared.exe
 tunnel_url.txt
+backups/daily/

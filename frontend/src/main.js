@@ -35,6 +35,8 @@ import './modules/quotations.js';
 import './modules/expenses.js';
 import './modules/financial.js';
 import './modules/materials.js';
+import './modules/dispatch.js';
+import './modules/rentals.js';
 
 // Exportar al scope global para compatibilidad total con eventos inline de index.html
 window.Api = Api;
@@ -49,6 +51,152 @@ window.handlePortalLogin = (e) => {
     performLogin(u, p);
 };
 window.handleLogout = handleLogout;
+
+// Universal Double-Submit Protection
+window.withDoubleSubmitProtection = function(btnOrForm, asyncFn) {
+    return async function(...args) {
+        let btn = null;
+        if (btnOrForm instanceof HTMLElement) {
+            btn = (btnOrForm.tagName === 'BUTTON' || (btnOrForm.tagName === 'INPUT' && btnOrForm.type === 'submit'))
+                ? btnOrForm 
+                : btnOrForm.querySelector('button[type="submit"], button:not([type="button"])');
+        } else if (typeof btnOrForm === 'string') {
+            btn = document.querySelector(btnOrForm);
+        }
+
+        if (btn) {
+            if (btn.dataset.submitting === "true" || btn.disabled) {
+                console.warn("[DoubleSubmit] Solicitud concurrente bloqueada.");
+                return;
+            }
+            btn.dataset.submitting = "true";
+            btn.disabled = true;
+            btn.classList.add('loading-submitting');
+            var origHtml = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Procesando...`;
+        }
+
+        try {
+            return await asyncFn.apply(this, args);
+        } finally {
+            if (btn) {
+                setTimeout(() => {
+                    btn.dataset.submitting = "false";
+                    btn.disabled = false;
+                    btn.classList.remove('loading-submitting');
+                    btn.innerHTML = origHtml;
+                }, 500);
+            }
+        }
+    };
+};
+
+// Global Form Submit interceptor for double-click protection across all standard forms
+document.addEventListener('submit', function(e) {
+    const form = e.target;
+    if (!form || form.tagName !== 'FORM') return;
+    
+    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"], button:not([type="button"])');
+    if (!submitBtn) return;
+    
+    if (submitBtn.dataset.submitting === "true") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.warn("[DoubleSubmit] Envío de formulario bloqueado por concurrencia.");
+        return false;
+    }
+    
+    submitBtn.dataset.submitting = "true";
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+    
+    setTimeout(() => {
+        submitBtn.dataset.submitting = "false";
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }, 4000);
+}, true);
+
+// Utility: Debounce for fast search inputs (250ms)
+window.debounce = function(func, wait = 250) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+};
+
+// Connected Debounced Search Functions (250ms) - V4.1.2
+window.debouncedFilterToolsList = window.debounce(function() {
+    if (typeof window.filterToolsList === 'function') window.filterToolsList();
+}, 250);
+
+window.debouncedFilterProjectsList = window.debounce(function(val) {
+    if (typeof window.filterProjectsList === 'function') window.filterProjectsList(val);
+}, 250);
+
+window.debouncedFilterDispatchList = window.debounce(function(val) {
+    if (typeof window.filterDispatchList === 'function') window.filterDispatchList(val);
+}, 250);
+
+window.debouncedApplyRentalsFilter = window.debounce(function() {
+    if (typeof window.applyRentalsFilter === 'function') window.applyRentalsFilter();
+}, 250);
+
+window.debouncedFilterMaterialsTable = window.debounce(function() {
+    if (typeof window.filterMaterialsTable === 'function') window.filterMaterialsTable();
+}, 250);
+
+window.debouncedFilterExpensesLog = window.debounce(function() {
+    if (typeof window.filterExpensesLog === 'function') window.filterExpensesLog();
+}, 250);
+
+window.debouncedFilterMaintenanceAuditLogs = window.debounce(function() {
+    if (typeof window.filterMaintenanceAuditLogs === 'function') window.filterMaintenanceAuditLogs();
+}, 250);
+
+window.debouncedFilterTransferToolsChecklist = window.debounce(function() {
+    if (typeof window.filterTransferToolsChecklist === 'function') window.filterTransferToolsChecklist();
+}, 250);
+
+// Auto-bind debounce listeners to avoid high-frequency DOM thrashing
+function initSearchDebounceBindings() {
+    const searchBindings = [
+        { id: "toolSearchInput", fn: window.debouncedFilterToolsList },
+        { id: "rentalFilterSearch", fn: window.debouncedApplyRentalsFilter },
+        { id: "filterMaterialSearch", fn: window.debouncedFilterMaterialsTable },
+        { id: "log_filter_search", fn: window.debouncedFilterExpensesLog },
+        { id: "auditFilterUser", fn: window.debouncedFilterMaintenanceAuditLogs },
+        { id: "auditFilterQuery", fn: window.debouncedFilterMaintenanceAuditLogs },
+        { id: "tg_tools_search", fn: window.debouncedFilterTransferToolsChecklist }
+    ];
+
+    searchBindings.forEach(({ id, fn }) => {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.debounced) {
+            el.addEventListener("input", fn);
+            el.dataset.debounced = "true";
+        }
+    });
+
+    const projInput = document.getElementById("project_search_input");
+    if (projInput && !projInput.dataset.debounced) {
+        projInput.addEventListener("input", (e) => window.debouncedFilterProjectsList(e.target.value));
+        projInput.dataset.debounced = "true";
+    }
+
+    const dispInput = document.getElementById("dispatch_search_input");
+    if (dispInput && !dispInput.dataset.debounced) {
+        dispInput.addEventListener("input", (e) => window.debouncedFilterDispatchList(e.target.value));
+        dispInput.dataset.debounced = "true";
+    }
+}
+window.initSearchDebounceBindings = initSearchDebounceBindings;
 
 // Control de Tasa Oficial BCV
 async function fetchAndApplyBcvRate(forceRefresh = false) {
@@ -114,11 +262,17 @@ window.switchView = function(viewName, moduleCategory) {
     if (window.onViewSwitched) {
         window.onViewSwitched(viewName);
     }
+    if (typeof window.initSearchDebounceBindings === 'function') {
+        setTimeout(window.initSearchDebounceBindings, 50);
+    }
 };
 
 // Bootstrap Inicial
 document.addEventListener("DOMContentLoaded", async () => {
     fetchAndApplyBcvRate();
+    if (typeof window.initSearchDebounceBindings === 'function') {
+        window.initSearchDebounceBindings();
+    }
     const isAuth = checkAuthStatus();
     
     const loginScreen = document.getElementById('app-login-screen');
@@ -134,6 +288,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         redirectUserByRole(State.currentUser);
         if (typeof window.loadInitialMasterData === 'function') {
             try { window.loadInitialMasterData(); } catch(e) { console.warn(e); }
+        }
+        if (typeof window.initSearchDebounceBindings === 'function') {
+            setTimeout(window.initSearchDebounceBindings, 300);
         }
     } else {
         document.body.classList.remove('authenticated');

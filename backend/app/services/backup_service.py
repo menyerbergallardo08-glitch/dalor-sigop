@@ -4,6 +4,7 @@ import json
 import gzip
 import shutil
 import glob
+import hashlib
 from datetime import datetime, date
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
@@ -148,9 +149,24 @@ class BackupService:
         with open(json_path, "w", encoding="utf-8") as jf:
             json.dump(dump_data, jf, indent=2, default=_json_serializer, ensure_ascii=False)
         
-        json_kb = round(os.path.getsize(json_path) / 1024, 2)
+        # Calcular tamaño exacto y SHA-256 del respaldo
+        file_size_bytes = os.path.getsize(json_path)
+        json_kb = round(file_size_bytes / 1024, 2)
         total_kb += json_kb
         created_files.append(json_filename)
+
+        hasher = hashlib.sha256()
+        with open(json_path, "rb") as bf:
+            while chunk := bf.read(65536):
+                hasher.update(chunk)
+        sha256_checksum = hasher.hexdigest()
+
+        # Guardar manifiesto de verificación criptográfica (.sha256)
+        sha256_filename = f"{json_filename}.sha256"
+        sha256_path = os.path.join(BACKUP_DIR, sha256_filename)
+        with open(sha256_path, "w", encoding="utf-8") as sf:
+            sf.write(f"{sha256_checksum}  {json_filename}\n")
+        created_files.append(sha256_filename)
 
         # 2. Si es SQLite, realizar también copia binaria .db directa
         src_db = get_db_file_path()
@@ -188,7 +204,7 @@ class BackupService:
                 username=initiator_username,
                 module="mantenimiento",
                 action="crear_respaldo_bd",
-                details=f"Respaldo multi-tabla generado con éxito: {json_filename} ({json_kb} KB, {len(dump_data['tables'])} tablas respaldadas). Replicado en Cloudflare R2: {'SÍ' if r2_uploaded else 'NO'}."
+                details=f"Respaldo multi-tabla generado con éxito: {json_filename} ({json_kb} KB, {file_size_bytes} Bytes, SHA256: {sha256_checksum[:12]}..., {len(dump_data['tables'])} tablas respaldadas). Motor: {db.bind.name}. Replicado en Cloudflare R2: {'SÍ' if r2_uploaded else 'NO'}."
             )
             db.add(audit)
             db.commit()
@@ -200,6 +216,11 @@ class BackupService:
             "primary_file": json_filename,
             "created_files": created_files,
             "size_kb": total_kb,
+            "file_size_bytes": file_size_bytes,
+            "sha256_checksum": sha256_checksum,
+            "database_engine": db.bind.name,
+            "total_tables": len(dump_data["tables"]),
+            "timestamp": timestamp,
             "replicated_to_r2": r2_uploaded,
             "tables_backed_up": list(dump_data["tables"].keys()),
             "message": f"Copia de seguridad '{json_filename}' generada exitosamente y {'asegurada en Cloudflare R2' if r2_uploaded else 'almacenada localmente'}."

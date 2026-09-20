@@ -21,22 +21,22 @@ try {
 } catch(e) { window.currentUser = null; }
 window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
 
-import { Api } from './api.js';
-import { State } from './state.js';
-import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js';
+import { Api } from './api.js?v=2026.09.19.v97.0';
+import { State } from './state.js?v=2026.09.19.v97.0';
+import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js?v=2026.09.19.v97.0';
 
 // Carga e Inicialización de Submódulos Especializados
-import './modules/core.js';
-import './modules/bcv.js';
-import './modules/maintenance.js';
-import './modules/projects.js';
-import './modules/resources.js';
-import './modules/quotations.js';
-import './modules/expenses.js';
-import './modules/financial.js';
-import './modules/materials.js';
-import './modules/dispatch.js';
-import './modules/rentals.js';
+import './modules/core.js?v=2026.09.19.v97.0';
+import './modules/bcv.js?v=2026.09.19.v97.0';
+import './modules/maintenance.js?v=2026.09.19.v97.0';
+import './modules/projects.js?v=2026.09.19.v97.0';
+import './modules/resources.js?v=2026.09.19.v97.0';
+import './modules/quotations.js?v=2026.09.19.v97.0';
+import './modules/expenses.js?v=2026.09.19.v97.0';
+import './modules/financial.js?v=2026.09.19.v97.0';
+import './modules/materials.js?v=2026.09.19.v97.0';
+import './modules/dispatch.js?v=2026.09.19.v97.0';
+import './modules/rentals.js?v=2026.09.19.v97.0';
 
 // Exportar al scope global para compatibilidad total con eventos inline de index.html
 window.Api = Api;

@@ -134,9 +134,9 @@
             
             const response = await _nativeFetch(resource, init);
             
-            // Interceptor Reactivo de Expiración / No Autorizado (401 / 403)
-            if ((response.status === 401 || response.status === 403) && urlStr.includes('/api/v1') && !urlStr.includes('/auth/login') && !urlStr.includes('bcv-rate')) {
-                console.warn("[AUTH] Sesión expirada o no autorizada (HTTP " + response.status + ") en:", urlStr);
+            // Interceptor Reactivo de Expiración (401 Unauthorized)
+            if (response.status === 401 && urlStr.includes('/api/v1') && !urlStr.includes('/auth/login') && !urlStr.includes('bcv-rate')) {
+                console.warn("[AUTH] Sesión expirada o token inválido (HTTP 401) en:", urlStr);
                 localStorage.removeItem('dalor_token');
                 sessionStorage.removeItem('dalor_token');
                 window.authToken = null;
@@ -10892,8 +10892,8 @@
 
 
 
-    <!-- 🚀 LÓGICA MODULAR ES6 DESACOPLADA (v96.2) -->
-    <script type="module" src="/src/main.js?v=2026.09.18.v96.2"></script>
+    <!-- 🚀 LÓGICA MODULAR ES6 DESACOPLADA (v97.0) -->
+    <script type="module" src="/src/main.js?v=2026.09.19.v97.0"></script>
 
 
 

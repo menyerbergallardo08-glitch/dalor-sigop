@@ -321,7 +321,7 @@ async function loadClients() {
 
             <tr>
 
-                <td style="font-weight: 800; color: var(--dalor-blue);">${c.code}</td>
+                <td style="font-weight: 800; color: var(--dalor-blue);">${c.code || ('CLI-' + String(c.id).padStart(3, '0'))}</td>
 
                 <td style="font-weight: 700; color: var(--dalor-navy);">${c.name}</td>
 

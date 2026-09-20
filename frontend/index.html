@@ -8125,8 +8125,83 @@
 
 
 
-    <!-- MODAL: CREAR NUEVO USUARIO DE SISTEMA -->
+    <!-- MODAL: MAPA DE PERMISOS DE USUARIO -->
+    <div id="modalUserPermissions" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 580px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-key" style="color: #0284c7;"></i> Modificar Mapa de Permisos & Accesos
+                    </h3>
+                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">
+                        Usuario: <b id="permModalUsername" style="color: var(--dalor-navy);">-</b> (<span id="permModalFullName">-</span>)
+                    </p>
+                </div>
+                <button onclick="closeModal('modalUserPermissions')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form onsubmit="event.preventDefault(); submitSaveUserPermissions();" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="perm_target_user_id" value="">
+                <div>
+                    <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy); display: block; margin-bottom: 8px;">
+                        Permisos Granulares por Módulo:
+                    </span>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🏢 Módulo Comercial (Cotizaciones & APU)</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_comercial_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_comercial_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🏗️ Módulo Proyectos & Obras</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">💼 Finanzas, CxC, CxP & Tesorería</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_finanzas_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_finanzas_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🚛 Flota, Maquinaria & Herramientas</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_recursos_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_recursos_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🧾 Auditoría y Rendición de Gastos</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_gastos_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_gastos_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #1e40af;">👑 Acceso a Panel Ejecutivo & BI</span>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer;"><input type="checkbox" id="perm_executive_dashboard"> Permitido</label>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #991b1b;">⚙️ Administración de Sistema & Usuarios</span>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer;"><input type="checkbox" id="perm_mantenimiento_admin"> Permitido</label>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalUserPermissions')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7; font-weight: 800;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Mapa de Permisos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
+    <!-- MODAL: CREAR NUEVO USUARIO DE SISTEMA -->
     <div id="modalNewUser" class="modal-overlay hidden">
 
         <div class="modal-content" style="max-width: 500px;">

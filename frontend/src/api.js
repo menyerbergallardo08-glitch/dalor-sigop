@@ -33,9 +33,9 @@ export class ApiClient {
             const response = await fetch(url, config);
             clearTimeout(timeoutId);
 
-            // Interceptor de expiración de sesión (401 / 403)
-            if ((response.status === 401 || response.status === 403) && !endpoint.includes('/auth/login') && !endpoint.includes('bcv-rate')) {
-                console.warn("[AUTH] Sesión expirada o no autorizada:", endpoint);
+            // Interceptor de expiración de sesión (Estrictamente 401 Unauthorized en rutas protegidas)
+            if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('bcv-rate')) {
+                console.warn("[AUTH] Sesión expirada (HTTP 401):", endpoint);
                 sessionStorage.removeItem('dalor_token');
                 sessionStorage.removeItem('dalor_user');
                 sessionStorage.removeItem('dalor_session_active');
@@ -47,11 +47,17 @@ export class ApiClient {
                 if (loginScreen) loginScreen.style.setProperty('display', 'flex', 'important');
                 if (authShell) authShell.style.setProperty('display', 'none', 'important');
                 
-                // Evitar bucle infinito de recarga si ya estamos en la pantalla principal
                 if (window.location.pathname !== '/' && window.location.pathname !== '') {
                     window.location.href = '/';
                 }
                 return null;
+            }
+
+            // HTTP 403 (Forbidden / Permiso denegado): NO cerrar sesión, solo reportar error de permisos
+            if (response.status === 403) {
+                console.warn("[AUTH] Acción restringida por rol (HTTP 403):", endpoint);
+                const data403 = await response.json().catch(() => ({ detail: "Acción restringida: Tu rol no tiene permisos suficientes." }));
+                throw new Error(data403.detail || "Acceso denegado para tu rol.");
             }
 
             const data = await response.json().catch(() => ({}));

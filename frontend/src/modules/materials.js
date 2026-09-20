@@ -352,45 +352,33 @@ async function submitMaterialEntry(event) {
 
 
     try {
+        const token = window.authToken || localStorage.getItem('dalor_token');
+        const headers = { 
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        };
 
         const res = await fetch(`${API_BASE}/materials/entry`, {
-
             method: "POST",
-
-            headers: { "Content-Type": "application/json" },
-
+            headers: headers,
             body: JSON.stringify(payload)
-
         });
 
-
-
         if (res.ok) {
-
             const data = await res.json();
-
             alert(`✅ ${data.message}`);
-
             closeModal("modalMaterialEntry");
-
-            await loadInitialMasterData();
-
-            loadMaterialsList();
-
-            if (registerCxp) loadPayablesList();
-
+            try { await loadInitialMasterData(); } catch(e) {}
+            try { loadMaterialsList(); } catch(e) {}
+            if (registerCxp && typeof window.loadPayablesList === 'function') {
+                try { window.loadPayablesList(); } catch(e) {}
+            }
         } else {
-
-            const err = await res.json();
-
+            const err = await res.json().catch(() => ({ detail: "Error en el servidor al registrar entrada." }));
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
-
         alert("Error al procesar entrada de material: " + e.message);
-
     }
 
 }

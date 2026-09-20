@@ -1656,27 +1656,22 @@ async function submitSaveUserPermissions() {
 
 
     try {
+        const token = window.authToken || localStorage.getItem('dalor_token');
+        const headers = { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
 
         const res = await fetch(`${API_BASE}/maintenance/users/${userId}/permissions`, {
-
             method: 'PUT',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({ permissions })
-
+            headers: headers,
+            body: JSON.stringify({ permissions_json: JSON.stringify(permissions) })
         });
 
-
-
         const data = await res.json();
-
         if (!res.ok) {
-
             alert(data.detail || 'Error al actualizar permisos.');
-
             return;
-
         }
 
 

@@ -209,10 +209,23 @@ async function loadFleetList() {
 
 
     try {
-
-        const res = await fetch(`${API_BASE}/assets/fleet-summary`);
+        const token = window.authToken || localStorage.getItem('dalor_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch(`${API_BASE}/assets/fleet-summary`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const fleet = await res.json();
-        const vehicles = fleet.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta' || (a.asset_code && a.asset_code.includes('-V-')));
+        
+        if (!Array.isArray(fleet)) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No se pudo procesar la respuesta de la flota.</td></tr>`;
+            return;
+        }
+
+        const vehicles = fleet.filter(a => a && (
+            a.asset_type === 'vehiculo' || 
+            a.asset_type === 'camioneta' || 
+            (typeof a.asset_code === 'string' && (a.asset_code.includes('-V-') || a.asset_code.startsWith('FLT-'))) ||
+            (typeof a.category === 'string' && a.category.toLowerCase().includes('flota'))
+        ));
 
         if (vehicles.length === 0) {
             tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No hay vehículos registrados en la flota.</td></tr>`;
@@ -222,26 +235,34 @@ async function loadFleetList() {
         tbody.innerHTML = vehicles.map(v => {
             let semColor = '#166534';
             let semBg = '#dcfce7';
-            if (v.traffic_light === 'ROJO_VENCIDO') {
+            const light = v.traffic_light || 'VERDE_OK';
+            if (light === 'ROJO_VENCIDO') {
                 semColor = '#991b1b';
                 semBg = '#fee2e2';
-            } else if (v.traffic_light === 'AMARILLO_PROXIMO') {
+            } else if (light === 'AMARILLO_PROXIMO') {
                 semColor = '#92400e';
                 semBg = '#fef3c7';
             }
 
             const inBase = v.status === 'disponible_base' || !v.current_project_id;
+            const curOdo = Number(v.current_odometer ?? 0);
+            const remKm = Number(v.remaining_km_to_service ?? 0);
+            const plateStr = v.license_plate || '-';
+            const locStr = v.current_location || 'Sede Central Dalor';
+            const custStr = v.custodian || 'Disponible en Base';
+            const safeName = (v.name || 'Vehículo').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            const safeCode = v.asset_code || 'FLT';
 
             return `
             <tr>
-                <td style="font-weight: 800; color: var(--dalor-blue);">${v.asset_code}</td>
-                <td style="font-weight: 700; color: var(--dalor-navy);">${v.name} ${v.brand ? `(${v.brand})` : ''}</td>
-                <td style="font-weight: 800; font-family: monospace;">${v.license_plate || '-'}</td>
-                <td style="font-weight: 800;">${v.current_odometer.toLocaleString()} Km</td>
-                <td>En ${v.remaining_km_to_service.toLocaleString()} Km</td>
+                <td style="font-weight: 800; color: var(--dalor-blue);">${safeCode}</td>
+                <td style="font-weight: 700; color: var(--dalor-navy);">${v.name || 'Vehículo'} ${v.brand ? `(${v.brand})` : ''}</td>
+                <td style="font-weight: 800; font-family: monospace;">${plateStr}</td>
+                <td style="font-weight: 800;">${curOdo.toLocaleString()} Km</td>
+                <td>En ${remKm.toLocaleString()} Km</td>
                 <td>
                     <span style="font-size: 10px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${semBg}; color: ${semColor};">
-                        ${v.traffic_light.replace('_', ' ')}
+                        ${light.replace(/_/g, ' ')}
                     </span>
                 </td>
                 <td>
@@ -249,27 +270,27 @@ async function loadFleetList() {
                         ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA'}
                     </span>
                 </td>
-                <td>${v.current_location}</td>
-                <td>${v.custodian}</td>
+                <td>${locStr}</td>
+                <td>${custStr}</td>
                 <td style="text-align: center; white-space: nowrap;">
-                    <button onclick="openAssetHistoryModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
+                    <button onclick="openAssetHistoryModal(${v.id})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
                         <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
                     </button>
-                    <button onclick="openOdometerOcrModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', '${v.license_plate || ''}', ${v.current_odometer})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
+                    <button onclick="openOdometerOcrModal(${v.id}, '${safeCode}', '${safeName}', '${plateStr}', ${curOdo})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
                         <i class="fa-solid fa-camera"></i> Odómetro
                     </button>
-                    <button onclick="openCalibrateOdometerModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Resetear Odómetro con Clave de Director">
+                    <button onclick="openCalibrateOdometerModal(${v.id}, '${safeCode}', '${safeName}', ${curOdo})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Resetear Odómetro con Clave de Director">
                         <i class="fa-solid fa-key"></i> Calibrar
                     </button>
-                    <button onclick="openRecordServiceModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
+                    <button onclick="openRecordServiceModal(${v.id}, '${safeCode}', '${safeName}', ${curOdo})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
                         <i class="fa-solid fa-wrench"></i> Servicio
                     </button>
                     ${inBase ? `
-                        <button onclick="openAssignModal('asset', ${v.id}, '${v.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
+                        <button onclick="openAssignModal('asset', ${v.id}, '${safeName}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
                             Asignar a Obra
                         </button>
                     ` : `
-                        <button onclick="openAssignModal('asset', ${v.id}, '${v.name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
+                        <button onclick="openAssignModal('asset', ${v.id}, '${safeName}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
                             <i class="fa-solid fa-arrows-split-up-and-left"></i>
                         </button>
                         <button onclick="returnResourceToBase('asset', ${v.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
@@ -277,21 +298,14 @@ async function loadFleetList() {
                         </button>
                     `}
                     <button onclick="deleteAssetItem(${v.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Vehículo">
-
                         <i class="fa-solid fa-trash"></i>
-
                     </button>
-
                 </td>
-
             </tr>`;
-
         }).join('');
-
     } catch (e) {
-
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar flota.</td></tr>`;
-
+        console.error("[FLEET ERROR]", e);
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar flota: ${e.message}</td></tr>`;
     }
 
 }
@@ -1068,7 +1082,7 @@ async function loadMachineryList() {
 
                     `}
 
-                    <button onclick="openAssetHistoryModal(${m.id}, '${m.asset_code}', '${m.name.replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
+                    <button onclick="openAssetHistoryModal(${m.id})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
                         <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
                     </button>
                     <button onclick="deleteAssetItem(${m.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Maquinaria">
@@ -2105,7 +2119,7 @@ if (typeof window !== 'undefined') {
 export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, submitCalibrateAllOdometers, filterToolsList, assignAvailableToolFromGroup, openToolHistoryModal };
 
 
-async function openAssetHistoryModal(assetId, assetCode, assetName) {
+async function openAssetHistoryModal(assetId, assetCode = null, assetName = null) {
     const titleEl = document.getElementById("assetHistoryTitle");
     const subEl = document.getElementById("assetHistorySubtitle");
     const locEl = document.getElementById("assetHistCurrentLoc");
@@ -2114,14 +2128,20 @@ async function openAssetHistoryModal(assetId, assetCode, assetName) {
     const statusEl = document.getElementById("assetHistStatusBadge");
     const tbody = document.getElementById("assetHistoryTableBody");
 
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color: #2563eb;"></i> Bitácora & Trazabilidad: [${assetCode}] ${assetName}`;
+    const matched = (allAssets || []).find(a => a.id === assetId) || {};
+    const code = assetCode || matched.asset_code || matched.code || `ACT-${assetId}`;
+    const name = assetName || matched.name || 'Activo / Maquinaria';
+
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color: #2563eb;"></i> Bitácora & Trazabilidad: [${code}] ${name}`;
     if (subEl) subEl.innerText = `Consultando historial de asignaciones, choferes, obras y despachos...`;
     if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando bitácora de uso...</td></tr>`;
 
     openModal("modalAssetHistory");
 
     try {
-        const res = await fetch(`${API_BASE}/assets/${assetId}/history`);
+        const token = window.authToken || localStorage.getItem('dalor_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch(`${API_BASE}/assets/${assetId}/history`, { headers });
         if (!res.ok) throw new Error("Error consultando bitácora");
         const data = await res.json();
         const a = data.asset || {};

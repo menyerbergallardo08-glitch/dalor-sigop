@@ -170,9 +170,13 @@ def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db
             detail=f"La cotización {quote.quote_number} ya fue aprobada previamente y no puede duplicarse."
         )
 
-    # Generar código de proyecto correlativo
-    proj_count = db.query(Project).count() + 1
-    proj_code = f"PRJ-2026-{proj_count:03d}"
+    # Generar código de proyecto correlativo garantizando unicidad
+    current_year = datetime.utcnow().year
+    seq = db.query(Project).count() + 1
+    proj_code = f"PRJ-{current_year}-{seq:03d}"
+    while db.query(Project).filter(Project.code == proj_code).first():
+        seq += 1
+        proj_code = f"PRJ-{current_year}-{seq:03d}"
 
     # Estimar bolsas iniciales a partir del subtotal cotizado (65% costo base estimado, 35% margen)
     est_labor = round(quote.subtotal_usd * 0.30, 2)

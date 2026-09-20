@@ -1711,14 +1711,16 @@ async function openCreateCxCForProject(projId) {
 
 
 
-    const proj = (allProjects || []).find(p => p.id == pId);
+    const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+    const proj = safeProjects.find(p => p.id == pId);
 
-
+    if (proj && (proj.has_cxc || (proj.total_billed_cxc_usd && proj.total_billed_cxc_usd > 0))) {
+        alert(`ℹ️ Esta obra ya cuenta con una cuenta por cobrar (CxC) registrada en el sistema por un monto de $${Number(proj.total_billed_cxc_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} USD.`);
+        return;
+    }
 
     // Cambiar a vista de finanzas y subpestaña de CxC
-
     switchView('financial', 'finanzas');
-
     switchFinancialSubtab('cxc');
 
 

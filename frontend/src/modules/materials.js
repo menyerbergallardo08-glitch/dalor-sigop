@@ -468,45 +468,42 @@ async function submitMaterialConsume(event) {
 
 
     if (!matId || qty <= 0) {
-
-        alert("Selecciona un material y cantidad válida.");
-
+        alert("Selecciona un material y cantidad válida mayor a 0.");
         return;
-
     }
 
-
+    const safeMaterials = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+    const matObj = safeMaterials.find(m => m.id === matId);
+    if (matObj) {
+        const availableStock = parseFloat(matObj.stock_quantity) || 0;
+        if (availableStock <= 0) {
+            alert(`⛔ Stock agotado: El material [${matObj.code}] ${matObj.name} no posee unidades disponibles en pañol (Stock: 0).`);
+            return;
+        }
+        if (qty > availableStock) {
+            alert(`⛔ Stock insuficiente: Has solicitado ${qty} ${matObj.unit_measure || 'UND'} de [${matObj.code}] ${matObj.name}, pero solo hay ${availableStock} ${matObj.unit_measure || 'UND'} disponibles en pañol.`);
+            return;
+        }
+    }
 
     const payload = {
-
         material_id: matId,
-
         quantity: qty,
-
         project_id: projId,
-
         destination: projId ? "Obra en Ejecución" : "Taller Central",
-
         reference_doc: document.getElementById("mc_doc").value.trim() || "Requisición Interna",
-
         notes: document.getElementById("mc_notes").value.trim(),
-
         performed_by: document.getElementById("mc_performed_by").value.trim() || "Custodio de Almacén"
-
     };
 
-
-
     try {
-
+        const token = window.authToken || localStorage.getItem('dalor_token') || null;
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
         const res = await fetch(`${API_BASE}/materials/consume`, {
-
             method: "POST",
-
-            headers: { "Content-Type": "application/json" },
-
+            headers: headers,
             body: JSON.stringify(payload)
-
         });
 
 

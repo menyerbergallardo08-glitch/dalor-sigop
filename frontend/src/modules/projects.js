@@ -295,72 +295,52 @@ function initProjectPlanningView() {
 
 
 function populatePlanDropdownSelectors() {
+    const rawPersonnel = (window.allPersonnel && window.allPersonnel.length > 0) ? window.allPersonnel : (allPersonnel || []);
+    const safePersonnel = rawPersonnel.filter(p => !p.current_project_id || p.status === 'disponible_base' || p.status === 'disponible' || !p.status);
 
-    const safePersonnel = Array.isArray(allPersonnel) ? allPersonnel : [];
+    const rawAssets = (window.allAssets && window.allAssets.length > 0) ? window.allAssets : (allAssets || []);
+    // Solo mostrar activos disponibles que no estén asignados a otra obra activa
+    const availableAssets = rawAssets.filter(a => !a.current_project_id || a.status === 'disponible_base' || a.status === 'disponible' || !a.status);
 
-    const safeAssets = Array.isArray(allAssets) ? allAssets : [];
-
-
-
-    // 1. Desplegable de Personal (Todos los 15 integrantes DALOR)
-
+    // 1. Desplegable de Personal (Solo integrantes disponibles en base)
     const persSel = document.getElementById("plan_select_personnel") || document.getElementById("plan_pers_select");
-
     if (persSel) {
-
-        persSel.innerHTML = `<option value="">-- Seleccionar Trabajador (${safePersonnel.length} disponibles) --</option>` + 
-
-            safePersonnel.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name} (${p.role_title})</option>`).join('');
-
+        persSel.innerHTML = `<option value="">-- Seleccionar Trabajador (${safePersonnel.length} disp. en base) --</option>` + 
+            safePersonnel.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name} (${p.role_title || 'Personal Operativo'})</option>`).join('');
         persSel.onchange = function() {
-
             if (this.value) addPlanResource('personnel');
-
         };
-
     }
 
-
-
-    // 2. Desplegable de Vehículos
-
+    // 2. Desplegable de Vehículos (Solo disponibles en base)
     const vehSel = document.getElementById("plan_select_fleet") || document.getElementById("plan_veh_select");
-
-    const vehicles = safeAssets.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
-
+    const vehicles = availableAssets.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
     if (vehSel) {
-
-        vehSel.innerHTML = `<option value="">-- Seleccionar Unidad / Flota (${vehicles.length} disponibles) --</option>` + 
-
+        vehSel.innerHTML = `<option value="">-- Seleccionar Unidad / Flota (${vehicles.length} disp. en base) --</option>` + 
             vehicles.map(v => `<option value="${v.id}">[${v.asset_code}] ${v.name} ${v.license_plate ? `(${v.license_plate})` : ''} - Ubic: ${v.current_location || 'Base'}</option>`).join('');
-
         vehSel.onchange = function() {
-
             if (this.value) addPlanResource('fleet');
-
         };
-
     }
 
-
-
-    // 3. Desplegable de Herramientas & Equipos (Mostrando cantidades y ubicación)
+    // 3. Desplegable de Herramientas & Equipos (Solo disponibles en base)
     const toolSel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
-    const tools = safeAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
+    const tools = availableAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
     if (toolSel) {
-        toolSel.innerHTML = `<option value="">-- Seleccionar Herramienta / Equipo Mayor (${tools.length} disp.) --</option>` + 
+        toolSel.innerHTML = `<option value="">-- Seleccionar Herramienta / Equipo Mayor (${tools.length} disp. en base) --</option>` + 
             tools.map(t => `<option value="${t.id}">[${t.asset_code}] ${t.name} (Cant: 1 disp. | S/N: ${t.serial_number || 'S/N'})</option>`).join('');
         toolSel.onchange = function() {
             if (this.value) addPlanResource('tools');
         };
     }
 
-    // 4. Desplegable de Materiales & Insumos de Almacén
+    // 4. Desplegable de Materiales & Insumos de Almacén (filtrando aquellos con stock > 0)
     const matSel = document.getElementById("plan_select_materials") || document.getElementById("plan_mat_select");
     const safeMats = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+    const availableMats = safeMats.filter(m => (parseFloat(m.stock_quantity) || 0) > 0);
     if (matSel) {
-        matSel.innerHTML = `<option value="">-- Seleccionar Material / Insumo (${safeMats.length} disponibles) --</option>` +
-            safeMats.map(m => `<option value="${m.id}">[${m.code}] ${m.name} (Stock: ${m.stock_quantity} ${m.unit_measure || 'UND'})</option>`).join('');
+        matSel.innerHTML = `<option value="">-- Seleccionar Material / Insumo (${availableMats.length} con stock disp.) --</option>` +
+            availableMats.map(m => `<option value="${m.id}">[${m.code}] ${m.name} (Stock: ${m.stock_quantity} ${m.unit_measure || 'UND'})</option>`).join('');
         matSel.onchange = function() {
             if (this.value) addPlanResource('material');
         };
@@ -1251,36 +1231,26 @@ async function loadProjectsList() {
 
 
 
+            const isCulminated = p.status === 'culminado';
+            let statusBg = isCulminated ? '#d1fae5' : (p.status === 'completado' ? '#dcfce7' : '#e0f2fe');
+            let statusColor = isCulminated ? '#065f46' : (p.status === 'completado' ? '#166534' : '#0369a1');
+            let statusLabel = isCulminated ? '🏁 Culminado' : (p.status === 'completado' ? '✅ Completado' : (p.status || 'Activo'));
+
             return `
-
-            <div class="card" style="border-left: 4px solid var(--dalor-blue); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
-
+            <div class="card project-card" data-status="${p.status || 'activo'}" style="border-left: 4px solid ${isCulminated ? '#10b981' : 'var(--dalor-blue)'}; margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-
                     <!-- Encabezado de la Obra -->
-
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-
                         <div>
-
                             <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 8px; border-radius: 4px;">${p.code}</span>
-
                             <h4 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px; line-height: 1.3;">${p.name}</h4>
-
                             <p style="font-size: 11px; color: #64748b; margin-top: 2px;">
-
                                 <i class="fa-solid fa-building-user"></i> Cliente: <b>${p.client_name || 'General'}</b> &bull; <i class="fa-solid fa-location-dot"></i> <b>${p.location}</b>
-
                             </p>
-
                         </div>
-
-                        <span style="font-size: 10px; background: ${p.status === 'completado' ? '#dcfce7' : '#e0f2fe'}; color: ${p.status === 'completado' ? '#166534' : '#0369a1'}; padding: 3px 10px; border-radius: 9999px; font-weight: 800; text-transform: uppercase;">
-
-                            ${p.status}
-
+                        <span style="font-size: 10px; background: ${statusBg}; color: ${statusColor}; padding: 3px 10px; border-radius: 9999px; font-weight: 800; text-transform: uppercase;">
+                            ${statusLabel}
                         </span>
-
                     </div>
 
 
@@ -1450,13 +1420,15 @@ async function loadProjectsList() {
                         <div style="display: flex; gap: 6px;">
 
                             ${canSeeFinances ? `
-
-                            <button onclick="openCreateCxCForProject(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #059669;" title="Facturar Valuación a Cliente">
-
-                                <i class="fa-solid fa-file-invoice-dollar"></i> Facturar (CxC)
-
+                            ${(p.has_cxc || (p.total_billed_cxc_usd && p.total_billed_cxc_usd > 0)) ? `
+                            <button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; background: #f0fdf4; color: #166534; border-color: #86efac; cursor: default; font-weight: 700;" title="Esta obra ya cuenta con factura en Cuentas por Cobrar ($${(p.total_billed_cxc_usd || 0).toLocaleString()} USD)" disabled>
+                                <i class="fa-solid fa-circle-check" style="color: #059669;"></i> Facturado / En CxC
                             </button>
-
+                            ` : `
+                            <button onclick="openCreateCxCForProject(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #059669;" title="Facturar Valuación a Cliente">
+                                <i class="fa-solid fa-file-invoice-dollar"></i> Facturar (CxC)
+                            </button>
+                            `}
                             ` : ''}
 
                             <button onclick="viewProjectDetails(${p.id})" class="btn-primary" style="padding: 4px 10px; font-size: 11px;">
@@ -1701,18 +1673,35 @@ async function viewProjectDetails(projectId) {
                     </span>
 
                 </div>
-
                 <div style="height: 12px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
-
                     <div style="width: ${physicalProgressPct}%; height: 100%; background: linear-gradient(90deg, #0284c7 0%, #059669 100%); transition: width 0.4s ease;"></div>
-
                 </div>
+            </div>`;
 
-            </div>
+            if (data.status === 'culminado') {
+                html += `
+                <div style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px; color: #065f46; font-weight: 800; font-size: 12px;">
+                        <i class="fa-solid fa-flag-checkered" style="font-size: 16px;"></i> OBRA CULMINADA Y CERRADA (Todos los recursos fueron liberados a Base Central)
+                    </div>
+                    <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 800;">ARCHIVADO HISTÓRICO</span>
+                </div>`;
+            } else if (physicalProgressPct === 100) {
+                html += `
+                <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <span style="color: #166534; font-weight: 800; font-size: 12px; display: block;">
+                            🎉 ¡Todas las etapas y actividades han alcanzado el 100% de ejecución física!
+                        </span>
+                        <small style="color: #15803d; font-size: 11px;">Al culminar la obra, maquinaria, vehículos y personal serán devueltos automáticamente a Base Central.</small>
+                    </div>
+                    <button type="button" onclick="closeAndCulminateProject(${data.id})" class="btn-primary" style="background: #059669; font-weight: 800; font-size: 11.5px; padding: 6px 14px; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
+                        <i class="fa-solid fa-flag-checkered"></i> Culminar y Cerrar Obra
+                    </button>
+                </div>`;
+            }
 
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-
-            `;
+            html += `<div style="display: flex; flex-direction: column; gap: 8px;">`;
 
 
 
@@ -2079,23 +2068,44 @@ async function handleExcelFileSelected(event) {
 
 
 async function deleteProject(projectId) {
-
     if (!confirm("¿Deseas inactivar este proyecto? (Se mantendrán intactos los gastos y la auditoría)")) return;
-
     try {
-
         await fetch(`${API_BASE}/projects/${projectId}`, { method: "DELETE" });
-
         await loadInitialMasterData();
-
         loadProjectsList();
-
     } catch (e) {
-
         alert("Error al inactivar proyecto.");
+    }
+}
 
+async function closeAndCulminateProject(projectId) {
+    if (!confirm("¿Estás seguro de culminar y cerrar esta obra?\n\n- El estatus pasará a CULMINADO.\n- Toda la maquinaria, vehículos y personal asignados serán liberados a Disponible en Base Central.\n- El proyecto quedará archivado en el histórico.")) {
+        return;
     }
 
+    try {
+        const token = window.authToken || localStorage.getItem('dalor_token') || null;
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const res = await fetch(`${API_BASE}/projects/${projectId}/status`, {
+            method: "PUT",
+            headers: headers,
+            body: JSON.stringify({ status: "culminado" })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Error al culminar el proyecto");
+
+        alert(`✅ ${data.message || 'Obra culminada y cerrada exitosamente.'}`);
+        closeModal("modalProjectDetail");
+        await loadProjectsList();
+        if (typeof window.loadInitialMasterData === 'function') {
+            await window.loadInitialMasterData();
+        }
+    } catch (e) {
+        alert("Error al culminar obra: " + e.message);
+    }
 }
 
 
@@ -2400,6 +2410,7 @@ if (typeof window !== 'undefined') {
     window.shareProjectViaWhatsApp = shareProjectViaWhatsApp;
     window.printProjectProgressReport = printProjectProgressReport;
     window.copyProjectClientTrackingLink = copyProjectClientTrackingLink;
+    window.closeAndCulminateProject = closeAndCulminateProject;
 }
 
-export { addPlanResource, addProjectPhaseRow, addProjectPhaseTask, addProjectPhaseTaskRow, assignPersonnelTag, assignToolTag, assignVehicleTag, copyProjectClientTrackingLink, deleteProject, deleteReceivable, downloadExcelTemplate, filterProjectsList, handleExcelFileSelected, initProjectPlanningView, loadProjectsList, populatePlanDropdownSelectors, recalcProjectBudgetPreview, removePersonnelTag, removePlanResource, removeProjectPhaseRow, removeToolTag, removeVehicleTag, renderAssignedTags, renumberPhasesAndTasks, setProjectType, submitCreateProject, switchProjectSubtab, toggleProjectTask, triggerExcelImport, updatePhaseStatus, viewProjectDetails, shareProjectViaWhatsApp, printProjectProgressReport };
+export { addPlanResource, addProjectPhaseRow, addProjectPhaseTask, addProjectPhaseTaskRow, assignPersonnelTag, assignToolTag, assignVehicleTag, copyProjectClientTrackingLink, deleteProject, deleteReceivable, downloadExcelTemplate, filterProjectsList, handleExcelFileSelected, initProjectPlanningView, loadProjectsList, populatePlanDropdownSelectors, recalcProjectBudgetPreview, removePersonnelTag, removePlanResource, removeProjectPhaseRow, removeToolTag, removeVehicleTag, renderAssignedTags, renumberPhasesAndTasks, setProjectType, submitCreateProject, switchProjectSubtab, toggleProjectTask, triggerExcelImport, updatePhaseStatus, viewProjectDetails, shareProjectViaWhatsApp, printProjectProgressReport, closeAndCulminateProject };

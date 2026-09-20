@@ -49,6 +49,11 @@ def get_projects(db: Session = Depends(get_db)):
         
         prog_pct = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else (100.0 if proj.status == "completado" else 0.0)
         
+        # Consultar si ya tiene factura en Cuentas por Cobrar (CxC)
+        cxc_recs = db.query(AccountReceivable).filter(AccountReceivable.project_id == proj.id).all()
+        has_cxc = len(cxc_recs) > 0
+        total_billed_cxc = sum(r.amount_usd for r in cxc_recs)
+        
         results.append({
             "id": proj.id,
             "code": proj.code,
@@ -70,6 +75,8 @@ def get_projects(db: Session = Depends(get_db)):
             "budget_limit_usd": proj.budget_limit_usd,
             "total_spent_usd": round(spent, 2),
             "progress_pct": prog_pct,
+            "has_cxc": has_cxc,
+            "total_billed_cxc_usd": round(total_billed_cxc, 2),
             "is_active": proj.is_active,
             "created_at": proj.created_at.isoformat() if proj.created_at else None,
             "phases": [
@@ -188,9 +195,14 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
 @router.post("/")
 @router.post("/", response_model=ProjectOut)
 def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
-    existing = db.query(Project).filter(Project.code == project_in.code).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Ya existe un proyecto con ese código.")
+    code = (project_in.code or "").strip()
+    if not code or db.query(Project).filter(Project.code == code).first():
+        current_year = datetime.utcnow().year
+        seq = db.query(Project).count() + 1
+        code = f"PRJ-{current_year}-{seq:03d}"
+        while db.query(Project).filter(Project.code == code).first():
+            seq += 1
+            code = f"PRJ-{current_year}-{seq:03d}"
     
     total_budget = (
         project_in.estimated_labor_usd +
@@ -208,7 +220,7 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
 
     try:
         new_project = Project(
-            code=project_in.code,
+            code=code,
             name=project_in.name,
             client_id=project_in.client_id,
             client_name=client_name or "Cliente General",
@@ -304,25 +316,34 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
                     )
                     db.add(hist)
 
-        # 5. Generar Automáticamente la Cuenta por Cobrar (CxC)
+        # 5. Generar Factura / Valuación Inicial en Cuentas por Cobrar (CxC)
         if new_project.contract_amount_usd and new_project.contract_amount_usd > 0:
-            from app.models.models import AccountReceivable, FinancialPayment
-            cxc_entry = AccountReceivable(
-                project_id=new_project.id,
-                client_id=new_project.client_id,
-                invoice_number=f"VAL-{new_project.code}-01",
-                description=f"Contrato / Valuación Inicial: {new_project.name}",
-                issue_date=datetime.utcnow(),
-                due_date=datetime.utcnow() + timedelta(days=new_project.duration_days or 30),
-                taxable_base_usd=new_project.contract_amount_usd,
-                tax_amount_usd=0.0,
-                amount_usd=new_project.contract_amount_usd,
-                paid_amount_usd=0.0,
-                balance_usd=new_project.contract_amount_usd,
-                net_amount_usd=new_project.contract_amount_usd,
-                status="pendiente"
-            )
-            db.add(cxc_entry)
+            target_client_id = new_project.client_id
+            if not target_client_id:
+                first_client = db.query(Client).first()
+                if first_client:
+                    target_client_id = first_client.id
+                    new_project.client_id = first_client.id
+                    new_project.client_name = first_client.name
+            
+            if target_client_id:
+                from app.models.models import AccountReceivable, FinancialPayment
+                cxc_entry = AccountReceivable(
+                    project_id=new_project.id,
+                    client_id=target_client_id,
+                    invoice_number=f"VAL-{new_project.code}-01",
+                    description=f"Contrato / Valuación Inicial: {new_project.name}",
+                    issue_date=datetime.utcnow(),
+                    due_date=datetime.utcnow() + timedelta(days=new_project.duration_days or 30),
+                    taxable_base_usd=new_project.contract_amount_usd,
+                    tax_amount_usd=0.0,
+                    amount_usd=new_project.contract_amount_usd,
+                    paid_amount_usd=0.0,
+                    balance_usd=new_project.contract_amount_usd,
+                    net_amount_usd=new_project.contract_amount_usd,
+                    status="pendiente"
+                )
+                db.add(cxc_entry)
 
         # Confirmar transacción atómica completa
         db.commit()
@@ -547,8 +568,67 @@ def update_project_status(project_id: int, status_in: ProjectStatusUpdate, db: S
     if not proj:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
     proj.status = status_in.status
+
+    released_assets_count = 0
+    released_personnel_count = 0
+
+    if status_in.status.lower() in ["culminado", "completado", "cerrado"]:
+        # Auto-liberar activos asignados a la obra retornándolos a base central
+        assigned_assets = db.query(Asset).filter(Asset.current_project_id == proj.id).all()
+        for a in assigned_assets:
+            a.status = "disponible_base"
+            a.current_project_id = None
+            a.current_custodian_name = "Disponible en Base"
+            a.current_location = "Sede Central Dalor"
+            released_assets_count += 1
+            
+            # Registrar bitácora de retorno
+            history_asset = ResourceAssignmentHistory(
+                project_id=proj.id,
+                resource_type="asset",
+                resource_id=a.id,
+                resource_code=a.asset_code,
+                resource_name=a.name,
+                custodian_name="Custodio Base",
+                origin_location=proj.location or "Planta / Obra",
+                destination_location="Sede Central Dalor",
+                status="disponible_base",
+                notes=f"Liberación automática por culminación y cierre de obra {proj.code}"
+            )
+            db.add(history_asset)
+
+        # Auto-liberar personal asignado a la obra retornándolos a base central
+        assigned_personnel = db.query(Personnel).filter(Personnel.current_project_id == proj.id).all()
+        for p in assigned_personnel:
+            p.status = "disponible_base"
+            p.current_project_id = None
+            p.current_location = "Sede Central Dalor"
+            released_personnel_count += 1
+            
+            history_pers = ResourceAssignmentHistory(
+                project_id=proj.id,
+                resource_type="personnel",
+                resource_id=p.id,
+                resource_code=p.code,
+                resource_name=p.full_name,
+                custodian_name="Base Central",
+                origin_location=proj.location or "Planta / Obra",
+                destination_location="Sede Central Dalor",
+                status="disponible_base",
+                notes=f"Liberación automática por culminación y cierre de obra {proj.code}"
+            )
+            db.add(history_pers)
+
     db.commit()
-    return {"success": True, "message": f"Estatus del proyecto {proj.code} actualizado a '{proj.status}'."}
+    msg = f"Estatus del proyecto {proj.code} actualizado a '{proj.status}'."
+    if released_assets_count > 0 or released_personnel_count > 0:
+        msg += f" Se liberaron {released_assets_count} activo(s) y {released_personnel_count} trabajador(es) a Base Central."
+    return {
+        "success": True,
+        "message": msg,
+        "released_assets": released_assets_count,
+        "released_personnel": released_personnel_count
+    }
 
 @router.delete("/{project_id}")
 def delete_project(project_id: int, db: Session = Depends(get_db)):

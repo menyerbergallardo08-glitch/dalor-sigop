@@ -1735,10 +1735,13 @@ async function openCreateCxCForProject(projId) {
 
     if (proj) {
 
-        if (proj.client_id && document.getElementById("cxc_client_id")) {
-
-            document.getElementById("cxc_client_id").value = proj.client_id;
-
+        let cid = proj.client_id;
+        if (!cid && allClients && allClients.length > 0) {
+            const dalorCli = allClients.find(c => (c.name || '').toLowerCase().includes('dalor')) || allClients[0];
+            if (dalorCli) cid = dalorCli.id;
+        }
+        if (cid && document.getElementById("cxc_client_id")) {
+            document.getElementById("cxc_client_id").value = cid;
         }
 
         if (document.getElementById("cxc_project_id")) {
@@ -1777,6 +1780,10 @@ async function openCreateCxCForProject(projId) {
 
             document.getElementById("cxc_invoice_number").value = `VAL-${proj.code}-${randNum}`;
 
+        }
+
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(`📋 Formulario de Facturación / CxC precargado para [${proj.code}]. Complete o verifique el N° de factura y guarde para confirmar.`, 'info');
         }
 
     }

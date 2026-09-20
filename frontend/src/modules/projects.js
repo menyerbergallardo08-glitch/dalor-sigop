@@ -77,134 +77,87 @@ function setProjectType(type) {
 
 // GESTIÓN DE SUBPESTAÑAS Y FILTRADO DEL MÓDULO DE PROYECTOS (UX ENHANCEMENT)
 
+let currentProjectSubtab = 'list';
+
 // ====================================================================
 
 async function switchProjectSubtab(subtabName) {
-
-    const isList = (subtabName === 'list');
+    currentProjectSubtab = subtabName || 'list';
+    const isForm = (subtabName === 'form');
+    const isCompleted = (subtabName === 'completed');
+    const isList = (!isForm && !isCompleted);
 
     const subtabList = document.getElementById('subtab-proj-list');
-
     const subtabForm = document.getElementById('subtab-proj-form');
-
     const btnList = document.getElementById('tabbtn-proj-list');
-
+    const btnCompleted = document.getElementById('tabbtn-proj-completed');
     const btnForm = document.getElementById('tabbtn-proj-form');
 
+    if (subtabList) subtabList.classList.toggle('hidden', isForm);
+    if (subtabForm) subtabForm.classList.toggle('hidden', !isForm);
 
+    if (btnList) btnList.className = isList ? 'btn-primary' : 'btn-secondary';
+    if (btnCompleted) btnCompleted.className = isCompleted ? 'btn-primary' : 'btn-secondary';
+    if (btnForm) btnForm.className = isForm ? 'btn-primary' : 'btn-secondary';
 
-    if (subtabList) subtabList.classList.toggle('hidden', !isList);
-
-    if (subtabForm) subtabForm.classList.toggle('hidden', isList);
-
-
-
-    if (btnList) {
-
-        btnList.className = isList ? 'btn-primary' : 'btn-secondary';
-
-    }
-
-    if (btnForm) {
-
-        btnForm.className = !isList ? 'btn-primary' : 'btn-secondary';
-
-    }
-
-
-
-    if (isList) {
-
-        loadProjectsList();
-
+    if (!isForm) {
+        await loadProjectsList();
     } else {
-
         // Garantizar carga fresca de personal, flota, herramientas y clientes
-
         try {
-
             if (!allPersonnel || allPersonnel.length === 0 || !allAssets || allAssets.length === 0 || !allClients || allClients.length === 0) {
-
                 const [resPers, resAss, resCli] = await Promise.all([
-
                     fetch(`${API_BASE}/personnel/`),
-
                     fetch(`${API_BASE}/assets/`),
-
                     fetch(`${API_BASE}/clients/`)
-
                 ]);
-
                 if (resPers.ok) allPersonnel = await resPers.json();
-
                 if (resAss.ok) allAssets = await resAss.json();
-
                 if (resCli.ok) allClients = await resCli.json();
-
             }
-
         } catch (e) {
-
             console.warn("Error cargando recursos para planificación:", e);
-
         }
-
         populateSelectDropdowns();
-
         populatePlanDropdownSelectors();
-
         renderAssignedTags();
-
     }
-
 }
 
 
 
-function filterProjectsList(query) {
-
+function filterProjectsList() {
     if (!allProjects || allProjects.length === 0) return;
 
-    const q = (query || '').toLowerCase().trim();
-
+    const q = (document.getElementById("project_search_input")?.value || '').toLowerCase().trim();
+    const selClient = (document.getElementById("project_client_filter")?.value || '').toLowerCase().trim();
     const container = document.getElementById("projectsCardsContainer");
-
     if (!container) return;
 
-
-
     const cards = container.querySelectorAll(".project-card");
-
     let visibleCount = 0;
-
     cards.forEach(card => {
-
         const text = (card.innerText || '').toLowerCase();
+        const clientAttr = (card.dataset.client || '').toLowerCase();
+        const matchesQuery = !q || text.includes(q);
+        const matchesClient = !selClient || clientAttr.includes(selClient);
 
-        if (!q || text.includes(q)) {
-
+        if (matchesQuery && matchesClient) {
             card.style.display = "";
-
             visibleCount++;
-
         } else {
-
             card.style.display = "none";
-
         }
-
     });
 
-
-
     const badge = document.getElementById("projects_count_badge");
-
     if (badge) {
-
-        badge.innerText = q ? `${visibleCount} de ${allProjects.length} obra(s)` : `${allProjects.length} obra(s) registradas`;
-
+        const isComp = (currentProjectSubtab === 'completed');
+        const total = isComp
+            ? (allProjects || []).filter(p => p.status === 'culminado').length
+            : (allProjects || []).filter(p => p.status !== 'culminado').length;
+        badge.innerText = `${visibleCount} de ${total} ${isComp ? 'obra(s) culminada(s)' : 'obra(s) activa(s)'}`;
     }
-
 }
 
 
@@ -1126,8 +1079,33 @@ async function loadProjectsList() {
         const data = await res.json();
         allProjects = Array.isArray(data) ? data : [];
 
-        if (allProjects.length === 0) {
-            container.innerHTML = `<div style="grid-column: span 2; text-align: center; padding: 20px; color: #94a3b8;">No hay proyectos registrados. Diligencia el formulario superior o importa desde Excel.</div>`;
+        // 1. Ordenar descendente para que las obras recién creadas aparezcan siempre arriba
+        allProjects.sort((a, b) => b.id - a.id);
+        window.allProjects = allProjects;
+
+        // 2. Poblar selector de clientes si está en pantalla
+        const clientFilterSelect = document.getElementById("project_client_filter");
+        if (clientFilterSelect) {
+            const currentSelected = clientFilterSelect.value;
+            const uniqueClients = Array.from(new Set(allProjects.map(p => p.client_name).filter(Boolean))).sort();
+            clientFilterSelect.innerHTML = `<option value="">🏢 Todos los Clientes</option>` +
+                uniqueClients.map(c => `<option value="${c}">${c}</option>`).join('');
+            if (currentSelected) clientFilterSelect.value = currentSelected;
+        }
+
+        // 3. Filtrar proyectos activos vs culminados (archivo histórico)
+        const isCompletedView = (currentProjectSubtab === 'completed');
+        const displayedProjects = allProjects.filter(p => isCompletedView ? (p.status === 'culminado') : (p.status !== 'culminado'));
+
+        const badge = document.getElementById("projects_count_badge");
+        if (badge) {
+            badge.innerText = `${displayedProjects.length} ${isCompletedView ? 'obra(s) culminada(s)' : 'obra(s) activa(s)'}`;
+        }
+
+        if (displayedProjects.length === 0) {
+            container.innerHTML = isCompletedView
+                ? `<div style="grid-column: span 2; text-align: center; padding: 30px; color: #94a3b8;"><i class="fa-solid fa-flag-checkered" style="font-size: 28px; margin-bottom: 8px; color: #10b981;"></i><br><b>No hay obras culminadas en el archivo histórico todavía.</b><br><small>Las obras culminadas al 100% se archivarán aquí automáticamente con su margen y rentabilidad consolidados.</small></div>`
+                : `<div style="grid-column: span 2; text-align: center; padding: 20px; color: #94a3b8;">No hay proyectos activos registrados. Diligencia el formulario superior o importa desde Excel.</div>`;
             return;
         }
 
@@ -1151,7 +1129,7 @@ async function loadProjectsList() {
 
 
 
-        container.innerHTML = allProjects.map(p => {
+        container.innerHTML = displayedProjects.map(p => {
 
             const spent = p.total_spent_usd || 0;
 
@@ -1237,7 +1215,7 @@ async function loadProjectsList() {
             let statusLabel = isCulminated ? '🏁 Culminado' : (p.status === 'completado' ? '✅ Completado' : (p.status || 'Activo'));
 
             return `
-            <div class="card project-card" data-status="${p.status || 'activo'}" style="border-left: 4px solid ${isCulminated ? '#10b981' : 'var(--dalor-blue)'}; margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="card project-card" data-status="${p.status || 'activo'}" data-client="${p.client_name || ''}" style="border-left: 4px solid ${isCulminated ? '#10b981' : 'var(--dalor-blue)'}; margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <!-- Encabezado de la Obra -->
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
@@ -1252,6 +1230,20 @@ async function loadProjectsList() {
                             ${statusLabel}
                         </span>
                     </div>
+
+                    ${isCulminated ? `
+                    <div style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                        <div>
+                            <span style="font-size: 10px; font-weight: 800; color: #065f46; text-transform: uppercase;">Rentabilidad Final Consolidada:</span>
+                            <div style="font-size: 13px; font-weight: 900; color: ${marginReal >= 0 ? '#059669' : '#e11d48'};">
+                                ${marginReal >= 0 ? '+' : ''}$${marginReal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD (${marginRealPct}%)
+                            </div>
+                        </div>
+                        <span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 800;">
+                            <i class="fa-solid fa-box-archive"></i> ARCHIVADO EN HISTÓRICO
+                        </span>
+                    </div>
+                    ` : ''}
 
 
 

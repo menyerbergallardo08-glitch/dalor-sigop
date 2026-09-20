@@ -896,6 +896,8 @@ function openModal(modalId) {
 
     if (el) el.classList.remove("hidden");
 
+    const floatingBtn = document.getElementById("btnFloatingLogout");
+    if (floatingBtn) floatingBtn.style.setProperty("display", "none", "important");
 }
 
 
@@ -906,6 +908,11 @@ function closeModal(modalId) {
 
     if (el) el.classList.add("hidden");
 
+    const openModals = document.querySelectorAll(".modal-overlay:not(.hidden), .modal:not(.hidden)");
+    if (openModals.length === 0) {
+        const floatingBtn = document.getElementById("btnFloatingLogout");
+        if (floatingBtn) floatingBtn.style.removeProperty("display");
+    }
 }
 
 

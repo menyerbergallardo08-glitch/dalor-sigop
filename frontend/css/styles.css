@@ -998,7 +998,7 @@
 
             right: 20px;
 
-            z-index: 99999;
+            z-index: 900;
 
             background: linear-gradient(135deg, #e11d48, #be123c);
 
@@ -1026,6 +1026,15 @@
 
             transition: all 0.2s ease;
 
+        }
+
+        /* Ocultar botón flotante de salida cuando cualquier modal o vista previa de impresión esté activa */
+        body:has(.modal-overlay:not(.hidden)) #btnFloatingLogout,
+        body:has(.modal:not(.hidden)) #btnFloatingLogout,
+        .modal-overlay:not(.hidden) ~ #btnFloatingLogout,
+        #modalPrintPreview:not(.hidden) ~ #btnFloatingLogout,
+        #btnFloatingLogout.hidden {
+            display: none !important;
         }
 
         @media (min-width: 769px) {
@@ -1564,8 +1573,11 @@
             #app-viewport,
             .modal-overlay:not(#modalPrintPreview),
             .modal:not(#modalPrintPreview),
-            .no-print {
+            .no-print,
+            #btnFloatingLogout,
+            .btn-floating-logout {
                 display: none !important;
+                visibility: hidden !important;
                 height: 0 !important;
                 max-height: 0 !important;
                 margin: 0 !important;

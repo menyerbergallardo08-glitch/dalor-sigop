@@ -1526,12 +1526,18 @@ async function viewProjectDetails(projectId) {
     try {
 
         currentViewingProjectId = projectId;
+        window.currentViewingProjectId = projectId;
+        const modalDetailEl = document.getElementById("modalProjectDetail");
+        if (modalDetailEl) modalDetailEl.dataset.projectId = String(projectId);
 
         const res = await fetch(`${API_BASE}/projects/${projectId}/details`);
+        if (!res.ok) throw new Error("Error HTTP " + res.status);
 
         const data = await res.json();
 
         currentViewingProjectId = data.id;
+        window.currentViewingProjectId = data.id;
+        if (modalDetailEl) modalDetailEl.dataset.projectId = String(data.id);
 
 
 
@@ -2121,17 +2127,35 @@ async function closeAndCulminateProject(projectId) {
 
 
 
+function resolveCurrentProjectId(projIdOrCode) {
+    if (typeof projIdOrCode === 'number' && !isNaN(projIdOrCode)) return projIdOrCode;
+    if (typeof projIdOrCode === 'string' && !isNaN(parseInt(projIdOrCode, 10)) && /^\d+$/.test(projIdOrCode.trim())) {
+        return parseInt(projIdOrCode.trim(), 10);
+    }
+    if (window.currentViewingProjectId) return window.currentViewingProjectId;
+    if (currentViewingProjectId) return currentViewingProjectId;
+    const modalEl = document.getElementById("modalProjectDetail");
+    if (modalEl && modalEl.dataset && modalEl.dataset.projectId) {
+        return parseInt(modalEl.dataset.projectId, 10);
+    }
+    const codeEl = document.getElementById("detail_proj_code");
+    if (codeEl && codeEl.innerText) {
+        const rawCode = codeEl.innerText.trim();
+        const found = (window.allProjects || []).find(p => p.code === rawCode);
+        if (found) return found.id;
+    }
+    return null;
+}
+
 /// Copiar Enlace de Seguimiento Público de Proyecto para Clientes
 // Enlace de Seguimiento Público de Proyecto para Clientes (Portal Ciego a Costos)
 async function copyProjectClientTrackingLink(projIdOrCode) {
     let token = null;
-    let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
+    let projId = resolveCurrentProjectId(projIdOrCode);
     
     // Si se pasa un código de proyecto string que no sea número
-    if (typeof projIdOrCode === 'string' && isNaN(parseInt(projIdOrCode))) {
+    if (typeof projIdOrCode === 'string' && isNaN(parseInt(projIdOrCode, 10))) {
         token = projIdOrCode;
-    } else if (projIdOrCode && !isNaN(parseInt(projIdOrCode))) {
-        projId = parseInt(projIdOrCode);
     }
 
     if (projId) {
@@ -2164,7 +2188,7 @@ async function copyProjectClientTrackingLink(projIdOrCode) {
 }
 
 async function shareProjectViaWhatsApp(projIdOrCode) {
-    let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
+    let projId = resolveCurrentProjectId(projIdOrCode);
     let proj = (window.allProjects || []).find(p => p.id == projId) || { name: 'Proyecto', code: 'PRJ' };
 
     let token = proj.tracking_token || proj.code;
@@ -2184,11 +2208,14 @@ async function shareProjectViaWhatsApp(projIdOrCode) {
 }
 
 async function printProjectProgressReport(projIdOrCode) {
-    let projId = (typeof projIdOrCode === 'number') ? projIdOrCode : window.currentViewingProjectId;
-    if (!projId) return;
+    const projId = resolveCurrentProjectId(projIdOrCode);
+    if (!projId) {
+        alert("Por favor abra la ficha de un proyecto para generar el reporte de avance en PDF.");
+        return;
+    }
     try {
         const res = await fetch(`${API_BASE}/projects/${projId}/details`);
-        if (!res.ok) throw new Error("Error al obtener datos");
+        if (!res.ok) throw new Error("Error al obtener datos del proyecto (" + res.status + ")");
         const proj = await res.json();
 
         let phasesRows = (proj.phases || []).map((ph, idx) => `
@@ -2263,8 +2290,12 @@ async function printProjectProgressReport(projIdOrCode) {
             container.innerHTML = printHtml;
             const titleEl = document.getElementById("previewModalTitle");
             if (titleEl) titleEl.innerText = `Reporte de Avance de Obra - ${proj.code}`;
-            const modalEl = document.getElementById('modalPrintPreview');
-            if (modalEl) modalEl.classList.remove('hidden');
+            if (typeof window.openModal === 'function') {
+                window.openModal('modalPrintPreview');
+            } else {
+                const modalEl = document.getElementById('modalPrintPreview');
+                if (modalEl) modalEl.classList.remove('hidden');
+            }
         } else {
             const w = window.open('', '_blank');
             if (w) {
@@ -2276,7 +2307,7 @@ async function printProjectProgressReport(projIdOrCode) {
     } catch(e) {
         alert("Error al generar reporte PDF: " + e.message);
     }
-};
+}
 
 
 

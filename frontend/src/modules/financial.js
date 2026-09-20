@@ -1104,9 +1104,10 @@ async function loadTreasurySummary() {
                             ref: w.reference_number || w.payment_method || '-',
                             amount_usd: w.amount_usd,
                             amount_bs: w.amount_bs || (w.amount_usd * (w.exchange_rate || window.BCV_DATA?.rate || 850.0))
-                        });
                     });
                 }
+                // Ordenar movimientos de forma cronológica descendente (más recientes primero)
+                operations.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
                 if (operations.length === 0) {
                     traceTbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 18px;">No hay movimientos registrados en la traza de caja.</td></tr>`;

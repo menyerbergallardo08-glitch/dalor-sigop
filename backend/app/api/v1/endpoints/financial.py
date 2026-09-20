@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -251,7 +251,31 @@ def direct_client_collection(p_in: DirectCollectionCreate, db: Session = Depends
         query = query.filter(AccountReceivable.project_id == p_in.project_id)
     
     open_receivables = query.order_by(AccountReceivable.due_date.asc(), AccountReceivable.id.asc()).all()
-    
+
+    # Si se especificó un proyecto pero no tiene facturas con saldo pendiente, vincular a su valuación o crear anticipo de obra
+    if p_in.project_id and not open_receivables:
+        proj_rec = db.query(AccountReceivable).filter(AccountReceivable.project_id == p_in.project_id).first()
+        if not proj_rec:
+            proj = db.query(Project).filter(Project.id == p_in.project_id).first()
+            proj_code = proj.code if proj else str(p_in.project_id)
+            proj_rec = AccountReceivable(
+                project_id=p_in.project_id,
+                client_id=p_in.client_id,
+                invoice_number=f"ANT-{proj_code}-01",
+                description=f"Anticipo / Cobro Directo: {p_in.concept or (proj.name if proj else 'Obra')}",
+                issue_date=datetime.utcnow(),
+                due_date=datetime.utcnow() + timedelta(days=30),
+                taxable_base_usd=p_in.amount_usd,
+                amount_usd=p_in.amount_usd,
+                paid_amount_usd=0.0,
+                balance_usd=p_in.amount_usd,
+                net_amount_usd=p_in.amount_usd,
+                status="pendiente"
+            )
+            db.add(proj_rec)
+            db.flush()
+        open_receivables = [proj_rec]
+
     remaining_to_apply = p_in.amount_usd
     applied_to_any = False
     

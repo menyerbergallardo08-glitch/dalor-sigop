@@ -3,17 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DALOR SIGO-P | ERP Enterprise</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>DALOR SIGO-P | ERP Modular (Vite Engine)</title>
+    
+    <!-- Iconos FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js & Mermaid.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    
+    <!-- Hoja de Estilos Corporativa Extraída -->
+    <link rel="stylesheet" href="/css/styles.css?v=2026.09.20">
 </head>
 <body>
-    <div id="app"></div>
-    <div id="modal-root"></div>
-    <div id="toast-container" class="toast-container"></div>
+    <!-- PORTAL DE ACCESO / LOGIN CORPORATIVO -->
+    <load ="src/partials/auth_login.html" />
+
+    <!-- SHELL PRINCIPAL AUTENTICADO -->
+    <div id="app-authenticated-shell" style="display: none; width: 100%; min-height: 100vh;">
+        <!-- CABECERA FIJA SUPERIOR & TASA BCV -->
+        <load ="src/partials/header.html" />
+
+        <!-- BARRA MODULAR DE SUBMENÚS DESPLEGABLES (PROFIT PLUS STYLE) -->
+        <load ="src/partials/navigation.html" />
+
+        <!-- CONTENEDOR PRINCIPAL DE VISTAS OPERATIVAS -->
+        <main class="main-content" style="padding: 14px 12px; max-width: 1440px; margin: 0 auto;">
+            <load ="src/partials/views/view-executive.html" />
+            <load ="src/partials/views/view-maintenance.html" />
+            <load ="src/partials/views/view-financial.html" />
+            <load ="src/partials/views/view-quotations.html" />
+            <load ="src/partials/views/view-services.html" />
+            <load ="src/partials/views/view-clients.html" />
+            <load ="src/partials/views/view-projects.html" />
+            <load ="src/partials/views/view-dispatch.html" />
+            <load ="src/partials/views/view-resources.html" />
+            <load ="src/partials/views/view-inbox.html" />
+            <load ="src/partials/views/view-pwa.html" />
+            <load ="src/partials/views/view-manual.html" />
+            <load ="src/partials/views/view-dashboard.html" />
+            <load ="src/partials/views/view-tree.html" />
+            <load ="src/partials/views/view-expenses-log.html" />
+        </main>
+
+        <!-- BATERÍA DE MODALES EMBEBIDOS (37 MODALES) -->
+        <div id="modals-container">
+            <load ="src/partials/modals.html" />
+        </div>
+    </div>
+
+    <!-- LÓGICA MODULAR ES6 DESACOPLADA -->
     <script type="module" src="/src/main.js"></script>
 </body>
 </html>

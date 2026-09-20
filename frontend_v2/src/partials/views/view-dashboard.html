@@ -1,0 +1,83 @@
+<section id="view-dashboard" class="hidden">
+
+            <div class="banner-dalor">
+
+                <div>
+
+                    <span class="badge-tag">Módulo de Proyectos</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Dashboard Financiero & Comparativo Multi-Proyecto</h2>
+
+                    <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Rentabilidad en tiempo real, Índice de Rendimiento de Costos (CPI) y comparativas.</p>
+
+                </div>
+
+                <button onclick="loadComparisonDashboard()" class="btn-secondary" style="background: white;">
+
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+
+                </button>
+
+            </div>
+
+
+
+            <div class="grid-4" id="dashboardKPIsContainer" style="margin-bottom: 16px;"></div>
+
+
+
+            <div class="card">
+
+                <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 12px;">
+
+                    Comparativo de Rentabilidad y Desviaciones por Proyecto
+
+                </h3>
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Código</th>
+
+                                <th>Proyecto / Obra</th>
+
+                                <th>Cliente</th>
+
+                                <th>Contrato ($)</th>
+
+                                <th>Gasto Real ($)</th>
+
+                                <th>Margen ($)</th>
+
+                                <th>Margen (%)</th>
+
+                                <th>CPI (Eficiencia)</th>
+
+                                <th style="text-align: center;">Salud</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="comparisonTableBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             12. VISTA: ÁRBOL DE PARTIDAS
+
+             ==================================================================== -->

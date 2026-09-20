@@ -1,0 +1,3416 @@
+<div id="modalPrintPreview" class="modal-overlay hidden" style="background: rgba(15, 23, 42, 0.75); z-index: 9999;">
+
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 92vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 14px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);">
+
+            
+
+            <!-- Barra Superior de Controles de Impresión -->
+
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--dalor-navy); color: white; padding: 12px 20px; border-bottom: 2px solid var(--dalor-gold);">
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+
+                    <span style="background: var(--dalor-gold); color: var(--dalor-navy); padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 13px;">
+
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+
+                    </span>
+
+                    <div>
+
+                        <h3 id="previewModalTitle" style="font-size: 15px; font-weight: 800; margin: 0; color: white;">Vista Preliminar de Presupuesto Formal</h3>
+
+                        <p style="font-size: 11px; color: #94a3b8; margin: 0;">Formato membretado oficial listo para imprimir o enviar en PDF</p>
+
+                    </div>
+
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+
+                    <button onclick="triggerPrintFromModal()" class="btn-primary" style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 12px; padding: 6px 14px; border-radius: 6px; box-shadow: 0 2px 6px rgba(245, 184, 0, 0.4);">
+
+                        <i class="fa-solid fa-print"></i> Imprimir / Guardar como PDF
+
+                    </button>
+
+                    <button onclick="closeModal('modalPrintPreview')" class="btn-secondary" style="background: #334155; color: white; border: none; font-size: 12px; padding: 6px 12px; border-radius: 6px;">
+
+                        <i class="fa-solid fa-xmark"></i> Cerrar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Contenedor con Scroll de la Hoja Membretada -->
+
+            <div id="printPreviewScrollArea" style="overflow-y: auto; padding: 25px; background: #f1f5f9; flex: 1;">
+
+                <div id="modalPrintPreviewContent" class="printable-sheet" style="background: white; max-width: 820px; margin: 0 auto; padding: 35px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #cbd5e1;">
+
+                    <!-- Se inyecta dinámicamente -->
+
+                </div>
+
+            </div>
+
+
+
+        </div>
+
+    </div>
+
+
+
+
+
+    <!-- ====================================================================
+
+         MODAL: CARGA RÁPIDA EN 3 TOQUES (CERO FRICCIÓN / CONSUMO DIARIO)
+
+         ==================================================================== -->
+
+    <div id="modalQuickFlow" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 580px; padding: 24px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 16px;">
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+
+                    <span style="background: var(--dalor-gold); color: var(--dalor-navy); padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 14px;"><i class="fa-solid fa-bolt"></i></span>
+
+                    <div>
+
+                        <h3 style="font-size: 16px; font-weight: 900; color: var(--dalor-navy); margin: 0;">Registro Rápido de Salida de Dinero</h3>
+
+                        <p style="font-size: 11px; color: #64748b; margin: 0;">Carga en 3 toques sin códigos contables complejos</p>
+
+                    </div>
+
+                </div>
+
+                <button onclick="closeModal('modalQuickFlow')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+
+
+            <form id="quickFlowForm" onsubmit="submitQuickFlow(event)" style="display: flex; flex-direction: column; gap: 14px;">
+
+                
+
+                <!-- PASO 1: MONTO -->
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 800; color: var(--dalor-navy);">1. ¿Cuánto dinero salió? *</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div style="position: relative;">
+                            <span style="position: absolute; left: 12px; top: 10px; font-size: 15px; font-weight: 800; color: #0284c7;">$</span>
+                            <input type="number" step="0.01" id="qf_amount_usd" oninput="calcQuickBs()" placeholder="0.00" class="form-input" style="padding-left: 28px; font-size: 17px; font-weight: 900; color: #002B49;" required>
+                        </div>
+                        <div style="position: relative;">
+                            <span style="position: absolute; left: 12px; top: 10px; font-size: 13px; font-weight: 700; color: #64748b;">Bs.</span>
+                            <input type="number" step="0.01" id="qf_amount_bs" oninput="calcQuickUsd()" placeholder="0.00" class="form-input" style="padding-left: 36px; font-size: 15px; font-weight: 800; background: #ffffff;">
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; color: #64748b;">
+                        <span><i class="fa-solid fa-calculator" style="color: #0284c7;"></i> Conversión automática bidireccional</span>
+                        <span style="background: #e0f2fe; color: #0369a1; font-weight: 800; padding: 2px 6px; border-radius: 4px;">
+                            <i class="fa-solid fa-building-columns"></i> Tasa Oficial BCV activa
+                        </span>
+                    </div>
+                </div>
+
+
+
+                <!-- PASO 2: LOS 3 BOTONES GRANDES -->
+
+                <div>
+
+                    <label class="form-label" style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px;">2. ¿Para qué fue este dinero? (Toca una opción) *</label>
+
+                    
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;" id="qf_category_cards">
+
+                        
+
+                        <!-- BOTÓN 1: OBRA -->
+
+                        <div onclick="selectQuickType('obra')" id="card_type_obra" style="border: 2px solid var(--dalor-blue); border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer; background: #f0f9ff; transition: all 0.2s;">
+
+                            <div style="font-size: 26px; color: var(--dalor-blue); margin-bottom: 4px;"><i class="fa-solid fa-helmet-safety"></i></div>
+
+                            <strong style="font-size: 12px; display: block; color: var(--dalor-navy);">1. Para una Obra</strong>
+
+                            <span style="font-size: 10px; color: #64748b;">Materiales / Cuadrilla</span>
+
+                        </div>
+
+
+
+                        <!-- BOTÓN 2: GASTO FIJO SEDE -->
+
+                        <div onclick="selectQuickType('sede')" id="card_type_sede" style="border: 2px solid #cbd5e1; border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer; background: #ffffff; transition: all 0.2s;">
+
+                            <div style="font-size: 26px; color: #0d9488; margin-bottom: 4px;"><i class="fa-solid fa-building"></i></div>
+
+                            <strong style="font-size: 12px; display: block; color: var(--dalor-navy);">2. Sede / Taller</strong>
+
+                            <span style="font-size: 10px; color: #64748b;">Nómina fija / Alquiler</span>
+
+                        </div>
+
+
+
+                        <!-- BOTÓN 3: RETIRO SOCIO -->
+
+                        <div onclick="selectQuickType('socio')" id="card_type_socio" style="border: 2px solid #cbd5e1; border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer; background: #ffffff; transition: all 0.2s;">
+
+                            <div style="font-size: 26px; color: #7c3aed; margin-bottom: 4px;"><i class="fa-solid fa-user-tie"></i></div>
+
+                            <strong style="font-size: 12px; display: block; color: var(--dalor-navy);">3. Retiro Socio</strong>
+
+                            <span style="font-size: 10px; color: #64748b;">Gasto personal / Utilidad</span>
+
+                        </div>
+
+
+
+                    </div>
+
+                    <input type="hidden" id="qf_selected_type" value="obra">
+
+                </div>
+
+
+
+                <!-- DETALLES SEGÚN TIPO SELECCIONADO -->
+
+                
+
+                <!-- A. Si es Obra -->
+
+                <div id="qf_details_obra" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 12px;">
+
+                    <label class="form-label" style="color: #0369a1;">Selecciona el Proyecto / Obra *</label>
+
+                    <select id="qf_project_id" class="form-select" style="background: white; margin-bottom: 8px;"></select>
+
+                    
+
+                    <label class="form-label" style="color: #0369a1;">Rubro del Costo *</label>
+
+                    <select id="qf_cost_category" class="form-select" style="background: white;">
+
+                        <option value="materiales">📦 Compra de Materiales / Repuestos de Obra</option>
+
+                        <option value="mano_obra">👷 Viáticos / Pago a Cuadrilla en Campo</option>
+
+                        <option value="combustible">⛽ Combustible de Vehículo para Obra</option>
+
+                        <option value="equipos">🛠️ Alquiler de Grúa / Equipos Especiales</option>
+
+                    </select>
+
+                </div>
+
+
+
+                <!-- B. Si es Sede -->
+
+                <div id="qf_details_sede" class="hidden" style="background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 12px;">
+
+                    <label class="form-label" style="color: #0f766e;">Concepto de Gasto Fijo *</label>
+
+                    <select id="qf_fixed_category" class="form-select" style="background: white;">
+
+                        <option value="nomina_fija">👥 Nómina Fija Semanal / Quincenal de Taller</option>
+
+                        <option value="alquiler">🏢 Alquiler del Galpón / Taller Central</option>
+
+                        <option value="servicios">⚡ Electricidad / Agua / Internet / Teléfono</option>
+
+                        <option value="comida_sede">🍽️ Café / Agua Mineral / Almuerzos de Sede</option>
+
+                        <option value="mantenimiento_sede">🔧 Mantenimiento General de Instalaciones</option>
+
+                    </select>
+
+                </div>
+
+
+
+                <!-- C. Si es Socio -->
+
+                <div id="qf_details_socio" class="hidden" style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 12px;">
+
+                    <label class="form-label" style="color: #6b21a8;">Nombre de la Persona / Accionista que retira *</label>
+
+                    <input type="text" id="qf_partner_name" placeholder="Escribe el nombre del accionista o titular" class="form-input" style="background: white; margin-bottom: 8px;">
+
+                    <label class="form-label" style="color: #6b21a8;">Motivo / Detalle del Retiro</label>
+
+                    <input type="text" id="qf_partner_concept" placeholder="Ej: Retiro personal quincenal / Gastos particulares" class="form-input" style="background: white;">
+
+                </div>
+
+
+
+                <!-- PASO 3: FORMA DE PAGO Y DESCRIPCIÓN -->
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">3. Forma de Pago</label>
+
+                        <select id="qf_payment_method" class="form-select">
+
+                            <option value="transferencia">Transferencia Bancaria</option>
+
+                            <option value="pago_movil">Pago Móvil</option>
+
+                            <option value="efectivo_divisa">Efectivo Divisa ($)</option>
+
+                            <option value="zelle">Zelle / Wire</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Beneficiario / Proveedor</label>
+
+                        <input type="text" id="qf_vendor" placeholder="Ej: Ferretería / Estación Servicio" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Descripción Breve / Detalle *</label>
+
+                    <input type="text" id="qf_description" placeholder="Ej: Compra de terminales de cobre para tablero" class="form-input" required>
+
+                </div>
+
+
+
+                <button type="submit" class="btn-primary" style="padding: 12px; font-size: 15px; font-weight: 900; background: var(--dalor-navy); margin-top: 4px; box-shadow: 0 4px 10px rgba(0, 43, 73, 0.25);">
+
+                    <i class="fa-solid fa-check-circle" style="color: var(--dalor-gold);"></i> Guardar Registro en 1 Toque
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- RESTO DE MODALES: NUEVA CUENTA POR COBRAR (CxC) -->
+
+    <div id="modalReceivable" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-file-invoice-dollar" style="color: #059669;"></i> Emitir Factura / Valuación por Cobrar (CxC)
+
+                </h3>
+
+                <button onclick="closeModal('modalReceivable')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="receivableForm" onsubmit="submitCreateReceivable(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Nº Factura / Valuación *</label>
+
+                        <input type="text" id="cxc_invoice_number" placeholder="FAC-2026-004" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Cliente *</label>
+
+                        <select id="cxc_client_id" class="form-select" required></select>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Proyecto Imputable</label>
+
+                        <select id="cxc_project_id" class="form-select"></select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Fecha de Vencimiento *</label>
+
+                        <input type="date" id="cxc_due_date" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Monto Facturado ($ USD) *</label>
+
+                        <input type="number" step="0.01" id="cxc_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 800; color: #059669; font-size: 14px;" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Retenciones Aplicadas (Opcional, $ 0.00 por defecto)</label>
+
+                        <input type="number" step="0.01" id="cxc_tax_retained" value="0.00" placeholder="0.00" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Concepto / Hito de Obra *</label>
+
+                    <input type="text" id="cxc_description" placeholder="Ej: Valuación Nº 2 - Montaje de Transformador" class="form-input" required>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #059669;">
+
+                    <i class="fa-solid fa-floppy-disk"></i> Registrar Cuenta por Cobrar
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVA CUENTA POR PAGAR (CxP) -->
+
+    <div id="modalPayable" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i> Registrar Cuenta por Pagar a Proveedor (CxP)
+
+                </h3>
+
+                <button onclick="closeModal('modalPayable')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="payableForm" onsubmit="submitCreatePayable(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Nº Factura Proveedor *</label>
+
+                        <input type="text" id="cxp_invoice_number" placeholder="FP-9941" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre del Proveedor *</label>
+
+                        <input type="text" id="cxp_supplier_name" placeholder="Ej: Suministros Eléctricos C.A." class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Proyecto Imputable</label>
+
+                        <select id="cxp_project_id" class="form-select"></select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Fecha de Vencimiento *</label>
+
+                        <input type="date" id="cxp_due_date" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Monto de la Deuda ($ USD) *</label>
+
+                    <input type="number" step="0.01" id="cxp_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 800; color: #e11d48; font-size: 14px;" required>
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Descripción de Materiales / Servicios *</label>
+
+                    <input type="text" id="cxp_description" placeholder="Ej: Compra de terminales de cobre y soldadura" class="form-input" required>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #e11d48;">
+
+                    <i class="fa-solid fa-floppy-disk"></i> Registrar Cuenta por Pagar
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: REGISTRAR COBRO O PAGO FINANCIERO -->
+
+    <div id="modalFinancialTransaction" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 500px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 id="finTransModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Transacción</h3>
+
+                <button onclick="closeModal('modalFinancialTransaction')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="financialTransactionForm" onsubmit="submitFinancialPayment(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <input type="hidden" id="fin_trans_type">
+
+                <input type="hidden" id="fin_trans_target_id">
+
+
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
+
+                    <span style="font-size: 11px; color: #64748b;">Saldo Actual Pendiente:</span>
+
+                    <p id="fin_trans_current_balance" style="font-size: 18px; font-weight: 900; color: var(--dalor-navy);">$0.00</p>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Monto a Registrar ($ USD) *</label>
+
+                    <input type="number" step="0.01" id="fin_trans_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px;" required>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Método de Pago</label>
+
+                        <select id="fin_trans_method" class="form-select">
+
+                            <option value="transferencia">Transferencia Bancaria</option>
+
+                            <option value="pago_movil">Pago Móvil</option>
+
+                            <option value="efectivo_divisa">Efectivo Divisa ($)</option>
+
+                            <option value="zelle">Zelle / Wire</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nº Referencia Bancaria</label>
+
+                        <input type="text" id="fin_trans_ref" placeholder="Ref: 123456" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Notas / Observaciones</label>
+
+                    <input type="text" id="fin_trans_notes" placeholder="Ej: Abono primera quincena" class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" id="btnConfirmFinTrans" class="btn-primary" style="margin-top: 6px;">
+
+                    Confirmar Transacción
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL: HISTORIAL DE PAGOS DE CUENTA POR PAGAR (CxP) -->
+    <div id="modalPayableHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 620px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <h3 id="payableHistoryTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: #e11d48;"></i> Historial de Pagos / Abonos
+                    </h3>
+                    <p id="payableHistorySubtitle" style="font-size: 11px; color: #64748b;">Detalle de cuotas y transferencias aplicadas a la factura.</p>
+                </div>
+                <button onclick="closeModal('modalPayableHistory')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div class="table-container" style="max-height: 320px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 8px; text-align: left;">Método / Canal</th>
+                            <th style="padding: 8px; text-align: left;">N° Referencia</th>
+                            <th style="padding: 8px; text-align: right;">Monto Abonado</th>
+                            <th style="padding: 8px; text-align: left;">Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payableHistoryTableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">Cargando historial de abonos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 14px; text-align: right;">
+                <button type="button" onclick="closeModal('modalPayableHistory')" class="btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DECLARAR CARTERA INCOBRABLE (CxC) -->
+    <div id="modalDeclareBadDebt" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 460px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #fee2e2; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #991b1b;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Declarar Cartera Incobrable
+                </h3>
+                <button onclick="closeModal('modalDeclareBadDebt')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form onsubmit="submitDeclareBadDebt(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="bad_debt_target_id">
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px; font-size: 12px; color: #991b1b;">
+                    ¿Confirmas castigar la factura <b id="bad_debt_inv_label"></b> por un saldo de <b id="bad_debt_amount_label"></b>? El saldo pasará a $0 y quedará asentado en pérdidas de cartera sin afectar caja real.
+                </div>
+                <div>
+                    <label class="form-label">Motivo de la Incobrabilidad *</label>
+                    <select id="bad_debt_reason" class="form-select" required>
+                        <option value="Quiebra o Cierre de Operaciones del Cliente">Quiebra o Cierre de Operaciones del Cliente</option>
+                        <option value="Disputa Legal / Dictamen Jurídico">Disputa Legal / Dictamen Jurídico</option>
+                        <option value="Acuerdo de Castigo de Cartera">Acuerdo de Castigo de Cartera</option>
+                        <option value="Insolvencia Prolongada (> 180 días)">Insolvencia Prolongada (> 180 días)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Detalle / Notas Adicionales</label>
+                    <input type="text" id="bad_debt_notes" placeholder="Ej: Aprobado en acta de junta directiva..." class="form-input">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalDeclareBadDebt')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #dc2626; color: white; font-weight: 800;">
+                        <i class="fa-solid fa-ban"></i> Confirmar Castigo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- MODAL: DETALLE COMPLETO Y SEGUIMIENTO DEL PROYECTO (FICHA DE OBRA) -->
+
+    <div id="modalProjectDetail" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <div>
+
+                    <span id="detail_proj_code" style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 8px; border-radius: 4px;">PRJ-CODE</span>
+
+                    <h3 id="detail_proj_name" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">Nombre del Proyecto</h3>
+
+                    <p id="detail_proj_subtitle" style="font-size: 12px; color: #64748b;">Cliente | Ubicación</p>
+
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" onclick="copyProjectClientTrackingLink()" class="btn-primary" style="background: #059669; font-size: 11px; padding: 5px 10px;" title="Copiar enlace web de seguimiento">
+                        <i class="fa-solid fa-link"></i> Copiar Enlace
+                    </button>
+                    <button type="button" onclick="shareProjectViaWhatsApp()" class="btn-primary" style="background: #16a34a; font-size: 11px; padding: 5px 10px;" title="Compartir avance al cliente por WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </button>
+                    <button type="button" onclick="printProjectProgressReport()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; font-weight: 700;" title="Descargar e Imprimir Reporte de Avance">
+                        <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i> Imprimir PDF
+                    </button>
+                    <button onclick="closeModal('modalProjectDetail')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+                </div>
+
+            </div>
+
+
+
+            <div id="detail_proj_financial_box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; text-align: center;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Monto Contrato</span>
+                    <p id="detail_proj_contract" style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Ppto Límite Costo</span>
+                    <p id="detail_proj_budget" style="font-size: 14px; font-weight: 800; color: #e11d48; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Gasto Real Incurrido</span>
+                    <p id="detail_proj_spent" style="font-size: 14px; font-weight: 800; color: #d97706; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cobrado Real</span>
+                    <p id="detail_proj_collected" style="font-size: 14px; font-weight: 800; color: #059669; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Saldo x Cobrar</span>
+                    <p id="detail_proj_receivable_bal" style="font-size: 14px; font-weight: 800; color: #dc2626; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Margen Real ($)</span>
+                    <p id="detail_proj_margin" style="font-size: 14px; font-weight: 800; color: #2563eb; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+            </div>
+
+
+
+            <div style="margin-bottom: 14px; background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+
+                <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 6px;">
+
+                    <i class="fa-solid fa-file-contract" style="color: var(--dalor-blue);"></i> Alcance Técnico del Trabajo
+
+                </h4>
+
+                <p id="detail_proj_scope" style="font-size: 12px; color: #334155; line-height: 1.5; white-space: pre-line;">Sin descripción de alcance.</p>
+
+            </div>
+
+
+
+            <div style="margin-bottom: 14px; background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+
+                <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 8px;">
+
+                    <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Etapas & Hitos de Obra
+
+                </h4>
+
+                <div id="detail_proj_phases_list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+
+            </div>
+
+
+
+            <div class="grid-3" style="margin-bottom: 14px;">
+
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
+
+                    <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 6px;">
+
+                        <i class="fa-solid fa-users" style="color: var(--dalor-blue);"></i> Cuadrilla Asignada
+
+                    </h4>
+
+                    <ul id="detail_proj_personnel" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
+
+                </div>
+
+
+
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
+
+                    <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 6px;">
+
+                        <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Vehículos en Obra
+
+                    </h4>
+
+                    <ul id="detail_proj_fleet" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
+
+                </div>
+
+
+
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
+
+                    <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 6px;">
+
+                        <i class="fa-solid fa-toolbox" style="color: #0d9488;"></i> Herramientas en Obra
+
+                    </h4>
+
+                    <ul id="detail_proj_tools" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
+
+                </div>
+
+            </div>
+
+
+
+            
+            <!-- SECCIÓN: TRAZABILIDAD DE COBROS & ABONOS DE LA OBRA -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                        <i class="fa-solid fa-receipt" style="color: #059669;"></i> Trazabilidad de Cobros & Abonos Recibidos de la Obra
+                    </h4>
+                    <span id="detail_proj_collections_count" style="font-size: 11px; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">0 abonos registrados</span>
+                </div>
+                <div class="table-wrapper" style="max-height: 180px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">Fecha Cobro</th>
+                                <th style="padding: 6px 8px; text-align: left;">Factura / Valuación</th>
+                                <th style="padding: 6px 8px; text-align: left;">Método / Canal</th>
+                                <th style="padding: 6px 8px; text-align: left;">Ref. Bancaria / Recibo</th>
+                                <th style="padding: 6px 8px; text-align: right;">Monto ($ USD)</th>
+                                <th style="padding: 6px 8px; text-align: left;">Notas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_collections_body">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran abonos ni cobros para esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+
+                <button type="button" onclick="openCreateCxCForProject(currentViewingProjectId)" class="btn-primary" style="background: #059669; font-size: 12px; padding: 6px 14px;">
+
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Facturar / Emitir CxC
+
+                </button>
+
+                <button type="button" onclick="closeModal('modalProjectDetail')" class="btn-secondary">Cerrar Ficha</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVA COTIZACIÓN (ESTIMACIONES & APU) -->
+
+    <div id="modalQuotation" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 id="modalQuotationTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-calculator" style="color: var(--dalor-blue);"></i> Armar Presupuesto / Cotización Formal (APU)
+
+                </h3>
+
+                <button onclick="closeModal('modalQuotation')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+
+
+            <form id="quoteForm" onsubmit="submitCreateQuotation(event)" autocomplete="off">
+
+                <input type="hidden" id="edit_quotation_id" value="">
+
+                <div class="grid-2" style="margin-bottom: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cliente *</label>
+
+                        <select id="quote_client_id" class="form-select" required>
+                            <option value="">-- Seleccione Cliente --</option>
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Título del Proyecto / Obra *</label>
+
+                        <input type="text" id="quote_title" placeholder="Ej: Fabricación de Tanque" class="form-input" required autocomplete="off">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+
+                    <div>
+
+                        <label class="form-label">Ubicación de la Obra</label>
+
+                        <input type="text" id="quote_location" placeholder="Ciudad / Planta" class="form-input" autocomplete="off">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Tiempo de Ejecución *</label>
+
+                        <input type="text" id="quote_execution_time" value="" placeholder="Ej: 15 días hábiles" class="form-input" autocomplete="off" required>
+
+                    </div>
+
+                    <div>
+                        <label class="form-label">Moneda de Emisión *</label>
+                        <select id="quote_currency" class="form-select" onchange="onQuotationCurrencyChanged()">
+                            <option value="USD">Dólares (USD $)</option>
+                            <option value="VES">Bolívares (Bs. BCV)</option>
+                            <option value="EUR">Euros (EUR €)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Tratamiento de IVA</label>
+                        <select id="quote_tax_type" class="form-select" onchange="onTaxTypeChanged()">
+                            <option value="16">IVA General (16%)</option>
+                            <option value="8">IVA Reducido (8%)</option>
+                            <option value="0">Exento de IVA (0% - Sin IVA)</option>
+                        </select>
+                        <input type="hidden" id="quote_tax_percent" value="16">
+                    </div>
+
+                </div>
+
+                <!-- Banner Cláusula Cambiaria Oficial BCV para Presupuestos en Bolívares -->
+                <div id="quote_bcv_banner_box" style="display: none; background: #fefce8; border: 1.5px solid #facc15; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-scale-balanced" style="color: #b45309; font-size: 18px;"></i>
+                        <div>
+                            <span style="color: #854d0e; font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">Cláusula de Conversión Oficial BCV:</span>
+                            <p style="margin: 2px 0 0 0; color: #713f12; font-size: 11px; font-weight: 600; line-height: 1.35;">
+                                Monto cotizado expresado en USD y pagadero en Bolívares (VES) a la Tasa Oficial del Banco Central de Venezuela (BCV) vigente a la fecha efectiva de pago.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+
+                        <span style="font-size: 12px; font-weight: 800; color: #334155;">Partidas de Servicios Cotizadas (Ilimitadas):</span>
+
+                        <button type="button" onclick="addQuotationRow()" class="btn-primary" style="font-size: 11px; padding: 5px 12px; background-color: var(--dalor-gold); color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-plus"></i> Añadir Renglón / Partida
+
+                        </button>
+
+                    </div>
+
+                    <div id="quoteItemsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; padding-right: 4px;"></div>
+
+                </div>
+
+
+
+                <div style="background: var(--dalor-navy); color: white; padding: 12px 16px; border-radius: 10px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center;">
+
+                    <div>
+
+                        <span style="font-size: 10px; text-transform: uppercase; color: #94a3b8;">Subtotal ($)</span>
+
+                        <p id="quote_subtotal_display" style="font-size: 16px; font-weight: 800;">$0.00</p>
+
+                    </div>
+
+                    <div>
+
+                        <span style="font-size: 10px; text-transform: uppercase; color: #94a3b8;">IVA Calculado</span>
+
+                        <p id="quote_tax_display" style="font-size: 16px; font-weight: 800; color: var(--dalor-gold);">$0.00</p>
+
+                    </div>
+
+                    <div>
+
+                        <span style="font-size: 10px; text-transform: uppercase; color: #94a3b8;">Total Cotizado ($)</span>
+
+                        <p id="quote_total_display" style="font-size: 18px; font-weight: 900; color: #38bdf8;">$0.00</p>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+
+                    <button type="button" onclick="closeModal('modalQuotation')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" id="btnSubmitQuotation" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> Guardar Presupuesto</button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVA HERRAMIENTA / EQUIPO -->
+
+    <div id="modalTool" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Nueva Herramienta / Equipo</h3>
+
+                <button onclick="closeModal('modalTool')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="toolForm" onsubmit="submitCreateTool(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código *</label>
+
+                        <input type="text" id="tool_code" placeholder="HER-005" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre del Equipo *</label>
+
+                        <input type="text" id="tool_name" placeholder="Ej: Generador Eléctrico 10kVA" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Tipo de Recurso</label>
+
+                        <select id="tool_type" class="form-select">
+
+                            <option value="herramienta">Herramienta Menor</option>
+
+                            <option value="maquinaria">Maquinaria Pesada</option>
+
+                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
+
+                            <option value="equipo_especial">Equipo Especial</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Marca / Modelo</label>
+
+                        <input type="text" id="tool_brand" placeholder="Ej: Caterpillar / DeWalt" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Número de Serial</label>
+
+                        <input type="text" id="tool_serial" placeholder="Serial de fábrica" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Ubicación Inicial</label>
+
+                        <input type="text" id="tool_location" value="Sede Central" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Herramienta</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO VEHÍCULO -->
+
+    <div id="modalVehicle" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Nuevo Vehículo / Camioneta</h3>
+
+                <button onclick="closeModal('modalVehicle')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="vehicleForm" onsubmit="submitCreateVehicle(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código Flota *</label>
+
+                        <input type="text" id="veh_code" placeholder="CAM-03" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre / Descripción *</label>
+
+                        <input type="text" id="veh_name" placeholder="Ej: Camioneta Hilux 4x4 Cuadrilla" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Marca / Modelo</label>
+
+                        <input type="text" id="veh_brand" placeholder="Toyota Hilux" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Placa</label>
+
+                        <input type="text" id="veh_plate" placeholder="A12BC34" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Odómetro Inicial (Km)</label>
+
+                        <input type="number" id="veh_odometer" value="0" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Intervalo de Servicio (Km)</label>
+
+                        <input type="number" id="veh_interval" value="5000" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Vehículo</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO SERVICIO / PARTIDA -->
+
+    <div id="modalService" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Crear Nueva Partida de Servicio</h3>
+
+                <button onclick="closeModal('modalService')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="serviceForm" onsubmit="submitCreateService(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div>
+
+                    <label class="form-label">Código de Partida *</label>
+
+                    <input type="text" id="srv_code" placeholder="Ej: SER-ELEC-03" class="form-input" autocomplete="off" required>
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Nombre del Servicio *</label>
+
+                    <input type="text" id="srv_name" placeholder="Ej: Calibración y Pruebas de Relés" class="form-input" autocomplete="off" required>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Categoría</label>
+
+                        <select id="srv_category" class="form-select" onchange="onServiceCategoryChanged(this.value)">
+
+                            <option value="Electricidad">Electricidad</option>
+
+                            <option value="Mantenimiento Industrial">Mantenimiento Industrial</option>
+
+                            <option value="Montaje Industrial">Montaje Industrial</option>
+
+                            <option value="Obra Civil">Obra Civil</option>
+
+                            <option value="Telecomunicaciones">Telecomunicaciones</option>
+
+                            <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Categoría...</option>
+
+                        </select>
+
+                        <input type="text" id="srv_new_category" placeholder="Escribe el nombre de la nueva categoría..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+
+                    </div>
+
+                    <div>
+                        <label class="form-label">Unidad de Medida</label>
+                        <select id="srv_unit" class="form-select" onchange="onServiceUnitChanged(this.value)">
+                            <option value="Global">Global</option>
+                            <option value="Metro (m)">Metro (m)</option>
+                            <option value="Metro Cuadrado (m²)">Metro Cuadrado (m²)</option>
+                            <option value="Metro Cúbico (m³)">Metro Cúbico (m³)</option>
+                            <option value="Pieza (Pza)">Pieza (Pza)</option>
+                            <option value="Hora-Hombre (HH)">Hora-Hombre (HH)</option>
+                            <option value="Punto">Punto</option>
+                            <option value="Kilogramo (Kg)">Kilogramo (Kg)</option>
+                            <option value="Tonelada (Ton)">Tonelada (Ton)</option>
+                            <option value="Litro (L)">Litro (L)</option>
+                            <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Unidad...</option>
+                        </select>
+                        <input type="text" id="srv_new_unit" placeholder="Escribe la unidad (ej: Kg, Galón, Pulg-Diam)..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Costo Base ($)</label>
+
+                        <input type="number" step="0.01" id="srv_cost" placeholder="0.00" class="form-input" autocomplete="off" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Precio de Venta ($) *</label>
+
+                        <input type="number" step="0.01" id="srv_price" placeholder="0.00" class="form-input" autocomplete="off" style="font-weight: 800; color: var(--dalor-blue);" required>
+
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Partida</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO CLIENTE -->
+
+    <div id="modalClient" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Nuevo Cliente</h3>
+
+                <button onclick="closeModal('modalClient')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="clientForm" onsubmit="submitCreateClient(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código *</label>
+
+                        <input type="text" id="cli_code" placeholder="CLI-004" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Razón Social / Empresa *</label>
+
+                        <input type="text" id="cli_name" placeholder="Nombre de la Empresa" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">RIF / Identificación Fiscal</label>
+
+                        <input type="text" id="cli_rif" placeholder="J-12345678-9" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Sector / Industria</label>
+
+                        <input type="text" id="cli_industry" placeholder="Manufactura / Energía" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Persona de Contacto</label>
+
+                        <input type="text" id="cli_contact" placeholder="Nombre y Cargo" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Teléfono</label>
+
+                        <input type="text" id="cli_phone" placeholder="+58 414 0000000" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Correo Electrónico</label>
+
+                    <input type="email" id="cli_email" placeholder="contacto@cliente.com" class="form-input">
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Dirección / Planta</label>
+
+                    <input type="text" id="cli_address" placeholder="Ciudad, Estado, Dirección" class="form-input">
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Cliente</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: ASIGNACIÓN / MOVIMIENTO DE RECURSO -->
+
+    <div id="modalAssignResource" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 id="assignModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Asignar Recurso a Proyecto</h3>
+
+                <button onclick="closeModal('modalAssignResource')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="assignResourceForm" onsubmit="submitResourceAction(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <input type="hidden" id="modal_res_type">
+
+                <input type="hidden" id="modal_res_id">
+
+                <input type="hidden" id="modal_action_type">
+
+
+
+                <div>
+
+                    <label class="form-label">Proyecto Destino *</label>
+
+                    <select id="modal_target_project_id" class="form-select" required></select>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Ubicación Física *</label>
+
+                    <input type="text" id="modal_res_location" placeholder="Ej: Planta Guacara" class="form-input" required>
+
+                </div>
+
+
+
+                <div id="modal_custodian_container">
+
+                    <label class="form-label">Custodio / Responsable</label>
+
+                    <input type="text" id="modal_res_custodian" placeholder="Nombre de la persona a cargo" class="form-input">
+
+                </div>
+
+
+
+                <div id="modal_odometer_container">
+
+                    <label class="form-label">Odómetro (Km/Hrs)</label>
+
+                    <input type="number" id="modal_res_odometer" placeholder="Lectura de odómetro" class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" id="btnConfirmResourceAction" class="btn-primary" style="margin-top: 6px;">
+
+                    Confirmar Movimiento
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: REGISTRAR COBRO / ABONO DIRECTO DE CLIENTE -->
+
+    <div id="modalReceiveClientPayment" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 540px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: #064e3b;">
+
+                    <i class="fa-solid fa-money-bill-wave" style="color: #10b981;"></i> 💵 Registrar Cobro / Abono de Cliente
+
+                </h3>
+
+                <button onclick="closeModal('modalReceiveClientPayment')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="receiveClientPaymentForm" onsubmit="submitDirectClientPayment(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cliente Pagador *</label>
+
+                        <select id="rcp_client_id" class="form-select" required></select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Proyecto Asociado</label>
+
+                        <select id="rcp_project_id" class="form-select"></select>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Monto Recibido ($ USD) *</label>
+
+                        <input type="number" step="0.01" id="rcp_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 800; color: #059669; font-size: 15px;" required oninput="calcClientPaymentBs()">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Tasa de Cambio (Bs/$)</label>
+
+                        <input type="number" step="0.01" id="rcp_rate" class="form-input" oninput="calcClientPaymentBs()">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+
+                    <span style="font-size: 11px; color: #065f46; font-weight: 700;">Equivalente en Bolívares:</span>
+
+                    <b id="rcp_total_bs_preview" style="font-size: 14px; color: #047857;">Bs. 0,00</b>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Método de Cobro *</label>
+
+                        <select id="rcp_method" class="form-select">
+
+                            <option value="transferencia">Transferencia Bancaria (Bs/USD)</option>
+
+                            <option value="efectivo_divisa">Efectivo Divisa ($)</option>
+
+                            <option value="zelle">Zelle / Wire Transfer</option>
+
+                            <option value="pago_movil">Pago Móvil</option>
+
+                            <option value="cheque">Cheque Bancario</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nº Referencia / Depósito</label>
+
+                        <input type="text" id="rcp_ref" placeholder="Ej: REF-881293" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Concepto del Cobro *</label>
+
+                    <input type="text" id="rcp_concept" placeholder="Ej: Anticipo 50% por Inicio de Fabricación de Tolvas" class="form-input" required>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Notas / Observaciones</label>
+
+                    <input type="text" id="rcp_notes" placeholder="Banco de origen, recibo firmado, etc." class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #059669; padding: 10px; font-weight: 800;">
+
+                    <i class="fa-solid fa-check"></i> Procesar e Ingresar a Tesorería
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: ENTRADA DE MATERIAL (COMPRA / INGRESO) -->
+
+    <div id="modalMaterialEntry" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 520px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: #059669;">
+
+                    <i class="fa-solid fa-cart-plus"></i> + Registrar Entrada de Material a Almacén
+
+                </h3>
+
+                <button onclick="closeModal('modalMaterialEntry')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="materialEntryForm" onsubmit="submitMaterialEntry(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div>
+
+                    <label class="form-label">Material / Consumible *</label>
+
+                    <select id="me_material_id" class="form-select" required></select>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cantidad a Ingresar *</label>
+
+                        <input type="number" step="0.01" id="me_quantity" placeholder="0.00" class="form-input" required oninput="calcMaterialEntryTotal()">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Costo Unitario Compra ($ USD) *</label>
+
+                        <input type="number" step="0.01" id="me_unit_cost" placeholder="0.00" class="form-input" required oninput="calcMaterialEntryTotal()">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+
+                    <span style="font-size: 11px; color: #64748b;">Total Inversión Material:</span>
+
+                    <b id="me_total_usd_preview" style="font-size: 14px; color: var(--dalor-navy);">$0.00 USD</b>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Proveedor / Vendedor</label>
+
+                        <input type="text" id="me_supplier" placeholder="Ej: Hierros Guayana C.A." class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nº Factura / Guía Proveedor</label>
+
+                        <input type="text" id="me_doc" placeholder="FAC-00123" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #166534; cursor: pointer;">
+                        <input type="checkbox" id="me_register_cxp" onchange="toggleMaterialEntryPaymentBox()" style="width: 16px; height: 16px;">
+                        <span>Registrar como Deuda Pendiente en Cuentas por Pagar (CxP a Crédito)</span>
+                    </label>
+                </div>
+
+                <!-- Pago de Contado: Se descuenta inmediatamente de la Caja/Banco seleccionada -->
+                <div id="me_cash_payment_box" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #1e40af; display: block; margin-bottom: 6px;">
+                        <i class="fa-solid fa-money-bill-wave"></i> Compra de Contado: Egreso Inmediato de Caja / Banco
+                    </span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div>
+                            <label class="form-label">Cuenta / Caja de Origen *</label>
+                            <select id="me_payment_channel" class="form-select">
+                                <option value="caja_chica_usd">💵 Caja Chica USD (Efectivo)</option>
+                                <option value="banco_mercantil">🏦 Banco Mercantil (VES/BCV)</option>
+                                <option value="banco_banesco">🏦 Banesco (VES/BCV)</option>
+                                <option value="zelle">📱 Zelle DALOR</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">N° Referencia Pago / Recibo *</label>
+                            <input type="text" id="me_payment_ref" placeholder="Ej: REF-9831 / Efectivo" class="form-input">
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Notas / Ubicación en Galpón</label>
+
+                    <input type="text" id="me_notes" placeholder="Rack 3, Sector Planchas..." class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #059669;">
+
+                    <i class="fa-solid fa-floppy-disk"></i> Confirmar Ingreso a Almacén
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: DESPACHO / CONSUMO DE MATERIAL (A OBRA O TALLER) -->
+
+    <div id="modalMaterialConsume" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 520px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: #0284c7;">
+
+                    <i class="fa-solid fa-truck-arrow-right"></i> Despachar / Consumir Material de Almacén
+
+                </h3>
+
+                <button onclick="closeModal('modalMaterialConsume')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="materialConsumeForm" onsubmit="submitMaterialConsume(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div>
+
+                    <label class="form-label">Material a Despachar *</label>
+
+                    <select id="mc_material_id" class="form-select" required onchange="onConsumeMaterialSelected()"></select>
+
+                </div>
+
+
+
+                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+
+                    <span style="font-size: 11px; color: #0369a1;">Stock Disponible en Almacén:</span>
+
+                    <b id="mc_stock_available_label" style="font-size: 14px; color: #0284c7;">0.00 UND</b>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cantidad a Despachar *</label>
+
+                        <input type="number" step="0.01" id="mc_quantity" placeholder="0.00" class="form-input" required oninput="calcMaterialConsumeTotal()">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Costo Imputado Estimado</label>
+
+                        <input type="text" id="mc_cost_preview" class="form-input" readonly style="background: #f1f5f9; font-weight: 700;">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Destino / Imputación *</label>
+
+                    <select id="mc_project_id" class="form-select" required>
+
+                        <option value="">-- Consumo Interno Taller Central (Gasto Sede) --</option>
+
+                    </select>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Nº Requisición / Vale de Salida</label>
+
+                        <input type="text" id="mc_doc" placeholder="VALE-042" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Entregado Por (Custodio)</label>
+
+                        <input type="text" id="mc_performed_by" value="Custodio de Almacén Central" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Notas / Justificación Técnica</label>
+
+                    <input type="text" id="mc_notes" placeholder="Ej: Corte para fabricación de bridas de calderas" class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #0284c7;">
+
+                    <i class="fa-solid fa-check"></i> Confirmar Despacho e Imputar Costo
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO MATERIAL (CATÁLOGO) -->
+
+    <div id="modalNewMaterial" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 520px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-plus"></i> Crear Nuevo Ítem en Catálogo de Materiales
+
+                </h3>
+
+                <button onclick="closeModal('modalNewMaterial')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newMaterialForm" onsubmit="submitCreateMaterial(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código *</label>
+
+                        <input type="text" id="nmat_code" placeholder="MAT-PL-005" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre / Descripción *</label>
+
+                        <input type="text" id="nmat_name" placeholder="Ej: Plancha de Acero A36 3/8..." class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Categoría *</label>
+
+                        <select id="nmat_category" class="form-select" required>
+
+                            <option value="Planchas y Laminas">Planchas y Láminas</option>
+
+                            <option value="Acero Estructural">Acero Estructural / Vigas</option>
+
+                            <option value="Tuberias y Canerias">Tuberías y Cañerías</option>
+
+                            <option value="Soldadura y Gases">Soldadura y Gases</option>
+
+                            <option value="Abrasivos y Corte">Abrasivos y Corte</option>
+
+                            <option value="Tornilleria y Fijaciones">Tornillería y Fijaciones</option>
+
+                            <option value="Pinturas y Revestimientos">Pinturas y Revestimientos</option>
+
+                            <option value="Consumibles de Taller">Consumibles de Taller</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Unidad de Medida *</label>
+
+                        <select id="nmat_unit" class="form-select" required>
+
+                            <option value="UND">Unidad (UND)</option>
+
+                            <option value="KG">Kilogramos (KG)</option>
+
+                            <option value="MTR">Metros (MTR)</option>
+
+                            <option value="ROLLO">Rollo</option>
+
+                            <option value="GAL">Galón (GAL)</option>
+
+                            <option value="CAJA">Caja</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Stock Inicial</label>
+
+                        <input type="number" step="0.01" id="nmat_stock" value="0.00" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Alerta Mínima</label>
+
+                        <input type="number" step="0.01" id="nmat_alert" value="5.00" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Costo Unit. ($)</label>
+
+                        <input type="number" step="0.01" id="nmat_cost" value="0.00" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Ubicación en Almacén</label>
+
+                    <input type="text" id="nmat_location" value="Almacén Central Dalor" class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;">
+
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Material en Catálogo
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: GUÍA DE TRASLADO & DESPACHO DE EQUIPOS A OBRA -->
+
+    <div id="modalTransferGuide" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 650px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <div>
+
+                    <span class="badge-tag" style="background: #e0f2fe; color: #0369a1;">Logística & Custodia</span>
+
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
+
+                        <i class="fa-solid fa-file-export" style="color: #0284c7;"></i> Emisión de Guía de Traslado & Despacho a Obra
+
+                    </h3>
+
+                </div>
+
+                <button onclick="closeModal('modalTransferGuide')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="transferGuideForm" onsubmit="submitGenerateTransferGuide(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Proyecto Aprobado Destino *</label>
+
+                        <select id="tg_project_id" class="form-select" onchange="onTransferGuideProjectChanged()"></select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Ubicación de Destino *</label>
+
+                        <input type="text" id="tg_destination" placeholder="Planta Centro - Morón" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Vehículo de Transporte *</label>
+
+                        <select id="tg_vehicle_id" class="form-select" required></select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Chofer / Conductor Responsable *</label>
+
+                        <input type="text" id="tg_driver_name" placeholder="Chofer / Operador de Carga" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i> Seleccionar Herramientas & Equipos a Despachar:
+
+                        </span>
+
+                        <input type="text" id="tg_tools_search" placeholder="Buscar herramienta..." class="form-input" style="padding: 4px 8px; font-size: 11px; width: 180px;" oninput="debouncedFilterTransferToolsChecklist()">
+
+                    </div>
+
+                    <div id="tg_tools_checklist_container" style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; background: white; display: flex; flex-direction: column; gap: 4px;">
+
+                        <!-- Dinámico con herramientas -->
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Costo de Flete / Grúa ($ Imputable a Obra)</label>
+
+                        <input type="number" step="0.01" id="tg_freight_cost" value="0.00" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Combustible de Traslado ($ Imputable)</label>
+
+                        <input type="number" step="0.01" id="tg_fuel_cost" value="0.00" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Observaciones / Condiciones de Entrega</label>
+
+                    <input type="text" id="tg_notes" placeholder="Equipos revisados y operativos para inicio de faena." class="form-input">
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+
+                    <button type="button" onclick="closeModal('modalTransferGuide')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" class="btn-primary" style="background: #0284c7;">
+
+                        <i class="fa-solid fa-print"></i> Generar y Emitir Guía de Traslado
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO ACTIVO / EQUIPO / VEHÍCULO / HERRAMIENTA / MAQUINARIA -->
+
+    <div id="modalNewAsset" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 580px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 id="newAssetModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-plus-circle" style="color: var(--dalor-blue);"></i> Registrar Nuevo Activo / Equipo / Vehículo
+
+                </h3>
+
+                <button onclick="closeModal('modalNewAsset')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newAssetForm" onsubmit="submitCreateAsset(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Tipo de Activo / Recurso *</label>
+
+                        <select id="nass_type" class="form-select" required onchange="onAssetTypeChanged()">
+
+                            <option value="herramienta_mayor">Herramienta Mayor / Industrial</option>
+
+                            <option value="herramienta_menor">Herramienta Menor</option>
+
+                            <option value="maquinaria">Maquinaria Pesada / Planta / Compresor</option>
+
+                            <option value="vehiculo">Vehículo / Camión de Carga</option>
+
+                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Código de Activo *</label>
+
+                        <input type="text" id="nass_code" placeholder="Ej: EQ-SOL-05 / VEH-10" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Condición de Propiedad *</label>
+
+                        <select id="nass_ownership" class="form-select">
+
+                            <option value="propio">Propio (Activo Fijo DALOR)</option>
+
+                            <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
+
+                            <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
+
+                            <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
+
+                            <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Empresa / Propietario / Cliente</label>
+
+                        <input type="text" id="nass_entity_name" placeholder="Ej: Arrendadora X / Aliado Y" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Nombre / Denominación del Equipo *</label>
+
+                    <input type="text" id="nass_name" placeholder="Ej: Máquina de Soldar Miller Big Blue 500X..." class="form-input" required>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Marca</label>
+
+                        <input type="text" id="nass_brand" placeholder="Miller / Lincoln / Bosch / Ford..." class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Modelo / Especificación</label>
+
+                        <input type="text" id="nass_model" placeholder="Ej: 500X Diésel / GWS 22-230..." class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label" id="nass_serial_label">Serial / Placa</label>
+
+                        <input type="text" id="nass_serial" placeholder="Serial o Nº de Placa" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label" id="nass_odometer_label">Lectura Inicial (Km / Horas)</label>
+
+                        <input type="number" step="0.1" id="nass_odometer" value="0" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Ubicación Inicial *</label>
+
+                        <input type="text" id="nass_location" value="Sede Central" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Custodio / Responsable</label>
+
+                        <input type="text" id="nass_custodian" value="Disponible en Base" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+
+                    <button type="button" onclick="closeModal('modalNewAsset')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" class="btn-primary" style="background: var(--dalor-navy);">
+
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Activo en Sistema
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO EMPLEADO / PERSONAL -->
+
+    <div id="modalNewPersonnel" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 540px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: #065f46;">
+
+                    <i class="fa-solid fa-user-plus" style="color: #10b981;"></i> Registrar Nuevo Empleado / Ficha de Personal
+
+                </h3>
+
+                <button onclick="closeModal('modalNewPersonnel')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newPersonnelForm" onsubmit="submitCreatePersonnel(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código de Ficha *</label>
+
+                        <input type="text" id="npers_code" placeholder="PER-005" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre Completo *</label>
+
+                        <input type="text" id="npers_name" placeholder="Nombres y Apellidos" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cédula / Identificación *</label>
+
+                        <input type="text" id="npers_id" placeholder="V-18.450.123" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Teléfono de Contacto</label>
+
+                        <input type="text" id="npers_phone" placeholder="+58 414 0000000" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cargo / Especialidad (Opcional)</label>
+
+                        <select id="npers_role" class="form-select">
+
+                            <option value="" selected>Ninguno (Solo Nombre)</option>
+
+                            <option value="Ingeniero Residente">Ingeniero Residente de Obra</option>
+
+                            <option value="Supervisor de Soldadura y Montaje">Supervisor de Soldadura y Montaje (CWI)</option>
+
+                            <option value="Soldador Especialista 6G / TIG">Soldador Especialista 6G / TIG</option>
+
+                            <option value="Armador / Pailero Estructural">Armador / Pailero Estructural</option>
+
+                            <option value="Operador de Sandblasting & Pintura">Operador de Sandblasting & Pintura</option>
+
+                            <option value="Chofer / Conductor de Carga">Chofer / Conductor de Carga Pesada</option>
+
+                            <option value="Custodio de Almacén">Custodio de Almacén Central</option>
+
+                            <option value="Mecánico de Mantenimiento">Mecánico de Mantenimiento</option>
+
+                            <option value="Ayudante General de Obra">Ayudante General de Obra</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Tipo de Nómina *</label>
+
+                        <select id="npers_roster" class="form-select" required>
+
+                            <option value="fijo_mensual" selected>Fijo Mensual (Sueldo Ordinario Base)</option>
+
+                            <option value="destajo_obra">Destajo por Obra / Por Avance</option>
+
+                            <option value="bono_viatico">Bono o Viático de Campo / Temporal</option>
+
+                            <option value="guacara_fijo">Nómina Fija Sede Central</option>
+
+                            <option value="proyecto_obra">Nómina por Proyecto / Cuadrilla</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Salario Mensual ($ USD)</label>
+
+                        <input type="number" step="0.01" id="npers_salary" value="0.00" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Ubicación Inicial</label>
+
+                        <input type="text" id="npers_location" value="Sede Central" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+
+                    <button type="button" onclick="closeModal('modalNewPersonnel')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" class="btn-primary" style="background: #059669;">
+
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Ficha de Empleado
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: HISTORIAL DE TRAZA DE HERRAMIENTA / EQUIPO -->
+    <div id="modalToolHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 680px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="modalToolHistoryTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: var(--dalor-blue);"></i> Historial de Traza de Herramienta
+                    </h3>
+                    <p id="modalToolHistorySubtitle" style="font-size: 11px; color: #64748b;">Movimientos, obras, custodios y estados registrados.</p>
+                </div>
+                <button onclick="closeModal('modalToolHistory')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 8px; text-align: left;">Cód. / Unidad</th>
+                            <th style="padding: 8px; text-align: left;">Evento / Movimiento</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Responsable</th>
+                        </tr>
+                    </thead>
+                    <tbody id="toolHistoryTableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">Cargando historial...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 14px; text-align: right;">
+                <button type="button" onclick="closeModal('modalToolHistory')" class="btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GESTIÓN DE USUARIOS DE SISTEMA -->
+    <div id="modalUserManagement" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 780px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <div>
+
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy);">
+
+                        <i class="fa-solid fa-users-gear" style="color: #0284c7;"></i> Gestión de Usuarios & Cuentas de Acceso
+
+                    </h3>
+
+                    <p style="font-size: 11px; color: #64748b;">Administración de cuentas con contraseñas cifradas y roles corporativos.</p>
+
+                </div>
+
+                <div style="display: flex; gap: 8px; align-items: center;">
+
+                    <button onclick="openNewUserModal()" class="btn-primary" style="background: #0284c7; font-size: 12px; font-weight: 800;">
+
+                        <i class="fa-solid fa-user-plus"></i> + Nuevo Usuario
+
+                    </button>
+
+                    <button onclick="closeModal('modalUserManagement')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Usuario (Login)</th>
+
+                            <th>Nombre Completo</th>
+
+                            <th>Correo</th>
+
+                            <th>Rol Corporativo</th>
+
+                            <th>Estado</th>
+
+                            <th>Último Acceso</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="userManagementTableBody"></tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: CREAR NUEVO USUARIO DE SISTEMA -->
+
+    <div id="modalNewUser" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 500px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-user-shield" style="color: #0284c7;"></i> Crear Cuenta de Usuario de Sistema
+
+                </h3>
+
+                <button onclick="closeModal('modalNewUser')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newUserForm" onsubmit="submitCreateUser(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Nombre de Usuario (Login) *</label>
+
+                        <input type="text" id="nusr_username" placeholder="ej: javier.obra" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Contraseña Inicial *</label>
+
+                        <input type="password" id="nusr_password" placeholder="Contraseña segura" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Nombre Completo y Cargo *</label>
+
+                    <input type="text" id="nusr_fullname" placeholder="Ej: Ing. Javier Mendoza" class="form-input" required>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Correo Electrónico Corporativo</label>
+
+                    <input type="email" id="nusr_email" placeholder="javier@dalor.com.ve" class="form-input">
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Rol y Permisos de Acceso *</label>
+
+                    <select id="nusr_role" class="form-select" required>
+
+                        <option value="director_general">Director General / Socio (Acceso Total & BI)</option>
+
+                        <option value="administrador_financiero">Administración & Finanzas (CxC, CxP, Bancos, Facturas)</option>
+
+                        <option value="ingeniero_obra">Ingeniero Residente de Obra (Proyectos, APU, Materiales)</option>
+
+                        <option value="supervisor_campo">Supervisor de Campo / Faena (Captura Móvil, Recursos)</option>
+
+                    </select>
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+
+                    <button type="button" onclick="closeModal('modalNewUser')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" class="btn-primary" style="background: var(--dalor-navy);">
+
+                        <i class="fa-solid fa-floppy-disk"></i> Crear Usuario
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+
+
+    <!-- MODAL DE VALIDACIÓN Y APROBACIÓN DE GASTO -->
+
+    <div id="modalValidateExpense" class="modal-overlay hidden">
+
+        <div class="modal-card" style="max-width: 880px; width: 95%;">
+
+            <div class="modal-header" style="background: var(--dalor-navy); color: white; padding: 12px 16px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+
+                <h3 style="font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+
+                    <i class="fa-solid fa-stamp" style="color: var(--dalor-gold);"></i> Auditoría y Aprobación de Comprobante de Campo
+
+                </h3>
+
+                <button onclick="closeModal('modalValidateExpense')" style="background: transparent; border: none; color: white; font-size: 18px; cursor: pointer;">&times;</button>
+
+            </div>
+
+            <div style="padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+                <!-- Columna Izquierda: Foto de la factura -->
+
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; min-height: 320px;">
+
+                    <span style="font-size: 11px; font-weight: 800; color: #64748b; margin-bottom: 8px;">FOTO DEL COMPROBANTE ORIGINAL</span>
+
+                    <div id="val_receipt_placeholder" style="display: none; text-align: center; padding: 30px 15px; color: #94a3b8;">
+
+                        <i class="fa-solid fa-file-invoice" style="font-size: 48px; color: #cbd5e1; margin-bottom: 8px;"></i>
+
+                        <p style="font-size: 11px; margin: 0;">Sin archivo de foto adjunto</p>
+
+                    </div>
+
+                    <img id="val_receipt_image" src="" alt="Comprobante" style="max-height: 280px; max-width: 100%; border-radius: 6px; object-fit: contain; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onerror="this.style.display='none'; document.getElementById('val_receipt_placeholder').style.display='block';">
+
+                    <a id="val_receipt_link" href="#" target="_blank" style="font-size: 11px; color: var(--dalor-blue); font-weight: 700; margin-top: 10px; text-decoration: none;">
+
+                        <i class="fa-solid fa-up-right-from-square"></i> Ver imagen en tamaño completo
+
+                    </a>
+
+                </div>
+
+
+
+                <!-- Columna Derecha: Formulario editable de imputación -->
+
+                <form id="formValidateExpense" onsubmit="submitValidateExpense(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                    <input type="hidden" id="val_expense_id">
+
+                    
+
+                    <div>
+
+                        <label class="form-label">Tipo de Imputación *</label>
+
+                        <select id="val_expense_type" class="form-select" onchange="onValExpenseTypeChanged()" required>
+
+                            <option value="costo_obra">Costo Directo de Obra / Proyecto</option>
+
+                            <option value="gasto_sede">Gasto Fijo Sede Central</option>
+
+                            <option value="retiro_socio">Retiro Personal de Socio</option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <div id="val_proj_container">
+
+                        <label class="form-label">Proyecto Imputable *</label>
+
+                        <select id="val_project_id" class="form-select"></select>
+
+                    </div>
+
+
+
+                    <div id="val_partner_container" class="hidden">
+
+                        <label class="form-label">Socio / Accionista *</label>
+
+                        <input type="text" id="val_partner_name" class="form-input" placeholder="Nombre del Socio">
+
+                    </div>
+
+
+
+                    <div>
+
+                        <label class="form-label">Partida Contable Dalor *</label>
+
+                        <select id="val_category_id" class="form-select" required></select>
+
+                    </div>
+
+
+
+                    <div>
+
+                        <label class="form-label">Comercio / Proveedor *</label>
+
+                        <input type="text" id="val_supplier_vendor" class="form-input" required>
+
+                    </div>
+
+
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+
+                        <div>
+
+                            <label class="form-label">Monto USD ($) *</label>
+
+                            <input type="number" step="0.01" id="val_amount_usd" class="form-input" style="font-weight: 900; color: var(--dalor-blue); font-size: 15px;" oninput="calcValBs()" required>
+
+                        </div>
+
+                        <div>
+
+                            <label class="form-label">Monto Bs (Ticket)</label>
+
+                            <input type="number" step="0.01" id="val_amount_bs" class="form-input" oninput="calcValUsd()">
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- Desglose Fiscal en Auditoría -->
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
+
+                        <div>
+
+                            <label class="form-label" style="font-size: 11px;">Condición Fiscal</label>
+
+                            <select id="val_is_tax_exempt" class="form-select" style="font-size: 11px; padding: 4px;" onchange="onValTaxChanged()">
+
+                                <option value="false">Factura con IVA (16%)</option>
+
+                                <option value="true">Exento / Sin IVA</option>
+
+                            </select>
+
+                        </div>
+
+                        <div style="display: flex; gap: 4px;">
+
+                            <div style="flex: 1;">
+
+                                <label class="form-label" style="font-size: 11px;">Base ($)</label>
+
+                                <input type="number" step="0.01" id="val_base_usd" class="form-input" style="font-size: 11px; padding: 4px;">
+
+                            </div>
+
+                            <div style="flex: 1;">
+
+                                <label class="form-label" style="font-size: 11px;">IVA ($)</label>
+
+                                <input type="number" step="0.01" id="val_tax_usd" class="form-input" style="font-size: 11px; padding: 4px;">
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div>
+
+                        <label class="form-label">Concepto / Descripción *</label>
+
+                        <input type="text" id="val_description" class="form-input" required>
+
+                    </div>
+
+
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 8px;">
+
+                        <button type="button" onclick="rejectCurrentExpense()" class="btn-secondary" style="color: #e11d48; border-color: #fecdd3; background: #fff1f2; font-size: 12px; font-weight: 700;">
+
+                            <i class="fa-solid fa-xmark"></i> Rechazar
+
+                        </button>
+
+                        <div style="display: flex; gap: 8px;">
+
+                            <button type="button" onclick="closeModal('modalValidateExpense')" class="btn-secondary">Cancelar</button>
+
+                            <button type="submit" class="btn-primary" style="background: #059669; font-weight: 800; font-size: 13px;">
+
+                                <i class="fa-solid fa-check-double"></i> Aprobar e Imputar
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    </div><!-- /app-authenticated-shell -->
+
+
+
+    <!-- MODAL: NOTA DE ENTREGA & DESPACHO DE MATERIALES (PARA JEFE DE ALMACÉN / OBRA) -->
+
+    <div id="modalMaterialDelivery" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 700px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <div>
+
+                    <span class="badge-tag" style="background: #ecfdf5; color: #047857;">Almacén & Control de Insumos</span>
+
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
+
+                        <i class="fa-solid fa-boxes-packing" style="color: #059669;"></i> Emisión de Nota de Entrega & Despacho de Materiales
+
+                    </h3>
+
+                </div>
+
+                <button onclick="closeModal('modalMaterialDelivery')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="materialDeliveryForm" onsubmit="submitGenerateMaterialDeliveryGuide(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Proyecto Aprobado Destino *</label>
+
+                        <select id="md_project_id" class="form-select" onchange="onMaterialDeliveryProjectChanged()"></select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Lugar de Entrega / Frente de Obra *</label>
+
+                        <input type="text" id="md_destination" placeholder="Frente de Obra / Planta" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Despachado por (Jefe Almacén / Materiales) *</label>
+
+                        <input type="text" id="md_dispatcher_name" placeholder="Nombre de Jefe de Materiales" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Recibido en Obra por (Supervisor / Residente) *</label>
+
+                        <input type="text" id="md_receiver_name" placeholder="Nombre de quien recibe en obra" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-cubes" style="color: #059669;"></i> Materiales e Insumos a Entregar:
+
+                        </span>
+
+                        <button type="button" onclick="addMaterialDeliveryRow()" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; background: white;">
+
+                            <i class="fa-solid fa-plus"></i> Añadir Renglón
+
+                        </button>
+
+                    </div>
+
+                    <div id="md_materials_table_container" style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px; background: white;">
+
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+
+                            <thead>
+
+                                <tr style="background: #f1f5f9; text-align: left; color: #475569;">
+
+                                    <th style="padding: 4px 6px;">Material / Ítem</th>
+
+                                    <th style="padding: 4px 6px; width: 80px;">Unidad</th>
+
+                                    <th style="padding: 4px 6px; width: 90px;">Cantidad</th>
+
+                                    <th style="padding: 4px 6px; width: 30px;"></th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="md_materials_tbody">
+
+                                <!-- Renglones dinámicos -->
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Observaciones de Despacho</label>
+
+                    <input type="text" id="md_notes" placeholder="Material verificado en almacén, embalado y apto para instalación." class="form-input">
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+
+                    <button type="button" onclick="closeModal('modalMaterialDelivery')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" class="btn-primary" style="background: #059669;">
+
+                        <i class="fa-solid fa-print"></i> Generar Nota de Entrega Formal
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: VISOR DE COMPROBANTE / FACTURA -->
+
+    <div id="modalReceiptViewer" class="modal-overlay hidden" style="z-index: 100000;">
+
+        <div class="modal-content" style="max-width: 600px; text-align: center;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-receipt" style="color: var(--dalor-blue);"></i> Comprobante / Factura Digital
+
+                </h3>
+
+                <button onclick="closeModal('modalReceiptViewer')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <div style="max-height: 70vh; overflow: auto; background: #0f172a; border-radius: 8px; padding: 8px; display: flex; justify-content: center; align-items: center;">
+
+                <img id="receiptViewerImg" src="" alt="Comprobante" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 4px;">
+
+            </div>
+
+            <div style="margin-top: 10px; display: flex; justify-content: flex-end; gap: 8px;">
+
+                <a id="receiptViewerDownload" href="" target="_blank" class="btn-primary" style="background: #0284c7; font-size: 12px; text-decoration: none;">
+
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Pestaña Nueva
+
+                </a>
+
+                <button onclick="closeModal('modalReceiptViewer')" class="btn-secondary" style="font-size: 12px;">Cerrar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: AJUSTE MANUAL DE CONTINGENCIA DE TASA BCV -->
+
+    <div id="modalManualTasa" class="modal-overlay hidden" style="z-index: 100000;">
+
+        <div class="modal-card" style="max-width: 420px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); display: flex; align-items: center; gap: 8px; margin: 0;">
+
+                    <i class="fa-solid fa-scale-balanced" style="color: var(--dalor-gold);"></i> Tasa de Cambio (Contingencia)
+
+                </h3>
+
+                <button onclick="closeModal('modalManualTasa')" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer;">&times;</button>
+
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size: 12px; color: #475569;">
+
+                <p style="margin: 0 0 6px 0;"><b>Cotización BCV Actual:</b> <span id="modalBcvCurrentRate" style="color: var(--dalor-blue); font-weight: 800;">848.55 Bs/$</span></p>
+
+                <p style="margin: 0 0 6px 0;"><b>Fecha Valor Oficial:</b> <span id="modalBcvDateValue" style="color: #0f172a; font-weight: 700;">-</span></p>
+
+                <p style="margin: 0; font-size: 11px; color: #64748b;">El sistema actualiza esta tasa automáticamente desde el portal del BCV. Modifícala solo si existe una contingencia bancaria o feriado extraordinario.</p>
+
+            </div>
+
+            <form onsubmit="submitManualTasa(event)">
+
+                <div class="form-group" style="margin-bottom: 14px;">
+
+                    <label class="form-label" style="font-weight: 700;">Nueva Tasa Manual (Bs/$):</label>
+
+                    <input type="number" step="0.01" id="manualTasaInput" class="form-control" style="font-size: 16px; font-weight: 800; text-align: center; color: var(--dalor-navy);" required>
+
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+
+                    <button type="button" onclick="closeModal('modalManualTasa')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+
+                    <button type="button" onclick="syncBcvRateFromBtn(event); closeModal('modalManualTasa');" class="btn-secondary" style="font-size: 12px; color: #0284c7;">
+
+                        <i class="fa-solid fa-arrows-rotate"></i> Forzar BCV Oficial
+
+                    </button>
+
+                    <button type="submit" class="btn-primary" style="font-size: 12px; background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800;">
+
+                        Guardar Tasa
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: CAPTURA & OCR DE ODÓMETRO VEHICULAR -->
+
+    <div id="modalOdometerOcr" class="modal-overlay hidden" style="z-index: 100000;">
+
+        <div class="modal-card" style="max-width: 480px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+
+                <div>
+
+                    <h3 style="font-size: 15px; font-weight: 800; color: #0284c7; display: flex; align-items: center; gap: 8px; margin: 0;">
+
+                        <i class="fa-solid fa-camera"></i> Escaneo de Odómetro (OCR IA)
+
+                    </h3>
+
+                    <p id="odoVehicleSubtitle" style="font-size: 12px; color: #64748b; margin: 2px 0 0 0; font-weight: 600;">[VEH-01] Toyota Hilux - Placa A82CK1M</p>
+
+                </div>
+
+                <button onclick="closeModal('modalOdometerOcr')" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer;">&times;</button>
+
+            </div>
+
+
+
+            <!-- Kilometraje Anterior Registrado -->
+
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+
+                <span style="font-size: 12px; color: #0369a1; font-weight: 700;">Último Kilometraje Registrado:</span>
+
+                <span id="odoCurrentKmDisplay" style="font-size: 14px; font-weight: 900; color: #0c4a6e; font-family: monospace;">125.000 Km</span>
+
+            </div>
+
+
+
+            <!-- Botón de Captura / Selección de Foto -->
+
+            <div style="text-align: center; margin-bottom: 14px;">
+
+                <input type="file" id="odometerFileInput" accept="image/*" capture="environment" style="display: none;" onchange="handleOdometerImageSelected(event)">
+
+                <button type="button" onclick="document.getElementById('odometerFileInput').click()" class="btn-primary" style="background: #0284c7; font-size: 13px; padding: 10px 18px; border-radius: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 3px 6px rgba(2, 132, 199, 0.3);">
+
+                    <i class="fa-solid fa-camera" style="font-size: 16px;"></i> Tomar Foto al Tablero / Odómetro
+
+                </button>
+
+            </div>
+
+
+
+            <!-- Preview y Animación de Escaneo -->
+
+            <div id="odoPreviewBox" style="display: none; background: #0f172a; border-radius: 8px; padding: 8px; text-align: center; margin-bottom: 14px; position: relative; overflow: hidden;">
+
+                <img id="odoPreviewImg" src="" style="max-height: 180px; max-width: 100%; object-fit: contain; border-radius: 6px;">
+
+                <div id="odoScanningOverlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.75); flex-direction: column; align-items: center; justify-content: center; color: white;">
+
+                    <i class="fa-solid fa-microchip fa-spin" style="font-size: 28px; color: #38bdf8; margin-bottom: 8px;"></i>
+
+                    <span style="font-size: 12px; font-weight: 700; color: #e0f2fe;">Analizando tablero con IA de Visión...</span>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Resultado de Lectura Detectada -->
+
+            <div id="odoResultBox" style="display: none; background: #ecfdf5; border: 1.5px solid #6ee7b7; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+
+                    <span style="font-size: 12px; font-weight: 800; color: #065f46; display: flex; align-items: center; gap: 6px;">
+
+                        <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Kilometraje Detectado:
+
+                    </span>
+
+                    <span id="odoConfidenceBadge" style="font-size: 10px; font-weight: 800; background: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px;">
+
+                        Confianza 95%
+
+                    </span>
+
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+
+                    <input type="number" id="odoDetectedInput" step="1" style="font-size: 20px; font-weight: 900; text-align: center; color: #064e3b; font-family: monospace; border: 2px solid #34d399; border-radius: 6px; padding: 6px; width: 100%; background: #ffffff;" required>
+
+                    <span style="font-size: 16px; font-weight: 800; color: #065f46;">Km</span>
+
+                </div>
+
+                <p id="odoDetectedNotes" style="font-size: 11px; color: #047857; margin: 6px 0 0 0; text-align: center;">Lectura clara del odómetro principal</p>
+
+            </div>
+
+
+
+            <form id="formConfirmOdometer" onsubmit="submitConfirmOdometer(event)">
+
+                <input type="hidden" id="odoAssetIdHidden">
+
+                <input type="hidden" id="odoImageUrlHidden">
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+
+                    <button type="button" onclick="closeModal('modalOdometerOcr')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+
+                    <button type="submit" id="btnConfirmOdometer" class="btn-primary" style="font-size: 12px; background: #059669; display: none;">
+
+                        <i class="fa-solid fa-check-double"></i> Confirmar y Guardar Lectura
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    
+
+    <!-- 📱 ACTION SHEET MODAL PARA SUBMENÚS EN IPHONE & MÓVILES (INMUNE A RESTRICCIONES WEBKIT) -->
+
+    <div id="mobileSubmenuSheet" class="mobile-submenu-overlay" onclick="closeMobileSubmenu(event)">
+
+        <div class="mobile-submenu-card" onclick="event.stopPropagation()">
+
+            <div class="mobile-submenu-header">
+
+                <div id="mobileSubmenuTitle" class="mobile-submenu-title">
+
+                    <i class="fa-solid fa-layer-group" style="color: var(--dalor-blue);"></i>
+
+                    <span>Opciones del Módulo</span>
+
+                </div>
+
+                <button type="button" class="mobile-submenu-close" onclick="closeMobileSubmenu(event)">&times;</button>
+
+            </div>
+
+            <div id="mobileSubmenuItems" class="mobile-submenu-body">
+
+                <!-- Se clonan dinámicamente los items del submenú -->
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- 🔔 CONTENEDOR FLOTANTE DE NOTIFICACIONES TOAST EN VIVO -->
+
+    <div id="toastNotificationContainer" style="position: fixed; top: 75px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 390px; width: 92%;"></div>
+
+
+
+
+
+
+    <!-- 🚀 LÓGICA MODULAR ES6 DESACOPLADA (v97.1) -->

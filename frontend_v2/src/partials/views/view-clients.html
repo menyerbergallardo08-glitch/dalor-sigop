@@ -1,0 +1,77 @@
+<section id="view-clients" class="hidden">
+
+            <div class="banner-dalor">
+
+                <div>
+
+                    <span class="badge-tag">Módulo Comercial</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Directorio Oficial de Clientes</h2>
+
+                    <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Gestión de empresas contratantes, RIF, contactos y trazabilidad de obras ejecutadas.</p>
+
+                </div>
+
+                <button onclick="openNewClientModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-user-plus"></i> Nuevo Cliente
+
+                </button>
+
+            </div>
+
+
+
+            <div class="card">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+
+                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">Listado de Clientes</h3>
+
+                    <button onclick="loadClients()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+
+                </div>
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Código</th>
+
+                                <th>Razón Social / Nombre</th>
+
+                                <th>RIF</th>
+
+                                <th>Contacto</th>
+
+                                <th>Teléfono / Correo</th>
+
+                                <th>Dirección / Ubicación</th>
+
+                                <th style="text-align: center;">Acciones</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="clientsTableBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             7. VISTA: GESTIÓN & PLANIFICACIÓN INTEGRAL DE PROYECTOS
+
+             ==================================================================== -->

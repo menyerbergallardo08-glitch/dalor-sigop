@@ -1,0 +1,109 @@
+<div id="app-login-screen" style="position: fixed; inset: 0; width: 100%; height: 100%; z-index: 100000; background: linear-gradient(135deg, #001a2e 0%, #002b49 60%, #0a3d62 100%); display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; overflow-y: auto;">
+
+        <div style="background: #ffffff; width: 100%; max-width: 390px; border-radius: 20px; padding: 24px 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); border: 2px solid #f5b800; box-sizing: border-box; margin: auto;">
+
+            <!-- Logo Corporativo -->
+
+            <div style="text-align: center; margin-bottom: 18px;">
+
+                <div style="background: #ffffff; display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06); margin-bottom: 10px;">
+
+                    <img src="logo_dalor.jpg" alt="Metalmecánica DALOR C.A." style="height: 48px; max-width: 100%; object-fit: contain; display: block;">
+
+                </div>
+
+                <h2 style="font-size: 20px; font-weight: 900; color: #002b49; margin-bottom: 2px; letter-spacing: -0.3px;">Portal Corporativo</h2>
+
+                <p style="font-size: 12px; color: #64748b; font-weight: 600;">Ingreso Seguro al ERP DALOR SIGO-P</p>
+
+            </div>
+
+
+
+            <!-- Caja de Error -->
+
+            <div id="loginErrorMessage" style="display: none; background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 10px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; margin-bottom: 14px; text-align: center;">
+
+                <i class="fa-solid fa-triangle-exclamation"></i> <span id="loginErrorText">Usuario o contraseña incorrectos</span>
+
+            </div>
+
+
+
+            <!-- Formulario de Acceso Oficial -->
+
+            <form id="portalLoginForm" onsubmit="handlePortalLogin(event); return false;" action="javascript:void(0);" style="display: flex; flex-direction: column; gap: 12px;">
+
+                <div>
+
+                    <label style="display: block; font-size: 11px; font-weight: 800; color: #334155; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+
+                        <i class="fa-solid fa-user" style="color: #0072b8; margin-right: 4px;"></i> Usuario o Correo *
+
+                    </label>
+
+                    <input type="text" id="portal_username" value="" placeholder="Ingrese su usuario o correo" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
+
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
+
+                        style="width: 100%; padding: 11px 13px; font-size: 14px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
+
+                        onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
+
+                </div>
+
+
+
+                <div>
+
+                    <label style="display: block; font-size: 11px; font-weight: 800; color: #334155; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+
+                        <i class="fa-solid fa-lock" style="color: #0072b8; margin-right: 4px;"></i> Contraseña *
+
+                    </label>
+
+                    <div style="position: relative; width: 100%;">
+
+                        <input type="password" id="portal_password" value="" placeholder="••••••••" required autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false"
+
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();handlePortalLogin(event);}"
+
+                            style="width: 100%; padding: 11px 42px 11px 13px; font-size: 14px; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; font-weight: 600; color: #0f172a; box-sizing: border-box;"
+
+                            onfocus="this.style.borderColor='#0072b8'" onblur="this.style.borderColor='#cbd5e1'">
+
+                        <button type="button" onclick="togglePasswordVisibility('portal_password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; font-size: 15px; padding: 4px;">
+
+                            <i class="fa-solid fa-eye"></i>
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <button type="button" id="btnSubmitPortalLogin" onclick="handlePortalLogin(event)"
+                    style="width: 100%; background: #002b49; color: #ffffff; padding: 13px; font-size: 14px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35);">
+                    <i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión
+                </button>
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Botón Flotante Permanente de Salida (Siempre Visible en Celulares y Desktop al hacer Scroll) -->
+
+    <button id="btnFloatingLogout" onclick="handleLogout()" class="btn-floating-logout" title="Cerrar Sesión Rápida">
+
+        <i class="fa-solid fa-power-off"></i> <span>Salir</span>
+
+    </button>
+
+
+
+    <!-- Header Corporativo DALOR -->

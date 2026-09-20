@@ -1,0 +1,396 @@
+<section id="view-maintenance" class="hidden">
+
+            <div class="banner-dalor" style="background: linear-gradient(135deg, #78350f 0%, #b45309 100%);">
+
+                <div>
+
+                    <span class="badge-tag" style="background: #fde68a; color: #78350f;">Módulo de Mantenimiento & Seguridad</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Administración de Usuarios & Mapa de Permisos</h2>
+
+                    <p style="font-size: 11px; color: #fef3c7; margin-top: 2px;">Crea cuentas de acceso, define capas de uso y asigna/revoca permisos modulares estilo Profit Plus.</p>
+
+                </div>
+
+                <button onclick="openNewUserModal()" class="btn-primary" style="background-color: #ffffff; color: #78350f; font-weight: 800;">
+
+                    <i class="fa-solid fa-user-plus"></i> + Crear Nuevo Usuario
+
+                </button>
+
+            </div>
+
+
+
+            <!-- Pestañas de Mantenimiento -->
+
+            <div class="subtabs-nav">
+
+                <button class="subtab-btn active" id="tabbtn-maint-users" onclick="switchMaintenanceSubtab('users')">
+
+                    <i class="fa-solid fa-users-gear" style="color: #0284c7;"></i> Gestión de Usuarios & Cuentas
+
+                </button>
+
+                <button class="subtab-btn" id="tabbtn-maint-audit" onclick="switchMaintenanceSubtab('audit')">
+
+                    <i class="fa-solid fa-clock-rotate-left" style="color: #059669;"></i> Bitácora de Auditoría del Sistema
+
+                </button>
+
+                <button class="subtab-btn" id="tabbtn-maint-clean" onclick="switchMaintenanceSubtab('clean')">
+
+                    <i class="fa-solid fa-broom" style="color: #e11d48;"></i> Puesta a Cero (Arranque Real)
+
+                </button>
+
+            </div>
+
+
+
+            <!-- SUBTAB 1: GESTIÓN DE USUARIOS -->
+
+            <div id="subtab-maint-users">
+
+                <div class="card">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-user-shield" style="color: #b45309;"></i> Directorio de Usuarios y Niveles de Acceso
+
+                        </h3>
+
+                        <button onclick="loadMaintenanceUsersList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>Usuario (Login)</th>
+
+                                    <th>Nombre y Apellido</th>
+
+                                    <th>Correo Electrónico</th>
+
+                                    <th>Rol / Capa de Uso</th>
+
+                                    <th>Último Acceso</th>
+
+                                    <th>Estado</th>
+
+                                    <th style="text-align: center;">Acciones & Permisos</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="maintenanceUsersTableBody"></tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- SUBTAB 2: BITÁCORA DE AUDITORÍA -->
+
+            <div id="subtab-maint-audit" class="hidden">
+
+                <div class="card">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-fingerprint" style="color: #059669;"></i> Registro de Trazabilidad & Eventos de Seguridad
+
+                        </h3>
+
+                        <button onclick="loadMaintenanceAuditLogs()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+
+                    </div>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 14px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 700; color: #475569;"><i class="fa-solid fa-user"></i> Usuario:</label>
+                            <input type="text" id="auditFilterUser" class="form-input" placeholder="Ej: admin..." oninput="debouncedFilterMaintenanceAuditLogs()" style="max-width: 140px; font-size: 11px; padding: 4px 8px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 700; color: #475569;"><i class="fa-regular fa-calendar"></i> Desde:</label>
+                            <input type="date" id="auditFilterDateFrom" class="form-input" onchange="filterMaintenanceAuditLogs()" style="font-size: 11px; padding: 4px 8px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 700; color: #475569;"><i class="fa-regular fa-calendar-check"></i> Hasta:</label>
+                            <input type="date" id="auditFilterDateTo" class="form-input" onchange="filterMaintenanceAuditLogs()" style="font-size: 11px; padding: 4px 8px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 180px;">
+                            <input type="text" id="auditFilterQuery" class="form-input" placeholder="Buscar por módulo, acción o detalles..." oninput="debouncedFilterMaintenanceAuditLogs()" style="font-size: 11px; padding: 4px 8px; width: 100%;">
+                        </div>
+                        <button onclick="resetMaintenanceAuditFilters()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: white;" title="Restablecer filtros">
+                            <i class="fa-solid fa-filter-circle-xmark"></i> Limpiar
+                        </button>
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>Fecha y Hora</th>
+
+                                    <th>Usuario</th>
+
+                                    <th>Módulo</th>
+
+                                    <th>Acción Realizada</th>
+
+                                    <th>Detalles del Evento</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="maintenanceAuditTableBody"></tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        
+
+            <!-- SUB-TAB 3: COPIAS DE SEGURIDAD & RESPALDOS (ANTI-PÉRDIDA) -->
+
+            <div id="subtab-maint-backups" class="hidden">
+
+                <div style="display: grid; grid-template-columns: 1fr 340px; gap: 16px;">
+
+                    
+
+                    <!-- Lista de Respaldos Históricos -->
+
+                    <div class="card">
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+
+                            <div>
+
+                                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                                    <i class="fa-solid fa-hard-drive" style="color: #059669;"></i> Historial de Copias de Seguridad (Snapshots)
+
+                                </h3>
+
+                                <p style="font-size: 11px; color: #64748b;">Respaldos íntegros de la base de datos para protección contra fallas eléctricas o extravíos.</p>
+
+                            </div>
+
+                            <button onclick="createNewBackup()" class="btn-primary" style="background: #059669; font-size: 12px; padding: 7px 14px; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);">
+
+                                <i class="fa-solid fa-floppy-disk"></i> Generar Respaldo Ahora
+
+                            </button>
+
+                        </div>
+
+                        <div class="table-wrapper">
+
+                            <table>
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>Fecha y Hora</th>
+
+                                        <th>Archivo de Respaldo</th>
+
+                                        <th>Tamaño</th>
+
+                                        <th>Estado</th>
+
+                                        <th style="text-align: right;">Acciones</th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody id="backupsTableBody"></tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- Panel de Seguridad & Blindaje Operativo -->
+
+                    <div class="card" style="background: #f8fafc; border: 1px solid #cbd5e1;">
+
+                        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+
+                            <i class="fa-solid fa-shield-halved" style="color: #0284c7;"></i> Blindaje Operativo Activo
+
+                        </h4>
+
+                        
+
+                        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 11px;">
+
+                            <div style="background: white; padding: 10px; border-radius: 8px; border-left: 4px solid #059669; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+
+                                <strong style="color: #065f46; display: block; font-size: 12px;">✅ Modo Transaccional WAL</strong>
+
+                                <span style="color: #64748b;">Permite lecturas y escrituras concurrentes sin bloqueos de base de datos.</span>
+
+                            </div>
+
+
+
+                            <div style="background: white; padding: 10px; border-radius: 8px; border-left: 4px solid #0284c7; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+
+                                <strong style="color: #0369a1; display: block; font-size: 12px;">🔒 Criptografía PBKDF2-SHA256</strong>
+
+                                <span style="color: #64748b;">Contraseñas protegidas con salt único por usuario.</span>
+
+                            </div>
+
+
+
+                            <div style="background: white; padding: 10px; border-radius: 8px; border-left: 4px solid #7c3aed; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+
+                                <strong style="color: #5b21b6; display: block; font-size: 12px;">📜 Bitácora Forense Inmutable</strong>
+
+                                <span style="color: #64748b;">Auditoría completa de movimientos financieros en tiempo real.</span>
+
+                            </div>
+
+
+
+                            <div style="background: white; padding: 10px; border-radius: 8px; border-left: 4px solid var(--dalor-gold); box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+
+                                <strong style="color: #92400e; display: block; font-size: 12px;">💾 Respaldos Descargables</strong>
+
+                                <span style="color: #64748b;">Puedes descargar copias a tu pendrive o subirlas a Google Drive en cualquier momento.</span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                </div>
+
+            </div>
+
+            </div>
+
+
+
+            <!-- SUBTAB 3: PUESTA A CERO / PURGAR REGISTROS DE PRUEBA -->
+
+            <div id="subtab-maint-clean" class="hidden">
+
+                <div class="card" style="border: 2px solid #fee2e2; background: #fffafb; max-width: 750px; margin: 0 auto; padding: 24px;">
+
+                    <div style="display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #fecaca; padding-bottom: 14px; margin-bottom: 16px;">
+
+                        <div style="background: #fee2e2; color: #dc2626; width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h3 style="font-size: 16px; font-weight: 900; color: #991b1b; margin: 0;">Puesta a Cero del Sistema (Arranque Oficial de Operación)</h3>
+
+                            <p style="font-size: 11px; color: #7f1d1d; margin: 3px 0 0 0;">Esta herramienta purga exclusivamente los registros simulados de prueba para comenzar la contabilidad en limpio.</p>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div style="font-size: 12px; color: #334155; line-height: 1.6; margin-bottom: 20px;">
+
+                        <p><strong>¿Qué hace esta acción?</strong></p>
+
+                        <ul style="margin: 6px 0 12px 20px; list-style-type: disc;">
+
+                            <li><span style="color: #dc2626; font-weight: 700;">Elimina:</span> Todos los gastos de prueba, comprobantes subidos, proyectos creados durante el ensayo, cotizaciones simuladas y movimientos de cuentas por cobrar/pagar.</li>
+
+                            <li><span style="color: #16a34a; font-weight: 700;">Conserva intacto:</span> Todos los usuarios oficiales (`director`, `administracion`, etc.), permisos, catálogo oficial de partidas DALOR, y reinicia el inventario y herramientas a estado disponible en Sede Central.</li>
+
+                        </ul>
+
+                        <p style="background: #f1f5f9; padding: 8px 12px; border-radius: 8px; border-left: 4px solid #002B49; font-size: 11px;">
+
+                            <i class="fa-solid fa-lock"></i> <strong>Acción protegida:</strong> Requiere la contraseña maestra del Director General.
+
+                        </p>
+
+                    </div>
+
+
+
+                    <form onsubmit="submitResetToCleanSlate(event)" style="display: flex; flex-direction: column; gap: 12px;">
+
+                        <div>
+
+                            <label class="form-label" style="font-weight: 800; color: #991b1b;">Contraseña del Director General para Confirmar *</label>
+
+                            <input type="password" id="clean_slate_password" class="form-input" placeholder="Ingresa tu contraseña de Director..." style="max-width: 320px;" required>
+
+                        </div>
+
+                        <div>
+
+                            <button type="submit" class="btn-primary" style="background: #dc2626; font-weight: 800; padding: 10px 20px; font-size: 13px;">
+
+                                <i class="fa-solid fa-broom"></i> Ejecutar Puesta a Cero y Purgar Pruebas
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             3. VISTA: FINANZAS, CxC & CxP
+
+             ==================================================================== -->

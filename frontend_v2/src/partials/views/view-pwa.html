@@ -1,0 +1,369 @@
+<section id="view-pwa" class="hidden">
+
+            <div class="banner-dalor">
+
+                <div>
+
+                    <span class="badge-tag">Módulo de Gastos</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Captura Móvil OCR / Facturas en PDF</h2>
+
+                    <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Extracción de tickets y facturas digitales en PDF con opción de desglose multi-partida.</p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="grid-2">
+
+                <div class="card">
+
+                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 12px;">
+
+                        <i class="fa-solid fa-camera" style="color: var(--dalor-blue);"></i> 1. Cargar Foto o PDF
+
+                    </h3>
+
+                    <div class="dropzone-box" onclick="triggerFileSelect()">
+
+                        <input type="file" id="ticketFileInput" class="hidden" accept="image/*,application/pdf" onchange="handleFileSelected(event)">
+
+                        <div id="dropzoneContent">
+
+                            <i class="fa-solid fa-cloud-arrow-up" style="font-size: 38px; color: var(--dalor-blue); margin-bottom: 8px;"></i>
+
+                            <p style="font-size: 13px; font-weight: 700; color: #334155;">Toca para tomar foto o subir PDF / Imagen</p>
+
+                            <p style="font-size: 11px; color: #64748b; margin-top: 4px;">Soporta JPG, PNG y documentos PDF</p>
+
+                        </div>
+
+                        <div id="imagePreviewContainer" class="hidden">
+
+                            <img id="imagePreview" src="" class="hidden" style="max-height: 180px; margin: 0 auto; border-radius: 8px; border: 1px solid #cbd5e1;">
+
+                            <div id="pdfPreview" class="hidden" style="padding: 16px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; text-align: center;">
+
+                                <i class="fa-solid fa-file-pdf" style="font-size: 48px; color: #e11d48; margin-bottom: 6px;"></i>
+
+                                <p id="pdfFileName" style="font-size: 12px; font-weight: 800; color: #881337;">factura.pdf</p>
+
+                                <p style="font-size: 10px; color: #be123c; font-weight: 600;">Documento PDF analizado</p>
+
+                            </div>
+
+                            <p style="font-size: 12px; color: #059669; font-weight: 700; margin-top: 8px;"><i class="fa-solid fa-check-circle"></i> Comprobante cargado exitosamente</p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="card">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-clipboard-check" style="color: #059669;"></i> 2. Datos de Imputación
+
+                        </h3>
+
+                        <span id="ocrStatusBadge" style="font-size: 11px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 9999px; font-weight: 800;">Neutro</span>
+
+                    </div>
+
+
+
+                    <form id="expenseForm" onsubmit="submitFieldExpense(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                        <input type="hidden" id="field_receipt_image_path">
+
+                        <input type="hidden" id="field_base_amount_usd" value="0.0">
+
+                        <input type="hidden" id="field_tax_amount_usd" value="0.0">
+
+
+
+                        <div>
+
+                            <label class="form-label">Comercio / Proveedor *</label>
+
+                            <input type="text" id="field_vendor" placeholder="Nombre del Proveedor / Comercio" class="form-input" required>
+
+                        </div>
+
+
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                            <div>
+
+                                <label class="form-label">Monto Bs (Ticket) *</label>
+
+                                <input type="number" step="0.01" id="field_amount_bs" placeholder="0.00" class="form-input" style="font-weight: 800; color: #334155; font-size: 15px;" oninput="calcFieldUsd()" required>
+
+                            </div>
+
+                            <div>
+
+                                <label class="form-label">Monto USD ($) *</label>
+
+                                <input type="number" step="0.01" id="field_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 900; color: var(--dalor-blue); font-size: 15px;" oninput="calcFieldBs()" required>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Desglose Fiscal / IVA (Oculto para Supervisor de Campo) -->
+
+                        <div id="field_fiscal_tax_box" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 10px; border-radius: 8px;">
+
+                            <div>
+
+                                <label class="form-label" style="font-size: 11px; margin-bottom: 2px;">Tratamiento Fiscal (IVA)</label>
+
+                                <select id="field_is_tax_exempt" class="form-select" style="font-size: 11px; padding: 4px 8px;" onchange="onFieldTaxConditionChanged()">
+
+                                    <option value="false">Factura con IVA (16% Crédito)</option>
+
+                                    <option value="true">Exento / Sin IVA (Peajes, Gasolina, etc.)</option>
+
+                                </select>
+
+                            </div>
+
+                            <div style="font-size: 11px; display: flex; flex-direction: column; justify-content: center;">
+
+                                <span style="color: #64748b;">Base Imponible: <b id="field_base_display" style="color: var(--dalor-navy);">$0.00</b></span>
+
+                                <span style="color: #64748b;">IVA Crédito Fiscal: <b id="field_tax_display" style="color: #059669;">$0.00</b></span>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Split Expense (Oculto para Supervisor de Campo) -->
+
+                        <div id="field_split_expense_box" style="background-color: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px;">
+
+                            <div style="display: flex; align-items: center; gap: 8px;">
+
+                                <input type="checkbox" id="chkEnableSplit" onchange="toggleSplitMode()" style="width: 16px; height: 16px; cursor: pointer;">
+
+                                <label for="chkEnableSplit" style="font-size: 12px; font-weight: 700; color: #78350f; cursor: pointer;">
+
+                                    ¿Dividir esta factura en 2 o más partidas/proyectos? (Split Expense)
+
+                                </label>
+
+                            </div>
+
+                            <div id="splitRowsContainer" class="hidden" style="margin-top: 8px; border-top: 1px solid #fde68a; padding-top: 8px;">
+
+                                <div id="splitItemsList" style="display: flex; flex-direction: column; gap: 6px;"></div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+
+                                    <button type="button" onclick="addSplitRow()" style="background: #fef08a; border: 1px solid #ca8a04; color: #713f12; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+
+                                        + Añadir Renglón
+
+                                    </button>
+
+                                    <span id="splitSumBalance" style="font-size: 11px; font-weight: 700; color: #334155;">Suma: $0.00 / Total: $0.00</span>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div id="singleItemBlock" style="display: flex; flex-direction: column; gap: 10px;">
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                                <div>
+
+                                    <label class="form-label">Proyecto Imputable *</label>
+
+                                    <select id="field_project_id" class="form-select">
+
+                                        <option value="">-- Gasto General Sede (Sin Proyecto) --</option>
+
+                                    </select>
+
+                                </div>
+
+                                <div>
+
+                                    <label class="form-label">Partida Dalor *</label>
+
+                                    <select id="field_category_id" class="form-select">
+
+                                        <option value="1">[10.0] Gasto Operativo General</option>
+
+                                        <option value="2" selected>[16.0] Alimentación y Viáticos de Cuadrilla</option>
+
+                                        <option value="3">[17.0] Materiales, Repuestos e Insumos</option>
+
+                                        <option value="4">[19.0] Combustible y Lubricantes</option>
+
+                                        <option value="5">[15.0] Hospedaje y Estadía</option>
+
+                                        <option value="6">[20.0] Peajes y Traslados</option>
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+
+
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 10px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+
+                                <div>
+
+                                    <label class="form-label" style="font-size: 11px;">Activo / Flota</label>
+
+                                    <select id="field_asset_id" class="form-select" style="background: white; padding: 6px; font-size: 12px;">
+
+                                        <option value="">-- No Aplica --</option>
+
+                                    </select>
+
+                                </div>
+
+                                <div>
+
+                                    <label class="form-label" style="font-size: 11px;">Litros Combustible</label>
+
+                                    <input type="number" step="0.1" id="field_fuel_liters" placeholder="Opcional" class="form-input" style="background: white; padding: 6px; font-size: 12px;">
+
+                                </div>
+
+                                <div>
+
+                                    <label class="form-label" style="font-size: 11px;">Odómetro</label>
+
+                                    <input type="number" step="1" id="field_odometer" placeholder="Opcional" class="form-input" style="background: white; padding: 6px; font-size: 12px;">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Badge de Usuario que Reporta (Automático para Campo) -->
+
+                        <div id="field_reported_by_badge" style="display: none; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border: 1px solid #a7f3d0; padding: 8px 12px; border-radius: 8px;">
+
+                            <i class="fa-solid fa-user-shield" style="color: #059669;"></i>
+
+                            <span id="field_reported_by_text">Reportando como: Personal de Campo</span>
+
+                        </div>
+
+
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                            <div id="field_reported_by_container">
+
+                                <label class="form-label">Reportado Por *</label>
+
+                                <select id="field_reported_by" class="form-select">
+
+                                    <option value="1">Director General / Socio</option>
+
+                                    <option value="2">Asistente Administrativa</option>
+
+                                    <option value="3">Jefe de Obras / Residente</option>
+
+                                    <option value="4">Almacenista / Jefe de Taller</option>
+
+                                    <option value="1" selected>Supervisor de Campo / Cuadrilla</option>
+
+                                </select>
+
+                            </div>
+
+                            <div>
+
+                                <label class="form-label">Método de Pago</label>
+
+                                <select id="field_payment_method" class="form-select">
+
+                                    <option value="caja_chica">Caja Chica Operativa</option>
+
+                                    <option value="transferencia">Transferencia Bancaria</option>
+
+                                    <option value="tarjeta_corporativa">Tarjeta Corporativa</option>
+
+                                    <option value="reembolso">Reembolso</option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div>
+
+                            <label class="form-label">Concepto / Detalle de la Compra</label>
+
+                            <input type="text" id="field_description" placeholder="Ej: Compra de insumos o materiales de obra" class="form-input">
+
+                        </div>
+
+
+
+                        <!-- Notificación de Éxito de Escaneo -->
+
+                        <div id="ocrNoticeBox" class="hidden" style="background: #ecfdf5; border: 1.5px solid #10b981; color: #065f46; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+
+                            <i class="fa-solid fa-circle-check" style="font-size: 16px; color: #10b981; flex-shrink: 0;"></i>
+
+                            <span>¡Factura leída con éxito! Revisa los datos y presiona el botón a continuación para enviarla a Administración.</span>
+
+                        </div>
+
+
+
+                        <button type="submit" id="btnSubmitExpense" class="btn-primary" style="margin-top: 6px; font-size: 13px; font-weight: 800; background: #059669; color: #ffffff;">
+
+                            <i class="fa-solid fa-paper-plane"></i> Registrar y Enviar a Administración
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             10. VISTA: CARGA OFICINA & TRANSFERENCIAS
+
+             ==================================================================== -->

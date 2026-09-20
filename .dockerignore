@@ -1,0 +1,45 @@
+# Git y control de versiones
+.git/
+.gitignore
+
+# Binarios de depuracion y tuneles
+cloudflared.exe
+*.exe
+
+# Archivos multimedia y grabaciones pesadas (en la raiz)
+*.aac
+*.mp3
+*.wav
+*.mp4
+*.mov
+*.png
+*.jpg
+*.jpeg
+!frontend/logo_dalor.jpg
+!frontend/*.png
+
+# Bases de datos locales SQLite y temporales WAL
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+dalor_sigop.db
+dalor_sigop.db-shm
+dalor_sigop.db-wal
+
+# Respaldos y dumps locales
+backups/
+frontend_snapshot_backup/
+
+# Codigo legacy y entornos alternos
+frontend/app.legacy.js
+frontend_v2/
+scratch/
+
+# Python cache y entornos virtuales
+__pycache__/
+*.py[cod]
+*.class
+venv/
+.env

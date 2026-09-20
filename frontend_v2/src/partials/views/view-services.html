@@ -1,0 +1,79 @@
+<section id="view-services" class="hidden">
+
+            <div class="banner-dalor">
+
+                <div>
+
+                    <span class="badge-tag">Módulo Comercial</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Catálogo Maestro de Servicios (Partidas APU)</h2>
+
+                    <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Estandariza los servicios técnicos con sus costos base y precios de venta sugeridos.</p>
+
+                </div>
+
+                <button onclick="openNewServiceModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-plus"></i> Nuevo Servicio
+
+                </button>
+
+            </div>
+
+
+
+            <div class="card">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+
+                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">Catálogo de Partidas Activas</h3>
+
+                    <button onclick="loadServices()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+
+                </div>
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Código</th>
+
+                                <th>Descripción del Servicio</th>
+
+                                <th>Categoría</th>
+
+                                <th>Unidad</th>
+
+                                <th>Costo Base ($)</th>
+
+                                <th>Precio Venta ($)</th>
+
+                                <th>Margen ($)</th>
+
+                                <th style="text-align: center;">Acciones</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="servicesTableBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             6. VISTA: CLIENTES
+
+             ==================================================================== -->

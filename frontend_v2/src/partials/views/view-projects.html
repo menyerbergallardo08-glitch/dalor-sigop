@@ -1,0 +1,542 @@
+<section id="view-projects" class="hidden">
+
+            <!-- Navegación por Subpestañas del Módulo de Obras -->
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+
+                <div style="display: flex; gap: 8px;">
+
+                    <button id="tabbtn-proj-list" type="button" onclick="switchProjectSubtab('list')" class="btn-primary" style="padding: 9px 18px; font-weight: 700; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+
+                        <i class="fa-solid fa-folder-tree"></i> Obras Activas & Control
+
+                    </button>
+
+                    <button id="tabbtn-proj-form" type="button" onclick="switchProjectSubtab('form')" class="btn-secondary" style="padding: 9px 18px; font-weight: 700; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+
+                        <i class="fa-solid fa-plus-circle"></i> Planificar Nueva Obra (EDT/WBS)
+
+                    </button>
+
+                </div>
+
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+
+                    <button type="button" onclick="downloadExcelTemplate()" class="btn-excel" style="font-size: 12px; padding: 7px 12px; border-radius: 6px;">
+
+                        <i class="fa-solid fa-file-excel"></i> Plantilla Excel
+
+                    </button>
+
+                    <button type="button" onclick="triggerExcelImport()" class="btn-secondary" style="font-size: 12px; padding: 7px 12px; border-radius: 6px;">
+
+                        <i class="fa-solid fa-file-arrow-up"></i> Cargar Proyecto Excel
+
+                    </button>
+
+                    <input type="file" id="excelProjectFileInput" class="hidden" accept=".xlsx,.xls" onchange="handleExcelFileSelected(event)">
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =========================================================
+
+                 SUBPESTAÑA 1: LISTADO Y CONTROL DE OBRAS ACTIVAS (POR DEFECTO)
+
+                 ========================================================= -->
+
+            <div id="subtab-proj-list">
+
+                <!-- Banner Resumen y Acciones Rápidas -->
+
+                <div class="banner-dalor" style="margin-bottom: 16px;">
+
+                    <div>
+
+                        <span class="badge-tag" style="background: rgba(255,255,255,0.15); color: #ffffff;"><i class="fa-solid fa-building-flag"></i> Control Operativo</span>
+
+                        <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Obras & Proyectos en Ejecución</h2>
+
+                        <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Seguimiento de avance físico, control de fases EDT/WBS, valuaciones CxC, margen real y enlace de tracking para clientes.</p>
+
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center;">
+
+                        <button type="button" onclick="switchProjectSubtab('form')" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; padding: 8px 16px; border-radius: 8px;">
+
+                            <i class="fa-solid fa-plus"></i> ➕ Planificar Nueva Obra
+
+                        </button>
+
+                        <button type="button" onclick="loadProjectsList()" class="btn-secondary" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 8px 14px; border-radius: 8px;">
+
+                            <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Barra de Búsqueda y Filtro Rápido -->
+
+                <div class="card" style="margin-bottom: 16px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px;">
+
+                        <i class="fa-solid fa-magnifying-glass" style="color: #64748b; font-size: 14px;"></i>
+
+                        <input type="text" id="project_search_input" oninput="debouncedFilterProjectsList(this.value)" placeholder="Buscar por código de obra, nombre del proyecto o cliente..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 12px; font-size: 12px; outline: none;">
+
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center;">
+
+                        <span id="projects_count_badge" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 5px 10px; border-radius: 6px;">
+
+                            Cargando proyectos...
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Contenedor Grid de Obras Activas -->
+
+                <div id="projectsCardsContainer" class="grid-2"></div>
+
+            </div>
+
+
+
+            <!-- =========================================================
+
+                 SUBPESTAÑA 2: FORMULACIÓN & PLANIFICACIÓN INTEGRAL (EDT / WBS)
+
+                 ========================================================= -->
+
+            <div id="subtab-proj-form" class="hidden">
+
+                <div class="card" style="margin-bottom: 16px; border-top: 4px solid var(--dalor-blue);">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+
+                        <div>
+
+                            <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+
+                                <i class="fa-solid fa-diagram-project" style="color: var(--dalor-blue);"></i> Formulación & Planificación de Proyecto (EDT / WBS)
+
+                            </h3>
+
+                            <span style="font-size: 11px; color: #64748b; font-weight: 600;">Diligencia los 4 pasos operativos para estructurar la obra</span>
+
+                        </div>
+
+                        <button type="button" onclick="switchProjectSubtab('list')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px; border-radius: 6px;">
+
+                            <i class="fa-solid fa-arrow-left"></i> Volver a Obras Activas
+
+                        </button>
+
+                    </div>
+
+
+
+                    <form id="projectCreateForm" onsubmit="submitCreateProject(event)">
+
+                        <input type="hidden" id="converting_quotation_id" value="">
+
+                        <div id="quote_conversion_banner" class="hidden" style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+
+                            <div>
+
+                                <span style="font-weight: 800; color: #92400e; font-size: 13px;"><i class="fa-solid fa-file-circle-check"></i> Convirtiendo Presupuesto a Proyecto Activo</span>
+
+                                <p id="quote_conversion_text" style="font-size: 11px; color: #78350f; margin: 2px 0 0 0;">Los datos del presupuesto han sido cargados. Puedes ajustar bolsas de costo, fases o recursos antes de guardar.</p>
+
+                            </div>
+
+                            <button type="button" onclick="cancelQuotationConversion()" style="background: none; border: 1px solid #d97706; color: #b45309; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer;">Descartar Vinculación</button>
+
+                        </div>
+
+                        
+
+                        <!-- PASO 1: DATOS BÁSICOS & ALCANCE -->
+
+                        <div style="margin-bottom: 16px;">
+
+                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+
+                                <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">1</span>
+
+                                Alcance General & Modalidad Operativa del Proyecto
+
+                            </h4>
+
+
+
+                            <!-- Selector Visual Prominente Sede vs Foráneo -->
+
+                            <div style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+
+                                <label style="font-size: 11px; font-weight: 800; color: #1e293b; text-transform: uppercase; display: block; margin-bottom: 6px;">
+
+                                    <i class="fa-solid fa-map-location-dot" style="color: var(--dalor-blue);"></i> Selecciona la Modalidad / Frente de Trabajo *:
+
+                                </label>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                                    <label id="card_type_sede" onclick="setProjectType('sede')" style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: all 0.2s;">
+
+                                        <input type="radio" name="proj_type_radio" value="sede" id="radio_type_sede" onchange="setProjectType('sede')" style="accent-color: var(--dalor-navy); width: 18px; height: 18px;">
+
+                                        <div>
+
+                                            <b style="font-size: 12px; color: #002B49; display: block;">🏢 En Sede (Taller Guacara)</b>
+
+                                            <span style="font-size: 10px; color: #64748b;">Fabricación, corte, armado o calderería en taller central propio</span>
+
+                                        </div>
+
+                                    </label>
+
+                                    <label id="card_type_foraneo" onclick="setProjectType('foraneo')" style="display: flex; align-items: center; gap: 10px; background: #eff6ff; border: 2px solid var(--dalor-blue); border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: all 0.2s;">
+
+                                        <input type="radio" name="proj_type_radio" value="foraneo" id="radio_type_foraneo" checked onchange="setProjectType('foraneo')" style="accent-color: var(--dalor-blue); width: 18px; height: 18px;">
+
+                                        <div>
+
+                                            <b style="font-size: 12px; color: var(--dalor-blue); display: block;">📍 Proyecto Foráneo / En Planta</b>
+
+                                            <span style="font-size: 10px; color: #64748b;">En instalaciones del cliente (activa viáticos, fletes y logística de campo)</span>
+
+                                        </div>
+
+                                    </label>
+
+                                </div>
+
+                                <input type="hidden" id="new_proj_type" value="foraneo">
+
+                            </div>
+
+
+
+                            <div class="grid-4" style="margin-bottom: 10px;">
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Código de Obra *</label>
+
+                                    <input type="text" id="new_proj_code" required placeholder="Ej: PROJ-2026-001" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; text-transform: uppercase;">
+
+                                </div>
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Proyecto / Obra *</label>
+
+                                    <input type="text" id="new_proj_name" required placeholder="Ej: Mantenimiento Mayor Tolvas 3 y 4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+
+                                </div>
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente Asignado *</label>
+
+                                    <select id="new_proj_client_id" required style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+
+                                        <option value="">-- Seleccionar Cliente --</option>
+
+                                    </select>
+
+                                </div>
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Ubicación / Planta / Frente *</label>
+
+                                    <input type="text" id="new_proj_location" required placeholder="Ej: Planta Guacara / Frente 2" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+
+                                </div>
+
+                            </div>
+
+                            <div class="grid-2" style="margin-bottom: 10px;">
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Duración Estimada (Días) *</label>
+
+                                    <input type="number" id="new_proj_duration" value="30" min="1" required style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+
+                                </div>
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Monto Contractual / Venta (USD) *</label>
+
+                                    <input type="number" step="0.01" id="new_proj_contract" required placeholder="0.00" oninput="recalcProjectBudgetPreview()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+
+                                </div>
+
+                            </div>
+
+                            <div>
+
+                                <label style="font-size: 11px; font-weight: 700; color: #475569;">Descripción del Alcance Operativo & Especificaciones Técnicas</label>
+
+                                <textarea id="new_proj_scope" rows="2" placeholder="Detalla el alcance general, normativas aplicables (AWS D1.1, ASME), entregables..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;"></textarea>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- PASO 2: ESTRUCTURA DESGLOSADA DE TRABAJO (EDT / WBS) CON SUB-TAREAS -->
+
+                        <div style="margin-bottom: 16px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+
+                                <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
+
+                                    <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">2</span>
+
+                                    Fases & Etapas de Obra (EDT / WBS) con Sub-tareas Operativas
+
+                                </h4>
+
+                                <button type="button" onclick="addProjectPhaseRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;">
+
+                                    <i class="fa-solid fa-plus"></i> Agregar Etapa
+
+                                </button>
+
+                            </div>
+
+                            <p style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Agrega las etapas principales. En cada una puedes desglosar las tareas operativas de campo que se marcarán como completadas durante la ejecución.</p>
+
+                            
+
+                            <!-- Contenedor dinámico de tarjetas de fases -->
+
+                            <div id="projectPhasesContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+
+                        </div>
+
+
+
+                        <!-- PASO 3: ASIGNACIÓN PREVIA DE RECURSOS (PLANTA, FLOTA & MAQUINARIA) -->
+
+                        <div style="margin-bottom: 16px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
+
+                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+
+                                <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">3</span>
+
+                                Asignación Previa de Recursos Operativos
+
+                            </h4>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 10px; width: 100%; box-sizing: border-box;">
+                                <div style="min-width: 0; overflow: hidden;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Personal / Cuadrilla Requerida</label>
+                                    <div style="display: flex; gap: 6px;">
+                                        <select id="plan_select_personnel" style="flex: 1; min-width: 0; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; background: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                            <option value="">-- Seleccionar Trabajador --</option>
+                                        </select>
+                                        <button type="button" onclick="addPlanResource('personnel')" class="btn-secondary" style="padding: 6px 10px; font-size: 11px; font-weight: 700;"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                    <div id="plan_tags_personnel" class="assigned-tags-container" style="margin-top: 6px;"></div>
+                                </div>
+                                <div style="min-width: 0; overflow: hidden;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículos & Transporte Asignados</label>
+                                    <div style="display: flex; gap: 6px;">
+                                        <select id="plan_select_fleet" style="flex: 1; min-width: 0; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; background: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                            <option value="">-- Seleccionar Unidad / Flota --</option>
+                                        </select>
+                                        <button type="button" onclick="addPlanResource('fleet')" class="btn-secondary" style="padding: 6px 10px; font-size: 11px; font-weight: 700;"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                    <div id="plan_tags_fleet" class="assigned-tags-container" style="margin-top: 6px;"></div>
+                                </div>
+                                <div style="min-width: 0; overflow: hidden;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Maquinaria, Generadores & Equipos</label>
+                                    <div style="display: flex; gap: 6px;">
+                                        <select id="plan_select_tools" style="flex: 1; min-width: 0; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; background: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                            <option value="">-- Seleccionar Equipo Mayor --</option>
+                                        </select>
+                                        <button type="button" onclick="addPlanResource('tools')" class="btn-secondary" style="padding: 6px 10px; font-size: 11px; font-weight: 700;"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                    <div id="plan_tags_tools" class="assigned-tags-container" style="margin-top: 6px;"></div>
+                                </div>
+                                <div style="min-width: 0; overflow: hidden;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Materiales & Insumos de Almacén</label>
+                                    <div style="display: flex; gap: 6px;">
+                                        <select id="plan_select_materials" style="flex: 1; min-width: 0; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; background: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                            <option value="">-- Seleccionar Material / Insumo --</option>
+                                        </select>
+                                        <button type="button" onclick="addPlanResource('material')" class="btn-secondary" style="padding: 6px 10px; font-size: 11px; font-weight: 700;"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                    <div id="plan_tags_materials" class="assigned-tags-container" style="margin-top: 6px;"></div>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- PASO 4: PRESUPUESTO META & CONTROL DE MARGEN OPERATIVO -->
+
+                        <div style="margin-bottom: 16px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
+
+                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+
+                                <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">4</span>
+
+                                Presupuesto Meta por Bolsas de Costo & Margen Proyectado (USD)
+
+                            </h4>
+
+                            <div class="grid-5" style="margin-bottom: 12px;">
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Mano de Obra</label>
+
+                                    <input type="number" step="0.01" id="new_proj_labor" placeholder="0.00" oninput="recalcProjectBudgetPreview()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 12px;">
+
+                                </div>
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Combustible</label>
+
+                                    <input type="number" step="0.01" id="new_proj_fuel" placeholder="0.00" oninput="recalcProjectBudgetPreview()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 12px;">
+
+                                </div>
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Materiales</label>
+
+                                    <input type="number" step="0.01" id="new_proj_materials" placeholder="0.00" oninput="recalcProjectBudgetPreview()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 12px;">
+
+                                </div>
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Equipos & Herr.</label>
+
+                                    <input type="number" step="0.01" id="new_proj_tools" placeholder="0.00" oninput="recalcProjectBudgetPreview()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 12px;">
+
+                                </div>
+
+                                <div>
+
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Servicios / Otros</label>
+
+                                    <input type="number" step="0.01" id="new_proj_services" placeholder="0.00" oninput="recalcProjectBudgetPreview()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 12px;">
+
+                                </div>
+
+                            </div>
+
+
+
+                            <!-- Resumen Financiero Dinámico -->
+
+                            <div id="proj_margin_preview" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; justify-content: space-around; align-items: center; text-align: center; flex-wrap: wrap; gap: 10px;">
+
+                                <div>
+
+                                    <div style="font-size: 10px; color: #64748b; font-weight: 700;">VENTA TOTAL</div>
+
+                                    <div id="prev_contract_usd" style="font-size: 15px; font-weight: 900; color: var(--dalor-navy);">$0.00</div>
+
+                                </div>
+
+                                <div>
+
+                                    <div style="font-size: 10px; color: #64748b; font-weight: 700;">COSTO META TOTAL</div>
+
+                                    <div id="prev_budget_usd" style="font-size: 15px; font-weight: 900; color: #dc2626;">$0.00</div>
+
+                                </div>
+
+                                <div>
+
+                                    <div style="font-size: 10px; color: #64748b; font-weight: 700;">UTILIDAD ESTIMADA</div>
+
+                                    <div id="prev_profit_usd" style="font-size: 15px; font-weight: 900; color: #16a34a;">$0.00</div>
+
+                                </div>
+
+                                <div>
+
+                                    <div style="font-size: 10px; color: #64748b; font-weight: 700;">MARGEN ESTIMADO</div>
+
+                                    <div id="prev_margin_pct" style="font-size: 15px; font-weight: 900; color: var(--dalor-blue);">0.0%</div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Botones de Acción -->
+
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+
+                            <button type="button" onclick="switchProjectSubtab('list')" class="btn-secondary" style="padding: 8px 16px;">
+
+                                Cancelar
+
+                            </button>
+
+                            <button type="submit" class="btn-primary" style="padding: 8px 22px; font-size: 13px; font-weight: 800;">
+
+                                <i class="fa-solid fa-floppy-disk"></i> Guardar & Crear Proyecto
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             8. VISTA: MÓDULO INTEGRAL DE ACTIVOS & RECURSOS
+
+             ==================================================================== -->
+
+        
+
+        <!-- ====================================================================
+
+             VISTA: MÓDULO DE GUÍAS DE DESPACHO & CONTROL DE ENTREGA
+
+             ==================================================================== -->

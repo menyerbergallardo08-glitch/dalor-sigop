@@ -1,0 +1,135 @@
+<section id="view-manual" class="hidden">
+
+            <div class="banner-dalor">
+
+                <div>
+
+                    <span class="badge-tag">Módulo de Gastos</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Carga de Oficina & Pagos Bancarios Directos</h2>
+
+                    <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Pagos bancarios directos de sede, nóminas fijas y servicios de oficina.</p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="card" style="max-width: 700px; margin: 0 auto;">
+
+                <form id="manualExpenseForm" onsubmit="submitManualExpense(event)" style="display: flex; flex-direction: column; gap: 12px;">
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                        <div>
+
+                            <label class="form-label">Partida de Gasto *</label>
+
+                            <select id="manual_category_id" class="form-select" required></select>
+
+                        </div>
+
+                        <div>
+
+                            <label class="form-label">Proyecto (Opcional)</label>
+
+                            <select id="manual_project_id" class="form-select"></select>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+
+                        <div>
+
+                            <label class="form-label">Monto en USD ($) *</label>
+
+                            <input type="number" step="0.01" id="manual_amount_usd" oninput="calcManualBs()" placeholder="0.00" class="form-input" style="font-weight: 800; color: var(--dalor-blue);" required>
+
+                        </div>
+
+                        <div>
+
+                            <label class="form-label">Monto en Bs (Tasa Dinámica)</label>
+
+                            <input type="number" step="0.01" id="manual_amount_bs" oninput="calcManualUsd()" placeholder="0.00" class="form-input">
+
+                        </div>
+
+                        <div>
+
+                            <label class="form-label">Método de Pago</label>
+
+                            <select id="manual_payment_method" class="form-select">
+
+                                <option value="transferencia">Transferencia Bancaria</option>
+
+                                <option value="pago_movil">Pago Móvil</option>
+
+                                <option value="tarjeta_corporativa">Tarjeta Corporativa</option>
+
+                                <option value="caja_chica">Caja Chica</option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                        <div>
+
+                            <label class="form-label">Beneficiario / Proveedor</label>
+
+                            <input type="text" id="manual_vendor" placeholder="Nombre o Razón Social" class="form-input">
+
+                        </div>
+
+                        <div>
+
+                            <label class="form-label">Autorizado Por *</label>
+
+                            <select id="manual_reported_by" class="form-select" required></select>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div>
+
+                        <label class="form-label">Concepto *</label>
+
+                        <input type="text" id="manual_description" placeholder="Ej: Pago de quincena / Servicios" class="form-input" required>
+
+                    </div>
+
+
+
+                    <button type="submit" class="btn-primary" style="background-color: var(--dalor-navy);">
+
+                        <i class="fa-solid fa-check-circle"></i> Guardar Gasto de Oficina
+
+                    </button>
+
+                </form>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             11. VISTA: DASHBOARD DE RENTABILIDAD BÁSICO
+
+             ==================================================================== -->

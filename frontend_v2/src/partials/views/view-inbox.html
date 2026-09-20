@@ -1,0 +1,99 @@
+<section id="view-inbox" class="hidden">
+
+            <div class="banner-dalor">
+
+                <div>
+
+                    <span class="badge-tag" style="background: #059669; color: white;">Control Contable & Auditoría</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">📥 Bandeja de Aprobación de Gastos & Comprobantes de Campo</h2>
+
+                    <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Auditoría de tickets y facturas capturadas desde móvil. Revisa la foto, edita partidas/montos y aprueba formalmente para imputar al costo del proyecto.</p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="card">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+
+                    <div>
+
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-list-check" style="color: #059669;"></i> Comprobantes Pendientes de Aprobación
+
+                        </h3>
+
+                        <p style="font-size: 11px; color: #64748b;">Los gastos aprobados aquí se imputan de inmediato al Job Costing del proyecto y al P&L gerencial.</p>
+
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+
+                        <button id="btnSoundToggleInbox" onclick="toggleSoundAlerts()" class="btn-secondary" style="font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1;">
+
+                            <i id="iconSoundToggleInbox" class="fa-solid fa-bell" style="color: #059669;"></i>
+
+                            <span id="textSoundToggleInbox">Alertas Sonoras: ON</span>
+
+                        </button>
+
+                        <button onclick="loadPendingExpensesInbox()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar Bandeja</button>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Fecha</th>
+
+                                <th>Comprobante</th>
+
+                                <th>Reportado Por</th>
+
+                                <th>Obra / Destino</th>
+
+                                <th>Comercio / Proveedor</th>
+
+                                <th>Concepto</th>
+
+                                <th>Monto USD ($)</th>
+
+                                <th>Equivalente Bs</th>
+
+                                <th style="text-align: center;">Acciones</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="inboxPendingTableBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             9. VISTA: CAPTURA OCR / PDF (CAMPO)
+
+             ==================================================================== -->

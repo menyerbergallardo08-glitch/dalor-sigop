@@ -1,0 +1,435 @@
+<section id="view-financial" class="hidden">
+
+            <div class="banner-dalor" style="background: linear-gradient(135deg, #064e3b 0%, #047857 100%);">
+
+                <div>
+
+                    <span class="badge-tag" style="background: #6ee7b7; color: #064e3b;">Módulo Financiero</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Cuentas por Cobrar (CxC), Pagar (CxP) & Tesorería</h2>
+
+                    <p style="font-size: 11px; color: #d1fae5; margin-top: 2px;">Control estricto de valuaciones de clientes, facturas de proveedores y programación de pagos.</p>
+
+                </div>
+
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+
+                    <button onclick="openReceiveClientPaymentModal()" class="btn-primary" style="background-color: #10b981; color: #ffffff; font-weight: 800; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+
+                        <i class="fa-solid fa-money-bill-wave"></i> 💵 + Registrar Cobro / Abono de Cliente
+
+                    </button>
+
+                    <button onclick="openNewReceivableModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px;">
+
+                        <i class="fa-solid fa-plus"></i> Facturar a Cliente (CxC)
+
+                    </button>
+
+                    <button onclick="openNewPayableModal()" class="btn-primary" style="background-color: #ffffff; color: #064e3b; font-size: 12px;">
+
+                        <i class="fa-solid fa-plus"></i> Registrar Deuda Proveedor (CxP)
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Pestañas Financieras -->
+
+            <div class="subtabs-nav">
+
+                <button class="subtab-btn active" id="tabbtn-fin-cxc" onclick="switchFinancialSubtab('cxc')">
+
+                    <i class="fa-solid fa-hand-holding-dollar" style="color: #059669;"></i> Cuentas por Cobrar (CxC Clientes)
+
+                </button>
+
+                <button class="subtab-btn" id="tabbtn-fin-cxp" onclick="switchFinancialSubtab('cxp')">
+
+                    <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i> Cuentas por Pagar (CxP Proveedores)
+
+                </button>
+
+                <button class="subtab-btn" id="tabbtn-fin-summary" onclick="switchFinancialSubtab('summary')">
+
+                    <i class="fa-solid fa-wallet" style="color: #0284c7;"></i> Resumen de Tesorería & Bancos
+
+                </button>
+
+                <button class="subtab-btn" id="tabbtn-fin-partners" onclick="switchFinancialSubtab('partners')">
+
+                    <i class="fa-solid fa-user-tie" style="color: #7c3aed;"></i> Retiros Personales de Socios
+
+                </button>
+
+            </div>
+
+
+
+            <!-- SUB-TAB 1: CUENTAS POR COBRAR (CxC) -->
+
+            <div id="subtab-fin-cxc">
+
+                <div class="card">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-hand-holding-dollar" style="color: #059669;"></i> Cartera de Facturas y Valuaciones por Cobrar
+
+                        </h3>
+
+                        <button onclick="loadReceivablesList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>Nº Factura / Valuación</th>
+
+                                    <th>Cliente</th>
+
+                                    <th>Proyecto</th>
+
+                                    <th>Concepto / Hito</th>
+
+                                    <th>Emisión</th>
+
+                                    <th>Vencimiento</th>
+
+                                    <th>Monto Facturado ($)</th>
+
+                                    <th>Cobrado ($)</th>
+
+                                    <th>Saldo Pendiente ($)</th>
+
+                                    <th>Estado</th>
+
+                                    <th style="text-align: center;">Acción</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="cxcTableBody"></tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- SUB-TAB 2: CUENTAS POR PAGAR (CxP) -->
+
+            <div id="subtab-fin-cxp" class="hidden">
+
+                <div class="card">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i> Facturas de Proveedores y Compromisos por Pagar
+
+                        </h3>
+
+                        <button onclick="loadPayablesList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>Nº Factura / Doc</th>
+
+                                    <th>Proveedor / Contratista</th>
+
+                                    <th>Proyecto Imputable</th>
+
+                                    <th>Descripción de Compra</th>
+
+                                    <th>Emisión</th>
+
+                                    <th>Vencimiento</th>
+
+                                    <th>Monto Total ($)</th>
+
+                                    <th>Pagado ($)</th>
+
+                                    <th>Deuda Pendiente ($)</th>
+
+                                    <th>Estado</th>
+
+                                    <th style="text-align: center;">Acción</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="cxpTableBody"></tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- SUB-TAB 3: RESUMEN DE TESORERÍA -->
+
+            <div id="subtab-fin-summary" class="hidden">
+
+                <div class="grid-4" id="treasuryKPIsContainer" style="margin-bottom: 16px;"></div>
+
+                <div class="grid-2">
+
+                    <div class="card">
+
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px;">Flujo de Fondos Operativos</h3>
+
+                        <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">Balance neto entre cobros reales de clientes y pagos ejecutados a proveedores.</p>
+
+                        <div id="treasuryCashflowDetails" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
+                    </div>
+
+                    <div class="card">
+
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px;">Resumen de Crédito Comercial</h3>
+                        <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">Diferencial entre dinero por cobrar en la calle y compromisos pendientes por pagar.</p>
+                        <div id="treasuryCreditDetails" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    </div>
+                </div>
+
+                <!-- TABLA DE TRAZA DETALLADA DE OPERACIONES DE TESORERÍA -->
+                <div class="card" style="margin-top: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+                                <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Detalle de Traza de Operaciones de Tesorería (Flujo Real de Caja)
+                            </h3>
+                            <p style="font-size: 11px; color: #64748b; margin-top: 2px;">Auditoría cronológica de cobros, pagos a proveedores, gastos y retiros de socios.</p>
+                        </div>
+                        <button onclick="loadTreasurySummary()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Actualizar Traza
+                        </button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fecha / Hora</th>
+                                    <th>Tipo de Operación</th>
+                                    <th>Concepto / Descripción</th>
+                                    <th>Entidad / Beneficiario</th>
+                                    <th>Nº Ref / Doc</th>
+                                    <th>Monto USD</th>
+                                    <th>Monto Bs. (BCV)</th>
+                                    <th style="text-align: center;">Impacto en Caja</th>
+                                </tr>
+                            </thead>
+                            <tbody id="treasuryTraceTableBody">
+                                <tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 16px;">Cargando movimientos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-TAB 4: RETIROS DE SOCIOS -->
+            <div id="subtab-fin-partners" class="hidden">
+                <!-- KPIs de Cuenta Corriente de Socios -->
+                <div class="grid-3" style="margin-bottom: 16px;">
+                    <div class="card" style="margin-bottom: 0; border-left: 4px solid #7c3aed; text-align: center;">
+                        <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Retiros Registrados</span>
+                        <p id="kpi_partners_total_usd" style="font-size: 20px; font-weight: 900; color: #7c3aed; margin-top: 4px;">$0.00</p>
+                        <span style="font-size: 10px; color: #8b5cf6;">Cuenta corriente socios</span>
+                    </div>
+                    <div class="card" style="margin-bottom: 0; border-left: 4px solid var(--dalor-blue); text-align: center;">
+                        <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Cantidad de Operaciones</span>
+                        <p id="kpi_partners_count" style="font-size: 20px; font-weight: 900; color: var(--dalor-blue); margin-top: 4px;">0</p>
+                        <span style="font-size: 10px; color: #38bdf8;">Registros auditados</span>
+                    </div>
+                    <div class="card" style="margin-bottom: 0; border-left: 4px solid #059669; text-align: center;">
+                        <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Tasa Oficial BCV Aplicada</span>
+                        <p style="font-size: 17px; font-weight: 900; color: #059669; margin-top: 4px;">Automática BCV</p>
+                        <span style="font-size: 10px; color: #10b981;">Sin distorsión cambiaria</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+                                <i class="fa-solid fa-user-tie" style="color: #7c3aed;"></i> Cuenta Corriente & Retiros de Socios / Accionistas
+                            </h3>
+                            <p style="font-size: 11px; color: #64748b;">Trazabilidad limpia de retiros personales a cuenta de ganancias (no altera los costos técnicos de las obras).</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="loadPartnersWithdrawalsList()" class="btn-secondary" style="font-size: 12px;">
+                                <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                            </button>
+                            <button onclick="openNewPartnerWithdrawalModal()" class="btn-primary" style="background: #7c3aed; font-size: 12px;">
+                                <i class="fa-solid fa-plus"></i> + Registrar Retiro Personal
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fecha y Hora</th>
+                                    <th>Socio / Accionista</th>
+                                    <th>Concepto / Motivo</th>
+                                    <th>Método de Pago</th>
+                                    <th>Nº Referencia</th>
+                                    <th>Monto Retirado ($ USD)</th>
+                                    <th>Equivalente en Bs</th>
+                                    <th style="text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="partnersWithdrawalsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+
+
+        
+            <!-- SUB-TAB 5: ALQUILERES & PRÉSTAMOS (BIDIRECCIONAL) -->
+            <div id="subtab-res-rentals" class="hidden">
+                <!-- Header / Actions Card -->
+                <div class="card" style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0 0 4px 0;">
+                                <i class="fa-solid fa-handshake" style="color: #0284c7;"></i> Alquileres y Préstamos de Equipos & Maquinaria
+                            </h3>
+                            <p style="font-size: 12px; color: #64748b; margin: 0;">
+                                Gestión y auditoría bidireccional: Activos propios cedidos a terceros y equipos externos incorporados a DALOR.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button onclick="openCreateRentalModal('dalor_a_tercero', 'alquiler')" class="btn-primary" style="background: #2563eb; font-size: 12px; padding: 7px 14px;">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Ceder en Alquiler / Préstamo
+                            </button>
+                            <button onclick="openCreateRentalModal('tercero_a_dalor', 'alquiler')" class="btn-primary" style="background: #059669; font-size: 12px; padding: 7px 14px;">
+                                <i class="fa-solid fa-arrow-down-left-and-up-right-to-center"></i> Recibir de Tercero (Entrante)
+                            </button>
+                            <button onclick="loadRentalsList()" class="btn-secondary" style="font-size: 12px; padding: 7px 12px;">
+                                <i class="fa-solid fa-rotate"></i> Refrescar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Metrics / Counters Banner -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 14px;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Activos en Campo / Terceros</div>
+                            <div id="rentalKpiDalorTercero" style="font-size: 20px; font-weight: 800; color: #2563eb; margin-top: 4px;">0</div>
+                            <div style="font-size: 11px; color: #94a3b8;">Propiedad DALOR cedida</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Equipos Alquilados Externos</div>
+                            <div id="rentalKpiTerceroDalor" style="font-size: 20px; font-weight: 800; color: #059669; margin-top: 4px;">0</div>
+                            <div style="font-size: 11px; color: #94a3b8;">En proyectos DALOR</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Operaciones Activas</div>
+                            <div id="rentalKpiTotalActive" style="font-size: 20px; font-weight: 800; color: #d97706; margin-top: 4px;">0</div>
+                            <div style="font-size: 11px; color: #94a3b8;">Pendientes por devolución</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Devueltos / Histórico</div>
+                            <div id="rentalKpiReturned" style="font-size: 20px; font-weight: 800; color: #64748b; margin-top: 4px;">0</div>
+                            <div style="font-size: 11px; color: #94a3b8;">Ciclos cerrados</div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="text" id="rentalFilterSearch" placeholder="Buscar por equipo, entidad, contacto o código..." class="form-input" style="width: 100%; padding: 6px 12px; font-size: 12px;" oninput="debouncedApplyRentalsFilter()">
+                        </div>
+                        <select id="rentalFilterDirection" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
+                            <option value="">Todas las direcciones</option>
+                            <option value="dalor_a_tercero">DALOR hacia Tercero</option>
+                            <option value="tercero_a_dalor">Tercero hacia DALOR</option>
+                        </select>
+                        <select id="rentalFilterType" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
+                            <option value="">Todos los tipos</option>
+                            <option value="alquiler">Alquiler ($)</option>
+                            <option value="prestamo">Préstamo (Gratuito / Alianza)</option>
+                        </select>
+                        <select id="rentalFilterStatus" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
+                            <option value="">Todos los estados</option>
+                            <option value="activo" selected>Solo Activos</option>
+                            <option value="devuelto_conforme">Devueltos Conforme</option>
+                            <option value="devuelto_con_novedad">Devueltos con Novedad</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="card">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cód. Operación</th>
+                                    <th>Dirección / Flujo</th>
+                                    <th>Tipo</th>
+                                    <th>Equipo / Maquinaria</th>
+                                    <th>Entidad / Contraparte</th>
+                                    <th>Contacto / Teléfono</th>
+                                    <th>Fecha Inicio</th>
+                                    <th>Retorno Previsto</th>
+                                    <th>Tarifa</th>
+                                    <th>Estado</th>
+                                    <th style="text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rentalsTableBody">
+                                <tr>
+                                    <td colspan="11" style="text-align: center; color: #64748b; padding: 20px;">Cargando registros...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             4. VISTA: PRESUPUESTOS (ESTIMACIONES & APU)
+
+             ==================================================================== -->

@@ -1,0 +1,360 @@
+<nav class="module-bar">
+
+        <div class="module-container">
+
+            
+
+            <!-- 1. MÓDULO COMERCIAL & VENTAS -->
+
+            <div class="nav-dropdown" id="dropdown-comercial">
+
+                <button class="dropdown-btn" onclick="toggleDropdown(event, 'dropdown-comercial')">
+
+                    <i class="fa-solid fa-briefcase" style="color: var(--dalor-blue);"></i>
+
+                    <span>Módulo Comercial</span>
+
+                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
+
+                </button>
+
+                <div class="dropdown-menu">
+
+                    <div class="dropdown-item" onclick="switchView('quotations', 'comercial')">
+
+                        <i class="fa-solid fa-file-invoice-dollar" style="color: #0284c7;"></i>
+
+                        <span>Presupuestos & APU</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="switchView('clients', 'comercial')">
+
+                        <i class="fa-solid fa-building-user" style="color: #0d9488;"></i>
+
+                        <span>Directorio de Clientes</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="switchView('services', 'comercial')">
+
+                        <i class="fa-solid fa-list-check" style="color: #8b5cf6;"></i>
+
+                        <span>Catálogo de Servicios (APU)</span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- 2. MÓDULO DE PROYECTOS & OBRAS -->
+
+            <div class="nav-dropdown" id="dropdown-proyectos">
+
+                <button class="dropdown-btn" onclick="toggleDropdown(event, 'dropdown-proyectos')">
+
+                    <i class="fa-solid fa-folder-tree" style="color: var(--dalor-blue);"></i>
+
+                    <span>Proyectos & Obras</span>
+
+                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
+
+                </button>
+
+                <div class="dropdown-menu">
+
+                    <div class="dropdown-item" onclick="switchView('projects', 'proyectos')">
+
+                        <i class="fa-solid fa-clipboard-list" style="color: #0284c7;"></i>
+
+                        <span>Planificación & Armado de Proyectos</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="switchView('dashboard', 'proyectos')">
+
+                        <i class="fa-solid fa-chart-column" style="color: #10b981;"></i>
+
+                        <span>Dashboard de Rentabilidad</span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- 3. MÓDULO FINANCIERO, CxC & CxP -->
+
+            <div class="nav-dropdown" id="dropdown-finanzas">
+
+                <button class="dropdown-btn" onclick="toggleDropdown(event, 'dropdown-finanzas')">
+
+                    <i class="fa-solid fa-scale-balanced" style="color: #059669;"></i>
+
+                    <span>Finanzas, CxC & CxP</span>
+
+                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
+
+                </button>
+
+<div class="dropdown-menu">
+
+                    <div class="dropdown-item" onclick="openFinancialSubtab('cxc')">
+
+                        <i class="fa-solid fa-hand-holding-dollar" style="color: #059669;"></i>
+
+                        <span>Cuentas por Cobrar (CxC Clientes)</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openFinancialSubtab('cxp')">
+
+                        <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i>
+
+                        <span>Cuentas por Pagar (CxP Proveedores)</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openFinancialSubtab('summary')">
+                        <i class="fa-solid fa-wallet" style="color: #0284c7;"></i>
+                        <span>Tesorería & Flujo de Caja</span>
+                    </div>
+                    <div class="dropdown-item" onclick="openFinancialSubtab('partners')">
+                        <i class="fa-solid fa-user-tie" style="color: #7c3aed;"></i>
+                        <span>Cuenta Corriente & Retiros de Socios</span>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- 4. MÓDULO DE ACTIVOS & RECURSOS -->
+
+            <div class="nav-dropdown" id="dropdown-recursos">
+
+                <button class="dropdown-btn" onclick="toggleDropdown(event, 'dropdown-recursos')">
+
+                    <i class="fa-solid fa-truck-ramp-box" style="color: var(--dalor-blue);"></i>
+
+                    <span>Activos & Recursos</span>
+
+                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
+
+                </button>
+
+                <div class="dropdown-menu">
+
+                    <div class="dropdown-item" onclick="openResourceSubtab('dashboard')">
+
+                        <i class="fa-solid fa-map-location-dot" style="color: #f59e0b;"></i>
+
+                        <span>Dashboard de Ubicación & Control</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openResourceSubtab('fleet')">
+
+                        <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i>
+
+                        <span>Control de Flota & Vehículos</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openResourceSubtab('machinery')">
+
+                        <i class="fa-solid fa-tractor" style="color: #ea580c;"></i>
+
+                        <span>Maquinaria Pesada & Plantas</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openResourceSubtab('tools')">
+
+                        <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i>
+
+                        <span>Control de Herramientas & Equipos</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openResourceSubtab('materials')">
+
+                        <i class="fa-solid fa-boxes-stacked" style="color: #d97706;"></i>
+
+                        <span>Inventario de Materiales & Consumibles</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openResourceSubtab('personnel')">
+
+                        <i class="fa-solid fa-users" style="color: #10b981;"></i>
+
+                        <span>Control de Personal & Cuadrilla</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="switchView('dispatch', 'operaciones')">
+
+                        <i class="fa-solid fa-truck-fast" style="color: #0284c7;"></i>
+
+                        <span>Guías de Despacho & Formato Libre</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openRentalsSubtab()">
+
+                        <i class="fa-solid fa-handshake" style="color: #d97706;"></i>
+
+                        <span>Alquileres & Préstamos de Equipos</span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- 5. MÓDULO DE GASTOS & FACTURACIÓN -->
+
+            <div class="nav-dropdown" id="dropdown-gastos">
+
+                <button class="dropdown-btn" onclick="toggleDropdown(event, 'dropdown-gastos')">
+
+                    <i class="fa-solid fa-receipt" style="color: var(--dalor-blue);"></i>
+
+                    <span>Gastos & Facturación</span>
+
+                    <span id="badgeGastosDropdown" style="background: #e11d48; color: white; border-radius: 9999px; font-size: 10px; padding: 1px 6px; font-weight: 800; margin-left: 4px; display: none;">0</span>
+
+                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
+
+                </button>
+
+                <div class="dropdown-menu">
+
+                    <div class="dropdown-item" id="item-gasto-inbox" onclick="switchView('inbox', 'gastos')">
+
+                        <i class="fa-solid fa-inbox" style="color: #059669;"></i>
+
+                        <span>Bandeja de Aprobación de Gastos</span>
+
+                        <span id="badgeInboxCount" style="background: #e11d48; color: white; border-radius: 9999px; font-size: 10px; padding: 1px 6px; font-weight: 800; margin-left: auto; display: none;">0</span>
+
+                    </div>
+
+                    <div class="dropdown-item" id="item-gasto-pwa" onclick="switchView('pwa', 'gastos')">
+
+                        <i class="fa-solid fa-camera" style="color: #0284c7;"></i>
+
+                        <span>Captura OCR / Rendir Gasto</span>
+
+                    </div>
+
+                    <div class="dropdown-item" id="item-gasto-manual" onclick="switchView('manual', 'gastos')">
+
+                        <i class="fa-solid fa-money-bill-transfer" style="color: #10b981;"></i>
+
+                        <span>Carga Oficina & Transferencias</span>
+
+                    </div>
+
+                    <div class="dropdown-item" id="item-gasto-dashboard" onclick="switchView('dashboard', 'gastos')">
+
+                        <i class="fa-solid fa-chart-pie" style="color: var(--dalor-blue);"></i>
+
+                        <span>Control de Gastos Acumulados & Job Costing</span>
+
+                    </div>
+
+                    <div class="dropdown-item" id="item-gasto-log" onclick="switchView('expenses-log', 'gastos')">
+
+                        <i class="fa-solid fa-table-list" style="color: #0891b2;"></i>
+
+                        <span>Histórico & Auditoría General de Gastos</span>
+
+                    </div>
+
+                    <div class="dropdown-item" id="item-gasto-tree" onclick="switchView('tree', 'gastos')">
+
+                        <i class="fa-solid fa-sitemap" style="color: #8b5cf6;"></i>
+
+                        <span>Árbol Jerárquico de Partidas</span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- 6. MÓDULO DE MANTENIMIENTO & SEGURIDAD (TIPO PROFIT PLUS) -->
+
+            <div class="nav-dropdown" id="dropdown-mantenimiento">
+
+                <button class="dropdown-btn" onclick="toggleDropdown(event, 'dropdown-mantenimiento')">
+
+                    <i class="fa-solid fa-shield-halved" style="color: #d97706;"></i>
+
+                    <span>Mantenimiento & Seguridad</span>
+
+                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
+
+                </button>
+
+                <div class="dropdown-menu">
+
+                    <div class="dropdown-item" onclick="openMaintenanceSubtab('users')">
+
+                        <i class="fa-solid fa-user-gear" style="color: #0284c7;"></i>
+
+                        <span>Gestión de Usuarios & Cuentas</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openMaintenanceSubtab('audit')">
+
+                        <i class="fa-solid fa-clock-rotate-left" style="color: #059669;"></i>
+
+                        <span>Bitácora de Auditoría del Sistema</span>
+
+                    </div>
+
+                    <div class="dropdown-item" onclick="openMaintenanceSubtab('clean')">
+
+                        <i class="fa-solid fa-broom" style="color: #e11d48;"></i>
+
+                        <span>Puesta a Cero (Arranque Real)</span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- 7. DASHBOARD GERENCIAL BI (POWERBI STYLE) -->
+
+            <div class="nav-dropdown" id="dropdown-gerencia" style="margin-left: auto;">
+
+                <button class="dropdown-btn" onclick="switchView('executive', 'gerencia')" style="color: #1e1b4b; background: #ede9fe; border-radius: 8px; padding: 6px 14px; border: 1px solid #c4b5fd;">
+
+                    <i class="fa-solid fa-chart-pie" style="color: #7c3aed; font-size: 14px;"></i>
+
+                    <span style="font-weight: 900; color: #5b21b6;">PowerBI Analytics</span>
+
+                </button>
+
+            </div>
+
+
+
+        </div>
+
+    </nav>

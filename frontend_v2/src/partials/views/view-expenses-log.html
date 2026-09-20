@@ -1,0 +1,229 @@
+<section id="view-expenses-log" class="hidden">
+
+            <div class="banner-dalor">
+
+                <div>
+
+                    <span class="badge-tag" style="background: #e0f2fe; color: #0369a1;">Auditoría Contable & Egresos</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Histórico & Auditoría General de Gastos</h2>
+
+                    <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Auditoría consolidada de facturas fiscales con IVA, notas de entrega, insumos, compras de obra y comprobantes adjuntos.</p>
+
+                </div>
+
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+
+                    <button onclick="exportExpensesLogExcel()" class="btn-primary" style="background: #059669; font-size: 12px; font-weight: 800;">
+
+                        <i class="fa-solid fa-file-excel"></i> Exportar Excel
+
+                    </button>
+
+                    <button onclick="loadExpensesLog()" class="btn-secondary" style="background: white; font-size: 12px;">
+
+                        <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- FILTROS MULTIDIMENSIONALES -->
+
+            <div class="card" style="margin-bottom: 14px; padding: 14px;">
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: flex-end;">
+
+                    <div>
+
+                        <label class="form-label">Proyecto / Obra</label>
+
+                        <select id="log_filter_project" class="form-select" onchange="filterExpensesLog()">
+
+                            <option value="">-- Todos los Proyectos --</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Partida / Categoría</label>
+
+                        <select id="log_filter_category" class="form-select" onchange="filterExpensesLog()">
+
+                            <option value="">-- Todas las Partidas --</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Condición Fiscal</label>
+
+                        <select id="log_filter_fiscal" class="form-select" onchange="filterExpensesLog()">
+
+                            <option value="">-- Todas las Facturas --</option>
+
+                            <option value="con_iva">Fiscal con IVA (16%)</option>
+
+                            <option value="sin_iva">Sin Factura / Nota / Exento</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Desde</label>
+
+                        <input type="date" id="log_filter_date_from" class="form-input" onchange="filterExpensesLog()">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Hasta</label>
+
+                        <input type="date" id="log_filter_date_to" class="form-input" onchange="filterExpensesLog()">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Búsqueda Rápida</label>
+
+                        <input type="text" id="log_filter_search" placeholder="Proveedor, RIF, N° Factura..." class="form-input" oninput="debouncedFilterExpensesLog()">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- RESUMEN DE TOTALES / KPIS -->
+
+            <div class="grid-4" style="margin-bottom: 14px;">
+
+                <div class="card" style="border-left: 4px solid var(--dalor-blue); padding: 12px;">
+
+                    <span style="font-size: 11px; font-weight: 700; color: #64748b;">Total Gastos Filtrados ($)</span>
+
+                    <h3 id="log_kpi_total_usd" style="font-size: 20px; font-weight: 900; color: var(--dalor-navy); margin-top: 4px;">$0.00</h3>
+
+                    <span id="log_kpi_total_bs" style="font-size: 11px; color: #0284c7; font-weight: 700;">Bs. 0.00</span>
+
+                </div>
+
+                <div class="card" style="border-left: 4px solid #059669; padding: 12px;">
+
+                    <span style="font-size: 11px; font-weight: 700; color: #64748b;">Facturación Fiscal (Con IVA)</span>
+
+                    <h3 id="log_kpi_fiscal_usd" style="font-size: 20px; font-weight: 900; color: #059669; margin-top: 4px;">$0.00</h3>
+
+                    <span id="log_kpi_fiscal_count" style="font-size: 11px; color: #64748b;">0 comprobantes</span>
+
+                </div>
+
+                <div class="card" style="border-left: 4px solid #d97706; padding: 12px;">
+
+                    <span style="font-size: 11px; font-weight: 700; color: #64748b;">Sin Factura / Notas de Entrega</span>
+
+                    <h3 id="log_kpi_nonfiscal_usd" style="font-size: 20px; font-weight: 900; color: #d97706; margin-top: 4px;">$0.00</h3>
+
+                    <span id="log_kpi_nonfiscal_count" style="font-size: 11px; color: #64748b;">0 comprobantes</span>
+
+                </div>
+
+                <div class="card" style="border-left: 4px solid #8b5cf6; padding: 12px;">
+
+                    <span style="font-size: 11px; font-weight: 700; color: #64748b;">Total IVA Pagado ($)</span>
+
+                    <h3 id="log_kpi_tax_usd" style="font-size: 20px; font-weight: 900; color: #8b5cf6; margin-top: 4px;">$0.00</h3>
+
+                    <span id="log_kpi_count_total" style="font-size: 11px; color: #64748b;">0 registros en total</span>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- TABLA PRINCIPAL DE GASTOS -->
+
+            <div class="card" style="padding: 12px;">
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr style="background: #002B49; color: white;">
+
+                                <th style="width: 80px;">Fecha</th>
+
+                                <th>Proyecto / Obra</th>
+
+                                <th>Partida / Categoría</th>
+
+                                <th>Proveedor & RIF</th>
+
+                                <th>Factura #</th>
+
+                                <th style="text-align: center;">Condición Fiscal</th>
+
+                                <th style="text-align: right;">Base ($)</th>
+
+                                <th style="text-align: right;">IVA ($)</th>
+
+                                <th style="text-align: right;">Total ($)</th>
+
+                                <th style="text-align: right;">Total (Bs)</th>
+
+                                <th>Reportado Por</th>
+
+                                <th style="text-align: center;">Estado</th>
+
+                                <th style="text-align: center; width: 70px;">Acciones</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="expensesLogTableBody">
+
+                            <tr>
+
+                                <td colspan="13" style="text-align: center; color: #94a3b8; padding: 20px;">Cargando histórico de gastos...</td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+    </main>
+
+
+
+            <!-- ====================================================================
+
+         MODAL: VISTA PRELIMINAR DE COTIZACIÓN (FORMATO FORMAL LULOWIN)
+
+         ==================================================================== -->

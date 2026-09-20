@@ -1,0 +1,79 @@
+<section id="view-quotations" class="hidden">
+
+            <div class="banner-dalor">
+
+                <div>
+
+                    <span class="badge-tag">Módulo Comercial</span>
+
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Presupuestos & Cotizaciones Formales (APU)</h2>
+
+                    <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Crea presupuestos con partidas ilimitadas, manejo de IVA (16%, 8% o Exento 0%) y conversión a Proyecto Activo.</p>
+
+                </div>
+
+                <button onclick="openNewQuotationModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-plus"></i> Nueva Cotización
+
+                </button>
+
+            </div>
+
+
+
+            <div class="card">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+
+                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">Cotizaciones Emitidas</h3>
+
+                    <button onclick="loadQuotations()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+
+                </div>
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Nº Cotización</th>
+
+                                <th>Cliente</th>
+
+                                <th>Título de Obra / Proyecto</th>
+
+                                <th>Subtotal ($)</th>
+
+                                <th>IVA ($)</th>
+
+                                <th>Total ($)</th>
+
+                                <th>Estado</th>
+
+                                <th style="text-align: center;">Acciones</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="quotationsTableBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ====================================================================
+
+             5. VISTA: CATÁLOGO DE SERVICIOS (APU)
+
+             ==================================================================== -->

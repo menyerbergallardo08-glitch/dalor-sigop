@@ -1,0 +1,117 @@
+<header class="header-top">
+
+        <div class="header-container">
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+
+                <div class="logo-box">
+
+                    <img src="logo_dalor.jpg" alt="DALOR Logo" class="logo-img">
+
+                </div>
+
+                <div style="border-left: 1px solid #475569; padding-left: 12px;">
+
+                    <div style="display: flex; align-items: center; gap: 8px;">
+
+                        <span style="font-size: 13px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #ffffff;">SIGO-P</span>
+
+                        <span class="badge-tag">ERP v2.0 Enterprise</span>
+
+                    </div>
+
+                    <p style="font-size: 11px; color: #94a3b8; margin-top: 1px;">Gestión de Proyectos, Finanzas, BI & Mantenimiento</p>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Tasa de Cambio Editable, Usuario Activo & Logout -->
+
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
+
+                <button id="btnQuickFlow" onclick="openQuickFlowModal()" class="btn-primary" style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 11px; padding: 6px 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(245, 184, 0, 0.4); white-space: nowrap;">
+
+                    <i class="fa-solid fa-bolt"></i> 3 Toques
+
+                </button>
+
+                <div class="tasa-editor-box" id="bcvTasaBadge" title="Tasa Oficial del Banco Central de Venezuela sincronizada automáticamente">
+
+                    <span style="display: inline-flex; align-items: center; gap: 5px; color: #94a3b8; font-weight: 700; font-size: 11px;">
+
+                        <span id="bcvStatusDot" style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 5px #10b981;"></span>
+
+                        <span id="bcvSourceName">BCV:</span>
+
+                    </span>
+
+                    <span id="bcvRateDisplay" style="font-size: 13px; font-weight: 900; color: var(--dalor-gold); font-family: monospace; letter-spacing: 0.5px;">848.55</span>
+
+                    <span style="color: #cbd5e1; font-weight: 700; font-size: 11px;">Bs/$</span>
+
+                    <button onclick="syncBcvRateFromBtn(event)" id="btnSyncBcv" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 2px 4px; margin-left: 2px; transition: transform 0.3s;" title="Refrescar cotización oficial BCV">
+
+                        <i class="fa-solid fa-arrows-rotate" id="bcvSyncIcon" style="font-size: 10px;"></i>
+
+                    </button>
+
+                    <button onclick="openManualTasaModal(event)" id="btnManualTasa" style="background: none; border: none; color: #64748b; cursor: pointer; padding: 2px 2px;" title="Ajuste manual de contingencia (Solo Administrador)">
+
+                        <i class="fa-solid fa-pen" style="font-size: 9px;"></i>
+
+                    </button>
+
+                </div>
+
+
+
+                <!-- Perfil de Usuario Activo -->
+
+                <div id="currentUserBadge" style="background-color: #0f172a; border: 1px solid #334155; padding: 4px 8px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+
+                    <div style="width: 26px; height: 26px; border-radius: 50%; background: var(--dalor-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;" id="userAvatar">
+
+                        A
+
+                    </div>
+
+                    <div style="line-height: 1.1;" class="hide-on-small-mobile">
+
+                        <span id="userFullNameDisplay" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block;">Director General</span>
+
+                        <span id="userRoleDisplay" style="font-size: 10px; color: var(--dalor-gold); font-weight: 700;">Director</span>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Botón Switch de Alertas Sonoras (Campana / Silencio) -->
+
+                <button id="btnSoundToggle" onclick="toggleSoundAlerts()" class="sound-toggle-btn" title="Habilitar o Silenciar Alertas Sonoras" style="background: #0f172a; color: #fbbf24; border: 1px solid #334155; padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
+
+                    <i id="iconSoundToggle" class="fa-solid fa-bell"></i>
+
+                    <span id="textSoundToggle" class="hide-on-small-mobile">Sonido: ON</span>
+
+                </button>
+
+
+
+                <!-- Botón Directo y Visible de Cerrar Sesión Móvil / Desktop -->
+
+                <button onclick="handleLogout()" class="header-logout-btn" title="Cerrar Sesión Segura" style="background: #e11d48; color: white; border: none; padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+
+                    <i class="fa-solid fa-power-off"></i> <span style="display: inline;">Salir</span>
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </header>

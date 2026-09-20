@@ -68,6 +68,14 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
     db.refresh(new_quote)
     return new_quote
 
+@router.get("/{quotation_id}", response_model=QuotationOut)
+@router.get("/{quotation_id}/", response_model=QuotationOut)
+def get_quotation_by_id(quotation_id: int, db: Session = Depends(get_db)):
+    quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada.")
+    return quote
+
 @router.put("/{quotation_id}", response_model=QuotationOut)
 @router.put("/{quotation_id}/", response_model=QuotationOut)
 @router.post("/{quotation_id}", response_model=QuotationOut)

@@ -83,9 +83,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Rutas de Frontend y Uploads
 ROOT_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-V2_DIST_DIR = os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "dist")
-LEGACY_FRONTEND_DIR = os.path.join(ROOT_PROJECT_DIR, "frontend")
-FRONTEND_DIR = V2_DIST_DIR if os.path.exists(V2_DIST_DIR) else LEGACY_FRONTEND_DIR
+FRONTEND_DIR = os.path.join(ROOT_PROJECT_DIR, "frontend")
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 

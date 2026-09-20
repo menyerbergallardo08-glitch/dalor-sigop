@@ -39,7 +39,7 @@ function openResourceSubtab(subtabName) {
 
 function switchResourceSubtab(subtabName) {
 
-    const allSubtabs = ['dashboard', 'fleet', 'machinery', 'tools', 'materials', 'personnel'];
+    const allSubtabs = ['dashboard', 'fleet', 'machinery', 'tools', 'materials', 'personnel', 'rentals'];
 
     allSubtabs.forEach(tab => {
 
@@ -77,6 +77,7 @@ function switchResourceSubtab(subtabName) {
 
     if (subtabName === 'personnel') loadPersonnelTableList();
 
+    if (subtabName === 'rentals' && typeof window.loadRentalsList === 'function') window.loadRentalsList();
 }
 
 
@@ -251,6 +252,9 @@ async function loadFleetList() {
                 <td>${v.current_location}</td>
                 <td>${v.custodian}</td>
                 <td style="text-align: center; white-space: nowrap;">
+                    <button onclick="openAssetHistoryModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
+                    </button>
                     <button onclick="openOdometerOcrModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', '${v.license_plate || ''}', ${v.current_odometer})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
                         <i class="fa-solid fa-camera"></i> Odómetro
                     </button>
@@ -1064,6 +1068,9 @@ async function loadMachineryList() {
 
                     `}
 
+                    <button onclick="openAssetHistoryModal(${m.id}, '${m.asset_code}', '${m.name.replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
+                    </button>
                     <button onclick="deleteAssetItem(${m.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Maquinaria">
 
                         <i class="fa-solid fa-trash"></i>
@@ -1101,8 +1108,17 @@ async function loadToolsList() {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de herramientas agrupadas...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}/assets/`);
-        const assets = await res.json();
+        const res = await fetch(`${API_BASE}/assets/tools-summary`);
+        if (res.ok) {
+            groupedToolsList = await res.json();
+            rawToolsList = groupedToolsList.flatMap(g => g.items || []);
+            renderGroupedTools(groupedToolsList);
+            return;
+        }
+
+        // Fallback si endpoint no está disponible
+        const fallbackRes = await fetch(`${API_BASE}/assets/`);
+        const assets = await fallbackRes.json();
         const nonTools = ['vehiculo', 'camioneta', 'camion', 'remolque', 'maquinaria', 'planta', 'generador', 'compresor'];
         rawToolsList = assets.filter(a => !nonTools.includes(a.asset_type));
 
@@ -1152,7 +1168,7 @@ async function loadToolsList() {
 function renderGroupedTools(list) {
     const tbody = document.getElementById("toolsTableBody");
     const countBadge = document.getElementById("toolsCountBadge");
-    if (countBadge) countBadge.innerText = `${list.length} modelos (${list.reduce((acc, g) => acc + g.total, 0)} unidades)`;
+    if (countBadge) countBadge.innerText = `${list.length} modelos (${list.reduce((acc, g) => acc + g.total, 0)} unidades físicas)`;
 
     if (!tbody) return;
     if (list.length === 0) {
@@ -1160,17 +1176,51 @@ function renderGroupedTools(list) {
         return;
     }
 
-    tbody.innerHTML = list.map(g => {
+    tbody.innerHTML = list.map((g, idx) => {
         const sampleCode = g.items[0]?.asset_code || 'HER';
         const sampleBrand = g.items[0]?.brand || '';
         const sampleModel = g.items[0]?.model ? `(${g.items[0].model})` : '';
         const locDisplay = g.locations.length > 0 ? g.locations.slice(0, 2).join(', ') : 'Sede Central';
+        const rowCollapseId = `tool_units_row_${idx}`;
+
+        // Renderizar tabla interna de unidades individuales
+        const unitsRows = g.items.map(it => {
+            const isAvail = it.status === 'disponible_base' || !it.current_project_id;
+            return `
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+                    <td style="padding: 5px 8px; font-weight: 800; color: var(--dalor-navy); font-family: monospace;">${it.asset_code}</td>
+                    <td style="padding: 5px 8px; font-size: 11px;">${it.brand || '-'} ${it.model || ''}</td>
+                    <td style="padding: 5px 8px; font-family: monospace; font-size: 11px; color: #64748b;">${it.serial_number || '-'}</td>
+                    <td style="padding: 5px 8px; font-size: 11px; color: #334155;">${it.current_location || 'Sede Central'}</td>
+                    <td style="padding: 5px 8px; font-size: 11px; color: #2563eb; font-weight: 600;">${it.current_custodian_name || 'En Pañol Base'}</td>
+                    <td style="padding: 5px 8px; text-align: center;">
+                        <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${isAvail ? 'background: #dcfce7; color: #166534;' : 'background: #fee2e2; color: #991b1b;'}">
+                            ${isAvail ? 'DISPONIBLE' : 'EN OBRA'}
+                        </span>
+                    </td>
+                    <td style="padding: 5px 8px; text-align: center;">
+                        <button onclick="openAssetHistoryModal(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #2563eb; border-color: #bfdbfe;" title="Ver Bitácora de esta unidad física">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Traza
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
         return `
-        <tr>
+        <tr style="background: #ffffff; border-bottom: 1px solid #e2e8f0;">
             <td>
-                <div style="font-weight: 800; color: var(--dalor-navy);">${g.name}</div>
-                <div style="font-size: 10px; color: #64748b; font-family: monospace;">Muestra: ${sampleCode} ${sampleBrand} ${sampleModel}</div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button onclick="toggleToolUnitsBreakdown('${rowCollapseId}')" style="background: none; border: 1px solid #cbd5e1; border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #0284c7;" title="Desplegar / Ocultar desglose de unidades físicas">
+                        <i id="icon_${rowCollapseId}" class="fa-solid fa-chevron-right" style="font-size: 10px; transition: transform 0.2s;"></i>
+                    </button>
+                    <div>
+                        <div style="font-weight: 800; color: var(--dalor-navy); cursor: pointer;" onclick="toggleToolUnitsBreakdown('${rowCollapseId}')">
+                            ${g.name}
+                        </div>
+                        <div style="font-size: 10px; color: #64748b; font-family: monospace;">Muestra: ${sampleCode} ${sampleBrand} ${sampleModel}</div>
+                    </div>
+                </div>
             </td>
             <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${(g.asset_type || 'HERRAMIENTA').toUpperCase().replace('_', ' ')}</span></td>
             <td style="text-align: center;">
@@ -1188,18 +1238,64 @@ function renderGroupedTools(list) {
             </td>
             <td style="font-size: 11px; color: #334155;">${locDisplay}</td>
             <td style="text-align: center; white-space: nowrap;">
+                <button onclick="toggleToolUnitsBreakdown('${rowCollapseId}')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #475569; background: #f8fafc;" title="Ver desglose detallado de cada serial y unidad">
+                    <i class="fa-solid fa-layer-group"></i> Desglose (${g.total})
+                </button>
                 ${g.available > 0 ? `
                     <button onclick="assignAvailableToolFromGroup('${encodeURIComponent(g.name)}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" title="Asignar una unidad disponible a obra">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Asignar
                     </button>
                 ` : ''}
-                <button onclick="openToolHistoryModal('${encodeURIComponent(g.name)}')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #0284c7; border-color: #bae6fd;" title="Ver Historial de Traza">
+                <button onclick="openToolHistoryModal('${encodeURIComponent(g.name)}')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #0284c7; border-color: #bae6fd;" title="Ver Historial de Traza Global">
                     <i class="fa-solid fa-clock-rotate-left"></i> Traza
                 </button>
+            </td>
+        </tr>
+        <!-- FILA DE DESGLOSE DE UNIDADES INDIVIDUALES -->
+        <tr id="${rowCollapseId}" class="hidden" style="background: #f8fafc;">
+            <td colspan="7" style="padding: 12px 16px; border-left: 3px solid #0284c7;">
+                <div style="font-size: 11px; font-weight: 800; color: #002B49; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fa-solid fa-boxes-stacked" style="color: #0284c7;"></i> Desglose Unitario de [${g.name}] &bull; ${g.total} unidad(es) física(s) con serial y custodio:</span>
+                    <span style="color: #64748b; font-weight: 600;">Disponibles: <b style="color: #166534;">${g.available}</b> | En Obra: <b style="color: #991b1b;">${g.in_use}</b></span>
+                </div>
+                <div style="border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; background: white;">
+                    <table style="width: 100%; font-size: 11px; margin: 0;">
+                        <thead>
+                            <tr style="background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+                                <th style="padding: 6px 8px; text-align: left;">Código Dalor</th>
+                                <th style="padding: 6px 8px; text-align: left;">Marca / Modelo</th>
+                                <th style="padding: 6px 8px; text-align: left;">Serial Físico</th>
+                                <th style="padding: 6px 8px; text-align: left;">Ubicación Actual</th>
+                                <th style="padding: 6px 8px; text-align: left;">Custodio / Técnico</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estatus</th>
+                                <th style="padding: 6px 8px; text-align: center;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${unitsRows}
+                        </tbody>
+                    </table>
+                </div>
             </td>
         </tr>`;
     }).join('');
 }
+
+function toggleToolUnitsBreakdown(rowId) {
+    const row = document.getElementById(rowId);
+    const icon = document.getElementById(`icon_${rowId}`);
+    if (row) {
+        const isHidden = row.classList.contains('hidden');
+        if (isHidden) {
+            row.classList.remove('hidden');
+            if (icon) icon.style.transform = 'rotate(90deg)';
+        } else {
+            row.classList.add('hidden');
+            if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+    }
+}
+window.toggleToolUnitsBreakdown = toggleToolUnitsBreakdown;
 
 function filterToolsList() {
     const q = (document.getElementById("toolSearchInput")?.value || '').trim().toLowerCase();
@@ -2007,3 +2103,66 @@ if (typeof window !== 'undefined') {
 }
 
 export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, submitCalibrateAllOdometers, filterToolsList, assignAvailableToolFromGroup, openToolHistoryModal };
+
+
+async function openAssetHistoryModal(assetId, assetCode, assetName) {
+    const titleEl = document.getElementById("assetHistoryTitle");
+    const subEl = document.getElementById("assetHistorySubtitle");
+    const locEl = document.getElementById("assetHistCurrentLoc");
+    const custEl = document.getElementById("assetHistCustodian");
+    const odoEl = document.getElementById("assetHistOdometer");
+    const statusEl = document.getElementById("assetHistStatusBadge");
+    const tbody = document.getElementById("assetHistoryTableBody");
+
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color: #2563eb;"></i> Bitácora & Trazabilidad: [${assetCode}] ${assetName}`;
+    if (subEl) subEl.innerText = `Consultando historial de asignaciones, choferes, obras y despachos...`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando bitácora de uso...</td></tr>`;
+
+    openModal("modalAssetHistory");
+
+    try {
+        const res = await fetch(`${API_BASE}/assets/${assetId}/history`);
+        if (!res.ok) throw new Error("Error consultando bitácora");
+        const data = await res.json();
+        const a = data.asset || {};
+        const timeline = data.timeline || [];
+
+        if (subEl) subEl.innerText = `${a.brand ? a.brand + ' ' : ''}${a.model || ''} | Placa/Serial: ${a.license_plate || '-'} | Ubicación Actual: ${a.current_location || 'Base'}`;
+        if (locEl) locEl.innerText = a.current_location || "Sede Central Dalor";
+        if (custEl) custEl.innerText = a.current_custodian || "Disponible en Base";
+        if (odoEl) odoEl.innerText = `${Number(a.current_odometer || 0).toLocaleString()} Km`;
+        if (statusEl) {
+            const inBase = a.status === 'disponible_base' || !a.current_project_id;
+            statusEl.innerHTML = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">${(a.status || 'DISPONIBLE').toUpperCase().replace(/_/g, ' ')}</span>`;
+        }
+
+        if (timeline.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">No se registran salidas ni movimientos históricos para este activo (Permanece en Base Central).</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = timeline.map(t => {
+            let badgeBg = '#f1f5f9', badgeColor = '#475569', typeLabel = 'Movimiento';
+            if (t.type === 'guia_despacho') { badgeBg = '#dbeafe'; badgeColor = '#1d4ed8'; typeLabel = 'Guía Despacho'; }
+            else if (t.type === 'alquiler_prestamo') { badgeBg = '#fef3c7'; badgeColor = '#b45309'; typeLabel = 'Alquiler/Préstamo'; }
+            else if (t.status === 'disponible_base') { badgeBg = '#dcfce7'; badgeColor = '#15803d'; typeLabel = 'Retorno a Base'; }
+            else { badgeBg = '#e0e7ff'; badgeColor = '#4338ca'; typeLabel = 'Asignación Obra'; }
+
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 8px; font-weight: 600; color: #475569; white-space: nowrap;">${t.date}</td>
+                    <td style="padding: 8px;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor};">${typeLabel}</span></td>
+                    <td style="padding: 8px; font-family: monospace; font-weight: 800; color: var(--dalor-navy);">${t.transfer_code || '-'}</td>
+                    <td style="padding: 8px;"><span style="font-weight: 700; color: #1e293b;">${t.project_code ? `[${t.project_code}] ` : ''}${t.destination || t.project_name}</span></td>
+                    <td style="padding: 8px; font-weight: 700; color: #2563eb;">${t.driver_name || t.responsible_person || '-'}</td>
+                    <td style="padding: 8px; text-align: right; font-weight: 800; color: #059669;">${t.odometer != null ? Number(t.odometer).toLocaleString() + ' Km' : '-'}</td>
+                    <td style="padding: 8px; color: #64748b; font-size: 11px;">${t.notes || '-'}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar bitácora del activo: ${e.message}</td></tr>`;
+    }
+}
+
+window.openAssetHistoryModal = openAssetHistoryModal;

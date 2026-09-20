@@ -41,7 +41,7 @@ class UserCreate(BaseModel):
 class UserPermissionsUpdate(BaseModel):
     permissions_json: str
 
-@router.get("/users")
+@router.get("/users", dependencies=[Depends(require_roles(["director_general", "administrador_financiero"]))])
 def list_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return [{

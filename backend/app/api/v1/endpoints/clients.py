@@ -16,11 +16,20 @@ def get_clients(include_inactive: bool = False, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=ClientOut)
 def create_client(client_in: ClientCreate, db: Session = Depends(get_db)):
-    existing = db.query(Client).filter(Client.code == client_in.code).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese código.")
+    client_dict = client_in.dict()
+    code_val = (client_dict.get("code") or "").strip()
     
-    new_client = Client(**client_in.dict())
+    if code_val:
+        existing = db.query(Client).filter(Client.code == code_val).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe un cliente con ese código.")
+        client_dict["code"] = code_val
+    else:
+        # Auto-generar código correlativo de cliente
+        next_id = db.query(Client).count() + 1
+        client_dict["code"] = f"CLI-{next_id:03d}"
+    
+    new_client = Client(**client_dict)
     db.add(new_client)
     db.commit()
     db.refresh(new_client)

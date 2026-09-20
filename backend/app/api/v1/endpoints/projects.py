@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response, Query
+from sqlalchemy.orm import Session, joinedload, selectinload
 from typing import List, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 from app.core.database import get_db
-from app.models.models import Project, Client, Expense, ProjectPhase, Asset, Personnel, ResourceAssignmentHistory
+from app.models.models import Project, Client, Expense, ProjectPhase, Asset, Personnel, ResourceAssignmentHistory, AccountReceivable, FinancialPayment
 from app.schemas.schemas import ProjectCreate, ProjectOut
 from app.services.excel_service import ExcelProjectService
 
@@ -15,7 +15,17 @@ class PhaseStatusUpdate(BaseModel):
 
 @router.get("/")
 def get_projects(db: Session = Depends(get_db)):
-    projects = db.query(Project).filter(Project.is_active == True).order_by(Project.created_at.desc()).all()
+    projects = (
+        db.query(Project)
+        .options(
+            joinedload(Project.client),
+            selectinload(Project.expenses),
+            selectinload(Project.phases)
+        )
+        .filter(Project.is_active == True)
+        .order_by(Project.created_at.desc())
+        .all()
+    )
     results = []
     for proj in projects:
         spent = sum(e.amount_usd for e in proj.expenses) if proj.expenses else 0.0
@@ -91,6 +101,30 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
     expenses = db.query(Expense).filter(Expense.project_id == project_id).all()
     total_spent = sum(e.amount_usd for e in expenses)
 
+    # Trazabilidad de Cobros y Cuentas por Cobrar (CxC) de la obra
+    receivables = db.query(AccountReceivable).filter(AccountReceivable.project_id == project_id).all()
+    total_billed_cxc = sum(r.amount_usd for r in receivables)
+    total_collected_usd = sum(r.paid_amount_usd for r in receivables)
+    balance_receivable_usd = sum(r.balance_usd for r in receivables)
+
+    # Detalle cronológico de todos los abonos y cobros percibidos
+    collections_trace = []
+    for r in receivables:
+        for pm in (r.payments or []):
+            collections_trace.append({
+                "id": pm.id,
+                "receivable_id": r.id,
+                "invoice_number": r.invoice_number,
+                "payment_date": pm.payment_date.strftime("%Y-%m-%d %H:%M") if pm.payment_date else "-",
+                "payment_method": pm.payment_method or "transferencia",
+                "reference_number": pm.voucher_number or pm.reference_number or "-",
+                "amount_usd": round(pm.amount_usd, 2),
+                "amount_bs": round(pm.amount_bs, 2) if pm.amount_bs else 0.0,
+                "exchange_rate": pm.exchange_rate,
+                "notes": pm.notes or ""
+            })
+    collections_trace.sort(key=lambda x: x["payment_date"], reverse=True)
+
     return {
         "id": proj.id,
         "code": proj.code,
@@ -104,6 +138,10 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
         "budget_limit_usd": proj.budget_limit_usd,
         "total_spent_usd": round(total_spent, 2),
         "gross_margin_usd": round(proj.contract_amount_usd - total_spent, 2),
+        "total_billed_cxc_usd": round(total_billed_cxc, 2),
+        "total_collected_usd": round(total_collected_usd, 2),
+        "balance_receivable_usd": round(balance_receivable_usd, 2),
+        "collections": collections_trace,
         "phases": [
             {
                 "id": ph.id,
@@ -268,7 +306,7 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
 
         # 5. Generar Automáticamente la Cuenta por Cobrar (CxC)
         if new_project.contract_amount_usd and new_project.contract_amount_usd > 0:
-            from app.models.models import AccountReceivable
+            from app.models.models import AccountReceivable, FinancialPayment
             cxc_entry = AccountReceivable(
                 project_id=new_project.id,
                 client_id=new_project.client_id,

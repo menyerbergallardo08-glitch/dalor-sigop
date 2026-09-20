@@ -15,7 +15,8 @@ from app.api.v1.endpoints import (
     auth,
     maintenance,
     materials,
-    dispatch
+    dispatch,
+    rentals
 )
 
 from sqlalchemy.orm import Session
@@ -49,4 +50,5 @@ api_router.include_router(assets.router, prefix="/assets", tags=["Flota & Activo
 api_router.include_router(personnel.router, prefix="/personnel", tags=["Personal"], dependencies=[Depends(get_current_active_user)])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reportes & Dashboard"], dependencies=[Depends(get_current_active_user)])
 api_router.include_router(ocr.router, prefix="/ocr", tags=["OCR & PDF"], dependencies=[Depends(get_current_active_user)])
+api_router.include_router(rentals.router, prefix="/rentals", tags=["Alquileres & Préstamos de Equipos"], dependencies=[Depends(get_current_active_user)])
 

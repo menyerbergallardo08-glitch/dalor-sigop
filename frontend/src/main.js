@@ -21,22 +21,22 @@ try {
 } catch(e) { window.currentUser = null; }
 window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
 
-import { Api } from './api.js?v=2026.09.19.v97.0';
-import { State } from './state.js?v=2026.09.19.v97.0';
-import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js?v=2026.09.19.v97.0';
+import { Api } from './api.js?v=2026.09.20.v97.1';
+import { State } from './state.js?v=2026.09.20.v97.1';
+import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js?v=2026.09.20.v97.1';
 
 // Carga e Inicialización de Submódulos Especializados
-import './modules/core.js?v=2026.09.19.v97.0';
-import './modules/bcv.js?v=2026.09.19.v97.0';
-import './modules/maintenance.js?v=2026.09.19.v97.0';
-import './modules/projects.js?v=2026.09.19.v97.0';
-import './modules/resources.js?v=2026.09.19.v97.0';
-import './modules/quotations.js?v=2026.09.19.v97.0';
-import './modules/expenses.js?v=2026.09.19.v97.0';
-import './modules/financial.js?v=2026.09.19.v97.0';
-import './modules/materials.js?v=2026.09.19.v97.0';
-import './modules/dispatch.js?v=2026.09.19.v97.0';
-import './modules/rentals.js?v=2026.09.19.v97.0';
+import './modules/core.js?v=2026.09.20.v97.1';
+import './modules/bcv.js?v=2026.09.20.v97.1';
+import './modules/maintenance.js?v=2026.09.20.v97.1';
+import './modules/projects.js?v=2026.09.20.v97.1';
+import './modules/resources.js?v=2026.09.20.v97.1';
+import './modules/quotations.js?v=2026.09.20.v97.1';
+import './modules/expenses.js?v=2026.09.20.v97.1';
+import './modules/financial.js?v=2026.09.20.v97.1';
+import './modules/materials.js?v=2026.09.20.v97.1';
+import './modules/dispatch.js?v=2026.09.20.v97.1';
+import './modules/rentals.js?v=2026.09.20.v97.1';
 
 // Exportar al scope global para compatibilidad total con eventos inline de index.html
 window.Api = Api;

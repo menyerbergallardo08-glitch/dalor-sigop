@@ -380,7 +380,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 // --- BLOQUE L1120-L1609 ---
 function isMobileViewport() {
 
-    return window.innerWidth <= 768 || ('ontouchstart' in window && window.innerWidth <= 1024);
+    return window.innerWidth <= 768;
 
 }
 

@@ -994,20 +994,148 @@ async function loadTreasurySummary() {
 
         `;
 
+        // --- TRAZABILIDAD LÍNEA POR LÍNEA DESEMPAQUETADA EN TESORERÍA ---
+        const traceTbody = document.getElementById("treasuryTraceTableBody");
+        if (traceTbody) {
+            try {
+                const token = window.authToken || localStorage.getItem('dalor_token') || null;
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                const [resCxc, resCxp, resPart] = await Promise.all([
+                    fetch(`${API_BASE}/financial/cxc`, { headers }),
+                    fetch(`${API_BASE}/financial/cxp`, { headers }),
+                    fetch(`${API_BASE}/financial/partners/withdrawals`, { headers })
+                ]);
 
+                const cxcList = resCxc.ok ? await resCxc.json() : [];
+                const cxpList = resCxp.ok ? await resCxp.json() : [];
+                const partList = resPart.ok ? await resPart.json() : [];
+
+                const operations = [];
+                const bcvRate = window.BCV_DATA?.rate || (typeof State !== 'undefined' && State.exchangeRate) || EXCHANGE_RATE || 850.0;
+
+                // 1. Trazabilidad de cada cobro / abono individual de clientes
+                if (Array.isArray(cxcList)) {
+                    cxcList.forEach(c => {
+                        const payments = c.payments || [];
+                        if (payments.length > 0) {
+                            payments.forEach(pm => {
+                                const usd = pm.amount_usd || 0;
+                                operations.push({
+                                    date: pm.payment_date || c.due_date || '-',
+                                    type: 'COBRO CLIENTE',
+                                    typeColor: '#059669',
+                                    sign: '+',
+                                    concept: `Abono Factura [${c.invoice_number}] - ${(c.project_code || c.project_name || 'Obra')}`,
+                                    entity: c.client_name || 'Cliente',
+                                    ref: pm.voucher_number || pm.reference_number || c.invoice_number,
+                                    method: (pm.payment_method || 'transferencia').replace(/_/g, ' '),
+                                    amount_usd: usd,
+                                    amount_bs: pm.amount_bs || (usd * bcvRate),
+                                    notes: pm.notes || ''
+                                });
+                            });
+                        } else if (c.paid_amount_usd > 0) {
+                            operations.push({
+                                date: c.issue_date || c.due_date || '-',
+                                type: 'COBRO CLIENTE',
+                                typeColor: '#059669',
+                                sign: '+',
+                                concept: `Cobro Factura [${c.invoice_number}]`,
+                                entity: c.client_name || 'Cliente',
+                                ref: c.invoice_number,
+                                method: 'Directo',
+                                amount_usd: c.paid_amount_usd,
+                                amount_bs: c.paid_amount_usd * bcvRate,
+                                notes: ''
+                            });
+                        }
+                    });
+                }
+
+                // 2. Trazabilidad de cada pago / abono individual a proveedores
+                if (Array.isArray(cxpList)) {
+                    cxpList.forEach(p => {
+                        const payments = p.payments || [];
+                        if (payments.length > 0) {
+                            payments.forEach(pm => {
+                                const usd = pm.amount_usd || 0;
+                                operations.push({
+                                    date: pm.payment_date || p.due_date || '-',
+                                    type: 'PAGO PROVEEDOR',
+                                    typeColor: '#e11d48',
+                                    sign: '-',
+                                    concept: `Abono Factura [${p.invoice_number}] - ${p.description || 'Suministros'}`,
+                                    entity: p.supplier_name || 'Proveedor',
+                                    ref: pm.voucher_number || pm.reference_number || p.invoice_number,
+                                    method: (pm.payment_method || 'transferencia').replace(/_/g, ' '),
+                                    amount_usd: usd,
+                                    amount_bs: pm.amount_bs || (usd * bcvRate),
+                                    notes: pm.notes || ''
+                                });
+                            });
+                        } else if (p.paid_amount_usd > 0) {
+                            operations.push({
+                                date: p.issue_date || p.due_date || '-',
+                                type: 'PAGO PROVEEDOR',
+                                typeColor: '#e11d48',
+                                sign: '-',
+                                concept: `Pago Factura [${p.invoice_number}]`,
+                                entity: p.supplier_name || 'Proveedor',
+                                ref: p.invoice_number,
+                                method: 'Directo',
+                                amount_usd: p.paid_amount_usd,
+                                amount_bs: p.paid_amount_usd * bcvRate,
+                                notes: ''
+                            });
+                        }
+                    });
+                }
+
+                // 3. Trazabilidad de retiros personales de socios
+                if (Array.isArray(partList)) {
+                    partList.forEach(w => {
+                        operations.push({
+                            date: w.date || 'Reciente',
+                            type: 'RETIRO SOCIO',
+                            typeColor: '#7c3aed',
+                            sign: '-',
+                            concept: w.concept || 'Retiro a cuenta de utilidades',
+                            entity: w.partner_name || 'Accionista',
+                            ref: w.reference_number || w.payment_method || '-',
+                            amount_usd: w.amount_usd,
+                            amount_bs: w.amount_bs || (w.amount_usd * (w.exchange_rate || window.BCV_DATA?.rate || 850.0))
+                        });
+                    });
+                }
+
+                if (operations.length === 0) {
+                    traceTbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 18px;">No hay movimientos registrados en la traza de caja.</td></tr>`;
+                } else {
+                    traceTbody.innerHTML = operations.map(op => `
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="font-weight: 700; color: #64748b; font-size: 11px; white-space: nowrap;">${op.date}</td>
+                            <td><span style="background: ${op.typeColor}15; color: ${op.typeColor}; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 10px; border: 1px solid ${op.typeColor}40;">${op.type}</span></td>
+                            <td style="font-weight: 600; font-size: 12px; color: #1e293b;">${op.concept}</td>
+                            <td style="font-weight: 700; font-size: 12px; color: #0284c7;">${op.entity}</td>
+                            <td style="color: #64748b; font-family: monospace; font-size: 11px;">
+                                <div>${op.ref}</div>
+                                ${op.method ? `<div style="font-size: 10px; color: #94a3b8; text-transform: capitalize;">${op.method}</div>` : ''}
+                            </td>
+                            <td style="font-weight: 800; color: ${op.typeColor}; text-align: right;">$${Number(op.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                            <td style="color: #475569; font-weight: 700; text-align: right;">Bs. ${Number(op.amount_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
+                            <td style="text-align: center; font-weight: 900; color: ${op.typeColor}; font-size: 14px;">${op.sign}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (errTrace) {
+                console.error("Error al cargar traza de tesorería:", errTrace);
+            }
+        }
 
     } catch (e) {
-
         console.error("Error al cargar tesorería:", e);
-
     }
-
 }
-
-
-
-
-
 
 
 // --- BLOQUE L9996-L10369 ---
@@ -1324,7 +1452,8 @@ async function loadPartnersWithdrawalsList() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/financial/partners/withdrawals`);
+        const token = window.authToken || localStorage.getItem('dalor_token') || null;
+        const res = await fetch(`${API_BASE}/financial/partners/withdrawals`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
 
         const list = await res.json();
 

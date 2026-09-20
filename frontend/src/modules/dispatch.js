@@ -328,15 +328,18 @@ async function printOfficialDispatchGuide(guideId) {
 
         const sheetHtml = `
             <div style="background: white; padding: 25px; border-radius: 8px; font-family: 'Inter', sans-serif; color: #1e293b; max-width: 800px; margin: 0 auto; line-height: 1.4;">
-                <!-- ENCABEZADO FORMAL -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #002B49; padding-bottom: 12px; margin-bottom: 14px;">
-                    <div>
-                        <h2 style="margin: 0; font-size: 18px; font-weight: 900; color: #002B49; letter-spacing: -0.5px;">METALMECÁNICA DALOR, C.A.</h2>
-                        <p style="margin: 2px 0 0; font-size: 10.5px; color: #475569; font-weight: 600;">RIF: J-504786720 &bull; Zona Industrial Pruinca, Guacara, Edo. Carabobo</p>
-                        <p style="margin: 1px 0 0; font-size: 10px; color: #64748b;">Especialistas en Fabricación, Metalmecánica, Montajes & Soldadura Industrial</p>
+                <!-- ENCABEZADO FORMAL INSTITUCIONAL DALOR -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F5B800; padding-bottom: 12px; margin-bottom: 14px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <img src="logo_dalor.jpg" alt="DALOR" style="height: 52px; max-width: 140px; object-fit: contain;" onerror="this.style.display='none'">
+                        <div>
+                            <h2 style="margin: 0; font-size: 18px; font-weight: 900; color: #002B49; letter-spacing: -0.5px; text-transform: uppercase;">Metalmecánica Dalor, C.A.</h2>
+                            <p style="margin: 2px 0 0; font-size: 11px; color: #0284c7; font-weight: 700;">RIF: J-31601195-0 &bull; Zona Ind. Pruinca, Guacara, Edo. Carabobo</p>
+                            <p style="margin: 1px 0 0; font-size: 10px; color: #64748b;">Fabricación, Metalmecánica, Montajes Industriales & Obras</p>
+                        </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="background: #002B49; color: white; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 900; display: inline-block;">
+                        <div style="background: #002B49; color: white; padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 900; display: inline-block; border-left: 4px solid #F5B800;">
                             GUÍA DE TRASLADO &bull; ${g.guide_number}
                         </div>
                         <p style="margin: 4px 0 0; font-size: 11px; font-weight: 700; color: #0284c7;">Fecha: ${g.dispatch_date || 'Inmediata'}</p>

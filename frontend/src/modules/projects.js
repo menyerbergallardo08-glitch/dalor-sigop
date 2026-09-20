@@ -2248,10 +2248,21 @@ async function printProjectProgressReport(projIdOrCode) {
         </div>
         `;
 
-        const w = window.open('', '_blank');
-        w.document.write(`<html><head><title>Avance de Obra - ${proj.code}</title></head><body style="margin: 20px;">${printHtml}</body></html>`);
-        w.document.close();
-        setTimeout(() => { w.focus(); w.print(); }, 400);
+        const container = document.getElementById("modalPrintPreviewContent");
+        if (container) {
+            container.innerHTML = printHtml;
+            const titleEl = document.getElementById("previewModalTitle");
+            if (titleEl) titleEl.innerText = `Reporte de Avance de Obra - ${proj.code}`;
+            const modalEl = document.getElementById('modalPrintPreview');
+            if (modalEl) modalEl.classList.remove('hidden');
+        } else {
+            const w = window.open('', '_blank');
+            if (w) {
+                w.document.write(`<html><head><title>Avance de Obra - ${proj.code}</title></head><body style="margin: 20px;">${printHtml}</body></html>`);
+                w.document.close();
+                setTimeout(() => { w.focus(); w.print(); }, 400);
+            }
+        }
     } catch(e) {
         alert("Error al generar reporte PDF: " + e.message);
     }

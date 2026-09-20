@@ -1104,6 +1104,7 @@ async function loadTreasurySummary() {
                             ref: w.reference_number || w.payment_method || '-',
                             amount_usd: w.amount_usd,
                             amount_bs: w.amount_bs || (w.amount_usd * (w.exchange_rate || window.BCV_DATA?.rate || 850.0))
+                        });
                     });
                 }
                 // Ordenar movimientos de forma cronológica descendente (más recientes primero)

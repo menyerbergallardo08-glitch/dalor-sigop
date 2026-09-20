@@ -57,6 +57,8 @@ def on_startup():
     t = threading.Thread(target=keep_alive_heartbeat, daemon=True)
     t.start()
 
+from fastapi.middleware.gzip import GZipMiddleware
+
 # Habilitar CORS seguro y restringido (SEC-04)
 allowed_origins = [
     "http://localhost:8000",
@@ -77,9 +79,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Rutas de Frontend y Uploads
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend")
+ROOT_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+V2_DIST_DIR = os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "dist")
+LEGACY_FRONTEND_DIR = os.path.join(ROOT_PROJECT_DIR, "frontend")
+FRONTEND_DIR = V2_DIST_DIR if os.path.exists(V2_DIST_DIR) else LEGACY_FRONTEND_DIR
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 

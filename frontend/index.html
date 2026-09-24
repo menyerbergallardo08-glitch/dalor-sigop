@@ -5589,23 +5589,33 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px;">
                     <div>
-                        <label class="form-label">Total del Documento ($ USD) *</label>
-                        <input type="number" step="0.01" id="cxp_amount_usd" oninput="calcPayablePreview()" placeholder="0.00" class="form-input" style="font-weight: 800; color: #e11d48; font-size: 15px;" required>
+                        <label class="form-label">Total Documento ($ USD) *</label>
+                        <input type="number" step="0.01" id="cxp_amount_usd" oninput="calcPayablePreview()" placeholder="0.00" class="form-input" style="font-weight: 800; color: #e11d48; font-size: 14px;" required>
                     </div>
                     <div id="cxp_ret_rate_container">
-                        <label class="form-label">Alícuota Retención IVA (SENIAT)</label>
+                        <label class="form-label">Alícuota Ret. IVA</label>
                         <select id="cxp_tax_withholding_rate" class="form-select" onchange="calcPayablePreview()" style="font-weight: 700;">
-                            <option value="75">75% (Contribuyente Especial Estándar)</option>
-                            <option value="100">100% (Proveedor No Actualizado / Sin RIF)</option>
-                            <option value="0">0% (Sin Retención)</option>
+                            <option value="75">75% (Especial)</option>
+                            <option value="100">100% (Total)</option>
+                            <option value="0">0% (Sin Ret.)</option>
+                        </select>
+                    </div>
+                    <div id="cxp_islr_container">
+                        <label class="form-label">Ret. ISLR (Opcional)</label>
+                        <select id="cxp_islr_rate" class="form-select" onchange="calcPayablePreview()" style="font-weight: 700;">
+                            <option value="0">0% (Materiales)</option>
+                            <option value="2">2% (Servicios)</option>
+                            <option value="3">3% (Contratistas)</option>
+                            <option value="5">5% (Honorarios)</option>
+                            <option value="1">1% (Fletes)</option>
                         </select>
                     </div>
                 </div>
 
                 <!-- Desglose Fiscal Dinámico y Neto a Pagar al Proveedor -->
-                <div id="cxp_fiscal_breakdown" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; font-size: 11px;">
+                <div id="cxp_fiscal_breakdown" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; font-size: 11px;">
                     <div>
                         <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 9px;">Base Imponible</span>
                         <p id="cxp_lbl_base" style="font-weight: 800; margin: 2px 0 0 0; color: #1e293b;">$0.00</p>
@@ -5615,11 +5625,15 @@
                         <p id="cxp_lbl_tax" style="font-weight: 800; margin: 2px 0 0 0; color: #2563eb;">$0.00</p>
                     </div>
                     <div>
-                        <span style="color: #b91c1c; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. IVA DALOR</span>
+                        <span style="color: #b91c1c; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. IVA</span>
                         <p id="cxp_lbl_withholding" style="font-weight: 900; margin: 2px 0 0 0; color: #b91c1c;">$0.00</p>
                     </div>
+                    <div>
+                        <span style="color: #6b21a8; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. ISLR</span>
+                        <p id="cxp_lbl_islr" style="font-weight: 900; margin: 2px 0 0 0; color: #7e22ce;">$0.00</p>
+                    </div>
                     <div style="background: #f0fdf4; border-radius: 6px; padding: 2px;">
-                        <span style="color: #166534; font-weight: 700; text-transform: uppercase; font-size: 9px;">Neto a Transferir</span>
+                        <span style="color: #166534; font-weight: 700; text-transform: uppercase; font-size: 9px;">Neto Proveedor</span>
                         <p id="cxp_lbl_net" style="font-weight: 900; margin: 2px 0 0 0; color: #16a34a; font-size: 13px;">$0.00</p>
                     </div>
                 </div>
@@ -9760,8 +9774,8 @@
     </div>
 
     <!-- Scripts de la Aplicación DALOR SIGO-P (Arquitectura Modular ES6) -->
-    <script src="/app.js?v=2026.09.24.v98.36"></script>
-    <script type="module" src="/src/main.js?v=2026.09.24.v98.36"></script>
+    <script src="/app.js?v=2026.09.24.v98.37"></script>
+    <script type="module" src="/src/main.js?v=2026.09.24.v98.37"></script>
 </body>
 
 </html>

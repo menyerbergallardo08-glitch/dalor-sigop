@@ -891,7 +891,9 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
         tax_usd = p_in.tax_amount_usd if (p_in.tax_amount_usd and p_in.tax_amount_usd > 0) else round(p_in.amount_usd - base_usd, 2)
         ret_rate = p_in.tax_withholding_rate if p_in.tax_withholding_rate is not None else 75.0
         ret_iva_usd = p_in.tax_withholding_usd if (p_in.tax_withholding_usd and p_in.tax_withholding_usd > 0) else round(tax_usd * (ret_rate / 100.0), 2)
-        net_usd = round(p_in.amount_usd - ret_iva_usd, 2)
+        islr_r = p_in.islr_rate if p_in.islr_rate is not None else 0.0
+        ret_islr_usd = p_in.islr_withholding_usd if (p_in.islr_withholding_usd and p_in.islr_withholding_usd > 0) else (round(base_usd * (islr_r / 100.0), 2) if islr_r > 0 else 0.0)
+        net_usd = round(p_in.amount_usd - ret_iva_usd - ret_islr_usd, 2)
         
         # Correlativo normativo SENIAT YYYYMM + 8 dígitos
         now = datetime.utcnow()
@@ -911,7 +913,7 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
         voucher_num = f"{prefix}{seq:08d}"
         voucher_date = now
         is_ret_applied = True
-        init_paid = ret_iva_usd
+        init_paid = round(ret_iva_usd + ret_islr_usd, 2)
         init_balance = net_usd
 
     amount_bs = round(p_in.amount_usd * p_in.exchange_rate, 2)
@@ -936,8 +938,8 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
         tax_amount_usd=tax_usd,
         tax_withholding_rate=ret_rate,
         tax_withholding_usd=ret_iva_usd,
-        islr_rate=p_in.islr_rate or 2.0,
-        islr_withholding_usd=p_in.islr_withholding_usd or 0.0,
+        islr_rate=islr_r,
+        islr_withholding_usd=ret_islr_usd,
         net_amount_usd=net_usd,
         amount_usd=p_in.amount_usd,
         amount_bs=amount_bs,
@@ -950,7 +952,7 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
     db.add(new_p)
     db.flush()
 
-    # Si se aplicó retención, crear el movimiento fiscal de comprobante
+    # Si se aplicó retención IVA, crear el movimiento fiscal de comprobante
     if is_ret_applied and ret_iva_usd > 0:
         ret_pay = FinancialPayment(
             payment_type="cxp_retencion_iva",
@@ -965,6 +967,22 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
             notes=f"Comprobante de Retención de IVA {voucher_num} (Alícuota {ret_rate}%) emitido al proveedor."
         )
         db.add(ret_pay)
+
+    # Si se aplicó retención ISLR, crear el movimiento fiscal de comprobante ISLR
+    if ret_islr_usd > 0:
+        ret_islr_pay = FinancialPayment(
+            payment_type="cxp_retencion_islr",
+            payable_id=new_p.id,
+            amount_usd=ret_islr_usd,
+            amount_bs=round(ret_islr_usd * p_in.exchange_rate, 2),
+            exchange_rate=p_in.exchange_rate,
+            payment_method="retencion_islr",
+            bank_account="fiscal_seniat",
+            voucher_number=f"ISLR-{voucher_num or new_p.id}",
+            reference_number=f"ISLR-{voucher_num or new_p.id}",
+            notes=f"Retención ISLR {islr_r}% ({new_p.supplier_name})"
+        )
+        db.add(ret_islr_pay)
 
     # Auditoría
     audit = AuditLog(

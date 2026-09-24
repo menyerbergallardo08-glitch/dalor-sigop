@@ -733,28 +733,33 @@ function calcPayablePreview() {
     const total = parseFloat(document.getElementById("cxp_amount_usd")?.value) || 0;
     const docType = document.getElementById("cxp_doc_type")?.value || 'factura';
     const retRate = (docType === 'factura') ? (parseFloat(document.getElementById("cxp_tax_withholding_rate")?.value) || 75.0) : 0;
+    const islrRate = (docType === 'factura') ? (parseFloat(document.getElementById("cxp_islr_rate")?.value) || 0.0) : 0;
 
-    let base = 0, tax = 0, ret = 0, net = total;
+    let base = 0, tax = 0, ret = 0, islr = 0, net = total;
     if (docType === 'nota_entrega') {
         base = total;
         tax = 0;
         ret = 0;
+        islr = 0;
         net = total;
     } else {
         base = roundFinancial(total / 1.16);
         tax = roundFinancial(total - base);
         ret = (retRate > 0) ? roundFinancial(tax * (retRate / 100.0)) : 0;
-        net = roundFinancial(total - ret);
+        islr = (islrRate > 0) ? roundFinancial(base * (islrRate / 100.0)) : 0;
+        net = roundFinancial(total - ret - islr);
     }
 
     const lblBase = document.getElementById("cxp_lbl_base");
     const lblTax = document.getElementById("cxp_lbl_tax");
     const lblRet = document.getElementById("cxp_lbl_withholding");
+    const lblIslr = document.getElementById("cxp_lbl_islr");
     const lblNet = document.getElementById("cxp_lbl_net");
 
     if (lblBase) lblBase.textContent = `$${base.toFixed(2)}`;
     if (lblTax) lblTax.textContent = `$${tax.toFixed(2)}`;
     if (lblRet) lblRet.textContent = `$${ret.toFixed(2)}`;
+    if (lblIslr) lblIslr.textContent = `$${islr.toFixed(2)}`;
     if (lblNet) lblNet.textContent = `$${net.toFixed(2)}`;
 }
 
@@ -826,6 +831,8 @@ async function submitCreatePayable(e) {
         tax_amount_usd: taxUsd,
         tax_withholding_rate: retRate,
         tax_withholding_usd: retUsd,
+        islr_rate: (docType === 'factura') ? (parseFloat(document.getElementById("cxp_islr_rate")?.value) || 0.0) : 0.0,
+        islr_withholding_usd: (docType === 'factura' && parseFloat(document.getElementById("cxp_islr_rate")?.value) > 0) ? roundFinancial(baseUsd * ((parseFloat(document.getElementById("cxp_islr_rate")?.value) || 0) / 100.0)) : 0.0,
         is_withholding_applied: (docType === 'factura' && retRate > 0),
         exchange_rate: (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0),
         notes: document.getElementById("cxp_notes")?.value?.trim() || ''
@@ -1446,6 +1453,14 @@ async function loadTreasurySummary() {
                 <p style="font-size: 18px; font-weight: 900; color: ${(k.net_exchange_diff_usd || 0) >= 0 ? '#059669' : '#e11d48'}; margin-top: 4px;">${(k.net_exchange_diff_usd || 0) >= 0 ? '+' : ''}$${(k.net_exchange_diff_usd || 0).toLocaleString()}</p>
                 <span style="font-size: 10px; color: #8b5cf6;">${k.total_exchanges_count || 0} operaciones mesa</span>
             </div>
+
+            <div class="card" style="margin-bottom: 0; text-align: center; border-left: 4px solid #be185d; background: #fff5f8;">
+                <span style="font-size: 11px; color: #9d174d; font-weight: 800; text-transform: uppercase;">
+                    <i class="fa-solid fa-stamp"></i> Retenciones SENIAT (Custodia)
+                </span>
+                <p style="font-size: 18px; font-weight: 900; color: #be185d; margin-top: 4px;">$${(k.total_pending_tax_withholdings_usd || 0).toLocaleString()}</p>
+                <span style="font-size: 10px; color: #9d174d;">IVA: $${(k.pending_seniat_iva_usd || 0).toFixed(2)} | ISLR: $${(k.pending_seniat_islr_usd || 0).toFixed(2)}</span>
+            </div>
         `;
 
         cashflowDetails.innerHTML = `
@@ -1471,9 +1486,16 @@ async function loadTreasurySummary() {
                 </b>
             </div>
 
+            <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; font-size: 12px;">
+                <span style="color: #9d174d; font-weight: 700;"><i class="fa-solid fa-stamp"></i> (-) Pasivo de Retenciones en Custodia por Pagar al SENIAT:</span>
+                <b style="color: #be185d;">-$${(k.total_pending_tax_withholdings_usd || 0).toLocaleString()} USD</b>
+            </div>
+
             <div style="display: flex; justify-content: space-between; padding: 8px 10px; background: var(--dalor-navy); color: white; border-radius: 6px; font-size: 13px; font-weight: 800; margin-top: 4px;">
-                <span>(=) Flujo Neto Operativo de Caja:</span>
-                <span style="color: ${k.net_operating_cash_usd >= 0 ? '#34d399' : '#f87171'};">$${k.net_operating_cash_usd.toLocaleString()}</span>
+                <span>(=) Saldo Líquido Disponible Real (Libre de Impuestos):</span>
+                <span style="color: ${(k.net_operating_cash_usd - (k.total_pending_tax_withholdings_usd || 0)) >= 0 ? '#34d399' : '#f87171'};">
+                    $${(k.net_operating_cash_usd - (k.total_pending_tax_withholdings_usd || 0)).toLocaleString()}
+                </span>
             </div>
         `;
 

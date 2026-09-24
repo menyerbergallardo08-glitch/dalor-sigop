@@ -1,152 +1,99 @@
-<section id="view-dispatch" class="hidden">
-
+                <section id="view-dispatch" class="hidden">
             <!-- Navegación por Subpestañas del Módulo de Despachos -->
-
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-
-                <div style="display: flex; gap: 8px;">
-
-                    <button id="tabbtn-disp-list" type="button" onclick="switchDispatchSubtab('list')" class="btn-primary" style="padding: 9px 18px; font-weight: 700; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-
-                        <i class="fa-solid fa-truck-fast"></i> Guías Emitidas & En Tránsito
-
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="tabbtn-disp-list" type="button" onclick="switchDispatchSubtab('list')" class="btn-primary" style="font-size: 12.5px; padding: 7px 16px; border-radius: 8px;">
+                        <i class="fa-solid fa-list-check"></i> 1. Historial & Monitoreo de Guías
                     </button>
-
-                    <button id="tabbtn-disp-freeform" type="button" onclick="switchDispatchSubtab('freeform')" class="btn-secondary" style="padding: 9px 18px; font-weight: 800; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; background: #fffbeb; color: #92400e; border: 2px solid #fde68a;">
-
-                        <i class="fa-solid fa-file-pen" style="color: #d97706;"></i> 📝 Guía Formato Abierto (Libre Edición)
-
+                    <button id="tabbtn-disp-form" type="button" onclick="switchDispatchSubtab('form')" class="btn-secondary" style="font-size: 12.5px; padding: 7px 16px; border-radius: 8px;">
+                        <i class="fa-solid fa-truck-ramp-box"></i> 2. Emitir Guía de Despacho
                     </button>
-
-                    <button id="tabbtn-disp-form" type="button" onclick="switchDispatchSubtab('form')" class="btn-secondary" style="padding: 9px 18px; font-weight: 700; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-
-                        <i class="fa-solid fa-building"></i> Guía Estándar (Por Obra)
-
-                    </button>
-
                 </div>
-
                 <div style="display: flex; gap: 8px; align-items: center;">
-
-                    <button type="button" onclick="loadDispatchGuidesList()" class="btn-secondary" style="font-size: 12px; padding: 7px 12px; border-radius: 6px;">
-
+                    <button type="button" onclick="loadDispatchGuidesList()" class="btn-secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 6px;">
                         <i class="fa-solid fa-arrows-rotate"></i> Actualizar
-
                     </button>
-
                 </div>
-
             </div>
 
-
-
-            <!-- SUBPESTAÑA 1: LISTADO DE GUÍAS DE DESPACHO -->
-
+            <!-- SUBPESTAÑA 1: LISTADO DE GUÍAS DE DESPACHO & MONITOREO -->
             <div id="subtab-disp-list">
-
                 <div class="banner-dalor" style="margin-bottom: 16px;">
-
                     <div>
-
                         <span class="badge-tag" style="background: rgba(255,255,255,0.15); color: #ffffff;"><i class="fa-solid fa-boxes-packing"></i> Logística & Entrega</span>
-
                         <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Control de Despachos & Salida de Taller</h2>
-
-                        <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Emisión de notas de entrega para piezas reparadas/fabricadas, fletes tercerizados y constancia de recepción conforme.</p>
-
+                        <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Emisión unificada de notas de entrega para proyectos/obras DALOR y guías libres de formato abierto, fletes y recepción de carga.</p>
                     </div>
-
                     <button type="button" onclick="switchDispatchSubtab('form')" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; padding: 8px 16px; border-radius: 8px;">
-
-                        <i class="fa-solid fa-plus"></i> ➕ Emitir Despacho
-
+                        <i class="fa-solid fa-plus"></i> ➕ Emitir Guía de Despacho
                     </button>
-
                 </div>
 
+                <!-- Filtros rápidos por estado y modalidad -->
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center;">
+                    <button type="button" id="btn_disp_filter_all" onclick="setDispatchFilter('all')" class="btn-primary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
+                        Todas (<span id="count_disp_all">0</span>)
+                    </button>
+                    <button type="button" id="btn_disp_filter_project" onclick="setDispatchFilter('project')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
+                        <i class="fa-solid fa-building"></i> Por Obra / Proyecto (<span id="count_disp_project">0</span>)
+                    </button>
+                    <button type="button" id="btn_disp_filter_freeform" onclick="setDispatchFilter('freeform')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
+                        <i class="fa-solid fa-feather-pointed"></i> Formato Abierto (<span id="count_disp_freeform">0</span>)
+                    </button>
+                    <button type="button" id="btn_disp_filter_transit" onclick="setDispatchFilter('transit')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
+                        <i class="fa-solid fa-truck-fast"></i> En Tránsito (<span id="count_disp_transit">0</span>)
+                    </button>
+                    <button type="button" id="btn_disp_filter_delivered" onclick="setDispatchFilter('delivered')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
+                        <i class="fa-solid fa-circle-check"></i> Entregadas (<span id="count_disp_delivered">0</span>)
+                    </button>
+                </div>
 
-
-                <!-- Barra de búsqueda y filtros -->
-
+                <!-- Barra de búsqueda y conteo -->
                 <div class="card" style="margin-bottom: 16px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
-
                     <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px;">
-
                         <i class="fa-solid fa-magnifying-glass" style="color: #64748b; font-size: 14px;"></i>
-
-                        <input type="text" id="dispatch_search_input" oninput="debouncedFilterDispatchList(this.value)" placeholder="Buscar por N° Guía, cliente, obra, chofer o placa..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 12px; font-size: 12px; outline: none;">
-
+                        <input type="text" id="dispatch_search_input" oninput="filterDispatchList(this.value)" placeholder="Buscar por N° Guía, cliente, obra, chofer o placa..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 12px; font-size: 12px; outline: none;">
                     </div>
-
                     <span id="dispatch_count_badge" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 5px 10px; border-radius: 6px;">
-
                         Cargando guías...
-
                     </span>
-
                 </div>
-
-
 
                 <!-- Tabla de Guías de Despacho -->
-
                 <div class="card table-container" style="padding: 0; overflow-x: auto;">
-
                     <table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
-
                         <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
-
                             <tr>
-
                                 <th style="padding: 10px; text-align: left;">N° Guía</th>
-
                                 <th style="padding: 10px; text-align: left;">Fecha</th>
-
+                                <th style="padding: 10px; text-align: center;">Tipo</th>
                                 <th style="padding: 10px; text-align: left;">Cliente / Destino</th>
-
-                                <th style="padding: 10px; text-align: left;">Obra / Servicio</th>
-
+                                <th style="padding: 10px; text-align: left;">Obra / Motivo</th>
                                 <th style="padding: 10px; text-align: left;">Transporte & Chofer</th>
-
                                 <th style="padding: 10px; text-align: center;">Carga / Ítems</th>
-
                                 <th style="padding: 10px; text-align: right;">Costo Flete</th>
-
                                 <th style="padding: 10px; text-align: center;">Estado</th>
-
                                 <th style="padding: 10px; text-align: center;">Acciones</th>
-
                             </tr>
-
                         </thead>
-
                         <tbody id="dispatchTableBody">
-
-                            <tr><td colspan="9" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando despachos...</td></tr>
-
+                            <tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando despachos...</td></tr>
                         </tbody>
-
                     </table>
-
                 </div>
-
+                <div id="dispatchPaginationContainer"></div>
             </div>
 
-
-
-            <!-- SUBPESTAÑA: GUÍA DE DESPACHO DE FORMATO ABIERTO (LIBRE EDICIÓN) -->
-            <div id="subtab-disp-freeform" class="hidden">
-                <div class="card" style="margin-bottom: 16px; border-top: 4px solid var(--dalor-gold); background: #ffffff;">
+            <!-- SUBPESTAÑA 2: FORMULARIO UNIFICADO DE EMISIÓN DE GUÍA DE DESPACHO -->
+            <div id="subtab-disp-form" class="hidden">
+                <div class="card" style="margin-bottom: 16px; border-top: 4px solid var(--dalor-navy); background: #ffffff;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
                         <div>
-                            <span style="background: #fef3c7; color: #92400e; font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px;">
-                                <i class="fa-solid fa-feather-pointed"></i> Formato Abierto &bull; 100% Libre Edición
-                            </span>
                             <h3 style="font-size: 16px; font-weight: 900; color: var(--dalor-navy); margin: 0;">
-                                <i class="fa-solid fa-file-pen" style="color: var(--dalor-gold);"></i> Emisión de Guía de Traslado de Formato Abierto
+                                <i class="fa-solid fa-truck-ramp-box" style="color: var(--dalor-gold);"></i> Emisión de Guía Oficial de Despacho & Salida de Taller
                             </h3>
                             <span style="font-size: 11px; color: #64748b; font-weight: 600;">
-                                Redacta y emite guías de traslado libres sin forzar asociación a clientes ni proyectos preexistentes.
+                                Ampara legalmente el traslado de piezas fabricadas/reparadas, traslados entre obras o fletes con control logístico.
                             </span>
                         </div>
                         <button type="button" onclick="switchDispatchSubtab('list')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px; border-radius: 6px;">
@@ -154,558 +101,246 @@
                         </button>
                     </div>
 
-                    <form id="freeformDispatchForm" onsubmit="submitFreeformDispatch(event)">
-                        <!-- BLOQUE 1: DESTINATARIO Y MOTIVO DE TRASLADO -->
-                        <div style="margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
-                            <h4 style="font-size: 12.5px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                    <form id="dispatchCreateForm" onsubmit="submitCreateDispatchGuide(event)">
+                        <!-- SELECTOR DE MODALIDAD: POR OBRA VS FORMATO ABIERTO -->
+                        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">Tipo de Guía:</span>
+                                <div style="display: inline-flex; gap: 6px; background: #e2e8f0; padding: 3px; border-radius: 6px;">
+                                    <button type="button" id="btn_disp_mode_project" onclick="setDispatchMode('project')" class="btn-primary" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 5px;">
+                                        <i class="fa-solid fa-building"></i> 1. Despacho por Proyecto / Obra
+                                    </button>
+                                    <button type="button" id="btn_disp_mode_freeform" onclick="setDispatchMode('freeform')" class="btn-secondary" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 5px;">
+                                        <i class="fa-solid fa-feather-pointed"></i> 2. Traslado Libre / Formato Abierto
+                                    </button>
+                                </div>
+                            </div>
+                            <span id="disp_mode_hint" style="font-size: 11px; color: #64748b; font-weight: 600;">
+                                Vincula la salida a un cliente y proyecto registrado en DALOR SIGO-P.
+                            </span>
+                            <input type="hidden" id="disp_is_freeform" value="0">
+                        </div>
+
+                        <!-- PASO 1: CLIENTE, DESTINO & MOTIVO -->
+                        <div style="margin-bottom: 16px;">
+                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                                 <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">1</span>
-                                Destinatario, Motivo de Salida & Lugar de Destino
+                                Datos del Destinatario & Obra / Motivo
                             </h4>
 
-                            <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                                <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Destinatario / Receptor Libre *</label>
-                                    <input type="text" id="disp_ff_recipient" placeholder="Ej: Aceros y Perfiles del Centro / Arrendadora San Diego" required class="form-input" style="font-size: 12px; font-weight: 700;">
-                                    <small style="color: #64748b; font-size: 10px;">Escribe libremente cualquier empresa o persona sin necesidad de estar registrada.</small>
-                                </div>
-
-                                <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Motivo de Traslado *</label>
-                                    <input list="list_ff_reasons" id="disp_ff_reason" placeholder="Selecciona o escribe el motivo..." value="Traslado entre Sedes / Obras" required class="form-input" style="font-size: 12px;">
-                                    <datalist id="list_ff_reasons">
-                                        <option value="Traslado entre Sedes / Obras"></option>
-                                        <option value="Entrega Puntual de Piezas / Venta"></option>
-                                        <option value="Envío a Mantenimiento / Taller Externo"></option>
-                                        <option value="Préstamo o Alquiler de Equipo / Maquinaria"></option>
-                                        <option value="Devolución de Equipo a Proveedor"></option>
-                                        <option value="Salida de Emergencia a Frente de Obra"></option>
-                                        <option value="Demostración y Pruebas Técnicas"></option>
-                                    </datalist>
-                                </div>
-
-                                <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Fecha y Hora de Salida *</label>
-                                    <input type="datetime-local" id="disp_ff_date" required class="form-input" style="font-size: 12px;">
+                            <!-- Modo A: Por Proyecto / Obra -->
+                            <div id="disp_sec_project_mode">
+                                <div class="grid-4" style="margin-bottom: 10px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente Registrado *</label>
+                                        <select id="disp_client_id" onchange="onDispatchClientChanged()" class="form-select" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+                                            <option value="">-- Seleccionar Cliente Registrado --</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Proyecto / Obra DALOR *</label>
+                                        <select id="disp_project_id" onchange="onDispatchProjectChanged()" class="form-select" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+                                            <option value="">-- Seleccionar Proyecto --</option>
+                                        </select>
+                                        <button type="button" onclick="loadProjectResourcesIntoDispatch()" class="btn-secondary" style="margin-top: 4px; font-size: 10px; padding: 3px 6px; color: #0284c7; border-color: #bae6fd; width: 100%; font-weight: 700;">
+                                            <i class="fa-solid fa-list-check"></i> Cargar Insumos del Proyecto
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Planta / Frente de Entrega</label>
+                                        <input type="text" id="disp_destination_plant" placeholder="Ej: Planta Guacara / Patio 3" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Dirección Completa de Destino *</label>
+                                        <input type="text" id="disp_destination_address" placeholder="Ej: Zona Industrial San Joaquín, Edo. Carabobo" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                    </div>
                                 </div>
                             </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px;">
-                                <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Planta / Área / Galpón de Entrega</label>
-                                    <input type="text" id="disp_ff_plant" placeholder="Ej: Patio 4 / Almacén Central" class="form-input" style="font-size: 12px;">
-                                </div>
-                                <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Dirección Exacta de Destino *</label>
-                                    <input type="text" id="disp_ff_destination" placeholder="Ej: Carretera Nacional Los Guayos, Km 5, Galpón 12" required class="form-input" style="font-size: 12px;">
+                            <!-- Modo B: Formato Abierto / Libre -->
+                            <div id="disp_sec_freeform_mode" style="display: none;">
+                                <div class="grid-4" style="margin-bottom: 10px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Empresa / Destinatario Libre *</label>
+                                        <input type="text" id="disp_freeform_recipient" placeholder="Ej: Aceros y Perfiles del Centro / Taller Externo" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Motivo del Traslado *</label>
+                                        <input list="list_dispatch_reasons" id="disp_transfer_reason" placeholder="Selecciona o escribe el motivo..." value="Despacho de Producción" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                        <datalist id="list_dispatch_reasons">
+                                            <option value="Despacho de Producción / Fabricación">
+                                            <option value="Piezas Reparadas para Montaje">
+                                            <option value="Traslado entre Sedes / Talleres">
+                                            <option value="Servicio Técnico en Campo">
+                                            <option value="Mantenimiento o Calibración Externa">
+                                            <option value="Retorno de Materiales en Custodia">
+                                            <option value="Garantía de Servicio">
+                                        </datalist>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Planta / Frente / Almacén Destino</label>
+                                        <input type="text" id="disp_ff_destination_plant" placeholder="Ej: Galpón Principal / Obra Planta" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Dirección Completa de Destino *</label>
+                                        <input type="text" id="disp_ff_destination_address" placeholder="Ej: Av. Intercomunal Los Guayos, Local 5" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- BLOQUE 2: TRANSPORTE Y CONDUCTOR LIBRE -->
-                        <div style="margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
-                            <h4 style="font-size: 12.5px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                        <!-- PASO 2: MODALIDAD DE TRANSPORTE Y CONDUCTOR -->
+                        <div style="margin-bottom: 16px;">
+                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                                 <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">2</span>
-                                Datos del Transporte & Conductor
+                                Modalidad de Transporte, Vehículo & Conductor
                             </h4>
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                                <button type="button" id="btn_mode_propio" onclick="setDispatchTransportMode('propio_dalor')" class="btn-primary" style="padding: 5px 12px; font-size: 12px;">
+                                    <i class="fa-solid fa-truck"></i> 1. Flota Propia DALOR
+                                </button>
+                                <button type="button" id="btn_mode_tercerizado" onclick="setDispatchTransportMode('flete_tercerizado')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
+                                    <i class="fa-solid fa-handshake"></i> 2. Flete Tercerizado (Genera CxP)
+                                </button>
+                                <button type="button" id="btn_mode_retiro" onclick="setDispatchTransportMode('retiro_cliente')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
+                                    <i class="fa-solid fa-person-walking-luggage"></i> 3. Retiro en Taller por Cliente
+                                </button>
+                            </div>
+                            <input type="hidden" id="disp_transport_type" value="propio_dalor">
 
-                            <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <!-- Transporte: Flota Propia -->
+                            <div id="disp_sec_propio" class="grid-4" style="margin-bottom: 10px;">
                                 <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Modalidad de Traslado</label>
-                                    <select id="disp_ff_transport_type" class="form-select" style="font-size: 12px;">
-                                        <option value="propio_dalor">Transporte Propio (Flota DALOR)</option>
-                                        <option value="tercerizado_flete">Flete Tercerizado (Externo)</option>
-                                        <option value="retiro_cliente">Retiro por Cliente / Particular</option>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículo DALOR Registrado</label>
+                                    <select id="disp_select_asset" onchange="onDispatchAssetChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+                                        <option value="">-- Seleccionar Vehículo --</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Nombre del Chofer / Responsable *</label>
-                                    <input type="text" id="disp_ff_driver_name" placeholder="Ej: Luis Ramón Gómez" required class="form-input" style="font-size: 12px;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Conductor *</label>
+                                    <input type="text" id="disp_driver_name_propio" placeholder="Nombre Chofer DALOR" class="form-input" style="font-size: 12px;">
                                 </div>
                                 <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Cédula de Identidad *</label>
-                                    <input type="text" id="disp_ff_driver_id" placeholder="Ej: V-15.340.892" required class="form-input" style="font-size: 12px;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula de Identidad *</label>
+                                    <input type="text" id="disp_driver_id_propio" placeholder="V-12345678" class="form-input" style="font-size: 12px;">
                                 </div>
                                 <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Teléfono Conductor</label>
-                                    <input type="text" id="disp_ff_driver_phone" placeholder="Ej: 0414-1234567" class="form-input" style="font-size: 12px;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo *</label>
+                                    <input type="text" id="disp_plate_propio" placeholder="A12BC3D" class="form-input" style="font-size: 12px; text-transform: uppercase;">
                                 </div>
                             </div>
 
-                            <div style="display: grid; grid-template-columns: 1.2fr 1fr 1.2fr 1fr; gap: 10px;">
+                            <!-- Transporte: Tercerizado -->
+                            <div id="disp_sec_tercerizado" class="hidden" style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                                <div class="grid-4" style="margin-bottom: 8px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Empresa / Fletero *</label>
+                                        <input type="text" id="disp_carrier_company" placeholder="Ej: Transportes Carabobo C.A." class="form-input" style="font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Nombre del Chofer *</label>
+                                        <input type="text" id="disp_driver_name_ext" placeholder="Nombre Chofer" class="form-input" style="font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Cédula Conductor *</label>
+                                        <input type="text" id="disp_driver_id_ext" placeholder="V-..." class="form-input" style="font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Placa / Batea *</label>
+                                        <input type="text" id="disp_plate_ext" placeholder="Placa Batea/Camión" class="form-input" style="font-size: 12px; text-transform: uppercase;">
+                                    </div>
+                                </div>
+                                <div class="grid-2">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Costo del Flete (USD) &rarr; Genera CxP a Fletero</label>
+                                        <input type="number" step="0.01" id="disp_freight_cost_usd" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #b91c1c;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Precio Cobrado al Cliente (USD) &rarr; Facturable</label>
+                                        <input type="number" step="0.01" id="disp_freight_price_charged" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #15803d;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Transporte: Retiro por Cliente -->
+                            <div id="disp_sec_retiro" class="hidden grid-3" style="margin-bottom: 10px;">
                                 <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Vehículo / Modelo</label>
-                                    <input type="text" id="disp_ff_vehicle_model" placeholder="Ej: Camión Ford 350 / Plataforma" class="form-input" style="font-size: 12px;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre de Quien Retira *</label>
+                                    <input type="text" id="disp_driver_name_ret" placeholder="Nombre Receptor" class="form-input" style="font-size: 12px;">
                                 </div>
                                 <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Placa del Vehículo *</label>
-                                    <input type="text" id="disp_ff_vehicle_plate" placeholder="Ej: A12BC3D" required class="form-input" style="font-size: 12px; text-transform: uppercase;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula del Receptor *</label>
+                                    <input type="text" id="disp_driver_id_ret" placeholder="V-..." style="font-size: 12px;" class="form-input">
                                 </div>
                                 <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Empresa de Flete (si aplica)</label>
-                                    <input type="text" id="disp_ff_carrier_company" placeholder="Ej: Transportes Carabobo C.A." class="form-input" style="font-size: 12px;">
-                                </div>
-                                <div>
-                                    <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Costo Flete ($ USD)</label>
-                                    <input type="number" step="0.01" id="disp_ff_freight_cost" placeholder="0.00" class="form-input" style="font-size: 12px;">
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo Retirador *</label>
+                                    <input type="text" id="disp_plate_ret" placeholder="Placa vehículo" class="form-input" style="font-size: 12px; text-transform: uppercase;">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- BLOQUE 3: RENGLONES DE CARGA LIBRE -->
+                        <!-- PASO 3: DETALLE DE LA CARGA / PIEZAS / PRODUCTOS -->
                         <div style="margin-bottom: 16px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <h4 style="font-size: 12.5px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
+                                <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
                                     <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">3</span>
-                                    Detalle de Carga, Piezas, Equipos o Insumos Despachados
+                                    Carga / Piezas / Componentes Despachados
                                 </h4>
-                                <button type="button" onclick="addFreeformDispatchItemRow()" class="btn-primary" style="font-size: 11.5px; padding: 5px 12px; background: #0284c7; font-weight: 700;">
-                                    <i class="fa-solid fa-plus"></i> ➕ Agregar Renglón de Carga
+                                <button type="button" onclick="addDispatchItemRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
+                                    <i class="fa-solid fa-plus"></i> Agregar Renglón
                                 </button>
                             </div>
-
-                            <div class="table-container" style="padding: 0; overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <div class="table-container" style="padding: 0; overflow-x: auto;">
                                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                                    <thead style="background: #002B49; color: white;">
+                                    <thead style="background: #f1f5f9; border-bottom: 1px solid #cbd5e1; color: #334155;">
                                         <tr>
                                             <th style="padding: 8px; width: 35px; text-align: center;">#</th>
-                                            <th style="padding: 8px; text-align: left;">Descripción de la Carga / Pieza / Maquinaria *</th>
-                                            <th style="padding: 8px; width: 90px; text-align: center;">Cantidad *</th>
-                                            <th style="padding: 8px; width: 110px; text-align: center;">Unidad</th>
-                                            <th style="padding: 8px; width: 180px; text-align: left;">Estado Físico / Condición</th>
-                                            <th style="padding: 8px; width: 100px; text-align: right;">Peso Aprox (Kg)</th>
-                                            <th style="padding: 8px; width: 40px; text-align: center;"></th>
+                                            <th style="padding: 8px; text-align: left;">Descripción de la Pieza / Material *</th>
+                                            <th style="padding: 8px; width: 90px; text-align: right;">Cantidad *</th>
+                                            <th style="padding: 8px; width: 80px; text-align: center;">Unidad</th>
+                                            <th style="padding: 8px; width: 170px; text-align: left;">Condición / Estado</th>
+                                            <th style="padding: 8px; width: 100px; text-align: right;">Peso (Kg)</th>
+                                            <th style="padding: 8px; width: 35px; text-align: center;"></th>
                                         </tr>
                                     </thead>
-                                    <tbody id="freeformDispatchItemsTableBody">
-                                        <!-- Renglones dinámicos libres -->
+                                    <tbody id="dispatchItemsTableBody">
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <!-- BLOQUE 4: OBSERVACIONES Y FIRMAS -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; margin-bottom: 16px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <div>
-                                <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Despachador / Emisor</label>
-                                <input type="text" id="disp_ff_dispatcher" value="Despacho Taller Guacara" class="form-input" style="font-size: 12px;">
-                            </div>
-                            <div>
-                                <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Inspector de Calidad</label>
-                                <input type="text" id="disp_ff_inspector" value="Control de Calidad DALOR" class="form-input" style="font-size: 12px;">
-                            </div>
-                            <div>
-                                <label class="form-label" style="font-size: 11px; font-weight: 700; color: #334155;">Notas u Observaciones del Despacho</label>
-                                <input type="text" id="disp_ff_notes" placeholder="Ej: Material amparado bajo orden especial de trabajo..." class="form-input" style="font-size: 12px;">
+                        <!-- PASO 4: OBSERVACIONES Y RESPONSABLES -->
+                        <div style="margin-bottom: 16px;">
+                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">4</span>
+                                Observaciones, Notas & Responsables
+                            </h4>
+                            <div class="grid-3" style="margin-bottom: 8px;">
+                                <div>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Despachador Responsable</label>
+                                    <input type="text" id="disp_dispatcher_name" value="Despacho Taller Guacara" class="form-input" style="font-size: 12px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Inspector de Calidad</label>
+                                    <input type="text" id="disp_quality_inspector" value="Control de Calidad DALOR" class="form-input" style="font-size: 12px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Notas Adicionales / Precintos</label>
+                                    <input type="text" id="disp_notes" placeholder="Ej: Precinto N° 8829. Entrega en recepción de planta." class="form-input" style="font-size: 12px;">
+                                </div>
                             </div>
                         </div>
 
                         <!-- BOTONES DE ACCIÓN -->
                         <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
-                            <button type="button" onclick="switchDispatchSubtab('list')" class="btn-secondary">Cancelar</button>
-                            <button type="submit" class="btn-primary" style="background: var(--dalor-navy); padding: 10px 24px; font-size: 13.5px; font-weight: 900; border-radius: 8px;">
-                                <i class="fa-solid fa-file-circle-check"></i> Emitir Guía de Formato Abierto &bull; Ver Imprimible
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- SUBPESTAÑA 2: FORMULARIO DE NUEVA GUÍA DE DESPACHO ESTÁNDAR -->
-            <div id="subtab-disp-form" class="hidden">
-
-                <div class="card" style="margin-bottom: 16px; border-top: 4px solid var(--dalor-blue);">
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-
-                        <div>
-
-                            <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
-
-                                <i class="fa-solid fa-boxes-packing" style="color: var(--dalor-blue);"></i> Emisión de Guía de Despacho & Salida de Taller
-
-                            </h3>
-
-                            <span style="font-size: 11px; color: #64748b; font-weight: 600;">Ampara legalmente el traslado de piezas fabricadas/reparadas con control logístico</span>
-
-                        </div>
-
-                        <button type="button" onclick="switchDispatchSubtab('list')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px; border-radius: 6px;">
-
-                            <i class="fa-solid fa-arrow-left"></i> Volver al Listado
-
-                        </button>
-
-                    </div>
-
-
-
-                    <form id="dispatchCreateForm" onsubmit="submitCreateDispatchGuide(event)">
-
-                        <!-- PASO 1: CLIENTE Y DESTINO -->
-
-                        <div style="margin-bottom: 16px;">
-
-                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-
-                                <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">1</span>
-
-                                Datos del Destinatario & Obra
-
-                            </h4>
-
-                            <div class="grid-4" style="margin-bottom: 10px;">
-
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente / Destinatario *</label>
-                                    <select id="disp_client_id" onchange="onDispatchClientChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-                                        <option value="">-- Seleccionar Cliente Registrado --</option>
-                                        <option value="libre">📝 Destinatario Libre / No Registrado</option>
-                                    </select>
-                                    <input type="text" id="disp_freeform_client" placeholder="Escribe el nombre del cliente / empresa" class="hidden" style="width: 100%; border: 1px solid #93c5fd; border-radius: 6px; padding: 6px 10px; font-size: 12px; margin-top: 4px; background: #eff6ff;">
-                                </div>
-
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Proyecto / Obra (Opcional)</label>
-                                    <select id="disp_project_id" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-                                        <option value="">-- Despacho Puntual Libre / Sin Obra --</option>
-                                    </select>
-                                    <button type="button" onclick="loadProjectResourcesIntoDispatch()" class="btn-secondary" style="margin-top: 4px; font-size: 10px; padding: 3px 6px; color: #0284c7; border-color: #bae6fd; width: 100%; font-weight: 700;">
-                                        <i class="fa-solid fa-list-check"></i> Cargar Insumos del Proyecto
-                                    </button>
-                                </div>
-
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Planta / Frente de Entrega</label>
-                                    <input type="text" id="disp_destination_plant" placeholder="Ej: Planta Guacara / Patio 3" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-                                </div>
-
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Dirección Completa de Destino *</label>
-                                    <input type="text" id="disp_destination_address" required placeholder="Ej: Zona Industrial San Joaquín, Edo. Carabobo" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- PASO 2: MODALIDAD DE TRANSPORTE (PROPIO VS TERCERIZADO) -->
-
-                        <div style="margin-bottom: 16px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
-
-                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-
-                                <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">2</span>
-
-                                Modalidad de Transporte & Logística
-
-                            </h4>
-
-
-
-                            <!-- Switch de 3 botones de selección rápida -->
-
-                            <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-
-                                <button type="button" id="btn_mode_propio" onclick="setDispatchTransportMode('propio_dalor')" class="btn-primary" style="padding: 7px 14px; font-size: 12px; font-weight: 700;">
-
-                                    <i class="fa-solid fa-truck"></i> Transporte Propio (Flota DALOR)
-
-                                </button>
-
-                                <button type="button" id="btn_mode_tercerizado" onclick="setDispatchTransportMode('tercerizado_flete')" class="btn-secondary" style="padding: 7px 14px; font-size: 12px; font-weight: 700;">
-
-                                    <i class="fa-solid fa-handshake"></i> Flete Tercerizado (Externo)
-
-                                </button>
-
-                                <button type="button" id="btn_mode_retiro" onclick="setDispatchTransportMode('retiro_cliente')" class="btn-secondary" style="padding: 7px 14px; font-size: 12px; font-weight: 700;">
-
-                                    <i class="fa-solid fa-warehouse"></i> Retiro por Cliente en Taller
-
-                                </button>
-
-                            </div>
-
-                            <input type="hidden" id="disp_transport_type" value="propio_dalor">
-
-
-
-                            <!-- Campos para Transporte Propio DALOR -->
-
-                            <div id="disp_sec_propio" class="grid-4" style="margin-bottom: 10px;">
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículo Flota DALOR *</label>
-
-                                    <select id="disp_select_asset" onchange="onDispatchAssetChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-
-                                        <option value="">-- Seleccionar Unidad --</option>
-
-                                    </select>
-
-                                </div>
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Chofer Interno DALOR *</label>
-
-                                    <input type="text" id="disp_driver_name_propio" placeholder="Nombre completo" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                </div>
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula Chofer *</label>
-
-                                    <input type="text" id="disp_driver_id_propio" placeholder="V-12345678" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                </div>
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo *</label>
-
-                                    <input type="text" id="disp_plate_propio" placeholder="A12BC3D" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; text-transform: uppercase;">
-
-                                </div>
-
-                            </div>
-
-
-
-                            <!-- Campos para Flete Tercerizado Externo -->
-
-                            <div id="disp_sec_tercerizado" class="hidden" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-
-                                <span style="font-size: 12px; font-weight: 800; color: #166534; display: block; margin-bottom: 8px;">
-
-                                    <i class="fa-solid fa-file-invoice-dollar"></i> Datos del Transportista Externo & Facturación de Flete
-
-                                </span>
-
-                                <div class="grid-4" style="margin-bottom: 10px;">
-
-                                    <div>
-
-                                        <label style="font-size: 11px; font-weight: 700; color: #14532d;">Empresa de Transporte / Línea *</label>
-
-                                        <input type="text" id="disp_carrier_company" placeholder="Ej: Fletes y Grúas Carabobo C.A." style="width: 100%; border: 1px solid #86efac; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                    </div>
-
-                                    <div>
-
-                                        <label style="font-size: 11px; font-weight: 700; color: #14532d;">Chofer Externo *</label>
-
-                                        <input type="text" id="disp_driver_name_ext" placeholder="Nombre Chofer" style="width: 100%; border: 1px solid #86efac; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                    </div>
-
-                                    <div>
-
-                                        <label style="font-size: 11px; font-weight: 700; color: #14532d;">Cédula Chofer *</label>
-
-                                        <input type="text" id="disp_driver_id_ext" placeholder="V-..." style="width: 100%; border: 1px solid #86efac; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                    </div>
-
-                                    <div>
-
-                                        <label style="font-size: 11px; font-weight: 700; color: #14532d;">Placa Camión / Batea *</label>
-
-                                        <input type="text" id="disp_plate_ext" placeholder="Placa Batea/Chuto" style="width: 100%; border: 1px solid #86efac; border-radius: 6px; padding: 6px 10px; font-size: 12px; text-transform: uppercase;">
-
-                                    </div>
-
-                                </div>
-
-                                <div class="grid-2" style="background: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
-
-                                    <div>
-
-                                        <label style="font-size: 11px; font-weight: 800; color: #dc2626;">Costo del Flete a Pagar al Transportista ($ USD) [Genera CxP]</label>
-
-                                        <input type="number" step="0.01" id="disp_freight_cost_usd" value="0.00" placeholder="0.00" style="width: 100%; border: 1px solid #f87171; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: #dc2626;">
-
-                                        <small style="font-size: 10px; color: #64748b;">Se registrará automáticamente como cuenta por pagar y costo en el proyecto.</small>
-
-                                    </div>
-
-                                    <div>
-
-                                        <label style="font-size: 11px; font-weight: 800; color: #059669;">Monto a Cobrar al Cliente por Flete ($ USD) [Opcional - Genera CxC]</label>
-
-                                        <input type="number" step="0.01" id="disp_freight_price_charged_usd" value="0.00" placeholder="0.00 ($0 si DALOR absorbe)" style="width: 100%; border: 1px solid #6ee7b7; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: #059669;">
-
-                                        <small style="font-size: 10px; color: #64748b;">Dejar en $0 si el flete es cortesía o asumido dentro de la cotización.</small>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-
-
-                            <!-- Campos para Retiro por Cliente -->
-
-                            <div id="disp_sec_retiro" class="hidden grid-3" style="margin-bottom: 10px;">
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Persona Autorizada por Cliente *</label>
-
-                                    <input type="text" id="disp_driver_name_ret" placeholder="Nombre completo" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                </div>
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula *</label>
-
-                                    <input type="text" id="disp_driver_id_ret" placeholder="V-..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                </div>
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa Vehículo Cliente</label>
-
-                                    <input type="text" id="disp_plate_ret" placeholder="Placa vehículo" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; text-transform: uppercase;">
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- PASO 3: TABLA DE PIEZAS / EJES / CARGA A DESPACHAR -->
-
-                        <div style="margin-bottom: 16px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
-
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-
-                                <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
-
-                                    <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">3</span>
-
-                                    Detalle de Piezas, Equipos & Materiales Despachados
-
-                                </h4>
-
-                                <button type="button" onclick="addDispatchItemRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;">
-
-                                    <i class="fa-solid fa-plus"></i> Agregar Ítem de Carga
-
-                                </button>
-
-                            </div>
-
-                            
-
-                            <div class="table-container" style="padding: 0; overflow-x: auto;">
-
-                                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-
-                                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
-
-                                        <tr>
-
-                                            <th style="padding: 8px; width: 40px; text-align: center;">#</th>
-
-                                            <th style="padding: 8px; text-align: left;">Descripción de la Pieza / Trabajo Mecánico *</th>
-
-                                            <th style="padding: 8px; width: 90px; text-align: center;">Cantidad *</th>
-
-                                            <th style="padding: 8px; width: 100px; text-align: center;">Unidad</th>
-
-                                            <th style="padding: 8px; width: 180px; text-align: left;">Condición / Estado</th>
-
-                                            <th style="padding: 8px; width: 100px; text-align: right;">Peso Aprox (Kg)</th>
-
-                                            <th style="padding: 8px; width: 50px; text-align: center;"></th>
-
-                                        </tr>
-
-                                    </thead>
-
-                                    <tbody id="dispatchItemsTableBody">
-
-                                        <!-- Ítems dinámicos -->
-
-                                    </tbody>
-
-                                </table>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- PASO 4: DATOS DE CONTROL Y FIRMAS -->
-
-                        <div style="margin-bottom: 16px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
-
-                            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 10px; width: 100%; box-sizing: border-box;">
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Despachador / Emisor DALOR *</label>
-
-                                    <input type="text" id="disp_dispatcher_name" value="Despacho Taller Guacara" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                </div>
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Inspector Control de Calidad (QA/QC)</label>
-
-                                    <input type="text" id="disp_quality_inspector" value="Control de Calidad DALOR" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                </div>
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Observaciones / Precintos de Seguridad</label>
-
-                                    <input type="text" id="disp_notes" placeholder="Ej: Precinto N° 45892. Piezas embaladas con plástico strech." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- Botones de Acción -->
-
-                        <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-
-                            <button type="button" onclick="switchDispatchSubtab('list')" class="btn-secondary" style="padding: 8px 16px;">
-
+                            <button type="button" onclick="switchDispatchSubtab('list')" class="btn-secondary">
                                 Cancelar
-
                             </button>
-
-                            <button type="submit" class="btn-primary" style="padding: 8px 24px; font-size: 13px; font-weight: 800; background: #059669;">
-
-                                <i class="fa-solid fa-truck-ramp-box"></i> Emitir Guía de Despacho
-
+                            <button type="submit" class="btn-primary" style="padding: 8px 24px; font-weight: 800; background: var(--dalor-navy);">
+                                <i class="fa-solid fa-file-circle-check"></i> Emitir Guía Oficial de Despacho &bull; Ver Imprimible
                             </button>
-
                         </div>
-
                     </form>
-
                 </div>
-
             </div>
-
         </section>

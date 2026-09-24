@@ -1,14 +1,20 @@
-<section id="view-projects" class="hidden">
+        <section id="view-projects" class="hidden">
 
             <!-- Navegación por Subpestañas del Módulo de Obras -->
 
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
 
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
 
                     <button id="tabbtn-proj-list" type="button" onclick="switchProjectSubtab('list')" class="btn-primary" style="padding: 9px 18px; font-weight: 700; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
 
                         <i class="fa-solid fa-folder-tree"></i> Obras Activas & Control
+
+                    </button>
+
+                    <button id="tabbtn-proj-completed" type="button" onclick="switchProjectSubtab('completed')" class="btn-secondary" style="padding: 9px 18px; font-weight: 700; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+
+                        <i class="fa-solid fa-flag-checkered"></i> Histórico Obras Culminadas
 
                     </button>
 
@@ -88,32 +94,42 @@
 
                 <div class="card" style="margin-bottom: 16px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
 
-                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px; flex-wrap: wrap;">
 
                         <i class="fa-solid fa-magnifying-glass" style="color: #64748b; font-size: 14px;"></i>
 
-                        <input type="text" id="project_search_input" oninput="debouncedFilterProjectsList(this.value)" placeholder="Buscar por código de obra, nombre del proyecto o cliente..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 12px; font-size: 12px; outline: none;">
+                        <input type="text" id="project_search_input" oninput="filterProjectsList()" placeholder="Buscar por código de obra, nombre del proyecto o cliente..." style="flex: 1; min-width: 180px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 12px; font-size: 12px; outline: none;">
+
+                        <div style="display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 3px 8px;">
+                            <span style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); white-space: nowrap;"><i class="fa-solid fa-filter" style="color: var(--dalor-blue);"></i> Cliente:</span>
+                            <select id="project_client_filter" onchange="filterProjectsList()" style="border: none; background: transparent; padding: 4px 2px; font-size: 12px; outline: none; color: #1e293b; font-weight: 700; cursor: pointer;">
+                                <option value="">🏢 Todos los Clientes</option>
+                            </select>
+                        </div>
 
                     </div>
 
                     <div style="display: flex; gap: 8px; align-items: center;">
-
                         <span id="projects_count_badge" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 5px 10px; border-radius: 6px;">
-
                             Cargando proyectos...
-
                         </span>
-
                     </div>
 
+                    <!-- Filtros Rápidos de Estado CxC -->
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; width: 100%; margin-top: 4px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
+                        <span style="font-size: 11px; font-weight: 800; color: #64748b;"><i class="fa-solid fa-tags" style="color: var(--dalor-blue);"></i> Estado CxC:</span>
+                        <button type="button" id="btn_proj_cxc_all" onclick="setProjectCxcFilter('all')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; font-weight: 700;">Todas</button>
+                        <button type="button" id="btn_proj_cxc_open" onclick="setProjectCxcFilter('open')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #b45309;"><i class="fa-solid fa-hourglass-half"></i> CxC Abierta / Pendiente</button>
+                        <button type="button" id="btn_proj_cxc_paid" onclick="setProjectCxcFilter('paid')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #15803d;"><i class="fa-solid fa-circle-check"></i> CxC Solvente / Cobrada</button>
+                        <button type="button" id="btn_proj_cxc_none" onclick="setProjectCxcFilter('none')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #475569;"><i class="fa-solid fa-file-circle-question"></i> Sin Facturar</button>
+                    </div>
                 </div>
 
 
 
                 <!-- Contenedor Grid de Obras Activas -->
-
                 <div id="projectsCardsContainer" class="grid-2"></div>
-
+                <div id="projectsPaginationContainer" style="margin-top: 16px;"></div>
             </div>
 
 
@@ -238,9 +254,9 @@
 
                                 <div>
 
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Código de Obra *</label>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Código de Obra <span style="font-size: 9px; color: #059669; font-weight: 600;">(Auto: PRJ-YYYY-NNN)</span></label>
 
-                                    <input type="text" id="new_proj_code" required placeholder="Ej: PROJ-2026-001" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; text-transform: uppercase;">
+                                    <input type="text" id="new_proj_code" placeholder="Auto-asignado por sistema" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; text-transform: uppercase;">
 
                                 </div>
 
@@ -524,19 +540,3 @@
             </div>
 
         </section>
-
-
-
-        <!-- ====================================================================
-
-             8. VISTA: MÓDULO INTEGRAL DE ACTIVOS & RECURSOS
-
-             ==================================================================== -->
-
-        
-
-        <!-- ====================================================================
-
-             VISTA: MÓDULO DE GUÍAS DE DESPACHO & CONTROL DE ENTREGA
-
-             ==================================================================== -->

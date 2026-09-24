@@ -1,4 +1,4 @@
-<div id="modalPrintPreview" class="modal-overlay hidden" style="background: rgba(15, 23, 42, 0.75); z-index: 9999;">
+    <div id="modalPrintPreview" class="modal-overlay hidden" style="background: rgba(15, 23, 42, 0.75); z-index: 9999;">
 
         <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 92vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 14px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);">
 
@@ -422,91 +422,318 @@
 
 
     <!-- MODAL: NUEVA CUENTA POR PAGAR (CxP) -->
-
     <div id="modalPayable" class="modal-overlay hidden">
-
-        <div class="modal-content">
-
+        <div class="modal-content" style="max-width: 600px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
-
-                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
-
-                    <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i> Registrar Cuenta por Pagar a Proveedor (CxP)
-
-                </h3>
-
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i> Registrar Cuenta por Pagar a Proveedor (CxP)
+                    </h3>
+                    <span style="font-size: 11px; color: #64748b;">Modalidades: Factura con Retención SENIAT, Factura Contado o Nota de Entrega</span>
+                </div>
                 <button onclick="closeModal('modalPayable')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-
             </div>
 
             <form id="payableForm" onsubmit="submitCreatePayable(event)" style="display: flex; flex-direction: column; gap: 10px;">
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
-                        <label class="form-label">Nº Factura Proveedor *</label>
-
-                        <input type="text" id="cxp_invoice_number" placeholder="FP-9941" class="form-input" required>
-
-                    </div>
-
-                    <div>
-
-                        <label class="form-label">Nombre del Proveedor *</label>
-
-                        <input type="text" id="cxp_supplier_name" placeholder="Ej: Suministros Eléctricos C.A." class="form-input" required>
-
-                    </div>
-
+                <!-- Tipo de Documento -->
+                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 8px 12px;">
+                    <label class="form-label" style="color: #9f1239; font-weight: 700; margin-bottom: 4px;">Tipo de Operación / Documento *</label>
+                    <select id="cxp_doc_type" class="form-select" onchange="onCxpModalDocTypeChange()" style="font-weight: 700;">
+                        <option value="factura">📄 Factura Fiscal SENIAT (Genera Comprobante de Retención IVA 75%/100%)</option>
+                        <option value="factura_sin_retencion">🏪 Factura Contado en Sitio (Con IVA pagado 100%, Sin Retención de DALOR)</option>
+                        <option value="nota_entrega">📦 Nota de Entrega / Recibo Informal (Sin IVA, Costo Directo a Obra)</option>
+                    </select>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
                     <div>
+                        <label class="form-label">Nombre del Proveedor / Contratista *</label>
+                        <input type="text" id="cxp_supplier_name" placeholder="Ej: OAMED, C.A." class="form-input" required>
+                    </div>
+                    <div id="cxp_rif_container">
+                        <label class="form-label">RIF del Proveedor (SENIAT) <span id="cxp_rif_req" style="color: #e11d48;">*</span></label>
+                        <input type="text" id="cxp_supplier_rif" placeholder="Ej: J-500819048" class="form-input">
+                    </div>
+                </div>
 
-                        <label class="form-label">Proyecto Imputable</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label" id="lbl_cxp_invoice">Nº Factura Fiscal *</label>
+                        <input type="text" id="cxp_invoice_number" placeholder="Ej: 000229" class="form-input" required>
+                    </div>
+                    <div id="cxp_control_container">
+                        <label class="form-label">Nº Control Factura SENIAT *</label>
+                        <input type="text" id="cxp_control_number" placeholder="Ej: 00-000229" class="form-input">
+                    </div>
+                </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Imputación a Proyecto / Obra</label>
                         <select id="cxp_project_id" class="form-select"></select>
-
                     </div>
-
                     <div>
-
                         <label class="form-label">Fecha de Vencimiento *</label>
-
                         <input type="date" id="cxp_due_date" class="form-input" required>
-
                     </div>
+                </div>
 
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Total Documento ($ USD) *</label>
+                        <input type="number" step="0.01" id="cxp_amount_usd" oninput="calcPayablePreview()" placeholder="0.00" class="form-input" style="font-weight: 800; color: #e11d48; font-size: 14px;" required>
+                    </div>
+                    <div id="cxp_ret_rate_container">
+                        <label class="form-label">Alícuota Ret. IVA</label>
+                        <select id="cxp_tax_withholding_rate" class="form-select" onchange="calcPayablePreview()" style="font-weight: 700;">
+                            <option value="75">75% (Especial)</option>
+                            <option value="100">100% (Total)</option>
+                            <option value="0">0% (Sin Ret.)</option>
+                        </select>
+                    </div>
+                    <div id="cxp_islr_container">
+                        <label class="form-label">Ret. ISLR (Opcional)</label>
+                        <select id="cxp_islr_rate" class="form-select" onchange="calcPayablePreview()" style="font-weight: 700;">
+                            <option value="0">0% (Materiales)</option>
+                            <option value="2">2% (Servicios)</option>
+                            <option value="3">3% (Contratistas)</option>
+                            <option value="5">5% (Honorarios)</option>
+                            <option value="1">1% (Fletes)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Desglose Fiscal Dinámico y Neto a Pagar al Proveedor -->
+                <div id="cxp_fiscal_breakdown" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; font-size: 11px;">
+                    <div>
+                        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 9px;">Base Imponible</span>
+                        <p id="cxp_lbl_base" style="font-weight: 800; margin: 2px 0 0 0; color: #1e293b;">$0.00</p>
+                    </div>
+                    <div>
+                        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 9px;">IVA (16%)</span>
+                        <p id="cxp_lbl_tax" style="font-weight: 800; margin: 2px 0 0 0; color: #2563eb;">$0.00</p>
+                    </div>
+                    <div>
+                        <span style="color: #b91c1c; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. IVA</span>
+                        <p id="cxp_lbl_withholding" style="font-weight: 900; margin: 2px 0 0 0; color: #b91c1c;">$0.00</p>
+                    </div>
+                    <div>
+                        <span style="color: #6b21a8; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. ISLR</span>
+                        <p id="cxp_lbl_islr" style="font-weight: 900; margin: 2px 0 0 0; color: #7e22ce;">$0.00</p>
+                    </div>
+                    <div style="background: #f0fdf4; border-radius: 6px; padding: 2px;">
+                        <span style="color: #166534; font-weight: 700; text-transform: uppercase; font-size: 9px;">Neto Proveedor</span>
+                        <p id="cxp_lbl_net" style="font-weight: 900; margin: 2px 0 0 0; color: #16a34a; font-size: 13px;">$0.00</p>
+                    </div>
                 </div>
 
                 <div>
-
-                    <label class="form-label">Monto de la Deuda ($ USD) *</label>
-
-                    <input type="number" step="0.01" id="cxp_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 800; color: #e11d48; font-size: 14px;" required>
-
-                </div>
-
-                <div>
-
                     <label class="form-label">Descripción de Materiales / Servicios *</label>
-
-                    <input type="text" id="cxp_description" placeholder="Ej: Compra de terminales de cobre y soldadura" class="form-input" required>
-
+                    <input type="text" id="cxp_description" placeholder="Ej: Compra de planchas A36 y electrodos 7018 para tolva" class="form-input" required>
                 </div>
 
-                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #e11d48;">
+                <div>
+                    <label class="form-label">Notas Adicionales (Opcional)</label>
+                    <input type="text" id="cxp_notes" placeholder="Ej: Entregar comprobante en físico al chofer" class="form-input">
+                </div>
 
-                    <i class="fa-solid fa-floppy-disk"></i> Registrar Cuenta por Pagar
-
+                <button type="submit" id="btnSubmitCreatePayable" class="btn-primary" style="margin-top: 6px; background: #e11d48; font-weight: 800; padding: 10px;">
+                    <i class="fa-solid fa-floppy-disk"></i> Registrar y Emitir Cuenta por Pagar
                 </button>
-
             </form>
-
         </div>
+    </div>
 
+    <!-- MODAL: COMPROBANTE OFICIAL DE RETENCIÓN DE IVA SENIAT (PROVIDENCIA SNAT/2015/0049) -->
+    <div id="modalWithholdingVoucher" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 780px; max-height: 92vh; overflow-y: auto; background: white; padding: 24px; font-family: 'Segoe UI', Arial, sans-serif;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h2 style="font-size: 16px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase;">
+                        Comprobante de Retención de Impuesto al Valor Agregado (I.V.A.)
+                    </h2>
+                    <h3 style="font-size: 13px; font-weight: 800; color: #1e3a8a; margin: 2px 0 0 0;">
+                        METALMECANICA DALOR, C.A. &bull; R.I.F.: J-31601195-0
+                    </h3>
+                    <p style="font-size: 9.5px; color: #475569; margin: 4px 0 0 0; line-height: 1.3; max-width: 520px;">
+                        Ley IVA - Art. 11. Providencia Administrativa SNAT/2015/0049 (G.O. Nº 40.720 del 10/08/2015).
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; text-align: center;">
+                        <span style="font-size: 9px; color: #64748b; font-weight: 800; text-transform: uppercase; display: block;">Nº Comprobante:</span>
+                        <strong id="voucher_doc_number" style="font-size: 14px; color: #b91c1c; font-family: monospace;">20260900001015</strong>
+                    </div>
+                    <span style="font-size: 10px; color: #334155; margin-top: 4px; display: block;">Fecha: <strong id="voucher_doc_date">15/09/2026</strong></span>
+                    <span style="font-size: 10px; color: #334155; display: block;">Período Fiscal: <strong id="voucher_doc_period">2026-09</strong></span>
+                </div>
+            </div>
+
+            <!-- Datos del Agente y Sujeto Retenido -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; font-size: 11px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
+                    <strong style="color: var(--dalor-navy); text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 2px;">Agente de Retención:</strong>
+                    <div><strong>Nombre:</strong> METALMECANICA DALOR, C.A.</div>
+                    <div><strong>R.I.F.:</strong> J-31601195-0</div>
+                    <div><strong>Dirección:</strong> Av. Cámara de las Industrias, Galpón 10, Zona Ind. El Tigre, Guacara, Edo. Carabobo.</div>
+                    <div><strong>Correo:</strong> metalmecanicadalorca@yahoo.com</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
+                    <strong style="color: var(--dalor-navy); text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 2px;">Sujeto Retenido (Proveedor):</strong>
+                    <div><strong>Razón Social:</strong> <span id="voucher_supp_name">OAMED, C.A.</span></div>
+                    <div><strong>R.I.F.:</strong> <span id="voucher_supp_rif">J-500819048</span></div>
+                    <div><strong>Concepto:</strong> <span id="voucher_supp_concept">-</span></div>
+                    <div><strong>Tasa Oficial BCV:</strong> <span id="voucher_bcv_rate">-</span></div>
+                </div>
+            </div>
+
+            <!-- Tabla de Operación Conforme a SNAT/2015/0049 -->
+            <div style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 16px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px; text-align: right;">
+                    <thead style="background: #f1f5f9; color: #1e293b; font-weight: 800;">
+                        <tr>
+                            <th style="padding: 6px; text-align: center;">Fecha</th>
+                            <th style="padding: 6px; text-align: center;">Nº Factura</th>
+                            <th style="padding: 6px; text-align: center;">Nº Control</th>
+                            <th style="padding: 6px;">Total Compra ($)</th>
+                            <th style="padding: 6px;">Base Imponible ($)</th>
+                            <th style="padding: 6px; text-align: center;">% Alíc.</th>
+                            <th style="padding: 6px;">Impuesto IVA ($)</th>
+                            <th style="padding: 6px; text-align: center;">% Ret.</th>
+                            <th style="padding: 6px; color: #b91c1c;">IVA Retenido ($)</th>
+                            <th style="padding: 6px; color: #166534;">Neto Proveedor ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td id="v_td_date" style="padding: 6px; text-align: center;">14/09/2026</td>
+                            <td id="v_td_invoice" style="padding: 6px; text-align: center; font-weight: 700;">000229</td>
+                            <td id="v_td_control" style="padding: 6px; text-align: center;">00-000229</td>
+                            <td id="v_td_total_usd" style="padding: 6px; font-weight: 700;">$0.00</td>
+                            <td id="v_td_base_usd" style="padding: 6px;">$0.00</td>
+                            <td style="padding: 6px; text-align: center;">16%</td>
+                            <td id="v_td_tax_usd" style="padding: 6px;">$0.00</td>
+                            <td id="v_td_ret_rate" style="padding: 6px; text-align: center; font-weight: 700;">75%</td>
+                            <td id="v_td_withheld_usd" style="padding: 6px; font-weight: 800; color: #b91c1c;">$0.00</td>
+                            <td id="v_td_net_usd" style="padding: 6px; font-weight: 800; color: #166534;">$0.00</td>
+                        </tr>
+                        <tr style="background: #fafafa; font-weight: 800; border-top: 1px solid #cbd5e1;">
+                            <td colspan="3" style="padding: 6px; text-align: left;">Total en Bolívares (Bs.):</td>
+                            <td id="v_td_total_bs" style="padding: 6px;">Bs. 0.00</td>
+                            <td id="v_td_base_bs" style="padding: 6px;">Bs. 0.00</td>
+                            <td></td>
+                            <td id="v_td_tax_bs" style="padding: 6px;">Bs. 0.00</td>
+                            <td></td>
+                            <td id="v_td_withheld_bs" style="padding: 6px; color: #b91c1c;">Bs. 0.00</td>
+                            <td id="v_td_net_bs" style="padding: 6px; color: #166534;">Bs. 0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Declaración de Firma Legal -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 35px; text-align: center; font-size: 10px;">
+                <div>
+                    <div style="border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 700;">
+                        Firma y Sello del Agente de Retención<br>
+                        <span style="font-weight: normal; color: #64748b;">METALMECANICA DALOR, C.A.</span>
+                    </div>
+                </div>
+                <div>
+                    <div style="border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 700;">
+                        Firma y Sello del Sujeto Retenido<br>
+                        <span style="font-weight: normal; color: #64748b;">Fecha de Recepción: _____/_____/_________</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción (No se imprimen) -->
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 12px;" class="no-print">
+                <button type="button" onclick="printWithholdingVoucher()" class="btn-primary" style="background: #1e3a8a; font-size: 11px; padding: 6px 14px; font-weight: 700;">
+                    <i class="fa-solid fa-print"></i> Imprimir Comprobante (PDF)
+                </button>
+                <button type="button" onclick="closeModal('modalWithholdingVoucher')" class="btn-secondary" style="font-size: 11px; padding: 6px 14px;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR CUENTA POR PAGAR -->
+    <div id="modalEditPayable" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-pen-to-square" style="color: #2563eb;"></i> Modificar Cuenta por Pagar
+                </h3>
+                <button onclick="closeModal('modalEditPayable')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="editPayableForm" onsubmit="submitEditPayable(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_cxp_id">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Proveedor *</label>
+                        <input type="text" id="edit_cxp_supplier_name" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">RIF Proveedor</label>
+                        <input type="text" id="edit_cxp_supplier_rif" class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Nº Factura / Doc *</label>
+                        <input type="text" id="edit_cxp_invoice_number" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Nº Control SENIAT</label>
+                        <input type="text" id="edit_cxp_control_number" class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Monto Total ($ USD) *</label>
+                        <input type="number" step="0.01" id="edit_cxp_amount_usd" class="form-input" style="font-weight: 800; color: #e11d48;" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Alícuota Retención IVA</label>
+                        <select id="edit_cxp_tax_withholding_rate" class="form-select" style="font-weight: 700;">
+                            <option value="75">75%</option>
+                            <option value="100">100%</option>
+                            <option value="0">0% (Sin Retención)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Fecha de Vencimiento *</label>
+                    <input type="date" id="edit_cxp_due_date" class="form-input" required>
+                </div>
+
+                <div>
+                    <label class="form-label">Descripción</label>
+                    <input type="text" id="edit_cxp_description" class="form-input" required>
+                </div>
+
+                <div id="edit_cxp_voucher_container" style="display: none; background: #fdf2f8; border: 1px dashed #f472b6; border-radius: 6px; padding: 10px; margin-top: 2px;">
+                    <label class="form-label" style="color: #be185d; font-weight: 800;">
+                        <i class="fa-solid fa-stamp"></i> Nº Comprobante Retención IVA (14 dígitos SENIAT):
+                    </label>
+                    <input type="text" id="edit_cxp_voucher_number" class="form-input" style="font-family: monospace; font-weight: 800; font-size: 13px; color: #b91c1c; background: white;" placeholder="Ej: 20260900001015" maxlength="20">
+                    <p style="font-size: 10px; color: #9d174d; margin: 4px 0 0 0; line-height: 1.2;">
+                        * Formato oficial: <strong>AAAAMMXXXXXXXX</strong> (Año + Mes + 8 dígitos). Al modificar este número, los nuevos registros seguirán la secuencia consecutiva a partir de este valor.
+                    </p>
+                </div>
+
+                <button type="submit" id="btnSubmitEditPayable" class="btn-primary" style="margin-top: 6px; background: #2563eb; font-weight: 700;">
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+                </button>
+            </form>
+        </div>
     </div>
 
 
@@ -544,67 +771,209 @@
 
 
                 <div>
-
                     <label class="form-label">Monto a Registrar ($ USD) *</label>
-
-                    <input type="number" step="0.01" id="fin_trans_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px;" required>
-
-                </div>
-
-
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
-                        <label class="form-label">Método de Pago</label>
-
-                        <select id="fin_trans_method" class="form-select">
-
-                            <option value="transferencia">Transferencia Bancaria</option>
-
-                            <option value="pago_movil">Pago Móvil</option>
-
-                            <option value="efectivo_divisa">Efectivo Divisa ($)</option>
-
-                            <option value="zelle">Zelle / Wire</option>
-
-                        </select>
-
+                    <input type="number" step="0.01" id="fin_trans_amount_usd" oninput="calcFinTransBsEquiv()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px;" required>
+                    <div id="fin_trans_bcv_calc" style="font-size: 11px; color: #0369a1; background: #e0f2fe; padding: 6px 10px; border-radius: 6px; margin-top: 4px; display: none;">
+                        <i class="fa-solid fa-calculator"></i> Tasa Oficial BCV: <strong id="fin_bcv_rate_lbl">Bs. 850.00</strong> &bull; Equivalente: <strong id="fin_bs_equiv_lbl">Bs. 0.00</strong>
                     </div>
-
-                    <div>
-
-                        <label class="form-label">Nº Referencia Bancaria</label>
-
-                        <input type="text" id="fin_trans_ref" placeholder="Ref: 123456" class="form-input">
-
-                    </div>
-
                 </div>
-
-
 
                 <div>
-
-                    <label class="form-label">Notas / Observaciones</label>
-
-                    <input type="text" id="fin_trans_notes" placeholder="Ej: Abono primera quincena" class="form-input">
-
+                    <label class="form-label">Cuenta Bancaria / Destino de los Fondos *</label>
+                    <select id="fin_trans_account" class="form-select" onchange="onFinTransAccountChanged()">
+                        <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
+                        <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
+                        <option value="Binance USDT">Binance USDT ($)</option>
+                        <option value="Zelle">Zelle ($)</option>
+                        <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
+                        <option value="Caja Efectivo Bs">Caja Efectivo Bs (Bs)</option>
+                    </select>
                 </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Método de Pago</label>
+                        <select id="fin_trans_method" class="form-select" onchange="calcFinTransBsEquiv()">
+                            <option value="transferencia">Transferencia Bancaria</option>
+                            <option value="pago_movil">Pago Móvil</option>
+                            <option value="efectivo_divisa">Efectivo Divisa ($)</option>
+                            <option value="zelle">Zelle / Wire</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Nº Referencia Bancaria *</label>
+                        <input type="text" id="fin_trans_ref" placeholder="Ref: 123456" class="form-input" required>
+                    </div>
+                </div>
 
+                <div>
+                    <label class="form-label">Notas / Observaciones</label>
+                    <input type="text" id="fin_trans_notes" placeholder="Ej: Cobro de valuación / alquiler" class="form-input">
+                </div>
 
                 <button type="submit" id="btnConfirmFinTrans" class="btn-primary" style="margin-top: 6px;">
-
                     Confirmar Transacción
-
                 </button>
-
             </form>
-
         </div>
+    </div>
 
+    <!-- MODAL: REEMBOLSO / DEVOLUCIÓN DE SALDO A FAVOR AL CLIENTE -->
+    <div id="modalClientRefund" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #059669;">
+                    <i class="fa-solid fa-arrow-rotate-left"></i> Emitir Reembolso a Cliente
+                </h3>
+                <button type="button" onclick="closeModal('modalClientRefund')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="clientRefundForm" onsubmit="submitClientRefund(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="refund_receivable_id">
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px;">
+                    <div style="font-size: 11px; color: #166534; font-weight: 700;" id="refund_client_info">Cliente: -</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                        <span style="font-size: 11px; color: #475569;">Saldo a Favor Disponible:</span>
+                        <strong id="refund_max_surplus" style="font-size: 16px; color: #16a34a; font-weight: 900;">$0.00</strong>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Monto a Reembolsar ($ USD) *</label>
+                    <input type="number" step="0.01" id="refund_amount_usd" class="form-input" style="font-weight: 800; font-size: 15px;" required>
+                </div>
+                <div>
+                    <label class="form-label">Cuenta de Egreso (De dónde sale el dinero) *</label>
+                    <select id="refund_source_account" class="form-select">
+                        <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
+                        <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
+                        <option value="Binance USDT">Binance USDT ($)</option>
+                        <option value="Zelle">Zelle ($)</option>
+                        <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Método de Devolución</label>
+                        <select id="refund_payment_method" class="form-select">
+                            <option value="transferencia">Transferencia Bancaria</option>
+                            <option value="pago_movil">Pago Móvil</option>
+                            <option value="zelle">Zelle</option>
+                            <option value="efectivo_divisa">Efectivo Divisa ($)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Nº Referencia / Transferencia *</label>
+                        <input type="text" id="refund_reference" placeholder="Ref: 987654" class="form-input" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Notas / Motivo</label>
+                    <input type="text" id="refund_notes" placeholder="Ej: Devolución por días no consumidos de alquiler" class="form-input">
+                </div>
+                <button type="submit" class="btn-primary" style="background: #059669; margin-top: 6px;">
+                    Confirmar Reembolso
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CAMBIO DE DIVISAS / ARBITRAJE CAMBIARIO / TRANSFERENCIA ENTRE CUENTAS -->
+    <div id="modalTreasuryExchange" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 560px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-right-left" style="color: #2563eb;"></i> Mesa de Cambio / Transferencia Entre Cuentas
+                    </h3>
+                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">Conversión de bolívares/divisas y cálculo automático del diferencial cambiario.</p>
+                </div>
+                <button type="button" onclick="closeModal('modalTreasuryExchange')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="treasuryExchangeForm" onsubmit="submitTreasuryExchange(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Tipo de Operación -->
+                <div>
+                    <label class="form-label" style="font-weight: 700;">Sentido de la Operación *</label>
+                    <select id="exch_operation_type" class="form-select" onchange="onTreasuryExchangeTypeChanged()" style="font-weight: 700; color: #1e293b;">
+                        <option value="bs_a_usd">🇻🇪 Vender Bolívares ➔ Comprar Divisas (Bs ➔ USD / USDT)</option>
+                        <option value="usd_a_bs">💵 Vender Divisas ➔ Obtener Bolívares (USD ➔ Bs)</option>
+                    </select>
+                </div>
+
+                <!-- Cuentas -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cuenta de Origen (Egreso) *</label>
+                        <select id="exch_source_account" class="form-select" onchange="calcTreasuryExchangeDiff()">
+                            <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
+                            <option value="Caja Efectivo Bs">Caja Efectivo Bs (Bs)</option>
+                            <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
+                            <option value="Binance USDT">Binance USDT ($)</option>
+                            <option value="Zelle">Zelle ($)</option>
+                            <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Cuenta de Destino (Ingreso) *</label>
+                        <select id="exch_target_account" class="form-select" onchange="calcTreasuryExchangeDiff()">
+                            <option value="Binance USDT">Binance USDT ($)</option>
+                            <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
+                            <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
+                            <option value="Zelle">Zelle ($)</option>
+                            <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
+                            <option value="Caja Efectivo Bs">Caja Efectivo Bs (Bs)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Montos -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label" id="exch_source_label">Monto que Sale (Bs) *</label>
+                        <input type="number" step="0.01" id="exch_source_amount" oninput="calcTreasuryExchangeDiff()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px; color: #dc2626;" required>
+                    </div>
+                    <div>
+                        <label class="form-label" id="exch_target_label">Monto que Entra ($ USD) *</label>
+                        <input type="number" step="0.01" id="exch_target_amount" oninput="calcTreasuryExchangeDiff()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px; color: #059669;" required>
+                    </div>
+                </div>
+
+                <!-- Panel de Cálculo Automático del Diferencial Cambiario -->
+                <div id="exch_diff_panel" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; margin-bottom: 8px;">
+                        <div>
+                            <span style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Tasa Transacción</span>
+                            <p id="exch_trans_rate_lbl" style="font-size: 14px; font-weight: 900; color: #1e293b; margin: 2px 0 0 0;">0.00 Bs/$</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Tasa Oficial BCV</span>
+                            <p id="exch_bcv_rate_lbl" style="font-size: 14px; font-weight: 900; color: #0284c7; margin: 2px 0 0 0;">Bs. 850.00</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Diferencial Cambiario</span>
+                            <p id="exch_diff_badge" style="font-size: 14px; font-weight: 900; color: #64748b; margin: 2px 0 0 0;">$0.00 USD</p>
+                        </div>
+                    </div>
+                    <div id="exch_explanation" style="font-size: 11px; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 6px;">
+                        Ingrese los montos para calcular la tasa pactada y el impacto en cuentas financieras.
+                    </div>
+                </div>
+
+                <!-- Referencia y Notas -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">N° Referencia / Orden P2P *</label>
+                        <input type="text" id="exch_reference" placeholder="Ej: P2P-987654 / REF-1234" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Notas / Observaciones</label>
+                        <input type="text" id="exch_notes" placeholder="Ej: Compra de USDT en Binance P2P" class="form-input">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 4px; padding: 10px; font-weight: 800; font-size: 13px; background: #2563eb;">
+                    <i class="fa-solid fa-right-left"></i> Confirmar Operación de Cambio
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- MODAL: HISTORIAL DE PAGOS DE CUENTA POR PAGAR (CxP) -->
@@ -699,11 +1068,14 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" onclick="openAddendumModal(currentViewingProjectId)" class="btn-primary" style="background: #9333ea; font-size: 11px; padding: 5px 12px; font-weight: 700; display: flex; align-items: center; gap: 5px;" title="Registrar Adenda Contractual / Obra Extra (+USD)">
+                        <i class="fa-solid fa-file-circle-plus"></i> + Adenda
+                    </button>
+                    <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="background: #0284c7; font-size: 11px; padding: 5px 12px; font-weight: 700;" title="Pedir Recursos y Materiales a Almacén para esta obra">
+                        <i class="fa-solid fa-truck-ramp-box"></i> Pedir Insumos
+                    </button>
                     <button type="button" onclick="copyProjectClientTrackingLink()" class="btn-primary" style="background: #059669; font-size: 11px; padding: 5px 10px;" title="Copiar enlace web de seguimiento">
                         <i class="fa-solid fa-link"></i> Copiar Enlace
-                    </button>
-                    <button type="button" onclick="shareProjectViaWhatsApp()" class="btn-primary" style="background: #16a34a; font-size: 11px; padding: 5px 10px;" title="Compartir avance al cliente por WhatsApp">
-                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
                     </button>
                     <button type="button" onclick="printProjectProgressReport()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; font-weight: 700;" title="Descargar e Imprimir Reporte de Avance">
                         <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i> Imprimir PDF
@@ -715,30 +1087,56 @@
 
 
 
-            <div id="detail_proj_financial_box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; text-align: center;">
+            <div id="detail_proj_financial_box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; text-align: center;">
                 <div>
                     <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Monto Contrato</span>
-                    <p id="detail_proj_contract" style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin: 3px 0 0 0;">$0.00</p>
+                    <p id="detail_proj_contract" style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Facturado CxC</span>
+                    <p id="detail_proj_billed" style="font-size: 13px; font-weight: 800; color: #0284c7; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Por Facturar</span>
+                    <p id="detail_proj_unbilled" style="font-size: 13px; font-weight: 800; color: #059669; margin: 3px 0 0 0;">$0.00</p>
                 </div>
                 <div>
                     <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Ppto Límite Costo</span>
-                    <p id="detail_proj_budget" style="font-size: 14px; font-weight: 800; color: #e11d48; margin: 3px 0 0 0;">$0.00</p>
+                    <p id="detail_proj_budget" style="font-size: 13px; font-weight: 800; color: #e11d48; margin: 3px 0 0 0;">$0.00</p>
                 </div>
                 <div>
-                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Gasto Real Incurrido</span>
-                    <p id="detail_proj_spent" style="font-size: 14px; font-weight: 800; color: #d97706; margin: 3px 0 0 0;">$0.00</p>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Gasto Incurrido</span>
+                    <p id="detail_proj_spent" style="font-size: 13px; font-weight: 800; color: #d97706; margin: 3px 0 0 0;">$0.00</p>
                 </div>
                 <div>
                     <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cobrado Real</span>
-                    <p id="detail_proj_collected" style="font-size: 14px; font-weight: 800; color: #059669; margin: 3px 0 0 0;">$0.00</p>
+                    <p id="detail_proj_collected" style="font-size: 13px; font-weight: 800; color: #059669; margin: 3px 0 0 0;">$0.00</p>
                 </div>
                 <div>
                     <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Saldo x Cobrar</span>
-                    <p id="detail_proj_receivable_bal" style="font-size: 14px; font-weight: 800; color: #dc2626; margin: 3px 0 0 0;">$0.00</p>
+                    <p id="detail_proj_receivable_bal" style="font-size: 13px; font-weight: 800; color: #dc2626; margin: 3px 0 0 0;">$0.00</p>
                 </div>
                 <div>
                     <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Margen Real ($)</span>
-                    <p id="detail_proj_margin" style="font-size: 14px; font-weight: 800; color: #2563eb; margin: 3px 0 0 0;">$0.00</p>
+                    <p id="detail_proj_margin" style="font-size: 13px; font-weight: 800; color: #2563eb; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: ADENDAS Y OBRAS EXTRAS CONTRACTUALES -->
+            <div id="detail_proj_addendums_box" style="margin-bottom: 14px; background: #faf5ff; border: 1px solid #d8b4fe; border-radius: 10px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="font-size: 12px; font-weight: 800; color: #9333ea; text-transform: uppercase; margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-file-circle-plus"></i> Adendas Contractuales & Obras Extras
+                        </h4>
+                        <span style="font-size: 10px; color: #7e22ce;">Ampliaciones de contrato, nuevas capas y adicionales autorizados</span>
+                    </div>
+                    <button type="button" onclick="openAddendumModal(currentViewingProjectId)" class="btn-primary" style="background: #9333ea; font-size: 11px; padding: 4px 10px; font-weight: 700; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-plus"></i> Registrar Adenda
+                    </button>
+                </div>
+                <div id="detail_proj_addendums_list">
+                    <p style="font-size: 11px; color: #94a3b8; margin: 0;">No se han registrado adendas contractuales en esta obra.</p>
                 </div>
             </div>
 
@@ -848,12 +1246,53 @@
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <!-- SECCIÓN: GUÍAS DE DESPACHO & SALIDAS DE ALMACÉN DE LA OBRA -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                        <i class="fa-solid fa-truck-ramp-box" style="color: #0284c7;"></i> Guías de Despacho & Salidas de Almacén de esta Obra
+                    </h4>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span id="detail_proj_dispatch_count" style="font-size: 11px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;">0 guías emitidas</span>
+                        <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 3px 8px; background: #0284c7;" title="Pedir más insumos">
+                            <i class="fa-solid fa-plus"></i> Pedir Insumos
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="max-height: 200px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">N° Guía</th>
+                                <th style="padding: 6px 8px; text-align: left;">Fecha Despacho</th>
+                                <th style="padding: 6px 8px; text-align: left;">Destino</th>
+                                <th style="padding: 6px 8px; text-align: left;">Transporte / Conductor</th>
+                                <th style="padding: 6px 8px; text-align: center;">Ítems</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estatus</th>
+                                <th style="padding: 6px 8px; text-align: center;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_dispatch_body">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran guías de despacho para esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+
+                <button type="button" onclick="openAddendumModal(currentViewingProjectId)" class="btn-primary" style="background: #9333ea; font-size: 12px; padding: 6px 14px; font-weight: 700;">
+                    <i class="fa-solid fa-file-circle-plus"></i> + Adenda Contractual
+                </button>
+
+                <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="background: #0284c7; font-size: 12px; padding: 6px 14px;">
+                    <i class="fa-solid fa-truck-ramp-box"></i> Solicitar Recursos y Materiales a Almacén
+                </button>
 
                 <button type="button" onclick="openCreateCxCForProject(currentViewingProjectId)" class="btn-primary" style="background: #059669; font-size: 12px; padding: 6px 14px;">
-
                     <i class="fa-solid fa-file-invoice-dollar"></i> Facturar / Emitir CxC
-
                 </button>
 
                 <button type="button" onclick="closeModal('modalProjectDetail')" class="btn-secondary">Cerrar Ficha</button>
@@ -862,6 +1301,199 @@
 
         </div>
 
+    </div>
+
+    <!-- MODAL: REGISTRAR ADENDA CONTRACTUAL / OBRA EXTRA (+USD) -->
+    <div id="modalProjectAddendum" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 560px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-file-circle-plus" style="color: #9333ea;"></i> Registrar Adenda Contractual / Obra Extra
+                    </h3>
+                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">Ampliación de alcance y monto contractual acordado con el cliente.</p>
+                </div>
+                <button type="button" onclick="closeModal('modalProjectAddendum')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Banner Info del Proyecto -->
+            <div style="background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                    <span id="addendum_project_code" style="font-size: 12px; font-weight: 800; color: #9333ea; font-family: monospace;">PRJ-2026-XXX</span>
+                    <div id="addendum_project_name" style="font-size: 13px; font-weight: 700; color: #1e293b;">Nombre de la Obra</div>
+                </div>
+                <div style="text-align: right; font-size: 11px;">
+                    <span style="color: #64748b;">Contrato Actual:</span>
+                    <strong id="addendum_current_contract" style="color: #0f172a; font-size: 13px; display: block;">$0.00 USD</strong>
+                </div>
+            </div>
+
+            <form id="formProjectAddendum" onsubmit="submitProjectAddendum(event)">
+                <input type="hidden" id="addendum_project_id" value="">
+
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Título de la Adenda / Ampliación <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="addendum_title" required placeholder="Ej: Ampliación: Nuevas Capas de Pintura Epóxica & Refuerzo" style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+                    </div>
+
+                    <div class="grid-2" style="gap: 12px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Monto Adicional Contrato (USD) <span style="color: #ef4444;">*</span></label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-weight: 800; color: #059669; font-size: 13px;">$</span>
+                                <input type="number" id="addendum_amount_usd" step="0.01" min="0.01" required placeholder="0.00" style="width: 100%; padding: 8px 10px 8px 24px; font-size: 13px; font-weight: 800; color: #059669; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+                            </div>
+                            <span style="font-size: 10px; color: #64748b;">Aumentará el saldo por facturar en CxC</span>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Autorizado por</label>
+                            <input type="text" id="addendum_authorized_by" value="Dirección General" style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Alcance Técnico & Justificación</label>
+                        <textarea id="addendum_scope" rows="2" placeholder="Especificaciones de las nuevas capas, metraje extra o trabajos requeridos por el cliente..." style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; resize: vertical;"></textarea>
+                    </div>
+
+                    <!-- Desplegable Opcional: Presupuesto Interno y Cronograma -->
+                    <details style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 11px;">
+                        <summary style="cursor: pointer; font-weight: 700; color: #2563eb;">
+                            <i class="fa-solid fa-sliders"></i> Asignar Presupuesto Interno & Nueva Etapa (Opcional)
+                        </summary>
+                        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                            <div class="grid-2" style="gap: 10px;">
+                                <div>
+                                    <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Materiales Extra (USD):</label>
+                                    <input type="number" id="addendum_mat_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Mano de Obra Extra (USD):</label>
+                                    <input type="number" id="addendum_labor_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size: 10px; color: #64748b; font-weight: 600;">Crear Nueva Etapa en Cronograma de Obra:</label>
+                                <input type="text" id="addendum_new_phase" placeholder="Ej: Etapa 5: Aplicación de Capas Epóxicas" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <button type="button" onclick="closeModal('modalProjectAddendum')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="font-size: 12px; padding: 7px 16px; background: #9333ea; border-color: #9333ea; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-check"></i> Aplicar Adenda Contractual
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: SOLICITAR RECURSOS Y MATERIALES A ALMACÉN (FLUJO OBRA -> DESPACHO) -->
+    <div id="modalRequestProjectResources" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 650px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="reqProjModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-truck-ramp-box" style="color: #0284c7;"></i> Solicitar Recursos y Materiales a Almacén
+                    </h3>
+                    <p id="reqProjModalSubtitle" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">Proyecto</p>
+                </div>
+                <button type="button" onclick="closeModal('modalRequestProjectResources')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="requestProjectResourcesForm" onsubmit="submitRequestProjectResources(event); return false;" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="req_proj_id" value="">
+
+                <!-- Alerta informativa si la obra ya tiene guías emitidas -->
+                <div id="req_proj_existing_guides" style="display: none; margin-bottom: 2px;"></div>
+
+                <div class="grid-2">
+                    <div>
+                        <label class="form-label">Destino / Ubicación de Entrega *</label>
+                        <input type="text" id="req_proj_destination" class="form-input" required placeholder="Planta Cliente / Obra">
+                    </div>
+                    <div>
+                        <label class="form-label">Notas / Instrucciones Especiales</label>
+                        <input type="text" id="req_proj_notes" class="form-input" placeholder="Ej: Entrega urgente en turno mañana">
+                    </div>
+                </div>
+
+                <!-- 1. Personal Operativo -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase;">
+                            <i class="fa-solid fa-users"></i> 1. Personal & Cuadrilla (Solo Disponibles en Base)
+                        </label>
+                        <span id="req_pers_counter" style="font-size: 10px; font-weight: 700; color: #1e40af; background: #dbeafe; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
+                    </div>
+                    <input type="text" id="req_search_personnel" oninput="filterReqDropdown('personnel', this.value)" placeholder="🔍 Buscar por nombre, cédula o cargo..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
+                    <div style="display: flex; gap: 6px;">
+                        <select id="req_select_personnel" onchange="if(this.value) addReqResource('personnel')" class="form-select" style="font-size: 12px;"></select>
+                        <button type="button" onclick="addReqResource('personnel')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800;" title="Agregar personal">+ Agregar</button>
+                    </div>
+                    <div id="req_tags_personnel" style="margin-top: 6px; min-height: 24px;"></div>
+                </div>
+
+                <!-- 2. Vehículos y Flota -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase;">
+                            <i class="fa-solid fa-truck"></i> 2. Flota & Vehículos (Solo Disponibles en Base)
+                        </label>
+                        <span id="req_fleet_counter" style="font-size: 10px; font-weight: 700; color: #166534; background: #dcfce7; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
+                    </div>
+                    <input type="text" id="req_search_fleet" oninput="filterReqDropdown('fleet', this.value)" placeholder="🔍 Buscar por placa, marca o código..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
+                    <div style="display: flex; gap: 6px;">
+                        <select id="req_select_fleet" onchange="if(this.value) addReqResource('fleet')" class="form-select" style="font-size: 12px;"></select>
+                        <button type="button" onclick="addReqResource('fleet')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #166534;" title="Agregar vehículo">+ Agregar</button>
+                    </div>
+                    <div id="req_tags_fleet" style="margin-top: 6px; min-height: 24px;"></div>
+                </div>
+
+                <!-- 3. Herramientas y Equipos -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase;">
+                            <i class="fa-solid fa-toolbox"></i> 3. Herramientas & Equipos (Solo Disponibles en Base)
+                        </label>
+                        <span id="req_tools_counter" style="font-size: 10px; font-weight: 700; color: #92400e; background: #fef3c7; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
+                    </div>
+                    <input type="text" id="req_search_tools" oninput="filterReqDropdown('tools', this.value)" placeholder="🔍 Buscar entre 890+ herramientas por código, descripción o serial..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white; border: 1.5px solid #fde68a;">
+                    <div style="display: flex; gap: 6px;">
+                        <select id="req_select_tools" onchange="if(this.value) addReqResource('tools')" class="form-select" style="font-size: 12px;"></select>
+                        <button type="button" onclick="addReqResource('tools')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #d97706;" title="Agregar herramienta">+ Agregar</button>
+                    </div>
+                    <div id="req_tags_tools" style="margin-top: 6px; min-height: 24px;"></div>
+                </div>
+
+                <!-- 4. Materiales de Almacén -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #0f766e; text-transform: uppercase;">
+                            <i class="fa-solid fa-boxes-stacked"></i> 4. Materiales & Consumibles (Solo con Stock > 0)
+                        </label>
+                        <span id="req_mats_counter" style="font-size: 10px; font-weight: 700; color: #0f766e; background: #ccfbf1; padding: 1px 6px; border-radius: 9999px;">0 renglones</span>
+                    </div>
+                    <input type="text" id="req_search_materials" oninput="filterReqDropdown('materials', this.value)" placeholder="🔍 Buscar material por nombre o código..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 6px;">
+                        <select id="req_select_materials" onchange="onReqMaterialChanged(this)" class="form-select" style="font-size: 12px;"></select>
+                        <input type="number" step="0.01" id="req_mat_quantity" placeholder="Cant." class="form-input" style="font-size: 12px;">
+                        <button type="button" onclick="addReqResource('material')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #0f766e;" title="Agregar material">+ Agregar</button>
+                    </div>
+                    <div id="req_tags_materials" style="margin-top: 6px; min-height: 24px;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                    <button type="button" onclick="closeModal('modalRequestProjectResources')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7; font-weight: 800; font-size: 12px; padding: 6px 16px;">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar Solicitud a Almacén
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
 
@@ -896,9 +1528,28 @@
 
                         <label class="form-label">Cliente *</label>
 
-                        <select id="quote_client_id" class="form-select" required>
+                        <select id="quote_client_id" class="form-select" required onchange="onQuoteClientChanged(this.value)">
                             <option value="">-- Seleccione Cliente --</option>
                         </select>
+
+                        <!-- Banner de Alerta de Riesgo Crediticio (Sin bloqueo automático) -->
+                        <div id="quoteClientRiskAlert" style="display: none; margin-top: 8px; padding: 10px 12px; background: #fff1f2; border: 1.5px solid #f43f5e; border-radius: 8px; box-shadow: 0 2px 6px rgba(244, 63, 94, 0.15);">
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <i class="fa-solid fa-triangle-exclamation" style="color: #e11d48; font-size: 16px; margin-top: 2px;"></i>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 800; color: #9f1239; font-size: 12px;">ALERTA DE RIESGO CREDITICIO</div>
+                                    <div id="quoteClientRiskDetails" style="font-size: 11px; color: #881337; margin-top: 3px; line-height: 1.4;"></div>
+                                    <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                        <button type="button" onclick="confirmQuoteClientRisk()" class="btn-primary" style="background: #e11d48; font-size: 10.5px; padding: 4px 10px; border-radius: 5px; font-weight: 700;">
+                                            <i class="fa-solid fa-user-shield"></i> Autorizar y Continuar Cotización
+                                        </button>
+                                        <button type="button" onclick="cancelQuoteClientRisk()" class="btn-secondary" style="font-size: 10.5px; padding: 4px 10px; border-radius: 5px;">
+                                            <i class="fa-solid fa-xmark"></i> Cancelar / Cambiar Cliente
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                     </div>
 
@@ -1664,7 +2315,7 @@
 
             </div>
 
-            <form id="materialEntryForm" onsubmit="submitMaterialEntry(event)" style="display: flex; flex-direction: column; gap: 10px;">
+            <form id="materialEntryForm" onsubmit="submitMaterialEntry(event); return false;" style="display: flex; flex-direction: column; gap: 10px;">
 
                 <div>
 
@@ -1954,27 +2605,18 @@
                     <div>
 
                         <label class="form-label">Categoría *</label>
-
-                        <select id="nmat_category" class="form-select" required>
-
+                        <select id="nmat_category" class="form-select" required onchange="onNewMaterialCategoryChanged()">
                             <option value="Planchas y Laminas">Planchas y Láminas</option>
-
                             <option value="Acero Estructural">Acero Estructural / Vigas</option>
-
                             <option value="Tuberias y Canerias">Tuberías y Cañerías</option>
-
                             <option value="Soldadura y Gases">Soldadura y Gases</option>
-
                             <option value="Abrasivos y Corte">Abrasivos y Corte</option>
-
                             <option value="Tornilleria y Fijaciones">Tornillería y Fijaciones</option>
-
                             <option value="Pinturas y Revestimientos">Pinturas y Revestimientos</option>
-
                             <option value="Consumibles de Taller">Consumibles de Taller</option>
-
+                            <option value="__NEW__" style="font-weight: bold; color: #2563eb;">+ Crear Nueva Categoría...</option>
                         </select>
-
+                        <input type="text" id="nmat_category_custom" class="form-input hidden" style="margin-top: 6px;" placeholder="Escribe el nombre de la nueva categoría...">
                     </div>
 
                     <div>
@@ -2654,8 +3296,83 @@
 
 
 
-    <!-- MODAL: CREAR NUEVO USUARIO DE SISTEMA -->
+    <!-- MODAL: MAPA DE PERMISOS DE USUARIO -->
+    <div id="modalUserPermissions" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 580px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-key" style="color: #0284c7;"></i> Modificar Mapa de Permisos & Accesos
+                    </h3>
+                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">
+                        Usuario: <b id="permModalUsername" style="color: var(--dalor-navy);">-</b> (<span id="permModalFullName">-</span>)
+                    </p>
+                </div>
+                <button onclick="closeModal('modalUserPermissions')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form onsubmit="event.preventDefault(); submitSaveUserPermissions();" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="perm_target_user_id" value="">
+                <div>
+                    <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy); display: block; margin-bottom: 8px;">
+                        Permisos Granulares por Módulo:
+                    </span>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🏢 Módulo Comercial (Cotizaciones & APU)</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_comercial_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_comercial_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🏗️ Módulo Proyectos & Obras</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">💼 Finanzas, CxC, CxP & Tesorería</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_finanzas_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_finanzas_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🚛 Flota, Maquinaria & Herramientas</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_recursos_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_recursos_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🧾 Auditoría y Rendición de Gastos</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_gastos_view"> Ver</label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_gastos_edit"> Editar</label>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #1e40af;">👑 Acceso a Panel Ejecutivo & BI</span>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer;"><input type="checkbox" id="perm_executive_dashboard"> Permitido</label>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #991b1b;">⚙️ Administración de Sistema & Usuarios</span>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer;"><input type="checkbox" id="perm_mantenimiento_admin"> Permitido</label>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalUserPermissions')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7; font-weight: 800;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Mapa de Permisos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
+    <!-- MODAL: CREAR NUEVO USUARIO DE SISTEMA -->
     <div id="modalNewUser" class="modal-overlay hidden">
 
         <div class="modal-content" style="max-width: 500px;">
@@ -2973,6 +3690,9 @@
         </div>
 
     </div>
+
+
+
 
     <!-- MODAL: NOTA DE ENTREGA & DESPACHO DE MATERIALES (PARA JEFE DE ALMACÉN / OBRA) -->
 
@@ -3407,637 +4127,12 @@
 
 
 
-    <!-- 🚀 LÓGICA MODULAR ES6 DESACOPLADA (v97.1) -->
 
 
-<!-- MODAL SINCRONIZADO: modalWithholdingVoucher -->
-<div id="modalWithholdingVoucher" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 780px; max-height: 92vh; overflow-y: auto; background: white; padding: 24px; font-family: 'Segoe UI', Arial, sans-serif;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px;">
-                <div>
-                    <h2 style="font-size: 16px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase;">
-                        Comprobante de Retención de Impuesto al Valor Agregado (I.V.A.)
-                    </h2>
-                    <h3 style="font-size: 13px; font-weight: 800; color: #1e3a8a; margin: 2px 0 0 0;">
-                        METALMECANICA DALOR, C.A. &bull; R.I.F.: J-31601195-0
-                    </h3>
-                    <p style="font-size: 9.5px; color: #475569; margin: 4px 0 0 0; line-height: 1.3; max-width: 520px;">
-                        Ley IVA - Art. 11. Providencia Administrativa SNAT/2015/0049 (G.O. Nº 40.720 del 10/08/2015).
-                    </p>
-                </div>
-                <div style="text-align: right;">
-                    <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; text-align: center;">
-                        <span style="font-size: 9px; color: #64748b; font-weight: 800; text-transform: uppercase; display: block;">Nº Comprobante:</span>
-                        <strong id="voucher_doc_number" style="font-size: 14px; color: #b91c1c; font-family: monospace;">20260900001015</strong>
-                    </div>
-                    <span style="font-size: 10px; color: #334155; margin-top: 4px; display: block;">Fecha: <strong id="voucher_doc_date">15/09/2026</strong></span>
-                    <span style="font-size: 10px; color: #334155; display: block;">Período Fiscal: <strong id="voucher_doc_period">2026-09</strong></span>
-                </div>
-            </div>
 
-            <!-- Datos del Agente y Sujeto Retenido -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; font-size: 11px;">
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
-                    <strong style="color: var(--dalor-navy); text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 2px;">Agente de Retención:</strong>
-                    <div><strong>Nombre:</strong> METALMECANICA DALOR, C.A.</div>
-                    <div><strong>R.I.F.:</strong> J-31601195-0</div>
-                    <div><strong>Dirección:</strong> Av. Cámara de las Industrias, Galpón 10, Zona Ind. El Tigre, Guacara, Edo. Carabobo.</div>
-                    <div><strong>Correo:</strong> metalmecanicadalorca@yahoo.com</div>
-                </div>
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
-                    <strong style="color: var(--dalor-navy); text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 2px;">Sujeto Retenido (Proveedor):</strong>
-                    <div><strong>Razón Social:</strong> <span id="voucher_supp_name">OAMED, C.A.</span></div>
-                    <div><strong>R.I.F.:</strong> <span id="voucher_supp_rif">J-500819048</span></div>
-                    <div><strong>Concepto:</strong> <span id="voucher_supp_concept">-</span></div>
-                    <div><strong>Tasa Oficial BCV:</strong> <span id="voucher_bcv_rate">-</span></div>
-                </div>
-            </div>
+    <!-- MODAL: CONFIRMAR ENTREGA DE GUÍA DE DESPACHO -->
 
-            <!-- Tabla de Operación Conforme a SNAT/2015/0049 -->
-            <div style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 16px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 10px; text-align: right;">
-                    <thead style="background: #f1f5f9; color: #1e293b; font-weight: 800;">
-                        <tr>
-                            <th style="padding: 6px; text-align: center;">Fecha</th>
-                            <th style="padding: 6px; text-align: center;">Nº Factura</th>
-                            <th style="padding: 6px; text-align: center;">Nº Control</th>
-                            <th style="padding: 6px;">Total Compra ($)</th>
-                            <th style="padding: 6px;">Base Imponible ($)</th>
-                            <th style="padding: 6px; text-align: center;">% Alíc.</th>
-                            <th style="padding: 6px;">Impuesto IVA ($)</th>
-                            <th style="padding: 6px; text-align: center;">% Ret.</th>
-                            <th style="padding: 6px; color: #b91c1c;">IVA Retenido ($)</th>
-                            <th style="padding: 6px; color: #166534;">Neto Proveedor ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="border-bottom: 1px solid #e2e8f0;">
-                            <td id="v_td_date" style="padding: 6px; text-align: center;">14/09/2026</td>
-                            <td id="v_td_invoice" style="padding: 6px; text-align: center; font-weight: 700;">000229</td>
-                            <td id="v_td_control" style="padding: 6px; text-align: center;">00-000229</td>
-                            <td id="v_td_total_usd" style="padding: 6px; font-weight: 700;">$0.00</td>
-                            <td id="v_td_base_usd" style="padding: 6px;">$0.00</td>
-                            <td style="padding: 6px; text-align: center;">16%</td>
-                            <td id="v_td_tax_usd" style="padding: 6px;">$0.00</td>
-                            <td id="v_td_ret_rate" style="padding: 6px; text-align: center; font-weight: 700;">75%</td>
-                            <td id="v_td_withheld_usd" style="padding: 6px; font-weight: 800; color: #b91c1c;">$0.00</td>
-                            <td id="v_td_net_usd" style="padding: 6px; font-weight: 800; color: #166534;">$0.00</td>
-                        </tr>
-                        <tr style="background: #fafafa; font-weight: 800; border-top: 1px solid #cbd5e1;">
-                            <td colspan="3" style="padding: 6px; text-align: left;">Total en Bolívares (Bs.):</td>
-                            <td id="v_td_total_bs" style="padding: 6px;">Bs. 0.00</td>
-                            <td id="v_td_base_bs" style="padding: 6px;">Bs. 0.00</td>
-                            <td></td>
-                            <td id="v_td_tax_bs" style="padding: 6px;">Bs. 0.00</td>
-                            <td></td>
-                            <td id="v_td_withheld_bs" style="padding: 6px; color: #b91c1c;">Bs. 0.00</td>
-                            <td id="v_td_net_bs" style="padding: 6px; color: #166534;">Bs. 0.00</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Declaración de Firma Legal -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 35px; text-align: center; font-size: 10px;">
-                <div>
-                    <div style="border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 700;">
-                        Firma y Sello del Agente de Retención<br>
-                        <span style="font-weight: normal; color: #64748b;">METALMECANICA DALOR, C.A.</span>
-                    </div>
-                </div>
-                <div>
-                    <div style="border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 700;">
-                        Firma y Sello del Sujeto Retenido<br>
-                        <span style="font-weight: normal; color: #64748b;">Fecha de Recepción: _____/_____/_________</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Botones de Acción (No se imprimen) -->
-            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 12px;" class="no-print">
-                <button type="button" onclick="printWithholdingVoucher()" class="btn-primary" style="background: #1e3a8a; font-size: 11px; padding: 6px 14px; font-weight: 700;">
-                    <i class="fa-solid fa-print"></i> Imprimir Comprobante (PDF)
-                </button>
-                <button type="button" onclick="closeModal('modalWithholdingVoucher')" class="btn-secondary" style="font-size: 11px; padding: 6px 14px;">
-                    Cerrar
-                </button>
-            </div>
-        </div>
-    </div>
-
-
-<!-- MODAL SINCRONIZADO: modalEditPayable -->
-<div id="modalEditPayable" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 520px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
-                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
-                    <i class="fa-solid fa-pen-to-square" style="color: #2563eb;"></i> Modificar Cuenta por Pagar
-                </h3>
-                <button onclick="closeModal('modalEditPayable')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-            </div>
-
-            <form id="editPayableForm" onsubmit="submitEditPayable(event)" style="display: flex; flex-direction: column; gap: 10px;">
-                <input type="hidden" id="edit_cxp_id">
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label class="form-label">Proveedor *</label>
-                        <input type="text" id="edit_cxp_supplier_name" class="form-input" required>
-                    </div>
-                    <div>
-                        <label class="form-label">RIF Proveedor</label>
-                        <input type="text" id="edit_cxp_supplier_rif" class="form-input">
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label class="form-label">Nº Factura / Doc *</label>
-                        <input type="text" id="edit_cxp_invoice_number" class="form-input" required>
-                    </div>
-                    <div>
-                        <label class="form-label">Nº Control SENIAT</label>
-                        <input type="text" id="edit_cxp_control_number" class="form-input">
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label class="form-label">Monto Total ($ USD) *</label>
-                        <input type="number" step="0.01" id="edit_cxp_amount_usd" class="form-input" style="font-weight: 800; color: #e11d48;" required>
-                    </div>
-                    <div>
-                        <label class="form-label">Alícuota Retención IVA</label>
-                        <select id="edit_cxp_tax_withholding_rate" class="form-select" style="font-weight: 700;">
-                            <option value="75">75%</option>
-                            <option value="100">100%</option>
-                            <option value="0">0% (Sin Retención)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="form-label">Fecha de Vencimiento *</label>
-                    <input type="date" id="edit_cxp_due_date" class="form-input" required>
-                </div>
-
-                <div>
-                    <label class="form-label">Descripción</label>
-                    <input type="text" id="edit_cxp_description" class="form-input" required>
-                </div>
-
-                <div id="edit_cxp_voucher_container" style="display: none; background: #fdf2f8; border: 1px dashed #f472b6; border-radius: 6px; padding: 10px; margin-top: 2px;">
-                    <label class="form-label" style="color: #be185d; font-weight: 800;">
-                        <i class="fa-solid fa-stamp"></i> Nº Comprobante Retención IVA (14 dígitos SENIAT):
-                    </label>
-                    <input type="text" id="edit_cxp_voucher_number" class="form-input" style="font-family: monospace; font-weight: 800; font-size: 13px; color: #b91c1c; background: white;" placeholder="Ej: 20260900001015" maxlength="20">
-                    <p style="font-size: 10px; color: #9d174d; margin: 4px 0 0 0; line-height: 1.2;">
-                        * Formato oficial: <strong>AAAAMMXXXXXXXX</strong> (Año + Mes + 8 dígitos). Al modificar este número, los nuevos registros seguirán la secuencia consecutiva a partir de este valor.
-                    </p>
-                </div>
-
-                <button type="submit" id="btnSubmitEditPayable" class="btn-primary" style="margin-top: 6px; background: #2563eb; font-weight: 700;">
-                    <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
-                </button>
-            </form>
-        </div>
-    </div>
-
-
-<!-- MODAL SINCRONIZADO: modalClientRefund -->
-<div id="modalClientRefund" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 500px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
-                <h3 style="font-size: 15px; font-weight: 800; color: #059669;">
-                    <i class="fa-solid fa-arrow-rotate-left"></i> Emitir Reembolso a Cliente
-                </h3>
-                <button type="button" onclick="closeModal('modalClientRefund')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-            </div>
-            <form id="clientRefundForm" onsubmit="submitClientRefund(event)" style="display: flex; flex-direction: column; gap: 10px;">
-                <input type="hidden" id="refund_receivable_id">
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px;">
-                    <div style="font-size: 11px; color: #166534; font-weight: 700;" id="refund_client_info">Cliente: -</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                        <span style="font-size: 11px; color: #475569;">Saldo a Favor Disponible:</span>
-                        <strong id="refund_max_surplus" style="font-size: 16px; color: #16a34a; font-weight: 900;">$0.00</strong>
-                    </div>
-                </div>
-                <div>
-                    <label class="form-label">Monto a Reembolsar ($ USD) *</label>
-                    <input type="number" step="0.01" id="refund_amount_usd" class="form-input" style="font-weight: 800; font-size: 15px;" required>
-                </div>
-                <div>
-                    <label class="form-label">Cuenta de Egreso (De dónde sale el dinero) *</label>
-                    <select id="refund_source_account" class="form-select">
-                        <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
-                        <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
-                        <option value="Binance USDT">Binance USDT ($)</option>
-                        <option value="Zelle">Zelle ($)</option>
-                        <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
-                    </select>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label class="form-label">Método de Devolución</label>
-                        <select id="refund_payment_method" class="form-select">
-                            <option value="transferencia">Transferencia Bancaria</option>
-                            <option value="pago_movil">Pago Móvil</option>
-                            <option value="zelle">Zelle</option>
-                            <option value="efectivo_divisa">Efectivo Divisa ($)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label">Nº Referencia / Transferencia *</label>
-                        <input type="text" id="refund_reference" placeholder="Ref: 987654" class="form-input" required>
-                    </div>
-                </div>
-                <div>
-                    <label class="form-label">Notas / Motivo</label>
-                    <input type="text" id="refund_notes" placeholder="Ej: Devolución por días no consumidos de alquiler" class="form-input">
-                </div>
-                <button type="submit" class="btn-primary" style="background: #059669; margin-top: 6px;">
-                    Confirmar Reembolso
-                </button>
-            </form>
-        </div>
-    </div>
-
-
-<!-- MODAL SINCRONIZADO: modalTreasuryExchange -->
-<div id="modalTreasuryExchange" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 560px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
-                <div>
-                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
-                        <i class="fa-solid fa-right-left" style="color: #2563eb;"></i> Mesa de Cambio / Transferencia Entre Cuentas
-                    </h3>
-                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">Conversión de bolívares/divisas y cálculo automático del diferencial cambiario.</p>
-                </div>
-                <button type="button" onclick="closeModal('modalTreasuryExchange')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-            </div>
-            <form id="treasuryExchangeForm" onsubmit="submitTreasuryExchange(event)" style="display: flex; flex-direction: column; gap: 12px;">
-                <!-- Tipo de Operación -->
-                <div>
-                    <label class="form-label" style="font-weight: 700;">Sentido de la Operación *</label>
-                    <select id="exch_operation_type" class="form-select" onchange="onTreasuryExchangeTypeChanged()" style="font-weight: 700; color: #1e293b;">
-                        <option value="bs_a_usd">🇻🇪 Vender Bolívares ➔ Comprar Divisas (Bs ➔ USD / USDT)</option>
-                        <option value="usd_a_bs">💵 Vender Divisas ➔ Obtener Bolívares (USD ➔ Bs)</option>
-                    </select>
-                </div>
-
-                <!-- Cuentas -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label class="form-label">Cuenta de Origen (Egreso) *</label>
-                        <select id="exch_source_account" class="form-select" onchange="calcTreasuryExchangeDiff()">
-                            <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
-                            <option value="Caja Efectivo Bs">Caja Efectivo Bs (Bs)</option>
-                            <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
-                            <option value="Binance USDT">Binance USDT ($)</option>
-                            <option value="Zelle">Zelle ($)</option>
-                            <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label">Cuenta de Destino (Ingreso) *</label>
-                        <select id="exch_target_account" class="form-select" onchange="calcTreasuryExchangeDiff()">
-                            <option value="Binance USDT">Binance USDT ($)</option>
-                            <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
-                            <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
-                            <option value="Zelle">Zelle ($)</option>
-                            <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
-                            <option value="Caja Efectivo Bs">Caja Efectivo Bs (Bs)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Montos -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label class="form-label" id="exch_source_label">Monto que Sale (Bs) *</label>
-                        <input type="number" step="0.01" id="exch_source_amount" oninput="calcTreasuryExchangeDiff()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px; color: #dc2626;" required>
-                    </div>
-                    <div>
-                        <label class="form-label" id="exch_target_label">Monto que Entra ($ USD) *</label>
-                        <input type="number" step="0.01" id="exch_target_amount" oninput="calcTreasuryExchangeDiff()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px; color: #059669;" required>
-                    </div>
-                </div>
-
-                <!-- Panel de Cálculo Automático del Diferencial Cambiario -->
-                <div id="exch_diff_panel" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; margin-bottom: 8px;">
-                        <div>
-                            <span style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Tasa Transacción</span>
-                            <p id="exch_trans_rate_lbl" style="font-size: 14px; font-weight: 900; color: #1e293b; margin: 2px 0 0 0;">0.00 Bs/$</p>
-                        </div>
-                        <div>
-                            <span style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Tasa Oficial BCV</span>
-                            <p id="exch_bcv_rate_lbl" style="font-size: 14px; font-weight: 900; color: #0284c7; margin: 2px 0 0 0;">Bs. 850.00</p>
-                        </div>
-                        <div>
-                            <span style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Diferencial Cambiario</span>
-                            <p id="exch_diff_badge" style="font-size: 14px; font-weight: 900; color: #64748b; margin: 2px 0 0 0;">$0.00 USD</p>
-                        </div>
-                    </div>
-                    <div id="exch_explanation" style="font-size: 11px; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 6px;">
-                        Ingrese los montos para calcular la tasa pactada y el impacto en cuentas financieras.
-                    </div>
-                </div>
-
-                <!-- Referencia y Notas -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label class="form-label">N° Referencia / Orden P2P *</label>
-                        <input type="text" id="exch_reference" placeholder="Ej: P2P-987654 / REF-1234" class="form-input" required>
-                    </div>
-                    <div>
-                        <label class="form-label">Notas / Observaciones</label>
-                        <input type="text" id="exch_notes" placeholder="Ej: Compra de USDT en Binance P2P" class="form-input">
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-primary" style="margin-top: 4px; padding: 10px; font-weight: 800; font-size: 13px; background: #2563eb;">
-                    <i class="fa-solid fa-right-left"></i> Confirmar Operación de Cambio
-                </button>
-            </form>
-        </div>
-    </div>
-
-
-<!-- MODAL SINCRONIZADO: modalProjectAddendum -->
-<div id="modalProjectAddendum" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 560px; width: 95%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
-                <div>
-                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-file-circle-plus" style="color: #9333ea;"></i> Registrar Adenda Contractual / Obra Extra
-                    </h3>
-                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">Ampliación de alcance y monto contractual acordado con el cliente.</p>
-                </div>
-                <button type="button" onclick="closeModal('modalProjectAddendum')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
-            </div>
-
-            <!-- Banner Info del Proyecto -->
-            <div style="background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <div>
-                    <span id="addendum_project_code" style="font-size: 12px; font-weight: 800; color: #9333ea; font-family: monospace;">PRJ-2026-XXX</span>
-                    <div id="addendum_project_name" style="font-size: 13px; font-weight: 700; color: #1e293b;">Nombre de la Obra</div>
-                </div>
-                <div style="text-align: right; font-size: 11px;">
-                    <span style="color: #64748b;">Contrato Actual:</span>
-                    <strong id="addendum_current_contract" style="color: #0f172a; font-size: 13px; display: block;">$0.00 USD</strong>
-                </div>
-            </div>
-
-            <form id="formProjectAddendum" onsubmit="submitProjectAddendum(event)">
-                <input type="hidden" id="addendum_project_id" value="">
-
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Título de la Adenda / Ampliación <span style="color: #ef4444;">*</span></label>
-                        <input type="text" id="addendum_title" required placeholder="Ej: Ampliación: Nuevas Capas de Pintura Epóxica & Refuerzo" style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
-                    </div>
-
-                    <div class="grid-2" style="gap: 12px;">
-                        <div>
-                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Monto Adicional Contrato (USD) <span style="color: #ef4444;">*</span></label>
-                            <div style="position: relative;">
-                                <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-weight: 800; color: #059669; font-size: 13px;">$</span>
-                                <input type="number" id="addendum_amount_usd" step="0.01" min="0.01" required placeholder="0.00" style="width: 100%; padding: 8px 10px 8px 24px; font-size: 13px; font-weight: 800; color: #059669; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
-                            </div>
-                            <span style="font-size: 10px; color: #64748b;">Aumentará el saldo por facturar en CxC</span>
-                        </div>
-                        <div>
-                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Autorizado por</label>
-                            <input type="text" id="addendum_authorized_by" value="Dirección General" style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Alcance Técnico & Justificación</label>
-                        <textarea id="addendum_scope" rows="2" placeholder="Especificaciones de las nuevas capas, metraje extra o trabajos requeridos por el cliente..." style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; resize: vertical;"></textarea>
-                    </div>
-
-                    <!-- Desplegable Opcional: Presupuesto Interno y Cronograma -->
-                    <details style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 11px;">
-                        <summary style="cursor: pointer; font-weight: 700; color: #2563eb;">
-                            <i class="fa-solid fa-sliders"></i> Asignar Presupuesto Interno & Nueva Etapa (Opcional)
-                        </summary>
-                        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-                            <div class="grid-2" style="gap: 10px;">
-                                <div>
-                                    <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Materiales Extra (USD):</label>
-                                    <input type="number" id="addendum_mat_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Mano de Obra Extra (USD):</label>
-                                    <input type="number" id="addendum_labor_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                                </div>
-                            </div>
-                            <div>
-                                <label style="font-size: 10px; color: #64748b; font-weight: 600;">Crear Nueva Etapa en Cronograma de Obra:</label>
-                                <input type="text" id="addendum_new_phase" placeholder="Ej: Etapa 5: Aplicación de Capas Epóxicas" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                            </div>
-                        </div>
-                    </details>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-                    <button type="button" onclick="closeModal('modalProjectAddendum')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="font-size: 12px; padding: 7px 16px; background: #9333ea; border-color: #9333ea; font-weight: 700; display: flex; align-items: center; gap: 6px;">
-                        <i class="fa-solid fa-check"></i> Aplicar Adenda Contractual
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
-<!-- MODAL SINCRONIZADO: modalRequestProjectResources -->
-<div id="modalRequestProjectResources" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 650px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
-                <div>
-                    <h3 id="reqProjModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
-                        <i class="fa-solid fa-truck-ramp-box" style="color: #0284c7;"></i> Solicitar Recursos y Materiales a Almacén
-                    </h3>
-                    <p id="reqProjModalSubtitle" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">Proyecto</p>
-                </div>
-                <button type="button" onclick="closeModal('modalRequestProjectResources')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
-            </div>
-
-            <form id="requestProjectResourcesForm" onsubmit="submitRequestProjectResources(event); return false;" style="display: flex; flex-direction: column; gap: 12px;">
-                <input type="hidden" id="req_proj_id" value="">
-
-                <!-- Alerta informativa si la obra ya tiene guías emitidas -->
-                <div id="req_proj_existing_guides" style="display: none; margin-bottom: 2px;"></div>
-
-                <div class="grid-2">
-                    <div>
-                        <label class="form-label">Destino / Ubicación de Entrega *</label>
-                        <input type="text" id="req_proj_destination" class="form-input" required placeholder="Planta Cliente / Obra">
-                    </div>
-                    <div>
-                        <label class="form-label">Notas / Instrucciones Especiales</label>
-                        <input type="text" id="req_proj_notes" class="form-input" placeholder="Ej: Entrega urgente en turno mañana">
-                    </div>
-                </div>
-
-                <!-- 1. Personal Operativo -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <label style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase;">
-                            <i class="fa-solid fa-users"></i> 1. Personal & Cuadrilla (Solo Disponibles en Base)
-                        </label>
-                        <span id="req_pers_counter" style="font-size: 10px; font-weight: 700; color: #1e40af; background: #dbeafe; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
-                    </div>
-                    <input type="text" id="req_search_personnel" oninput="filterReqDropdown('personnel', this.value)" placeholder="🔍 Buscar por nombre, cédula o cargo..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
-                    <div style="display: flex; gap: 6px;">
-                        <select id="req_select_personnel" onchange="if(this.value) addReqResource('personnel')" class="form-select" style="font-size: 12px;"></select>
-                        <button type="button" onclick="addReqResource('personnel')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800;" title="Agregar personal">+ Agregar</button>
-                    </div>
-                    <div id="req_tags_personnel" style="margin-top: 6px; min-height: 24px;"></div>
-                </div>
-
-                <!-- 2. Vehículos y Flota -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <label style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase;">
-                            <i class="fa-solid fa-truck"></i> 2. Flota & Vehículos (Solo Disponibles en Base)
-                        </label>
-                        <span id="req_fleet_counter" style="font-size: 10px; font-weight: 700; color: #166534; background: #dcfce7; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
-                    </div>
-                    <input type="text" id="req_search_fleet" oninput="filterReqDropdown('fleet', this.value)" placeholder="🔍 Buscar por placa, marca o código..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
-                    <div style="display: flex; gap: 6px;">
-                        <select id="req_select_fleet" onchange="if(this.value) addReqResource('fleet')" class="form-select" style="font-size: 12px;"></select>
-                        <button type="button" onclick="addReqResource('fleet')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #166534;" title="Agregar vehículo">+ Agregar</button>
-                    </div>
-                    <div id="req_tags_fleet" style="margin-top: 6px; min-height: 24px;"></div>
-                </div>
-
-                <!-- 3. Herramientas y Equipos -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <label style="font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase;">
-                            <i class="fa-solid fa-toolbox"></i> 3. Herramientas & Equipos (Solo Disponibles en Base)
-                        </label>
-                        <span id="req_tools_counter" style="font-size: 10px; font-weight: 700; color: #92400e; background: #fef3c7; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
-                    </div>
-                    <input type="text" id="req_search_tools" oninput="filterReqDropdown('tools', this.value)" placeholder="🔍 Buscar entre 890+ herramientas por código, descripción o serial..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white; border: 1.5px solid #fde68a;">
-                    <div style="display: flex; gap: 6px;">
-                        <select id="req_select_tools" onchange="if(this.value) addReqResource('tools')" class="form-select" style="font-size: 12px;"></select>
-                        <button type="button" onclick="addReqResource('tools')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #d97706;" title="Agregar herramienta">+ Agregar</button>
-                    </div>
-                    <div id="req_tags_tools" style="margin-top: 6px; min-height: 24px;"></div>
-                </div>
-
-                <!-- 4. Materiales de Almacén -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <label style="font-size: 11px; font-weight: 800; color: #0f766e; text-transform: uppercase;">
-                            <i class="fa-solid fa-boxes-stacked"></i> 4. Materiales & Consumibles (Solo con Stock > 0)
-                        </label>
-                        <span id="req_mats_counter" style="font-size: 10px; font-weight: 700; color: #0f766e; background: #ccfbf1; padding: 1px 6px; border-radius: 9999px;">0 renglones</span>
-                    </div>
-                    <input type="text" id="req_search_materials" oninput="filterReqDropdown('materials', this.value)" placeholder="🔍 Buscar material por nombre o código..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
-                    <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 6px;">
-                        <select id="req_select_materials" onchange="onReqMaterialChanged(this)" class="form-select" style="font-size: 12px;"></select>
-                        <input type="number" step="0.01" id="req_mat_quantity" placeholder="Cant." class="form-input" style="font-size: 12px;">
-                        <button type="button" onclick="addReqResource('material')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #0f766e;" title="Agregar material">+ Agregar</button>
-                    </div>
-                    <div id="req_tags_materials" style="margin-top: 6px; min-height: 24px;"></div>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
-                    <button type="button" onclick="closeModal('modalRequestProjectResources')" class="btn-secondary">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="background: #0284c7; font-weight: 800; font-size: 12px; padding: 6px 16px;">
-                        <i class="fa-solid fa-paper-plane"></i> Enviar Solicitud a Almacén
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
-<!-- MODAL SINCRONIZADO: modalUserPermissions -->
-<div id="modalUserPermissions" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 580px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
-                <div>
-                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
-                        <i class="fa-solid fa-key" style="color: #0284c7;"></i> Modificar Mapa de Permisos & Accesos
-                    </h3>
-                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">
-                        Usuario: <b id="permModalUsername" style="color: var(--dalor-navy);">-</b> (<span id="permModalFullName">-</span>)
-                    </p>
-                </div>
-                <button onclick="closeModal('modalUserPermissions')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-            </div>
-            <form onsubmit="event.preventDefault(); submitSaveUserPermissions();" style="display: flex; flex-direction: column; gap: 12px;">
-                <input type="hidden" id="perm_target_user_id" value="">
-                <div>
-                    <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy); display: block; margin-bottom: 8px;">
-                        Permisos Granulares por Módulo:
-                    </span>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🏢 Módulo Comercial (Cotizaciones & APU)</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_comercial_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_comercial_edit"> Editar</label>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🏗️ Módulo Proyectos & Obras</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_edit"> Editar</label>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">💼 Finanzas, CxC, CxP & Tesorería</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_finanzas_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_finanzas_edit"> Editar</label>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🚛 Flota, Maquinaria & Herramientas</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_recursos_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_recursos_edit"> Editar</label>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🧾 Auditoría y Rendición de Gastos</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_gastos_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_gastos_edit"> Editar</label>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 800; color: #1e40af;">👑 Acceso a Panel Ejecutivo & BI</span>
-                            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer;"><input type="checkbox" id="perm_executive_dashboard"> Permitido</label>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 800; color: #991b1b;">⚙️ Administración de Sistema & Usuarios</span>
-                            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer;"><input type="checkbox" id="perm_mantenimiento_admin"> Permitido</label>
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-                    <button type="button" onclick="closeModal('modalUserPermissions')" class="btn-secondary">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="background: #0284c7; font-weight: 800;">
-                        <i class="fa-solid fa-floppy-disk"></i> Guardar Mapa de Permisos
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
-<!-- MODAL SINCRONIZADO: modalConfirmDelivery -->
-<div id="modalConfirmDelivery" class="modal-overlay hidden">
+    <div id="modalConfirmDelivery" class="modal-overlay hidden">
 
         <div class="modal-content" style="max-width: 480px;">
 
@@ -4102,8 +4197,10 @@
     </div>
 
 
-<!-- MODAL SINCRONIZADO: modalBadDebt -->
-<div id="modalBadDebt" class="modal-overlay hidden">
+
+    <!-- MODAL: DECLARAR SALDO INCOBRABLE / CASTIGO DE CARTERA -->
+
+    <div id="modalBadDebt" class="modal-overlay hidden">
 
         <div class="modal-content" style="max-width: 500px; border-top: 4px solid #dc2626;">
 
@@ -4176,8 +4273,10 @@
     </div>
 
 
-<!-- MODAL SINCRONIZADO: modalRentalLoan -->
-<div id="modalRentalLoan" class="modal hidden" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 9999; align-items: center; justify-content: center;">
+
+
+    <!-- MODAL: REGISTRAR ALQUILER O PRÉSTAMO DE EQUIPO -->
+    <div id="modalRentalLoan" class="modal hidden" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 9999; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 12px; max-width: 650px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); padding: 24px; position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
                 <h3 id="modalRentalLoanTitle" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
@@ -4384,9 +4483,8 @@
         </div>
     </div>
 
-
-<!-- MODAL SINCRONIZADO: modalRentalReturn -->
-<div id="modalRentalReturn" class="modal hidden" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 9999; align-items: center; justify-content: center;">
+    <!-- MODAL: REGISTRAR DEVOLUCIÓN DE EQUIPO (RETORNO PARCIAL O TOTAL) -->
+    <div id="modalRentalReturn" class="modal hidden" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 9999; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 12px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); padding: 24px; position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
                 <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
@@ -4499,8 +4597,8 @@
     </div>
 
 
-<!-- MODAL SINCRONIZADO: modalAssetHistory -->
-<div id="modalAssetHistory" class="modal-overlay hidden">
+    <!-- MODAL: BITÁCORA Y TRAZABILIDAD INTEGRAL DE ACTIVO (VEHÍCULO / MAQUINARIA / HERRAMIENTA) -->
+    <div id="modalAssetHistory" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 880px; width: 95%; max-height: 90vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
                 <div>

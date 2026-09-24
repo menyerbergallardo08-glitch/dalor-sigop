@@ -1,4 +1,4 @@
-<section id="view-resources" class="hidden">
+        <section id="view-resources" class="hidden">
 
             <div class="banner-dalor">
 
@@ -385,6 +385,7 @@
                         </table>
 
                     </div>
+                    <div id="toolsPaginationContainer"></div>
 
                 </div>
 
@@ -403,9 +404,7 @@
                         <div>
 
                             <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-
-                                <i class="fa-solid fa-boxes-stacked" style="color: #d97706;"></i> Inventario de Materiales, Perfiles, Planchas & Consumibles
-
+                                <i class="fa-solid fa-boxes-stacked" style="color: #d97706;"></i> Inventario de Materiales
                             </h3>
 
                             <p style="font-size: 11px; color: #64748b;">Kardex de existencias en Almacén Central con despacho directo e imputación a Obras o Taller.</p>
@@ -472,7 +471,7 @@
 
                         <span style="font-size: 12px; color: #475569;">Total Ítems en Almacén: <b id="matTotalItemsCount" style="color: var(--dalor-navy);">0</b></span>
 
-                        <span style="font-size: 13px; font-weight: 800; color: #059669;">Valor Total Inventario: <b id="matTotalValuationUsd">$0.00 USD</b></span>
+                        <span id="matTotalValuationCard" style="font-size: 13px; font-weight: 800; color: #059669;">Valor Total Inventario: <b id="matTotalValuationUsd">$0.00 USD</b></span>
 
                     </div>
 
@@ -484,7 +483,7 @@
 
                             <thead>
 
-                                <tr>
+                                <tr id="materialsTableHeaderRow">
 
                                     <th>Código</th>
 
@@ -498,9 +497,9 @@
 
                                     <th>Alerta Mín.</th>
 
-                                    <th>Costo Unit. Promedio ($)</th>
+                                    <th class="director-cost-col">Costo Unit. Promedio ($)</th>
 
-                                    <th>Valor Total ($)</th>
+                                    <th class="director-cost-col">Valor Total ($)</th>
 
                                     <th style="text-align: center;">Acciones</th>
 
@@ -513,6 +512,7 @@
                         </table>
 
                     </div>
+                    <div id="materialsPaginationContainer"></div>
 
                 </div>
 
@@ -582,80 +582,114 @@
 
                 </div>
 
-            <!-- SUB-TAB 4: RETIROS DE SOCIOS -->
+            </div>
 
-            <div id="subtab-fin-partners" class="hidden">
-
-                <div class="card">
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-
+            <!-- SUB-TAB 5: ALQUILERES & PRÉSTAMOS (BIDIRECCIONAL) -->
+            <div id="subtab-res-rentals" class="hidden">
+                <!-- Header / Actions Card -->
+                <div class="card" style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                         <div>
-
-                            <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-
-                                <i class="fa-solid fa-user-tie" style="color: #7c3aed;"></i> Cuenta Corriente & Retiros de Socios / Accionistas
-
+                            <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0 0 4px 0;">
+                                <i class="fa-solid fa-handshake" style="color: #0284c7;"></i> Alquileres y Préstamos de Equipos & Maquinaria
                             </h3>
-
-                            <p style="font-size: 11px; color: #64748b;">Trazabilidad limpia de retiros personales a cuenta de ganancias (no altera los costos técnicos de las obras).</p>
-
+                            <p style="font-size: 12px; color: #64748b; margin: 0;">
+                                Gestión y auditoría bidireccional: Activos propios cedidos a terceros y equipos externos incorporados a DALOR.
+                            </p>
                         </div>
-
-                        <button onclick="openNewPartnerWithdrawalModal()" class="btn-primary" style="background: #7c3aed; font-size: 12px;">
-
-                            <i class="fa-solid fa-plus"></i> + Registrar Retiro Personal
-
-                        </button>
-
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button onclick="openCreateRentalModal('dalor_a_tercero', 'alquiler')" class="btn-primary" style="background: #2563eb; font-size: 12px; padding: 7px 14px;">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Ceder en Alquiler / Préstamo
+                            </button>
+                            <button onclick="openCreateRentalModal('tercero_a_dalor', 'alquiler')" class="btn-primary" style="background: #059669; font-size: 12px; padding: 7px 14px;">
+                                <i class="fa-solid fa-arrow-down-left-and-up-right-to-center"></i> Recibir de Tercero (Entrante)
+                            </button>
+                            <button onclick="loadRentalsList()" class="btn-secondary" style="font-size: 12px; padding: 7px 12px;">
+                                <i class="fa-solid fa-rotate"></i> Refrescar
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="table-wrapper">
-
-                        <table>
-
-                            <thead>
-
-                                <tr>
-
-                                    <th>Fecha y Hora</th>
-
-                                    <th>Socio / Accionista</th>
-
-                                    <th>Concepto / Motivo</th>
-
-                                    <th>Método de Pago</th>
-
-                                    <th>Nº Referencia</th>
-
-                                    <th>Monto Retirado ($ USD)</th>
-
-                                    <th>Equivalente en Bs</th>
-
-                                </tr>
-
-                            </thead>
-
-                            <tbody id="partnersWithdrawalsTableBody"></tbody>
-
-                        </table>
-
+                    <!-- Metrics / Counters Banner -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 14px;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Activos en Campo / Terceros</div>
+                            <div id="rentalKpiDalorTercero" style="font-size: 20px; font-weight: 800; color: #2563eb; margin-top: 4px;">0</div>
+                            <div style="font-size: 11px; color: #94a3b8;">Propiedad DALOR cedida</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Equipos Alquilados Externos</div>
+                            <div id="rentalKpiTerceroDalor" style="font-size: 20px; font-weight: 800; color: #059669; margin-top: 4px;">0</div>
+                            <div style="font-size: 11px; color: #94a3b8;">En proyectos DALOR</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Operaciones Activas</div>
+                            <div id="rentalKpiTotalActive" style="font-size: 20px; font-weight: 800; color: #d97706; margin-top: 4px;">0</div>
+                            <div style="font-size: 11px; color: #94a3b8;">Pendientes por devolución</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Devueltos / Histórico</div>
+                            <div id="rentalKpiReturned" style="font-size: 20px; font-weight: 800; color: #64748b; margin-top: 4px;">0</div>
+                            <div style="font-size: 11px; color: #94a3b8;">Ciclos cerrados</div>
+                        </div>
                     </div>
 
+                    <!-- Filter Bar -->
+                    <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="text" id="rentalFilterSearch" placeholder="Buscar por equipo, entidad, contacto o código..." class="form-input" style="width: 100%; padding: 6px 12px; font-size: 12px;" oninput="debouncedApplyRentalsFilter()">
+                        </div>
+                        <select id="rentalFilterDirection" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
+                            <option value="">Todas las direcciones</option>
+                            <option value="dalor_a_tercero">DALOR hacia Tercero</option>
+                            <option value="tercero_a_dalor">Tercero hacia DALOR</option>
+                        </select>
+                        <select id="rentalFilterType" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
+                            <option value="">Todos los tipos</option>
+                            <option value="alquiler">Alquiler ($)</option>
+                            <option value="prestamo">Préstamo (Gratuito / Alianza)</option>
+                        </select>
+                        <select id="rentalFilterStatus" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
+                            <option value="">Todos los estados</option>
+                            <option value="activo" selected>Solo Activos</option>
+                            <option value="devuelto_conforme">Devueltos Conforme</option>
+                            <option value="devuelto_con_novedad">Devueltos con Novedad</option>
+                        </select>
+                    </div>
                 </div>
 
+                <!-- Table Card -->
+                <div class="card">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cód. Operación</th>
+                                    <th>Dirección / Flujo</th>
+                                    <th>Tipo</th>
+                                    <th>Equipo / Maquinaria</th>
+                                    <th>Entidad / Contraparte</th>
+                                    <th>Contacto / Teléfono</th>
+                                    <th>Fecha Inicio</th>
+                                    <th>Retorno Previsto</th>
+                                    <th>Tarifa</th>
+                                    <th>Estado</th>
+                                    <th style="text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rentalsTableBody">
+                                <tr>
+                                    <td colspan="11" style="text-align: center; color: #64748b; padding: 20px;">Cargando registros...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Paginación de Alquileres y Préstamos -->
+                    <div id="rentalsPaginationContainer" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-radius: 0 0 8px 8px;">
+                        <div id="rentalsPaginationInfo" style="font-size: 12px; color: #64748b; font-weight: 600;">Mostrando 0 de 0 registros</div>
+                        <div id="rentalsPaginationControls" style="display: flex; gap: 6px; align-items: center;"></div>
+                    </div>
+                </div>
             </div>
-
-            </div>
-
-
 
         </section>
-
-
-
-        <!-- ====================================================================
-
-             8.5 VISTA: BANDEJA DE APROBACIÓN DE GASTOS & COMPROBANTES DE CAMPO
-
-             ==================================================================== -->

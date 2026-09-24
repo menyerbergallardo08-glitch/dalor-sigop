@@ -1,4 +1,4 @@
-<section id="view-financial" class="hidden">
+        <section id="view-financial" class="hidden">
 
             <div class="banner-dalor" style="background: linear-gradient(135deg, #064e3b 0%, #047857 100%);">
 
@@ -77,15 +77,35 @@
                 <div class="card">
 
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-
                         <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-
                             <i class="fa-solid fa-hand-holding-dollar" style="color: #059669;"></i> Cartera de Facturas y Valuaciones por Cobrar
-
                         </h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" onclick="openNewReceivableModal()" class="btn-primary" style="font-size: 11px; padding: 5px 10px;">
+                                <i class="fa-solid fa-plus"></i> Nueva Factura / Valuación
+                            </button>
+                            <button type="button" onclick="loadReceivablesList()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px;">
+                                <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                            </button>
+                        </div>
+                    </div>
 
-                        <button onclick="loadReceivablesList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                    <!-- Filtros Rápidos de Categoría y Buscador en Vivo -->
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center;">
+                        <button type="button" id="btn_cxc_filter_all" onclick="setFilterCxc('all')" class="btn-primary" style="padding: 3px 10px; font-size: 11px; font-weight: 700;">Todas</button>
+                        <button type="button" id="btn_cxc_filter_projects" onclick="setFilterCxc('projects')" class="btn-secondary" style="padding: 3px 10px; font-size: 11px;"><i class="fa-solid fa-building"></i> Obras</button>
+                        <button type="button" id="btn_cxc_filter_rentals" onclick="setFilterCxc('rentals')" class="btn-secondary" style="padding: 3px 10px; font-size: 11px;"><i class="fa-solid fa-tractor"></i> Alquileres DALOR</button>
+                        <button type="button" id="btn_cxc_filter_overdue" onclick="setFilterCxc('overdue')" class="btn-secondary" style="padding: 3px 10px; font-size: 11px; color: #dc2626;"><i class="fa-solid fa-triangle-exclamation"></i> En Mora</button>
+                        <button type="button" id="btn_cxc_filter_paid" onclick="setFilterCxc('paid')" class="btn-secondary" style="padding: 3px 10px; font-size: 11px; color: #059669;"><i class="fa-solid fa-circle-check"></i> Solventadas</button>
+                        <button type="button" id="btn_cxc_filter_surplus" onclick="setFilterCxc('surplus')" class="btn-secondary" style="padding: 3px 10px; font-size: 11px; color: #16a34a;"><i class="fa-solid fa-gift"></i> Con Saldo a Favor</button>
+                    </div>
 
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+                        <div style="position: relative; flex: 1;">
+                            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px;"></i>
+                            <input type="text" id="cxcSearchInput" oninput="filterCxcList(this.value)" placeholder="Buscar por N° factura, cliente, obra, alquiler o concepto..." class="form-input" style="padding-left: 30px; font-size: 12px; height: 34px;">
+                        </div>
+                        <span id="cxcCountBadge" style="font-size: 11px; color: #64748b; font-weight: 700; white-space: nowrap;">0 cuentas</span>
                     </div>
 
                     <div class="table-wrapper">
@@ -127,6 +147,7 @@
                         </table>
 
                     </div>
+                    <div id="cxcPaginationContainer"></div>
 
                 </div>
 
@@ -135,62 +156,93 @@
 
 
             <!-- SUB-TAB 2: CUENTAS POR PAGAR (CxP) -->
-
             <div id="subtab-fin-cxp" class="hidden">
-
                 <div class="card">
+                    <!-- Cabecera y Botón de Acción Principal -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                                <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i> Facturas de Proveedores y Cuentas por Pagar (CxP)
+                            </h3>
+                            <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Control de pasivos comerciales, fletes, retenciones oficiales SENIAT (Providencia SNAT/2015/0049) y notas de entrega.</p>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button onclick="openNewPayableModal()" class="btn-primary" style="background: #e11d48; font-size: 11px; font-weight: 700; padding: 6px 14px;">
+                                <i class="fa-solid fa-plus-circle"></i> + Registrar Factura / Nota CxP
+                            </button>
+                            <button onclick="loadPayablesList()" class="btn-secondary" style="font-size: 11px; padding: 6px 10px;">
+                                <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                            </button>
+                        </div>
+                    </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <!-- Barra de Filtros Avanzados, Estado y Búsqueda -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            <!-- Buscador en tiempo real -->
+                            <div style="flex: 1; min-width: 220px; position: relative;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 10px; color: #94a3b8; font-size: 12px;"></i>
+                                <input type="text" id="cxp_search_input" oninput="onCxpSearchInput(this.value)" placeholder="Buscar por Proveedor, RIF, N° Factura, N° Control o Proyecto..." class="form-input" style="padding-left: 30px; font-size: 12px; height: 34px;">
+                            </div>
+                            <!-- Filtro Tipo de Documento -->
+                            <select id="cxp_filter_doc_type" onchange="onCxpDocTypeFilterChange(this.value)" class="form-select" style="width: auto; min-width: 170px; font-size: 12px; height: 34px;">
+                                <option value="all">Todos los Documentos</option>
+                                <option value="factura">Factura Fiscal (con Retención)</option>
+                                <option value="factura_sin_retencion">Factura Contado (Sin Ret.)</option>
+                                <option value="nota_entrega">Nota de Entrega Informal</option>
+                            </select>
+                            <!-- Rango de Fechas Emisión -->
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-size: 11px; color: #64748b; font-weight: 600;">Desde:</span>
+                                <input type="date" id="cxp_date_from" onchange="applyCxpDateFilter()" class="form-input" style="font-size: 11px; padding: 4px 6px; width: 125px; height: 34px;">
+                                <span style="font-size: 11px; color: #64748b; font-weight: 600;">Hasta:</span>
+                                <input type="date" id="cxp_date_to" onchange="applyCxpDateFilter()" class="form-input" style="font-size: 11px; padding: 4px 6px; width: 125px; height: 34px;">
+                                <button type="button" onclick="clearCxpDateFilter()" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; height: 34px;" title="Limpiar rango de fechas">&times;</button>
+                            </div>
+                        </div>
 
-                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-
-                            <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i> Facturas de Proveedores y Compromisos por Pagar
-
-                        </h3>
-
-                        <button onclick="loadPayablesList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
-
+                        <!-- Pestañas Rápidas de Estado / Aging -->
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+                            <button type="button" onclick="setFilterCxp('all')" id="btnFilterCxp_all" class="btn-secondary" style="font-size: 11px; padding: 3px 10px; font-weight: 700; background: #e2e8f0; color: #0f172a; border-radius: 9999px;">
+                                Todas (<span id="cxpCount_all">0</span>)
+                            </button>
+                            <button type="button" onclick="setFilterCxp('pendiente')" id="btnFilterCxp_pendiente" class="btn-secondary" style="font-size: 11px; padding: 3px 10px; font-weight: 700; border-radius: 9999px;">
+                                <i class="fa-regular fa-clock" style="color: #d97706;"></i> Pendientes (<span id="cxpCount_pendiente">0</span>)
+                            </button>
+                            <button type="button" onclick="setFilterCxp('por_vencer')" id="btnFilterCxp_por_vencer" class="btn-secondary" style="font-size: 11px; padding: 3px 10px; font-weight: 700; border-radius: 9999px;">
+                                <i class="fa-solid fa-hourglass-half" style="color: #eab308;"></i> Por Vencer 7d (<span id="cxpCount_por_vencer">0</span>)
+                            </button>
+                            <button type="button" onclick="setFilterCxp('vencido')" id="btnFilterCxp_vencido" class="btn-secondary" style="font-size: 11px; padding: 3px 10px; font-weight: 700; border-radius: 9999px;">
+                                <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> Vencidas (<span id="cxpCount_vencido">0</span>)
+                            </button>
+                            <button type="button" onclick="setFilterCxp('solvente')" id="btnFilterCxp_solvente" class="btn-secondary" style="font-size: 11px; padding: 3px 10px; font-weight: 700; border-radius: 9999px;">
+                                <i class="fa-solid fa-check-double" style="color: #059669;"></i> Solventadas (<span id="cxpCount_solvente">0</span>)
+                            </button>
+                        </div>
                     </div>
 
                     <div class="table-wrapper">
-
                         <table>
-
                             <thead>
-
                                 <tr>
-
-                                    <th>Nº Factura / Doc</th>
-
-                                    <th>Proveedor / Contratista</th>
-
-                                    <th>Proyecto Imputable</th>
-
-                                    <th>Descripción de Compra</th>
-
+                                    <th>Nº Factura / Control</th>
+                                    <th>Proveedor & RIF</th>
+                                    <th>Imputación (Obra)</th>
+                                    <th>Concepto / Descripción</th>
                                     <th>Emisión</th>
-
                                     <th>Vencimiento</th>
-
-                                    <th>Monto Total ($)</th>
-
-                                    <th>Pagado ($)</th>
-
-                                    <th>Deuda Pendiente ($)</th>
-
+                                    <th>Total Factura ($)</th>
+                                    <th>Ret. IVA ($)</th>
+                                    <th>Saldo Pendiente ($)</th>
                                     <th>Estado</th>
-
-                                    <th style="text-align: center;">Acción</th>
-
+                                    <th style="text-align: center;">Acciones</th>
                                 </tr>
-
                             </thead>
-
                             <tbody id="cxpTableBody"></tbody>
-
                         </table>
 
                     </div>
+                    <div id="cxpPaginationContainer"></div>
 
                 </div>
 
@@ -201,8 +253,27 @@
             <!-- SUB-TAB 3: RESUMEN DE TESORERÍA -->
 
             <div id="subtab-fin-summary" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                            <i class="fa-solid fa-vault" style="color: var(--dalor-blue);"></i> Control Central de Tesorería & Caja Libre
+                        </h3>
+                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Gestión de liquidez, cuentas bancarias, divisas y diferenciales cambiarios.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" onclick="openTreasuryExchangeModal()" class="btn-primary" style="font-size: 11px; padding: 6px 12px; background: #2563eb;">
+                            <i class="fa-solid fa-right-left"></i> Cambio de Divisas / Transferencia
+                        </button>
+                        <button type="button" onclick="openQuickFlowModal()" class="btn-primary" style="font-size: 11px; padding: 6px 12px; background: #059669;">
+                            <i class="fa-solid fa-bolt"></i> Flujo Rápido
+                        </button>
+                        <button type="button" onclick="loadTreasurySummary()" class="btn-secondary" style="font-size: 11px; padding: 6px 10px;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
 
-                <div class="grid-4" id="treasuryKPIsContainer" style="margin-bottom: 16px;"></div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;" id="treasuryKPIsContainer"></div>
 
                 <div class="grid-2">
 
@@ -224,6 +295,63 @@
                     </div>
                 </div>
 
+                <!-- ESTADO DE FLUJO DE CAJA MATRICIAL MULTIMENSUAL (CASO PRÁCTICO CONTABLE) -->
+                <div class="card" style="margin-top: 16px; border-top: 4px solid #2563eb;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="background: #eff6ff; color: #1d4ed8; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; border: 1px solid #bfdbfe;">
+                                    <i class="fa-solid fa-chart-line"></i> Modelo Contable
+                                </span>
+                                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                                    Flujo de Caja - Estado Matricial Multimensual
+                                </h3>
+                            </div>
+                            <p style="font-size: 11.5px; color: #64748b; margin: 3px 0 0 0;">
+                                Conciliación mensual de saldo inicial, detalle de ingresos, costos operativos, financiamiento y saldo final en caja disponible.
+                            </p>
+                        </div>
+
+                        <!-- Selector de Períodos y Botones Rápidos -->
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 4px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 2px 8px;">
+                                <span style="font-size: 11px; font-weight: 700; color: var(--dalor-navy);"><i class="fa-solid fa-calendar"></i> Año:</span>
+                                <select id="cf_matrix_year" onchange="loadCashFlowMatrix()" style="border: none; background: transparent; font-size: 12px; font-weight: 800; color: #1e293b; outline: none; cursor: pointer;">
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                </select>
+                            </div>
+
+                            <button type="button" id="btn_cf_range_all" onclick="setCashFlowRange('all')" class="btn-primary" style="padding: 4px 9px; font-size: 11px; font-weight: 700;">Todo el Año</button>
+                            <button type="button" id="btn_cf_range_h1" onclick="setCashFlowRange('h1')" class="btn-secondary" style="padding: 4px 9px; font-size: 11px;">Semestre 1 (Ene-Jun)</button>
+                            <button type="button" id="btn_cf_range_h2" onclick="setCashFlowRange('h2')" class="btn-secondary" style="padding: 4px 9px; font-size: 11px;">Semestre 2 (Jul-Dic)</button>
+                            <button type="button" id="btn_cf_range_last3" onclick="setCashFlowRange('last3')" class="btn-secondary" style="padding: 4px 9px; font-size: 11px;">Últimos 3 Meses</button>
+
+                            <button type="button" onclick="printCashFlowMatrixReport()" class="btn-secondary" style="padding: 4px 9px; font-size: 11px;" title="Imprimir / Exportar Reporte de Flujo de Caja">
+                                <i class="fa-solid fa-print"></i> Imprimir
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Contenedor de la Tabla Matricial -->
+                    <div class="table-wrapper" style="overflow-x: auto; max-width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px;">
+                        <table id="cashFlowMatrixTable" style="width: 100%; border-collapse: collapse; font-size: 11.5px; white-space: nowrap;">
+                            <thead id="cashFlowMatrixThead">
+                                <tr>
+                                    <th style="padding: 10px; background: #1e3a8a; color: white; text-align: left; position: sticky; left: 0; z-index: 2; min-width: 220px;">
+                                        Concepto / Cuenta
+                                    </th>
+                                    <th style="padding: 10px; background: #1e3a8a; color: white; text-align: right;">Cargando períodos...</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cashFlowMatrixTbody">
+                                <tr><td colspan="13" style="text-align: center; padding: 24px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando matriz financiera de flujo de caja...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- TABLA DE TRAZA DETALLADA DE OPERACIONES DE TESORERÍA -->
                 <div class="card" style="margin-top: 16px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
@@ -233,10 +361,96 @@
                             </h3>
                             <p style="font-size: 11px; color: #64748b; margin-top: 2px;">Auditoría cronológica de cobros, pagos a proveedores, gastos y retiros de socios.</p>
                         </div>
-                        <button onclick="loadTreasurySummary()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px;">
-                            <i class="fa-solid fa-arrows-rotate"></i> Actualizar Traza
-                        </button>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button type="button" onclick="printTreasuryTraceReport()" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-print"></i> Imprimir Traza
+                            </button>
+                            <button type="button" onclick="loadTreasurySummary()" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-arrows-rotate"></i> Actualizar Traza
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- BARRA DE SELECTORES Y FILTROS DE TRAZA -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                            <!-- Buscador dinámico -->
+                            <div style="flex: 1; min-width: 220px; position: relative;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px;"></i>
+                                <input type="text" id="treasuryTraceSearch" placeholder="Buscar por concepto, entidad, factura, ref..." oninput="applyTreasuryFilters()" style="width: 100%; padding: 7px 10px 7px 30px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; background: #ffffff;">
+                            </div>
+
+                            <!-- Selector Tipo de Operación -->
+                            <div style="min-width: 175px;">
+                                <select id="treasuryFilterType" onchange="applyTreasuryFilters()" style="width: 100%; padding: 7px 10px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #1e293b;">
+                                    <option value="all">Todas las Operaciones</option>
+                                    <option value="COBRO CLIENTE">Cobros Clientes (CxC)</option>
+                                    <option value="PAGO PROVEEDOR">Pagos Proveedores (CxP)</option>
+                                    <option value="GASTO OPERATIVO">Gastos Operativos Directos</option>
+                                    <option value="RETIRO SOCIO">Retiros de Socios</option>
+                                    <option value="MESA CAMBIO (INGRESO)">Mesa de Cambio (Ingreso)</option>
+                                    <option value="MESA CAMBIO (EGRESO)">Mesa de Cambio (Egreso)</option>
+                                </select>
+                            </div>
+
+                            <!-- Selector Impacto en Caja -->
+                            <div style="min-width: 140px;">
+                                <select id="treasuryFilterImpact" onchange="applyTreasuryFilters()" style="width: 100%; padding: 7px 10px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #1e293b;">
+                                    <option value="all">Todos los Impactos (+ / -)</option>
+                                    <option value="+">Solo Ingresos (+)</option>
+                                    <option value="-">Solo Egresos (-)</option>
+                                </select>
+                            </div>
+
+                            <!-- Selector de Período / Fecha Rápido -->
+                            <div style="min-width: 150px;">
+                                <select id="treasuryFilterPeriod" onchange="handleTreasuryPeriodChange()" style="width: 100%; padding: 7px 10px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #1e293b;">
+                                    <option value="all">Histórico Completo</option>
+                                    <option value="today">Hoy</option>
+                                    <option value="this_week">Esta Semana</option>
+                                    <option value="this_month">Este Mes</option>
+                                    <option value="last_month">Mes Anterior</option>
+                                    <option value="this_year">Año Actual (2026)</option>
+                                    <option value="custom">Rango Personalizado...</option>
+                                </select>
+                            </div>
+
+                            <!-- Botón Limpiar Filtros -->
+                            <button type="button" onclick="resetTreasuryFilters()" class="btn-secondary" style="font-size: 12px; padding: 7px 12px; border-radius: 6px; white-space: nowrap; display: flex; align-items: center; gap: 5px;">
+                                <i class="fa-solid fa-filter-circle-xmark"></i> Limpiar
+                            </button>
+                        </div>
+
+                        <!-- Selector Fechas Personalizado (se muestra si period == 'custom') -->
+                        <div id="treasuryCustomDateContainer" style="display: none; gap: 12px; align-items: center; border-top: 1px dashed #cbd5e1; padding-top: 8px; flex-wrap: wrap;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b;"><i class="fa-solid fa-calendar-range"></i> Rango de Fechas:</span>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <label style="font-size: 11px; color: #64748b; font-weight: 600;">Desde:</label>
+                                <input type="date" id="treasuryFilterDateFrom" onchange="applyTreasuryFilters()" style="padding: 5px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
+                            </div>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <label style="font-size: 11px; color: #64748b; font-weight: 600;">Hasta:</label>
+                                <input type="date" id="treasuryFilterDateTo" onchange="applyTreasuryFilters()" style="padding: 5px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
+                            </div>
+                        </div>
+
+                        <!-- Resumen en Vivo de la Traza Filtrada -->
+                        <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 12px; font-size: 11px;">
+                            <span style="color: #64748b; font-weight: 700;">
+                                <i class="fa-solid fa-list-ol" style="color: #2563eb;"></i> Movimientos: <strong id="kpi_trace_count" style="color: #1e293b;">0</strong>
+                            </span>
+                            <span style="color: #64748b; font-weight: 700;">
+                                <i class="fa-solid fa-circle-arrow-up" style="color: #059669;"></i> Ingresos (+): <strong id="kpi_trace_income" style="color: #059669;">$0.00</strong>
+                            </span>
+                            <span style="color: #64748b; font-weight: 700;">
+                                <i class="fa-solid fa-circle-arrow-down" style="color: #e11d48;"></i> Egresos (-): <strong id="kpi_trace_expense" style="color: #e11d48;">$0.00</strong>
+                            </span>
+                            <span style="color: #64748b; font-weight: 700;">
+                                <i class="fa-solid fa-scale-balanced" style="color: #7c3aed;"></i> Flujo Neto: <strong id="kpi_trace_net" style="color: #2563eb;">$0.00</strong>
+                            </span>
+                        </div>
+                    </div>
+
                     <div class="table-wrapper">
                         <table>
                             <thead>
@@ -256,6 +470,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div id="treasuryPaginationContainer"></div>
                 </div>
             </div>
 
@@ -315,121 +530,7 @@
                             <tbody id="partnersWithdrawalsTableBody"></tbody>
                         </table>
                     </div>
+                    <div id="partnersPaginationContainer"></div>
                 </div>
             </div>
-
-
-
-        
-            <!-- SUB-TAB 5: ALQUILERES & PRÉSTAMOS (BIDIRECCIONAL) -->
-            <div id="subtab-res-rentals" class="hidden">
-                <!-- Header / Actions Card -->
-                <div class="card" style="margin-bottom: 16px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div>
-                            <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0 0 4px 0;">
-                                <i class="fa-solid fa-handshake" style="color: #0284c7;"></i> Alquileres y Préstamos de Equipos & Maquinaria
-                            </h3>
-                            <p style="font-size: 12px; color: #64748b; margin: 0;">
-                                Gestión y auditoría bidireccional: Activos propios cedidos a terceros y equipos externos incorporados a DALOR.
-                            </p>
-                        </div>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button onclick="openCreateRentalModal('dalor_a_tercero', 'alquiler')" class="btn-primary" style="background: #2563eb; font-size: 12px; padding: 7px 14px;">
-                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Ceder en Alquiler / Préstamo
-                            </button>
-                            <button onclick="openCreateRentalModal('tercero_a_dalor', 'alquiler')" class="btn-primary" style="background: #059669; font-size: 12px; padding: 7px 14px;">
-                                <i class="fa-solid fa-arrow-down-left-and-up-right-to-center"></i> Recibir de Tercero (Entrante)
-                            </button>
-                            <button onclick="loadRentalsList()" class="btn-secondary" style="font-size: 12px; padding: 7px 12px;">
-                                <i class="fa-solid fa-rotate"></i> Refrescar
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Metrics / Counters Banner -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 14px;">
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
-                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Activos en Campo / Terceros</div>
-                            <div id="rentalKpiDalorTercero" style="font-size: 20px; font-weight: 800; color: #2563eb; margin-top: 4px;">0</div>
-                            <div style="font-size: 11px; color: #94a3b8;">Propiedad DALOR cedida</div>
-                        </div>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
-                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Equipos Alquilados Externos</div>
-                            <div id="rentalKpiTerceroDalor" style="font-size: 20px; font-weight: 800; color: #059669; margin-top: 4px;">0</div>
-                            <div style="font-size: 11px; color: #94a3b8;">En proyectos DALOR</div>
-                        </div>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
-                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Operaciones Activas</div>
-                            <div id="rentalKpiTotalActive" style="font-size: 20px; font-weight: 800; color: #d97706; margin-top: 4px;">0</div>
-                            <div style="font-size: 11px; color: #94a3b8;">Pendientes por devolución</div>
-                        </div>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
-                            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Devueltos / Histórico</div>
-                            <div id="rentalKpiReturned" style="font-size: 20px; font-weight: 800; color: #64748b; margin-top: 4px;">0</div>
-                            <div style="font-size: 11px; color: #94a3b8;">Ciclos cerrados</div>
-                        </div>
-                    </div>
-
-                    <!-- Filter Bar -->
-                    <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center;">
-                        <div style="flex: 1; min-width: 200px;">
-                            <input type="text" id="rentalFilterSearch" placeholder="Buscar por equipo, entidad, contacto o código..." class="form-input" style="width: 100%; padding: 6px 12px; font-size: 12px;" oninput="debouncedApplyRentalsFilter()">
-                        </div>
-                        <select id="rentalFilterDirection" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
-                            <option value="">Todas las direcciones</option>
-                            <option value="dalor_a_tercero">DALOR hacia Tercero</option>
-                            <option value="tercero_a_dalor">Tercero hacia DALOR</option>
-                        </select>
-                        <select id="rentalFilterType" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
-                            <option value="">Todos los tipos</option>
-                            <option value="alquiler">Alquiler ($)</option>
-                            <option value="prestamo">Préstamo (Gratuito / Alianza)</option>
-                        </select>
-                        <select id="rentalFilterStatus" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
-                            <option value="">Todos los estados</option>
-                            <option value="activo" selected>Solo Activos</option>
-                            <option value="devuelto_conforme">Devueltos Conforme</option>
-                            <option value="devuelto_con_novedad">Devueltos con Novedad</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Table Card -->
-                <div class="card">
-                    <div class="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Cód. Operación</th>
-                                    <th>Dirección / Flujo</th>
-                                    <th>Tipo</th>
-                                    <th>Equipo / Maquinaria</th>
-                                    <th>Entidad / Contraparte</th>
-                                    <th>Contacto / Teléfono</th>
-                                    <th>Fecha Inicio</th>
-                                    <th>Retorno Previsto</th>
-                                    <th>Tarifa</th>
-                                    <th>Estado</th>
-                                    <th style="text-align: center;">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="rentalsTableBody">
-                                <tr>
-                                    <td colspan="11" style="text-align: center; color: #64748b; padding: 20px;">Cargando registros...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
         </section>
-
-
-
-        <!-- ====================================================================
-
-             4. VISTA: PRESUPUESTOS (ESTIMACIONES & APU)
-
-             ==================================================================== -->

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+window.errors = [];
+window.onerror = function(msg, url, line, col, error) {
+    document.title = "ERR_DETAILS: " + msg + " AT LINE " + line + " COL " + col;
+};
+</script>
+<script src="app.js"></script>
+<script>
+window.onload = function() {
+    if (!document.title.startsWith("ERR_DETAILS")) {
+        document.title = "SUCCESS: " + (window.APP_BUILD_VERSION || "NO_VER");
+    }
+};
+</script>
+</head>
+<body></body>
+</html>

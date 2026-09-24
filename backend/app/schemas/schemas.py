@@ -137,6 +137,34 @@ class ProjectPhaseOut(BaseModel):
     class Config:
         from_attributes = True
 
+class ProjectAddendumCreate(BaseModel):
+    title: str
+    scope_description: Optional[str] = None
+    additional_contract_usd: float
+    additional_materials_usd: Optional[float] = 0.0
+    additional_labor_usd: Optional[float] = 0.0
+    additional_services_usd: Optional[float] = 0.0
+    authorized_by: Optional[str] = "Dirección General"
+    new_phase_name: Optional[str] = None
+    new_phase_duration_days: Optional[int] = 7
+
+class ProjectAddendumOut(BaseModel):
+    id: int
+    project_id: int
+    addendum_number: int
+    title: str
+    scope_description: Optional[str] = None
+    additional_contract_usd: float
+    additional_materials_usd: float = 0.0
+    additional_labor_usd: float = 0.0
+    additional_services_usd: float = 0.0
+    authorized_by: str
+    approval_date: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
 # --- PROYECTOS & PLANIFICACIÓN INTEGRAL ---
 class ProjectCreate(BaseModel):
     code: str

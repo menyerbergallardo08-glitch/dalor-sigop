@@ -81,6 +81,16 @@ app.add_middleware(
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+@app.middleware("http")
+async def add_strict_no_cache_headers(request, call_next):
+    response = await call_next(request)
+    # Evitar caché en navegadores para archivos estáticos y rutas web durante desarrollo y producción
+    if request.url.path.startswith(("/static", "/src", "/css", "/api")) or request.url.path in ("/", "/app.js", "/index.html"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 # Rutas de Frontend y Uploads
 ROOT_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 FRONTEND_DIR = os.path.join(ROOT_PROJECT_DIR, "frontend")
@@ -121,9 +131,19 @@ NO_CACHE_HEADERS = {
 
 if os.path.exists(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+    src_dir = os.path.join(FRONTEND_DIR, "src")
+    if os.path.exists(src_dir):
+        app.mount("/src", StaticFiles(directory=src_dir), name="src")
     css_dir = os.path.join(FRONTEND_DIR, "css")
     if os.path.exists(css_dir):
         app.mount("/css", StaticFiles(directory=css_dir), name="css")
+
+    @app.get("/logo_dalor.jpg")
+    def serve_logo():
+        logo_path = os.path.join(FRONTEND_DIR, "logo_dalor.jpg")
+        if os.path.exists(logo_path):
+            return FileResponse(logo_path, media_type="image/jpeg")
+        return Response(status_code=404)
 
     @app.get("/")
     def serve_frontend():

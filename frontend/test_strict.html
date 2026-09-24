@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>TEST STRICT</title></head>
+<body>
+<script>
+    window.allClients = [];
+</script>
+<script type="module">
+    try {
+        allClients = [1, 2, 3]; // Trying to assign without window.
+        document.title = "SUCCESS ASSIGNED: " + allClients.length;
+    } catch(e) {
+        document.title = "STRICT_ERROR: " + e.message;
+    }
+</script>
+</body>
+</html>

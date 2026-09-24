@@ -6,7 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.models.models import Asset, Expense, Project, Personnel, ResourceAssignmentHistory, AuditLog, User, AssetRentalLoan, DispatchGuide
+from app.models.models import Asset, Expense, Project, Personnel, ResourceAssignmentHistory, AuditLog, User, AssetRentalLoan, DispatchGuide, AssetRentalLoanItem
 from app.core.security import verify_password
 
 router = APIRouter()
@@ -207,6 +207,41 @@ def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
     db.refresh(new_asset)
     return new_asset
 
+@router.get("/fleet-summary")
+def get_fleet_summary(db: Session = Depends(get_db)):
+    assets = db.query(Asset).filter(Asset.is_active == True).all()
+    result = []
+    
+    for a in assets:
+        total_exp = db.query(func.sum(Expense.amount_usd)).filter(Expense.asset_id == a.id).scalar() or 0.0
+        km_since_service = (a.current_odometer or 0.0) - (a.last_service_odometer or 0.0)
+        remaining_km = (a.service_interval_km or 5000.0) - km_since_service
+        
+        traffic_light = "VERDE_OK"
+        if remaining_km <= 0:
+            traffic_light = "ROJO_VENCIDO"
+        elif remaining_km <= 500:
+            traffic_light = "AMARILLO_PROXIMO"
+            
+        result.append({
+            "id": a.id,
+            "asset_code": a.asset_code,
+            "name": a.name,
+            "asset_type": a.asset_type,
+            "brand": a.brand,
+            "model": a.model,
+            "serial_number": a.serial_number,
+            "license_plate": a.license_plate,
+            "status": "en_obra" if a.current_project_id else "disponible_base",
+            "current_location": a.current_location or "Sede Central",
+            "current_odometer": a.current_odometer or 0.0,
+            "remaining_km_to_service": round(remaining_km, 1),
+            "traffic_light": traffic_light,
+            "custodian": a.current_custodian_name or "Disponible en Base",
+            "total_operating_cost_usd": round(total_exp, 2)
+        })
+    return result
+
 @router.get("/{asset_id}")
 def get_asset_by_id(asset_id: int, db: Session = Depends(get_db)):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -250,40 +285,6 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Activo/Herramienta inactivado exitosamente (traza histórica preservada)."}
 
-@router.get("/fleet-summary")
-def get_fleet_summary(db: Session = Depends(get_db)):
-    assets = db.query(Asset).filter(Asset.is_active == True).all()
-    result = []
-    
-    for a in assets:
-        total_exp = db.query(func.sum(Expense.amount_usd)).filter(Expense.asset_id == a.id).scalar() or 0.0
-        km_since_service = (a.current_odometer or 0.0) - (a.last_service_odometer or 0.0)
-        remaining_km = (a.service_interval_km or 5000.0) - km_since_service
-        
-        traffic_light = "VERDE_OK"
-        if remaining_km <= 0:
-            traffic_light = "ROJO_VENCIDO"
-        elif remaining_km <= 500:
-            traffic_light = "AMARILLO_PROXIMO"
-            
-        result.append({
-            "id": a.id,
-            "asset_code": a.asset_code,
-            "name": a.name,
-            "asset_type": a.asset_type,
-            "brand": a.brand,
-            "model": a.model,
-            "serial_number": a.serial_number,
-            "license_plate": a.license_plate,
-            "status": "en_obra" if a.current_project_id else "disponible_base",
-            "current_location": a.current_location or "Sede Central",
-            "current_odometer": a.current_odometer or 0.0,
-            "remaining_km_to_service": round(remaining_km, 1),
-            "traffic_light": traffic_light,
-            "custodian": a.current_custodian_name or "Disponible en Base",
-            "total_operating_cost_usd": round(total_exp, 2)
-        })
-    return result
 
 class ServiceRecordCreate(BaseModel):
     new_odometer: float
@@ -694,9 +695,11 @@ def get_asset_movement_history(asset_id: int, db: Session = Depends(get_db)):
             "notes": f"Motivo: {g.transfer_reason or 'Despacho'} | Placa: {g.vehicle_plate}"
         })
 
-    # 3. Alquileres o Préstamos vinculados
+    # 3. Alquileres o Préstamos vinculados (Directos o en Lote Multi-Item)
     rentals = db.query(AssetRentalLoan).filter(AssetRentalLoan.asset_id == asset_id).all()
+    seen_rental_ids = set()
     for r in rentals:
+        seen_rental_ids.add(r.id)
         timeline.append({
             "id": f"rent-{r.id}",
             "type": "alquiler_prestamo",
@@ -712,6 +715,28 @@ def get_asset_movement_history(asset_id: int, db: Session = Depends(get_db)):
             "status": r.status,
             "notes": f"{r.notes or ''} (Tarifa: ${r.rate_usd:.2f}/{r.rate_period})"
         })
+
+    # Buscar también en renglones de lotes multi-item
+    batch_items = db.query(AssetRentalLoanItem).filter(AssetRentalLoanItem.asset_id == asset_id).all()
+    for bi in batch_items:
+        r = bi.rental
+        if r and r.id not in seen_rental_ids:
+            seen_rental_ids.add(r.id)
+            timeline.append({
+                "id": f"rent-item-{bi.id}",
+                "type": "alquiler_prestamo",
+                "date": r.start_date.strftime("%Y-%m-%d %H:%M:%S") if r.start_date else r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "transfer_code": r.operation_code,
+                "project_code": r.project.code if r.project else "TERCEROS",
+                "project_name": f"{r.operation_type.title()} con {r.external_entity}",
+                "origin": "Base Dalor",
+                "destination": f"Custodia: {r.external_entity}",
+                "responsible_person": r.contact_person or r.external_entity,
+                "driver_name": r.contact_person or "-",
+                "odometer": None,
+                "status": bi.status or r.status,
+                "notes": f"Lote: {bi.name} | {r.notes or ''} (Tarifa: ${r.rate_usd:.2f}/{r.rate_period})"
+            })
 
     # Ordenar por fecha descendente
     timeline.sort(key=lambda x: x["date"], reverse=True)

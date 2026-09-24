@@ -19,6 +19,15 @@ var EXCHANGE_RATE = window.EXCHANGE_RATE = window.EXCHANGE_RATE || 850.0;
 var BCV_DATA = window.BCV_DATA = window.BCV_DATA || { rate: 850.0, source: 'BCV Oficial' };
 var currentUser = window.currentUser || null;
 var authToken = window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+/** authFetch - inyecta token en cada request usando window.fetch nativo */
+function authFetch(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
+}
+
 
 // --- BLOQUE L497-L764 ---
 // ==============================================================================
@@ -135,7 +144,7 @@ window.performLogin = async function(username, password) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/auth/login`, {
+        const res = await authFetch(`${API_BASE}/auth/login`, {
 
             method: 'POST',
 
@@ -298,61 +307,81 @@ window.fillQuickLogin = window.quickFillAndLogin;
 
 // ----------------------------------------------------
 
-async function loadClients() {
+let lastClientsList = [];
+let clientsCurrentPage = 1;
+let clientsPageSize = 10;
 
+function goToClientsPage(page) {
+    clientsCurrentPage = page;
+    renderClientsPaginated();
+    const tableEl = document.getElementById("clientsTableBody");
+    if (tableEl) tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function changeClientsPageSize(size) {
+    clientsPageSize = parseInt(size) || 10;
+    clientsCurrentPage = 1;
+    renderClientsPaginated();
+}
+
+function renderClientsPaginated() {
     const tbody = document.getElementById("clientsTableBody");
+    if (!tbody) return;
 
+    const clients = lastClientsList;
+    if (clients.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">No hay clientes registrados en el directorio. Usa '+ Nuevo Cliente' para agregar.</td></tr>`;
+        const container = document.getElementById("clientsPaginationContainer");
+        if (container) container.innerHTML = "";
+        return;
+    }
+
+    const { startIndex, endIndex } = (window.renderPaginationControls || renderPaginationControls)({
+        containerId: "clientsPaginationContainer",
+        totalItems: clients.length,
+        currentPage: clientsCurrentPage,
+        pageSize: clientsPageSize,
+        onPageChange: "goToClientsPage",
+        onPageSizeChange: "changeClientsPageSize",
+        itemLabel: "cliente(s)",
+        pageSizeOptions: [10, 20, 50, 100]
+    });
+
+    const pageItems = clients.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageItems.map(c => `
+        <tr>
+            <td style="font-weight: 800; color: var(--dalor-blue);">${c.code || ('CLI-' + String(c.id).padStart(3, '0'))}</td>
+            <td style="font-weight: 700; color: var(--dalor-navy);">${c.name}</td>
+            <td>${c.rif || '<span style="color:#94a3b8;">-</span>'}</td>
+            <td>${c.contact_name || '<span style="color:#94a3b8;">-</span>'}</td>
+            <td>${c.contact_phone || c.contact_email || '<span style="color:#94a3b8;">-</span>'}</td>
+            <td>${c.address || '<span style="color:#94a3b8;">-</span>'}</td>
+            <td style="text-align: center;">
+                <button onclick="deleteClient(${c.id})" class="btn-secondary" style="padding: 4px 8px; color: #ef4444;" title="Inactivar Cliente">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function loadClients() {
+    const tbody = document.getElementById("clientsTableBody");
     tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando clientes...</td></tr>`;
 
-
-
     try {
-        const res = await fetch(`${API_BASE}/clients/`);
+        const res = await authFetch(`${API_BASE}/clients/`);
         if (!res.ok) throw new Error("Error HTTP " + res.status);
         const data = await res.json();
         allClients = Array.isArray(data) ? data : [];
-
-        if (allClients.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">No hay clientes registrados en el directorio. Usa '+ Nuevo Cliente' para agregar.</td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = allClients.map(c => `
-
-            <tr>
-
-                <td style="font-weight: 800; color: var(--dalor-blue);">${c.code || ('CLI-' + String(c.id).padStart(3, '0'))}</td>
-
-                <td style="font-weight: 700; color: var(--dalor-navy);">${c.name}</td>
-
-                <td>${c.rif || '<span style="color:#94a3b8;">-</span>'}</td>
-
-                <td>${c.contact_name || '<span style="color:#94a3b8;">-</span>'}</td>
-
-                <td>${c.contact_phone || c.contact_email || '<span style="color:#94a3b8;">-</span>'}</td>
-
-                <td>${c.address || '<span style="color:#94a3b8;">-</span>'}</td>
-
-                <td style="text-align: center;">
-
-                    <button onclick="deleteClient(${c.id})" class="btn-secondary" style="padding: 4px 8px; color: #ef4444;" title="Inactivar Cliente">
-
-                        <i class="fa-solid fa-trash"></i>
-
-                    </button>
-
-                </td>
-
-            </tr>
-
-        `).join('');
+        lastClientsList = allClients;
+        clientsCurrentPage = 1;
+        renderClientsPaginated();
 
     } catch (e) {
-
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48;">Error al cargar clientes.</td></tr>`;
-
     }
-
 }
 
 
@@ -386,7 +415,7 @@ async function submitCreateClient(event) {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/clients/`, {
+        const res = await authFetch(`${API_BASE}/clients/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -436,7 +465,7 @@ async function deleteClient(clientId) {
 
     try {
 
-        await fetch(`${API_BASE}/clients/${clientId}`, { method: "DELETE" });
+        await authFetch(`${API_BASE}/clients/${clientId}`, { method: "DELETE" });
 
         await loadInitialMasterData();
 
@@ -465,7 +494,7 @@ async function loadComparisonDashboard() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/reports/comparison-dashboard`);
+        const res = await authFetch(`${API_BASE}/reports/comparison-dashboard`);
 
         const data = await res.json();
 
@@ -597,7 +626,7 @@ async function loadCategoriesTree() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/categories-tree`);
+        const res = await authFetch(`${API_BASE}/expenses/categories-tree`);
 
         if (!res.ok) throw new Error("Error en servidor");
 
@@ -789,78 +818,40 @@ function applyPermissionMap(user) {
     if (!user) return;
 
     const role = (user.role_name || '').toLowerCase();
-
     const uname = (user.username || '').toLowerCase();
-
-    const isDirector = uname === 'director' || role.includes('director') || user.is_superuser;
-
-    const isFinanzas = uname === 'administracion' || role.includes('admin') || role.includes('finanzas') || role.includes('contador');
-
-    const isIngeniero = uname === 'ingeniero' || role.includes('ingeniero');
-
+    const isDirector = uname === 'director' || role.includes('director') || user.is_superuser === true;
+    const isFinanzas = isDirector || uname === 'administracion' || role.includes('finanzas') || role.includes('administrador_financiero');
+    const isIngeniero = isDirector || uname === 'ingeniero' || role.includes('ingeniero');
     const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
-
-    const isAlmacen = uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
-
-
+    const isAlmacen = isDirector || uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
 
     // Dropdown Comercial (SOLO Director General)
-
     const dCom = document.getElementById('dropdown-comercial');
-
-    if (dCom) {
-
-        dCom.style.display = isDirector ? 'inline-block' : 'none';
-
-    }
-
-
+    if (dCom) dCom.style.display = isDirector ? 'inline-block' : 'none';
 
     // Dropdown Proyectos (Director e Ingeniero)
-
     const dProj = document.getElementById('dropdown-proyectos');
-
-    if (dProj) {
-
-        dProj.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
-
-    }
-
-
+    if (dProj) dProj.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
 
     // Dropdown Finanzas (Director y Administración/Finanzas)
-
     const dFin = document.getElementById('dropdown-finanzas');
-
-    if (dFin) {
-
-        dFin.style.display = (isDirector || isFinanzas) ? 'inline-block' : 'none';
-
-    }
-
-
+    if (dFin) dFin.style.display = (isDirector || isFinanzas) ? 'inline-block' : 'none';
 
     // Dropdown Recursos (Director, Ingeniero y Almacén/Pañol)
-
     const dRec = document.getElementById('dropdown-recursos');
+    if (dRec) dRec.style.display = (isDirector || isIngeniero || isAlmacen) ? 'inline-block' : 'none';
 
-    if (dRec) {
-
-        dRec.style.display = (isDirector || isIngeniero || isAlmacen) ? 'inline-block' : 'none';
-
-    }
-
-
-
-    // Dropdown Gastos (Oculto para Almacén e Ingeniero; Ingeniero opera en Proyectos/Recursos/Campo)
-
+    // Dropdown Gastos (Oculto para Almacén exclusivo)
     const dGas = document.getElementById('dropdown-gastos');
+    if (dGas) dGas.style.display = (isAlmacen && !isDirector) ? 'none' : 'inline-block';
 
-    if (dGas) {
+    // Dropdown Mantenimiento & Auditoría (SOLO Director General / Superuser)
+    const dMaint = document.getElementById('dropdown-mantenimiento');
+    if (dMaint) dMaint.style.display = isDirector ? 'inline-block' : 'none';
 
-        dGas.style.display = (isAlmacen || isIngeniero) ? 'none' : 'inline-block';
-
-    }
+    // Dropdown Gerencia / PowerBI (SOLO Director General)
+    const dGer = document.getElementById('dropdown-gerencia');
+    if (dGer) dGer.style.display = isDirector ? 'inline-block' : 'none';
 
 
 
@@ -1016,27 +1007,12 @@ function applyPermissionMap(user) {
 
 
 
+
     // Dropdown Mantenimiento (SOLO Director General / Superuser)
-
-    const dMaint = document.getElementById('dropdown-mantenimiento');
-
-    if (dMaint) {
-
-        dMaint.style.display = isDirector ? 'inline-block' : 'none';
-
-    }
-
-
+    if (dMaint) dMaint.style.display = isDirector ? 'inline-block' : 'none';
 
     // Botón PowerBI Directivo (SOLO Director General)
-
-    const dGer = document.getElementById('dropdown-gerencia');
-
-    if (dGer) {
-
-        dGer.style.display = isDirector ? 'inline-block' : 'none';
-
-    }
+    if (dGer) dGer.style.display = isDirector ? 'inline-block' : 'none';
 
 }
 
@@ -1062,7 +1038,7 @@ async function loginDirectlyAs(username, password) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/auth/login`, {
+        const res = await authFetch(`${API_BASE}/auth/login`, {
 
             method: 'POST',
 
@@ -1286,6 +1262,7 @@ function openMaintenanceSubtab(subtab) {
 
 
 function switchMaintenanceSubtab(subtab) {
+    try { sessionStorage.setItem('dalor_active_subtab_maintenance', subtab); } catch(e) {}
 
     ['users', 'audit', 'clean'].forEach(t => {
 
@@ -1331,7 +1308,7 @@ async function loadMaintenanceUsersList() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/maintenance/users`);
+        const res = await authFetch(`${API_BASE}/maintenance/users`);
 
         allSystemUsers = await res.json();
 
@@ -1523,7 +1500,7 @@ async function submitCreateUser(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/maintenance/users`, {
+        const res = await authFetch(`${API_BASE}/maintenance/users`, {
 
             method: 'POST',
 
@@ -1662,7 +1639,7 @@ async function submitSaveUserPermissions() {
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
 
-        const res = await fetch(`${API_BASE}/maintenance/users/${userId}/permissions`, {
+        const res = await authFetch(`${API_BASE}/maintenance/users/${userId}/permissions`, {
             method: 'PUT',
             headers: headers,
             body: JSON.stringify({ permissions_json: JSON.stringify(permissions) })
@@ -1714,7 +1691,7 @@ async function toggleUserStatus(userId) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/maintenance/users/${userId}/toggle-status`, { method: 'PUT' });
+        const res = await authFetch(`${API_BASE}/maintenance/users/${userId}/toggle-status`, { method: 'PUT' });
 
         const data = await res.json();
 
@@ -1746,7 +1723,7 @@ async function loadMaintenanceAuditLogs() {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando bitácora de eventos...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}/maintenance/audit-logs`);
+        const res = await authFetch(`${API_BASE}/maintenance/audit-logs`);
         const logs = await res.json();
         allAuditLogsCache = Array.isArray(logs) ? logs : [];
 
@@ -1880,7 +1857,7 @@ async function loadExecutiveDashboard() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/financial/summary`);
+        const res = await authFetch(`${API_BASE}/financial/summary`);
 
         if (!res.ok) throw new Error("Error al obtener datos");
 
@@ -2310,72 +2287,78 @@ function renderBIAnalyticsCharts(data) {
 
 
 
+let lastBiPnlList = [];
+let biPnlCurrentPage = 1;
+let biPnlPageSize = 10;
+
+function goToBiPnlPage(page) {
+    biPnlCurrentPage = page;
+    renderBIPnlTablePaginated();
+    const c = document.getElementById("executivePnlTableBody");
+    if (c) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function changeBiPnlPageSize(size) {
+    biPnlPageSize = parseInt(size) || 10;
+    biPnlCurrentPage = 1;
+    renderBIPnlTablePaginated();
+}
+
 function renderBIPnlTable(pnlList) {
+    lastBiPnlList = Array.isArray(pnlList) ? pnlList : [];
+    biPnlCurrentPage = 1;
+    renderBIPnlTablePaginated();
+}
 
+function renderBIPnlTablePaginated() {
     const pnlTbody = document.getElementById("executivePnlTableBody");
-
     if (!pnlTbody) return;
 
-
-
-    if (!pnlList || pnlList.length === 0) {
-
+    const list = lastBiPnlList || [];
+    if (list.length === 0) {
         pnlTbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 20px;">No hay proyectos para el filtro seleccionado.</td></tr>`;
-
+        const pCont = document.getElementById("biPnlPaginationContainer");
+        if (pCont) pCont.innerHTML = '';
         return;
-
     }
 
+    const { startIndex, endIndex, currentPage } = (typeof window.renderPaginationControls === 'function' ? window.renderPaginationControls : renderPaginationControls)({
+        containerId: "biPnlPaginationContainer",
+        totalItems: list.length,
+        currentPage: biPnlCurrentPage,
+        pageSize: biPnlPageSize,
+        onPageChange: "goToBiPnlPage",
+        onPageSizeChange: "changeBiPnlPageSize",
+        itemLabel: "obra(s) en BI",
+        pageSizeOptions: [5, 10, 20, 50]
+    });
+    biPnlCurrentPage = currentPage;
 
-
-    pnlTbody.innerHTML = pnlList.map(p => {
-
+    const pageItems = list.slice(startIndex, endIndex);
+    pnlTbody.innerHTML = pageItems.map(p => {
         const isProfitable = p.net_profit_usd >= 0;
-
         return `
-
         <tr>
-
             <td style="font-weight: 800; color: var(--dalor-navy);">${p.code}</td>
-
             <td style="font-weight: 700;">${p.name}</td>
-
             <td style="color: #475569;">${p.client_name || 'General'}</td>
-
             <td style="font-weight: 700;">$${p.contract_amount_usd.toLocaleString()}</td>
-
             <td style="font-weight: 700; color: #0284c7;">$${p.invoiced_cxc_usd.toLocaleString()}</td>
-
             <td style="font-weight: 700; color: #059669;">$${p.collected_cxc_usd.toLocaleString()}</td>
-
             <td style="font-weight: 800; color: #e11d48;">$${p.total_cost_usd.toLocaleString()}</td>
-
             <td style="font-weight: 900; color: ${isProfitable ? '#059669' : '#e11d48'}; font-size: 13px;">
-
                 $${p.net_profit_usd.toLocaleString()}
-
             </td>
-
             <td style="font-weight: 800; color: ${isProfitable ? '#059669' : '#e11d48'};">
-
                 ${p.net_margin_percent}%
-
             </td>
-
             <td style="font-weight: 800; color: var(--dalor-navy); text-align: center;">
-
                 <span style="padding: 2px 6px; border-radius: 4px; background: ${p.cpi_efficiency >= 1.0 ? '#d1fae5' : '#fee2e2'}; color: ${p.cpi_efficiency >= 1.0 ? '#065f46' : '#991b1b'}; font-size: 11px;">
-
                     ${p.cpi_efficiency}
-
                 </span>
-
             </td>
-
         </tr>`;
-
     }).join('');
-
 }
 
 
@@ -2437,7 +2420,7 @@ async function loadBackupsList() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/maintenance/backups`);
+        const res = await authFetch(`${API_BASE}/maintenance/backups`);
 
         const list = await res.json();
 
@@ -2501,7 +2484,7 @@ async function createNewBackup() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/maintenance/backups/create`, { method: 'POST' });
+        const res = await authFetch(`${API_BASE}/maintenance/backups/create`, { method: 'POST' });
 
         const data = await res.json();
 
@@ -2539,7 +2522,7 @@ async function restoreBackup(filename) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/maintenance/backups/restore/${filename}`, { method: 'POST' });
+        const res = await authFetch(`${API_BASE}/maintenance/backups/restore/${filename}`, { method: 'POST' });
 
         const data = await res.json();
 
@@ -2600,7 +2583,7 @@ async function loadUsersManagementTable() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/auth/users`);
+        const res = await authFetch(`${API_BASE}/auth/users`);
 
         if (!res.ok) throw new Error("Error al obtener usuarios");
 
@@ -2712,7 +2695,7 @@ async function submitCreateUser_v2(e) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/auth/users`, {
+        const res = await authFetch(`${API_BASE}/auth/users`, {
 
             method: "POST",
 
@@ -2804,6 +2787,9 @@ if (typeof window !== 'undefined') {
     window.redirectUserByRole = redirectUserByRole;
     window.renderBIAnalyticsCharts = renderBIAnalyticsCharts;
     window.renderBIPnlTable = renderBIPnlTable;
+    window.goToBiPnlPage = goToBiPnlPage;
+    window.changeBiPnlPageSize = changeBiPnlPageSize;
+    window.renderBIPnlTablePaginated = renderBIPnlTablePaginated;
     window.renderCleanRadialCharts = renderCleanRadialCharts;
     window.renderUserBadge = renderUserBadge;
     window.restoreBackup = restoreBackup;
@@ -2817,6 +2803,9 @@ if (typeof window !== 'undefined') {
     window.resetMaintenanceAuditFilters = resetMaintenanceAuditFilters;
     window.switchMaintenanceSubtab = switchMaintenanceSubtab;
     window.toggleUserStatus = toggleUserStatus;
+    window.goToClientsPage = goToClientsPage;
+    window.changeClientsPageSize = changeClientsPageSize;
+    window.renderClientsPaginated = renderClientsPaginated;
 }
 
-export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus };
+export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, goToBiPnlPage, changeBiPnlPageSize, renderBIPnlTablePaginated, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus, goToClientsPage, changeClientsPageSize, renderClientsPaginated };

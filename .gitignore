@@ -12,3 +12,13 @@ temp_ocr_preprocessed.png
 cloudflared.exe
 tunnel_url.txt
 backups/daily/
+*.db
+*.db-wal
+*.db-shm
+*.log
+node_modules/
+dist/
+scratch/
+*.png
+*.jpg
+*.jpeg

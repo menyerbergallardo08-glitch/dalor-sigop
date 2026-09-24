@@ -189,6 +189,7 @@ class Project(Base):
     resource_history = relationship("ResourceAssignmentHistory", back_populates="project")
     receivables = relationship("AccountReceivable", back_populates="project")
     payables = relationship("AccountPayable", back_populates="project")
+    addendums = relationship("ProjectAddendum", back_populates="project", cascade="all, delete-orphan", order_by="ProjectAddendum.addendum_number")
 
 
     @property
@@ -219,6 +220,24 @@ class ProjectPhase(Base):
     responsible_person = Column(String(150), nullable=True)
 
     project = relationship("Project", back_populates="phases")
+
+class ProjectAddendum(Base):
+    __tablename__ = "project_addendums"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    addendum_number = Column(Integer, default=1)
+    title = Column(String(200), nullable=False)
+    scope_description = Column(Text, nullable=True)
+    additional_contract_usd = Column(Float, nullable=False, default=0.0)
+    additional_materials_usd = Column(Float, default=0.0)
+    additional_labor_usd = Column(Float, default=0.0)
+    additional_services_usd = Column(Float, default=0.0)
+    authorized_by = Column(String(100), default="Dirección General")
+    approval_date = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project", back_populates="addendums")
 
 class CostCenter(Base):
     __tablename__ = "cost_centers"
@@ -420,6 +439,15 @@ class AccountPayable(Base):
     issue_date = Column(DateTime, default=datetime.utcnow)
     due_date = Column(DateTime, nullable=False)
     
+    # Datos Fiscales Oficiales (Providencia SNAT/2015/0049)
+    supplier_rif = Column(String(50), nullable=True) # ej: "J-500819048"
+    control_number = Column(String(50), nullable=True) # N° Control Factura SENIAT, ej: "00-000229"
+    doc_type = Column(String(50), default="factura") # factura, factura_sin_retencion, nota_entrega
+    withholding_voucher_number = Column(String(50), nullable=True) # ej: "20260900001014"
+    withholding_voucher_date = Column(DateTime, nullable=True)
+    is_withholding_applied = Column(Boolean, default=True)
+    withholding_exempt_usd = Column(Float, default=0.0) # Compras sin derecho a crédito fiscal
+    
     # Desglose Fiscal y Retenciones SENIAT
     taxable_base_usd = Column(Float, default=0.0)
     tax_amount_usd = Column(Float, default=0.0)
@@ -447,10 +475,11 @@ class FinancialPayment(Base):
     __tablename__ = "financial_payments"
 
     id = Column(Integer, primary_key=True, index=True)
-    payment_type = Column(String(50), nullable=False) # transferencia, efectivo_usd, retencion_iva, retencion_islr, zelle, pago_movil
+    payment_type = Column(String(50), nullable=False) # transferencia, efectivo_usd, retencion_iva, retencion_islr, zelle, pago_movil, cxp_pago, cxp_retencion_iva
     voucher_number = Column(String(100), nullable=True) # N° Comprobante Retención SENIAT o Ref Bancaria
     receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
     payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
+    bank_account = Column(String(50), nullable=True) # banesco_usd, banesco_bs, binance_usdt, efectivo_usd, caja_chica
     
     payment_date = Column(DateTime, default=datetime.utcnow)
     payment_method = Column(String(50), default="transferencia")
@@ -578,6 +607,8 @@ class AssetRentalLoan(Base):
     operation_type = Column(String(50), nullable=False) # 'alquiler' o 'prestamo'
     
     asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True) # Si es activo propio de DALOR
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=True) # Si es material de almacén
+    material_quantity = Column(Float, default=0.0) # Cantidad prestada o alquilada
     equipment_name = Column(String(150), nullable=False) # Nombre del equipo/herramienta
     equipment_code = Column(String(50), nullable=True) # Código interno o serial
     
@@ -586,6 +617,8 @@ class AssetRentalLoan(Base):
     contact_phone = Column(String(50), nullable=True)
     
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True) # Obra asignada (opcional)
+    destination_reference = Column(String(200), nullable=True) # Destino / Obra de referencia libre (ej: Parada de Planta)
+    imputation_mode = Column(String(50), default="total_estimado") # total_estimado, por_factura
     
     start_date = Column(DateTime, default=datetime.utcnow) # Fecha de entrega o recepción
     expected_return_date = Column(DateTime, nullable=True) # Fecha límite prevista de retorno
@@ -598,11 +631,38 @@ class AssetRentalLoan(Base):
     receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
     payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
     
-    status = Column(String(50), default="activo") # activo, devuelto_conforme, devuelto_con_novedad, vencido
+    status = Column(String(50), default="activo") # activo, retorno_parcial, devuelto_conforme, devuelto_con_novedad, vencido
     return_notes = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     asset = relationship("Asset")
+    material = relationship("Material")
     project = relationship("Project")
+    items = relationship("AssetRentalLoanItem", back_populates="rental", cascade="all, delete-orphan")
+
+
+class AssetRentalLoanItem(Base):
+    __tablename__ = "asset_rental_loan_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    rental_id = Column(Integer, ForeignKey("asset_rentals_loans.id"), nullable=False, index=True)
+    item_type = Column(String(20), default="asset") # 'asset' o 'material'
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=True)
+    name = Column(String(200), nullable=False)
+    code = Column(String(50), nullable=True)
+    quantity = Column(Float, default=1.0)
+    returned_quantity = Column(Float, default=0.0)
+    status = Column(String(50), default="prestado") # prestado, devuelto_parcial, devuelto_total
+    return_date = Column(DateTime, nullable=True)
+    return_condition = Column(String(100), nullable=True)
+    return_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    rental = relationship("AssetRentalLoan", back_populates="items")
+    asset = relationship("Asset")
+    material = relationship("Material")
+
+
 

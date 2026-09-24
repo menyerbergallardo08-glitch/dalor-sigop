@@ -19,6 +19,15 @@ var EXCHANGE_RATE = window.EXCHANGE_RATE = window.EXCHANGE_RATE || 850.0;
 var BCV_DATA = window.BCV_DATA = window.BCV_DATA || { rate: 850.0, source: 'BCV Oficial' };
 var currentUser = window.currentUser || null;
 var authToken = window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+/** authFetch - inyecta token en cada request usando window.fetch nativo */
+function authFetch(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
+}
+
 
 // --- BLOQUE L227-L322 ---
 // ==============================================================================
@@ -254,7 +263,7 @@ async function processOCRFile(rawFile) {
 
             try {
 
-                const resCat = await fetch(`${API_BASE}/expenses/categories`);
+                const resCat = await authFetch(`${API_BASE}/expenses/categories`);
 
                 allCategories = await resCat.json();
 
@@ -270,7 +279,7 @@ async function processOCRFile(rawFile) {
 
 
 
-        const res = await fetch(`${API_BASE}/ocr/scan-ticket`, {
+        const res = await authFetch(`${API_BASE}/ocr/scan-ticket`, {
 
             method: "POST",
 
@@ -734,7 +743,7 @@ async function submitFieldExpense(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/`, {
+        const res = await authFetch(`${API_BASE}/expenses/`, {
 
             method: "POST",
 
@@ -760,7 +769,7 @@ async function submitFieldExpense(event) {
 
                 payload.allow_duplicate = true;
 
-                const res2 = await fetch(`${API_BASE}/expenses/`, {
+                const res2 = await authFetch(`${API_BASE}/expenses/`, {
 
                     method: "POST",
 
@@ -964,7 +973,7 @@ async function submitManualExpense(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/`, {
+        const res = await authFetch(`${API_BASE}/expenses/`, {
 
             method: "POST",
 
@@ -1018,7 +1027,7 @@ async function loadPendingExpensesInbox() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
+        const res = await authFetch(`${API_BASE}/expenses/inbox/pending`);
 
         allPendingExpenses = await res.json();
 
@@ -1119,8 +1128,8 @@ async function openValidateExpenseModal(expenseId) {
             const token = window.authToken || localStorage.getItem('dalor_token');
             const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
             const [pRes, cRes] = await Promise.all([
-                fetch(`${API_BASE}/projects/`, { headers }),
-                fetch(`${API_BASE}/expenses/categories`, { headers })
+                authFetch(`${API_BASE}/projects/`, { headers }),
+                authFetch(`${API_BASE}/expenses/categories`, { headers })
             ]);
             if (pRes.ok) {
                 projectsList = await pRes.json();
@@ -1314,7 +1323,7 @@ async function submitValidateExpense(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/inbox/${expId}/validate-impute`, {
+        const res = await authFetch(`${API_BASE}/expenses/inbox/${expId}/validate-impute`, {
 
             method: "PUT",
 
@@ -1374,7 +1383,7 @@ async function rejectExpense(expenseId) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/inbox/${expenseId}/reject?reason=${encodeURIComponent(reason)}`, {
+        const res = await authFetch(`${API_BASE}/expenses/inbox/${expenseId}/reject?reason=${encodeURIComponent(reason)}`, {
 
             method: "PUT"
 
@@ -1429,7 +1438,7 @@ async function loadExpensesLog() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/`);
+        const res = await authFetch(`${API_BASE}/expenses/`);
 
         allExpensesCache = await res.json();
 
@@ -1945,7 +1954,7 @@ async function submitResetToCleanSlate(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/maintenance/reset-to-clean-slate`, {
+        const res = await authFetch(`${API_BASE}/maintenance/reset-to-clean-slate`, {
 
             method: "POST",
 

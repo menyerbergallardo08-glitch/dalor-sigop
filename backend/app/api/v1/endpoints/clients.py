@@ -71,6 +71,36 @@ def get_client_history(client_id: int, db: Session = Depends(get_db)):
         "total_contracted_usd": total_contracted,
         "projects_count": len(projects),
         "quotations_count": len(quotations),
-        "projects": [{"id": p.id, "code": p.code, "name": p.name, "status": p.status, "contract_amount_usd": p.contract_amount_usd} for p in projects],
-        "quotations": [{"id": q.id, "quote_number": q.quote_number, "project_title": q.project_title, "total_usd": q.total_usd, "status": q.status} for q in quotations]
     }
+
+
+@router.get("/{client_id}/credit-risk")
+def get_client_credit_risk(client_id: int, db: Session = Depends(get_db)):
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+
+    from app.models.models import AccountReceivable
+    bad_debts = db.query(AccountReceivable).filter(
+        AccountReceivable.client_id == client_id,
+        (AccountReceivable.status == "incobrable") | (AccountReceivable.is_bad_debt == True)
+    ).all()
+
+    has_bad_debt = len(bad_debts) > 0
+    total_bad_debt = sum(b.bad_debt_amount_usd or b.amount_usd for b in bad_debts)
+    details = [
+        {
+            "invoice_number": b.invoice_number,
+            "amount_usd": b.bad_debt_amount_usd or b.amount_usd,
+            "reason": b.bad_debt_reason or b.notes or "Cuenta castigada por mora"
+        }
+        for b in bad_debts
+    ]
+
+    return {
+        "has_risk": has_bad_debt,
+        "total_bad_debt_usd": round(total_bad_debt, 2),
+        "bad_debts": details,
+        "client_name": client.name
+    }
+

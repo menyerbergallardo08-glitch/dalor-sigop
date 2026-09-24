@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>START</title>
+    <script>
+        window.modError = null;
+        window.addEventListener('error', function(e) {
+            window.modError = e.message + " at " + e.lineno + ":" + e.colno;
+            document.title = "ERR: " + window.modError;
+        });
+    </script>
+    <script type="module" src="/src/modules/maintenance.js"></script>
+    <script>
+        setTimeout(() => {
+            if (!window.modError) {
+                document.title = "SUCCESS: maintenance.js";
+            }
+        }, 600);
+    </script>
+</head>
+<body></body>
+</html>

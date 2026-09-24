@@ -19,6 +19,15 @@ var EXCHANGE_RATE = window.EXCHANGE_RATE = window.EXCHANGE_RATE || 850.0;
 var BCV_DATA = window.BCV_DATA = window.BCV_DATA || { rate: 850.0, source: 'BCV Oficial' };
 var currentUser = window.currentUser || null;
 var authToken = window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+/** authFetch - inyecta token en cada request usando window.fetch nativo */
+function authFetch(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
+}
+
 
 // --- BLOQUE L918-L1119 ---
 // Control de Tasa Oficial BCV Automatizada con Blindaje Fail-Safe
@@ -47,7 +56,7 @@ async function fetchAndApplyBcvRate(forceRefresh = false) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/financial/bcv-rate?force_refresh=${forceRefresh}`);
+        const res = await authFetch(`${API_BASE}/financial/bcv-rate?force_refresh=${forceRefresh}`);
 
         if (res.ok) {
 

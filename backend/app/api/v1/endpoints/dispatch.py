@@ -223,12 +223,23 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     if g_in.client_id:
         client = db.query(Client).filter(Client.id == g_in.client_id).first()
     
-    is_free = bool(g_in.is_freeform or (g_in.recipient_name and not g_in.client_id))
+    if g_in.is_freeform is not None:
+        is_free = bool(g_in.is_freeform)
+    else:
+        is_free = bool(g_in.recipient_name and not g_in.client_id and not g_in.project_id)
     recipient = (g_in.recipient_name or "").strip()
     if not recipient and client:
         recipient = client.name
     elif not recipient and not client:
         recipient = "Destinatario Libre / Particular"
+
+    if g_in.project_id and g_in.client_id:
+        proj = db.query(Project).filter(Project.id == g_in.project_id).first()
+        if proj and proj.client_id and proj.client_id != g_in.client_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Inconsistencia: El proyecto [{proj.code}] pertenece a otro cliente y no puede cruzarse."
+            )
 
     client_id_val = client.id if client else None
 
@@ -322,11 +333,29 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     # 2. Si se cobra flete al cliente: Generar Cuenta por Cobrar (CxC) de flete/logística
     if (g_in.freight_price_charged_usd or 0.0) > 0:
         f_price = float(g_in.freight_price_charged_usd)
+        c_id = g_in.client_id or client_id_val
+        if not c_id:
+            rec_client = db.query(Client).filter(Client.name == recipient).first()
+            if not rec_client:
+                rec_client = Client(
+                    name=recipient or "Destinatario Eventual",
+                    code=f"CLI-EVT-{int(datetime.utcnow().timestamp())}",
+                    rif="J-00000000-0",
+                    contact_name=recipient or "Destinatario Libre",
+                    contact_phone="0412-0000000",
+                    contact_email="contacto@cliente.com",
+                    address=g_in.destination_address or "Venezuela"
+                )
+                db.add(rec_client)
+                db.flush()
+            c_id = rec_client.id
+            new_guide.client_id = c_id
+
         new_cxc = AccountReceivable(
             invoice_number=f"FLT-CLI-{guide_num}",
-            client_id=g_in.client_id,
+            client_id=c_id,
             project_id=g_in.project_id,
-            description=f"Servicio de Flete / Logística de Entrega ({guide_num})",
+            description=f"Servicio de Flete / Logística de Entrega ({guide_num}) para {recipient}",
             due_date=datetime.utcnow(),
             amount_usd=f_price,
             balance_usd=f_price,
@@ -373,6 +402,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
         "success": True,
         "id": new_guide.id,
         "guide_number": guide_num,
+        "is_freeform": new_guide.is_freeform,
         "message": f"Guía de Despacho {guide_num} emitida exitosamente."
     }
 

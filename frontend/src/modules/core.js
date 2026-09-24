@@ -46,7 +46,88 @@ var API_BASE = window.API_BASE;
 
 // 🛠️ FUNCIONES UNIVERSALES DE UTILIDAD & ORDENAMIENTO NUMÉRICO JERÁRQUICO
 
-// ==============================================================================
+function printElementHtml(elementOrHtml, docTitle = 'Documento DALOR') {
+    let iframe = document.getElementById('dalor_print_iframe');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'dalor_print_iframe';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+    }
+
+    let contentHtml = '';
+    if (typeof elementOrHtml === 'string') {
+        contentHtml = elementOrHtml;
+    } else if (elementOrHtml && elementOrHtml.nodeType) {
+        const clone = elementOrHtml.cloneNode(true);
+        clone.querySelectorAll('.no-print, button, input[type="button"]').forEach(el => el.remove());
+        contentHtml = clone.innerHTML;
+    }
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+            <head>
+                <meta charset="utf-8">
+                <title>${docTitle}</title>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                <link rel="stylesheet" href="/css/styles.css?v=2026.09.24.v98.35">
+                <style>
+                    :root {
+                        --dalor-navy: #002B49;
+                        --dalor-blue: #0072B8;
+                        --dalor-gold: #F5B800;
+                        --dalor-coral: #ff4b72;
+                        --dalor-cyan: #0284c7;
+                        --dalor-emerald: #059669;
+                        --dalor-purple: #7c3aed;
+                        --dalor-bg: #f1f5f9;
+                        --dalor-card-bg: #ffffff;
+                        --border-color: #cbd5e1;
+                    }
+                    * { box-sizing: border-box; }
+                    body {
+                        margin: 0;
+                        padding: 8mm 10mm;
+                        background: #ffffff;
+                        color: #0f172a;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                        font-size: 11px;
+                        line-height: 1.4;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    @page {
+                        size: letter portrait;
+                        margin: 8mm 10mm;
+                    }
+                    @media print {
+                        body { padding: 0; margin: 0; background: #fff !important; }
+                        .no-print { display: none !important; }
+                    }
+                    .no-print { display: none !important; }
+                </style>
+            </head>
+            <body>
+                ${contentHtml}
+            </body>
+        </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    }, 250);
+}
 
 function populateSelect(selectId, items, mapFn) {
 
@@ -215,7 +296,7 @@ window.onValTaxChanged = function() {
 
 window.APP_BUILD_VERSION = "2026.09.15.v93-clean-production";
 
-console.log("--> DALOR SIGO-P INITIALIZED v22");
+console.log("--> DALOR SIGO-P INITIALIZED v98.31 [MODERNO]");
 
 
 
@@ -290,88 +371,29 @@ let selectedMaterialIds = [];
 let currentUser = null;
 
 let authToken = localStorage.getItem('dalor_token') || null;
+/** authFetch - inyecta token en cada request usando window.fetch nativo */
+function authFetch(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
+}
+
 
 let lastDropdownToggleTime = 0;
 
 
 
-document.addEventListener("DOMContentLoaded", async () => {
-
-    const rateInput = document.getElementById("globalExchangeRateInput");
-
-    if (rateInput) rateInput.value = EXCHANGE_RATE.toFixed(2);
-
-
-
-    const handleOutsideClick = (e) => {
-
-        if (Date.now() - lastDropdownToggleTime < 350) return;
-
-        if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu") && !e.target.closest(".mobile-submenu-card")) {
-
-            closeAllDropdowns();
-
-            closeMobileSubmenu();
-
-        }
-
-    };
-
-
-
-    document.addEventListener("click", handleOutsideClick);
-
-    document.addEventListener("touchend", handleOutsideClick);
-
-
-
-    const isAuth = await checkAuthStatus();
-
-    fetchAndApplyBcvRate();
-
-    
-
-    const loginScreen = document.getElementById('app-login-screen');
-
-    const authShell = document.getElementById('app-authenticated-shell');
-
-    const nav = document.querySelector('.mobile-bottom-nav');
-
-
-
-    if (isAuth && currentUser) {
-
-        document.body.classList.add('authenticated');
-
-        if (loginScreen) loginScreen.style.setProperty('display', 'none', 'important');
-
-        if (authShell) authShell.style.setProperty('display', 'block', 'important');
-
-        
-
-        renderUserBadge();
-
-        applyPermissionMap(currentUser);
-
-        configureMobileNav(currentUser);
-
-        redirectUserByRole(currentUser);
-
-        loadInitialMasterData();
-
-    } else {
-
-        document.body.classList.remove('authenticated');
-
-        if (loginScreen) loginScreen.style.setProperty('display', 'flex', 'important');
-
-        if (authShell) authShell.style.setProperty('display', 'none', 'important');
-
-        if (nav) nav.style.setProperty('display', 'none', 'important');
-
+const handleOutsideClick = (e) => {
+    if (Date.now() - lastDropdownToggleTime < 350) return;
+    if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu") && !e.target.closest(".mobile-submenu-card")) {
+        closeAllDropdowns();
+        closeMobileSubmenu();
     }
-
-});
+};
+document.addEventListener("click", handleOutsideClick);
+document.addEventListener("touchend", handleOutsideClick);
 
 
 
@@ -544,83 +566,181 @@ function closeAllDropdowns() {
 
 // Navegación Modular Principal
 
-function switchView(viewName, moduleCategory) {
-
+function switchView(viewName, moduleCategory, targetSubtab = null) {
     closeAllDropdowns();
 
-
-
     const allViews = [
-
         'executive', 'financial', 'maintenance',
-
         'quotations', 'clients', 'services', 
-
         'projects', 'dispatch', 'dashboard', 
-
         'resources', 
-
         'pwa', 'manual', 'tree', 'inbox', 'expenses-log'
-
     ];
 
-
-
     allViews.forEach(v => {
-
         const el = document.getElementById(`view-${v}`);
-
         if (el) el.classList.add('hidden');
-
     });
 
-
-
     const activeView = document.getElementById(`view-${viewName}`);
-
     if (activeView) activeView.classList.remove('hidden');
 
-
-
     document.querySelectorAll(".nav-dropdown").forEach(drop => drop.classList.remove("active"));
-
     const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`);
-
     if (activeDropdown) activeDropdown.classList.add("active");
 
+    // Guardar estado persistente en localStorage y sessionStorage para refrescos de pantalla
+    try {
+        localStorage.setItem('dalor_active_view', viewName);
+        if (moduleCategory) localStorage.setItem('dalor_active_category', moduleCategory);
+        sessionStorage.setItem('dalor_active_view', viewName);
+        if (moduleCategory) sessionStorage.setItem('dalor_active_category', moduleCategory);
+    } catch(e) {}
 
+    if (viewName === 'executive' && typeof loadExecutiveDashboard === 'function') loadExecutiveDashboard();
+    if (viewName === 'financial') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_financial') || sessionStorage.getItem('dalor_active_subtab_financial') || 'cxc';
+        if (typeof switchFinancialSubtab === 'function') switchFinancialSubtab(sub);
+        else if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab(sub);
+    }
+    if (viewName === 'maintenance') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_maintenance') || sessionStorage.getItem('dalor_active_subtab_maintenance') || 'users';
+        if (typeof switchMaintenanceSubtab === 'function') switchMaintenanceSubtab(sub);
+        else if (typeof window.openMaintenanceSubtab === 'function') window.openMaintenanceSubtab(sub);
+    }
+    if (viewName === 'quotations' && typeof loadQuotations === 'function') loadQuotations();
+    if (viewName === 'clients' && typeof loadClients === 'function') loadClients();
+    if (viewName === 'projects') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_projects') || sessionStorage.getItem('dalor_active_subtab_projects') || 'list';
+        if (typeof switchProjectSubtab === 'function') switchProjectSubtab(sub);
+        else if (typeof initProjectPlanningView === 'function') initProjectPlanningView();
+    }
+    if (viewName === 'dispatch') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_dispatch') || sessionStorage.getItem('dalor_active_subtab_dispatch') || 'list';
+        if (typeof switchDispatchSubtab === 'function') switchDispatchSubtab(sub);
+        else if (typeof initDispatchView === 'function') initDispatchView();
+    }
+    if (viewName === 'dashboard' && typeof loadComparisonDashboard === 'function') loadComparisonDashboard();
+    if (viewName === 'resources') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_resources') || sessionStorage.getItem('dalor_active_subtab_resources') || 'dashboard';
+        if (typeof switchResourceSubtab === 'function') switchResourceSubtab(sub);
+        else if (typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab(sub);
+    }
+    if (viewName === 'inbox' && typeof loadPendingExpensesInbox === 'function') loadPendingExpensesInbox();
+    if (viewName === 'tree' && typeof loadCategoriesTree === 'function') loadCategoriesTree();
+    if (viewName === 'expenses-log' && typeof loadExpensesLog === 'function') loadExpensesLog();
 
-    if (viewName === 'executive') loadExecutiveDashboard();
-
-    if (viewName === 'financial') switchFinancialSubtab('cxc');
-
-    if (viewName === 'maintenance') switchMaintenanceSubtab('users');
-
-    if (viewName === 'quotations') loadQuotations();
-
-    if (viewName === 'clients') loadClients();
-
-    if (viewName === 'services') loadServices();
-
-    if (viewName === 'projects') initProjectPlanningView();
-
-    if (viewName === 'dispatch') initDispatchView();
-
-    if (viewName === 'dashboard') loadComparisonDashboard();
-
-    if (viewName === 'resources') switchResourceSubtab('dashboard');
-
-    if (viewName === 'inbox') loadPendingExpensesInbox();
-
-    if (viewName === 'tree') loadCategoriesTree();
-
-    if (viewName === 'expenses-log') loadExpensesLog();
-
+    if (window.onViewSwitched) window.onViewSwitched(viewName);
 }
 
 window.switchView = switchView;
-
 window.appSwitchView = switchView;
+
+/**
+ * Motor Universal de Paginación DALOR SIGO-P
+ * Renderiza una barra estándar de paginación con controles numéricos, elipsis, límites y selector de densidad.
+ */
+function renderPaginationControls({
+    containerId,
+    totalItems = 0,
+    currentPage = 1,
+    pageSize = 15,
+    onPageChange = '',
+    onPageSizeChange = '',
+    itemLabel = 'registro(s)',
+    pageSizeOptions = [10, 25, 50, 100],
+    allowAll = true
+}) {
+    const container = document.getElementById(containerId);
+    if (!container) return { startIndex: 0, endIndex: 0, totalPages: 1, currentPage: 1 };
+
+    const effectivePageSize = (pageSize === 1000 || pageSize === 9999) ? (totalItems || 1) : (pageSize || 15);
+    const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+    let cur = Math.max(1, Math.min(currentPage, totalPages));
+
+    const startIndex = (cur - 1) * effectivePageSize;
+    const endIndex = Math.min(startIndex + effectivePageSize, totalItems);
+
+    if (totalItems <= Math.min(...pageSizeOptions) && totalPages <= 1) {
+        container.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 11.5px; color: #64748b; margin-top: 8px;">
+                <span>Mostrando <b>${totalItems}</b> ${itemLabel}</span>
+                ${onPageSizeChange ? `
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span>Mostrar:</span>
+                    <select onchange="${onPageSizeChange}(this.value)" style="padding: 2px 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-weight: 700; cursor: pointer;">
+                        ${pageSizeOptions.map(sz => `<option value="${sz}" ${pageSize === sz ? 'selected' : ''}>${sz}</option>`).join('')}
+                        ${allowAll ? `<option value="1000" ${pageSize === 1000 ? 'selected' : ''}>Todos</option>` : ''}
+                    </select>
+                </div>` : ''}
+            </div>
+        `;
+        return { startIndex, endIndex, totalPages, currentPage: cur };
+    }
+
+    let pageButtons = '';
+    let startP = Math.max(1, cur - 2);
+    let endP = Math.min(totalPages, cur + 2);
+
+    if (startP > 1) {
+        pageButtons += `<button type="button" onclick="${onPageChange}(1)" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;">1</button>`;
+        if (startP > 2) pageButtons += `<span style="padding: 0 4px; color: #94a3b8;">...</span>`;
+    }
+
+    for (let i = startP; i <= endP; i++) {
+        if (i === cur) {
+            pageButtons += `<button type="button" class="btn-primary" style="padding: 4px 10px; font-size: 11px; font-weight: 800; border-radius: 5px; background: var(--dalor-navy, #0f172a); color: white;">${i}</button>`;
+        } else {
+            pageButtons += `<button type="button" onclick="${onPageChange}(${i})" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;">${i}</button>`;
+        }
+    }
+
+    if (endP < totalPages) {
+        if (endP < totalPages - 1) pageButtons += `<span style="padding: 0 4px; color: #94a3b8;">...</span>`;
+        pageButtons += `<button type="button" onclick="${onPageChange}(${totalPages})" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;">${totalPages}</button>`;
+    }
+
+    container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; color: #475569; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-top: 8px;">
+            <div style="font-weight: 600;">
+                Mostrando <b style="color: var(--dalor-navy, #0f172a);">${totalItems === 0 ? 0 : startIndex + 1} - ${endIndex}</b> de <b style="color: var(--dalor-navy, #0f172a);">${totalItems}</b> ${itemLabel}
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button type="button" onclick="${onPageChange}(1)" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; border-radius: 5px;" ${cur === 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} title="Primera página">
+                    <i class="fa-solid fa-angles-left"></i>
+                </button>
+                <button type="button" onclick="${onPageChange}(${cur - 1})" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;" ${cur === 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} title="Página anterior">
+                    <i class="fa-solid fa-chevron-left"></i> Anterior
+                </button>
+
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    ${pageButtons}
+                </div>
+
+                <button type="button" onclick="${onPageChange}(${cur + 1})" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;" ${cur === totalPages ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} title="Página siguiente">
+                    Siguiente <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button type="button" onclick="${onPageChange}(${totalPages})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; border-radius: 5px;" ${cur === totalPages ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} title="Última página">
+                    <i class="fa-solid fa-angles-right"></i>
+                </button>
+            </div>
+
+            ${onPageSizeChange ? `
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 11.5px; color: #64748b;">Por página:</span>
+                <select onchange="${onPageSizeChange}(this.value)" style="padding: 3px 8px; font-size: 11.5px; border: 1px solid #cbd5e1; border-radius: 5px; background: white; font-weight: 700; color: var(--dalor-navy, #0f172a); cursor: pointer;">
+                    ${pageSizeOptions.map(sz => `<option value="${sz}" ${pageSize === sz ? 'selected' : ''}>${sz}</option>`).join('')}
+                    ${allowAll ? `<option value="1000" ${pageSize === 1000 ? 'selected' : ''}>Ver todos</option>` : ''}
+                </select>
+            </div>` : ''}
+        </div>
+    `;
+
+    return { startIndex, endIndex, totalPages, currentPage: cur };
+}
+
+window.renderPaginationControls = renderPaginationControls;
 
 
 
@@ -632,7 +752,7 @@ async function loadInitialMasterData() {
 
     try {
 
-        await fetch(`${API_BASE}/maintenance/sync-dalor-catalog`, { method: "POST" });
+        await authFetch(`${API_BASE}/maintenance/sync-dalor-catalog`, { method: "POST" });
 
     } catch(e) {}
 
@@ -642,19 +762,19 @@ async function loadInitialMasterData() {
 
         const [resCli, resSrv, resProj, resCat, resAss, resPers, resMat] = await Promise.all([
 
-            fetch(`${API_BASE}/clients/`),
+            authFetch(`${API_BASE}/clients/`),
 
-            fetch(`${API_BASE}/services/`),
+            authFetch(`${API_BASE}/services/`),
 
-            fetch(`${API_BASE}/projects/`),
+            authFetch(`${API_BASE}/projects/`),
 
-            fetch(`${API_BASE}/expenses/categories`),
+            authFetch(`${API_BASE}/expenses/categories`),
 
-            fetch(`${API_BASE}/assets/`),
+            authFetch(`${API_BASE}/assets/`),
 
-            fetch(`${API_BASE}/personnel/`),
+            authFetch(`${API_BASE}/personnel/`),
 
-            fetch(`${API_BASE}/materials/`)
+            authFetch(`${API_BASE}/materials/`)
 
         ]);
 
@@ -872,12 +992,14 @@ function populateSelectDropdowns() {
             if (document.getElementById("field_reported_by")) document.getElementById("field_reported_by").value = userMatch.id;
 
             if (document.getElementById("manual_reported_by")) document.getElementById("manual_reported_by").value = userMatch.id;
-
         }
-
     }
 
+    if (typeof window.populateServiceCategoriesAndUnits === 'function') {
+        window.populateServiceCategoriesAndUnits();
+    }
 }
+
 
 
 
@@ -894,7 +1016,10 @@ function openModal(modalId) {
     if (modalId === 'modalNewQuotation') modalId = 'modalQuotation';
     const el = document.getElementById(modalId);
 
-    if (el) el.classList.remove("hidden");
+    if (el) {
+        el.classList.remove("hidden");
+        el.style.removeProperty("display");
+    }
 
     const floatingBtn = document.getElementById("btnFloatingLogout");
     if (floatingBtn) floatingBtn.style.setProperty("display", "none", "important");
@@ -1246,7 +1371,7 @@ async function updatePendingInboxBadge() {
 
 
 
-        const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
+        const res = await authFetch(`${API_BASE}/expenses/inbox/pending`);
 
         if (!res.ok) return;
 
@@ -1350,7 +1475,7 @@ updateSoundToggleUI();
 
 setInterval(() => {
 
-    fetch('/healthz').catch(() => {});
+    authFetch('/healthz').catch(() => {});
 
 }, 300000); // Cada 5 minutos
 
@@ -1391,13 +1516,14 @@ if (typeof window !== 'undefined') {
     window.populateSelectDropdowns = populateSelectDropdowns;
     window.roundNumber = roundNumber;
     window.showInboxToastNotification = showInboxToastNotification;
+    window.renderPaginationControls = renderPaginationControls;
     window.sortCategoriesNumerically = sortCategoriesNumerically;
     window.switchView = switchView;
     window.toggleDropdown = toggleDropdown;
     window.toggleSoundAlerts = toggleSoundAlerts;
-    window.updateFieldTaxDisplays = updateFieldTaxDisplays;
+    window.printElementHtml = printElementHtml;
     window.updatePendingInboxBadge = updatePendingInboxBadge;
     window.updateSoundToggleUI = updateSoundToggleUI;
 }
 
-export { closeAllDropdowns, closeMobileSubmenu, closeModal, isMobileViewport, loadInitialMasterData, openMobileSubmenu, openModal, parseLocalizedNumber, playNotificationChime, populateSelect, populateSelectDropdowns, roundNumber, showInboxToastNotification, sortCategoriesNumerically, switchView, toggleDropdown, toggleSoundAlerts, updateFieldTaxDisplays, updatePendingInboxBadge, updateSoundToggleUI };
+export { closeAllDropdowns, closeMobileSubmenu, closeModal, isMobileViewport, loadInitialMasterData, openMobileSubmenu, openModal, parseLocalizedNumber, playNotificationChime, populateSelect, populateSelectDropdowns, printElementHtml, renderPaginationControls, roundNumber, showInboxToastNotification, sortCategoriesNumerically, switchView, toggleDropdown, toggleSoundAlerts, updateFieldTaxDisplays, updatePendingInboxBadge, updateSoundToggleUI };

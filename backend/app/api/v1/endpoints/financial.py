@@ -858,6 +858,8 @@ def get_payables(
 @router.post("/cxp")
 def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
     doc = (p_in.doc_type or "factura").strip().lower()
+    islr_r = 0.0
+    ret_islr_usd = 0.0
     
     # 1. Caso Nota de Entrega Informal (Sin IVA, Sin Retención)
     if doc == "nota_entrega":
@@ -865,6 +867,8 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
         tax_usd = 0.0
         ret_rate = 0.0
         ret_iva_usd = 0.0
+        islr_r = 0.0
+        ret_islr_usd = 0.0
         net_usd = p_in.amount_usd
         voucher_num = None
         voucher_date = None

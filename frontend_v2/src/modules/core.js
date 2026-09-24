@@ -582,38 +582,39 @@ function switchView(viewName, moduleCategory, targetSubtab = null) {
         if (moduleCategory) sessionStorage.setItem('dalor_active_category', moduleCategory);
     } catch(e) {}
 
-    if (viewName === 'executive' && typeof loadExecutiveDashboard === 'function') loadExecutiveDashboard();
+    if (viewName === 'executive' && typeof window.loadExecutiveDashboard === 'function') window.loadExecutiveDashboard();
     if (viewName === 'financial') {
         const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_financial') || sessionStorage.getItem('dalor_active_subtab_financial') || 'cxc';
-        if (typeof switchFinancialSubtab === 'function') switchFinancialSubtab(sub);
+        if (typeof window.switchFinancialSubtab === 'function') window.switchFinancialSubtab(sub);
         else if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab(sub);
     }
     if (viewName === 'maintenance') {
         const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_maintenance') || sessionStorage.getItem('dalor_active_subtab_maintenance') || 'users';
-        if (typeof switchMaintenanceSubtab === 'function') switchMaintenanceSubtab(sub);
+        if (typeof window.switchMaintenanceSubtab === 'function') window.switchMaintenanceSubtab(sub);
         else if (typeof window.openMaintenanceSubtab === 'function') window.openMaintenanceSubtab(sub);
     }
-    if (viewName === 'quotations' && typeof loadQuotations === 'function') loadQuotations();
-    if (viewName === 'clients' && typeof loadClients === 'function') loadClients();
+    if (viewName === 'quotations' && typeof window.loadQuotations === 'function') window.loadQuotations();
+    if (viewName === 'clients' && typeof window.loadClients === 'function') window.loadClients();
+    if (viewName === 'services' && typeof window.loadServices === 'function') window.loadServices();
     if (viewName === 'projects') {
         const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_projects') || sessionStorage.getItem('dalor_active_subtab_projects') || 'list';
-        if (typeof switchProjectSubtab === 'function') switchProjectSubtab(sub);
-        else if (typeof initProjectPlanningView === 'function') initProjectPlanningView();
+        if (typeof window.switchProjectSubtab === 'function') window.switchProjectSubtab(sub);
+        else if (typeof window.initProjectPlanningView === 'function') window.initProjectPlanningView();
     }
     if (viewName === 'dispatch') {
         const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_dispatch') || sessionStorage.getItem('dalor_active_subtab_dispatch') || 'list';
-        if (typeof switchDispatchSubtab === 'function') switchDispatchSubtab(sub);
-        else if (typeof initDispatchView === 'function') initDispatchView();
+        if (typeof window.switchDispatchSubtab === 'function') window.switchDispatchSubtab(sub);
+        else if (typeof window.initDispatchView === 'function') window.initDispatchView();
     }
-    if (viewName === 'dashboard' && typeof loadComparisonDashboard === 'function') loadComparisonDashboard();
+    if (viewName === 'dashboard' && typeof window.loadComparisonDashboard === 'function') window.loadComparisonDashboard();
     if (viewName === 'resources') {
         const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_resources') || sessionStorage.getItem('dalor_active_subtab_resources') || 'dashboard';
-        if (typeof switchResourceSubtab === 'function') switchResourceSubtab(sub);
-        else if (typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab(sub);
+        if (typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab(sub);
+        else if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab(sub);
     }
-    if (viewName === 'inbox' && typeof loadPendingExpensesInbox === 'function') loadPendingExpensesInbox();
-    if (viewName === 'tree' && typeof loadCategoriesTree === 'function') loadCategoriesTree();
-    if (viewName === 'expenses-log' && typeof loadExpensesLog === 'function') loadExpensesLog();
+    if (viewName === 'inbox' && typeof window.loadPendingExpensesInbox === 'function') window.loadPendingExpensesInbox();
+    if (viewName === 'tree' && typeof window.loadCategoriesTree === 'function') window.loadCategoriesTree();
+    if (viewName === 'expenses-log' && typeof window.loadExpensesLog === 'function') window.loadExpensesLog();
 
     if (window.onViewSwitched) window.onViewSwitched(viewName);
 }

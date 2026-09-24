@@ -93,7 +93,8 @@ async def add_strict_no_cache_headers(request, call_next):
 
 # Rutas de Frontend y Uploads
 ROOT_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-FRONTEND_DIR = os.path.join(ROOT_PROJECT_DIR, "frontend")
+FRONTEND_V2_DIST = os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "dist")
+FRONTEND_DIR = FRONTEND_V2_DIST if os.path.exists(FRONTEND_V2_DIST) else os.path.join(ROOT_PROJECT_DIR, "frontend")
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 

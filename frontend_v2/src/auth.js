@@ -197,8 +197,8 @@ export function redirectUserByRole(user) {
         if (typeof window.loadProjectsList === 'function') window.loadProjectsList();
     } else {
         // Director General / Admin
-        window.switchView('dashboard', 'proyectos');
-        if (typeof window.loadComparisonDashboard === 'function') window.loadComparisonDashboard();
+        window.switchView('projects', 'proyectos');
+        if (typeof window.loadProjectsList === 'function') window.loadProjectsList();
     }
 }
 

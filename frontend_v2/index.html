@@ -17,6 +17,47 @@
     
     <!-- Hoja de Estilos Corporativa Extraída -->
     <link rel="stylesheet" href="/css/styles.css?v=2026.09.20">
+
+    <!-- 🌐 ENTORNO GLOBAL COMPARTIDO & PRE-ACTIVACIÓN INMEDIATA ANTI-PANTALLA BLANCA -->
+    <script>
+        window.API_BASE = window.location.origin + "/api/v1";
+        window.EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 850.0;
+        window.BCV_DATA = { rate: 850.0, date_value: '', source: 'BCV Oficial', source_tier: 'oficial_directo' };
+        window.allClients = window.allClients || [];
+        window.allServices = window.allServices || [];
+        window.allProjects = window.allProjects || [];
+        window.allCategories = window.allCategories || [];
+        window.allAssets = window.allAssets || [];
+        window.allPersonnel = window.allPersonnel || [];
+        window.allMaterials = window.allMaterials || [];
+        window.selectedPersonnelIds = window.selectedPersonnelIds || [];
+        window.selectedVehicleIds = window.selectedVehicleIds || [];
+        window.selectedToolIds = window.selectedToolIds || [];
+        window.selectedMaterialIds = window.selectedMaterialIds || [];
+        try {
+            window.currentUser = JSON.parse(localStorage.getItem('dalor_user') || 'null');
+        } catch(e) { window.currentUser = null; }
+        window.authToken = localStorage.getItem('dalor_token') || null;
+
+        if (window.authToken && window.currentUser && window.authToken !== 'null' && window.authToken !== 'undefined') {
+            document.documentElement.classList.add('is-auth');
+            document.addEventListener("DOMContentLoaded", function() {
+                var authShell = document.getElementById('app-authenticated-shell');
+                var loginScreen = document.getElementById('app-login-screen');
+                if (authShell) authShell.style.setProperty('display', 'block', 'important');
+                if (loginScreen) loginScreen.style.setProperty('display', 'none', 'important');
+                
+                var saved = localStorage.getItem('dalor_active_view') || sessionStorage.getItem('dalor_active_view') || 'projects';
+                var views = ['executive','financial','maintenance','quotations','clients','services','projects','dispatch','dashboard','resources','pwa','manual','tree','inbox','expenses-log'];
+                views.forEach(function(v) {
+                    var el = document.getElementById('view-' + v);
+                    if (el) el.classList.add('hidden');
+                });
+                var target = document.getElementById('view-' + saved) || document.getElementById('view-projects');
+                if (target) target.classList.remove('hidden');
+            });
+        }
+    </script>
 </head>
 <body>
     <!-- PORTAL DE ACCESO / LOGIN CORPORATIVO -->

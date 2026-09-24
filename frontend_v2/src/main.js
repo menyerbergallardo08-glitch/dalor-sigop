@@ -246,11 +246,11 @@ window.switchView = function(viewName, moduleCategory, targetSubtab = null) {
         if (el) el.classList.add('hidden');
     });
 
-    const activeView = document.getElementById(`view-${viewName}`);
+    const activeView = document.getElementById(`view-${viewName}`) || document.getElementById('view-projects');
     if (activeView) activeView.classList.remove('hidden');
 
     document.querySelectorAll(".nav-dropdown").forEach(drop => drop.classList.remove("active", "open"));
-    const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`);
+    const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`) || document.getElementById('dropdown-proyectos');
     if (activeDropdown) activeDropdown.classList.add("active");
 
     // Guardar estado de navegación para persistencia al refrescar
@@ -316,13 +316,14 @@ async function initApp() {
         applyPermissionMap(State.currentUser);
 
         // Restaurar la vista exacta y submódulo en el que estaba el usuario antes de refrescar
-        const savedView = localStorage.getItem('dalor_active_view') || sessionStorage.getItem('dalor_active_view');
-        const savedCategory = localStorage.getItem('dalor_active_category') || sessionStorage.getItem('dalor_active_category');
-        if (savedView) {
-            window.switchView(savedView, savedCategory || 'proyectos');
-        } else {
-            redirectUserByRole(State.currentUser);
+        let savedView = localStorage.getItem('dalor_active_view') || sessionStorage.getItem('dalor_active_view');
+        let savedCategory = localStorage.getItem('dalor_active_category') || sessionStorage.getItem('dalor_active_category');
+        const validViews = ['projects', 'financial', 'quotations', 'clients', 'services', 'dispatch', 'resources', 'maintenance', 'executive', 'dashboard'];
+        if (!savedView || !validViews.includes(savedView)) {
+            savedView = 'projects';
+            savedCategory = 'proyectos';
         }
+        window.switchView(savedView, savedCategory || 'proyectos');
 
         if (typeof window.loadInitialMasterData === 'function') {
             try { window.loadInitialMasterData(); } catch(e) { console.warn(e); }

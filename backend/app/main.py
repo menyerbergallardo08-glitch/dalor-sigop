@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -93,8 +93,7 @@ async def add_strict_no_cache_headers(request, call_next):
 
 # Rutas de Frontend y Uploads
 ROOT_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-FRONTEND_V2_DIST = os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "dist")
-FRONTEND_DIR = FRONTEND_V2_DIST if os.path.exists(FRONTEND_V2_DIST) else os.path.join(ROOT_PROJECT_DIR, "frontend")
+FRONTEND_DIR = os.path.join(ROOT_PROJECT_DIR, "frontend")
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
@@ -184,6 +183,8 @@ if os.path.exists(FRONTEND_DIR):
 
     @app.get("/{full_path:path}")
     def serve_spa_fallback(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API route not found")
         target_file = os.path.join(FRONTEND_DIR, full_path)
         if os.path.exists(target_file) and os.path.isfile(target_file):
             return FileResponse(target_file, headers=NO_CACHE_HEADERS)

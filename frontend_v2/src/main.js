@@ -21,22 +21,29 @@ try {
 } catch(e) { window.currentUser = null; }
 window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
 
-import { Api } from './api.js?v=2026.09.20.v97.1';
-import { State } from './state.js?v=2026.09.20.v97.1';
-import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js?v=2026.09.20.v97.1';
+window.authFetch = function(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
+};
+
+import { Api } from './api.js?v=2026.09.24.v98.31';
+import { State } from './state.js?v=2026.09.24.v98.31';
+import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js?v=2026.09.24.v98.31';
 
 // Carga e Inicialización de Submódulos Especializados
-import './modules/core.js?v=2026.09.20.v97.1';
-import './modules/bcv.js?v=2026.09.20.v97.1';
-import './modules/maintenance.js?v=2026.09.20.v97.1';
-import './modules/projects.js?v=2026.09.20.v97.1';
-import './modules/resources.js?v=2026.09.20.v97.1';
-import './modules/quotations.js?v=2026.09.20.v97.1';
-import './modules/expenses.js?v=2026.09.20.v97.1';
-import './modules/financial.js?v=2026.09.20.v97.1';
-import './modules/materials.js?v=2026.09.20.v97.1';
-import './modules/dispatch.js?v=2026.09.20.v97.1';
-import './modules/rentals.js?v=2026.09.20.v97.1';
+import './modules/core.js?v=2026.09.24.v98.31';
+import './modules/bcv.js?v=2026.09.24.v98.31';
+import './modules/maintenance.js?v=2026.09.24.v98.31';
+import './modules/projects.js?v=2026.09.24.v98.31';
+import './modules/resources.js?v=2026.09.24.v98.31';
+import './modules/quotations.js?v=2026.09.24.v98.31';
+import './modules/expenses.js?v=2026.09.24.v98.31';
+import './modules/financial.js?v=2026.09.24.v98.31';
+import './modules/materials.js?v=2026.09.24.v98.31';
+import './modules/dispatch.js?v=2026.09.24.v98.31';
+import './modules/rentals.js?v=2026.09.24.v98.31';
 
 // Exportar al scope global para compatibilidad total con eventos inline de index.html
 window.Api = Api;
@@ -220,9 +227,9 @@ async function fetchAndApplyBcvRate(forceRefresh = false) {
 window.fetchAndApplyBcvRate = fetchAndApplyBcvRate;
 
 // Router de Navegación de Vistas
-window.switchView = function(viewName, moduleCategory) {
+window.switchView = function(viewName, moduleCategory, targetSubtab = null) {
     if (typeof window.appSwitchView === 'function') {
-        window.appSwitchView(viewName, moduleCategory);
+        window.appSwitchView(viewName, moduleCategory, targetSubtab);
         return;
     }
 
@@ -246,16 +253,33 @@ window.switchView = function(viewName, moduleCategory) {
     const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`);
     if (activeDropdown) activeDropdown.classList.add("active");
 
+    // Guardar estado de navegación para persistencia al refrescar
+    try {
+        localStorage.setItem('dalor_active_view', viewName);
+        if (moduleCategory) localStorage.setItem('dalor_active_category', moduleCategory);
+        sessionStorage.setItem('dalor_active_view', viewName);
+        if (moduleCategory) sessionStorage.setItem('dalor_active_category', moduleCategory);
+    } catch(e) {}
+
     if (viewName === 'executive' && typeof window.loadExecutiveDashboard === 'function') window.loadExecutiveDashboard();
-    if (viewName === 'financial' && typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab('cxc');
-    if (viewName === 'maintenance' && typeof window.openMaintenanceSubtab === 'function') window.openMaintenanceSubtab('users');
+    if (viewName === 'financial') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_financial') || sessionStorage.getItem('dalor_active_subtab_financial') || 'cxc';
+        if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab(sub);
+    }
+    if (viewName === 'maintenance') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_maintenance') || sessionStorage.getItem('dalor_active_subtab_maintenance') || 'users';
+        if (typeof window.openMaintenanceSubtab === 'function') window.openMaintenanceSubtab(sub);
+    }
     if (viewName === 'quotations' && typeof window.loadQuotations === 'function') window.loadQuotations();
     if (viewName === 'clients' && typeof window.loadClients === 'function') window.loadClients();
     if (viewName === 'services' && typeof window.loadServices === 'function') window.loadServices();
     if (viewName === 'projects' && typeof window.initProjectPlanningView === 'function') window.initProjectPlanningView();
     if (viewName === 'dispatch' && typeof window.initDispatchView === 'function') window.initDispatchView();
     if (viewName === 'dashboard' && typeof window.loadComparisonDashboard === 'function') window.loadComparisonDashboard();
-    if (viewName === 'resources' && typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab('dashboard');
+    if (viewName === 'resources') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_resources') || sessionStorage.getItem('dalor_active_subtab_resources') || 'dashboard';
+        if (typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab(sub);
+    }
     if (viewName === 'inbox' && typeof window.loadPendingExpensesInbox === 'function') window.loadPendingExpensesInbox();
     if (viewName === 'tree' && typeof window.loadCategoriesTree === 'function') window.loadCategoriesTree();
     if (viewName === 'expenses-log' && typeof window.loadExpensesLog === 'function') window.loadExpensesLog();
@@ -269,7 +293,7 @@ window.switchView = function(viewName, moduleCategory) {
 };
 
 // Bootstrap Inicial
-document.addEventListener("DOMContentLoaded", async () => {
+async function initApp() {
     fetchAndApplyBcvRate();
     if (typeof window.initSearchDebounceBindings === 'function') {
         window.initSearchDebounceBindings();
@@ -281,12 +305,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (isAuth && State.currentUser) {
         document.body.classList.add('authenticated');
-        if (loginScreen) loginScreen.style.setProperty('display', 'none', 'important');
+        document.documentElement.classList.add('is-auth');
+        if (loginScreen) {
+            loginScreen.style.setProperty('display', 'none', 'important');
+            loginScreen.classList.add('hidden');
+        }
         if (authShell) authShell.style.setProperty('display', 'block', 'important');
         
         renderUserBadge();
         applyPermissionMap(State.currentUser);
-        redirectUserByRole(State.currentUser);
+
+        // Restaurar la vista exacta y submódulo en el que estaba el usuario antes de refrescar
+        const savedView = localStorage.getItem('dalor_active_view') || sessionStorage.getItem('dalor_active_view');
+        const savedCategory = localStorage.getItem('dalor_active_category') || sessionStorage.getItem('dalor_active_category');
+        if (savedView) {
+            window.switchView(savedView, savedCategory || 'proyectos');
+        } else {
+            redirectUserByRole(State.currentUser);
+        }
+
         if (typeof window.loadInitialMasterData === 'function') {
             try { window.loadInitialMasterData(); } catch(e) { console.warn(e); }
         }
@@ -295,7 +332,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     } else {
         document.body.classList.remove('authenticated');
-        if (loginScreen) loginScreen.style.setProperty('display', 'flex', 'important');
+        document.documentElement.classList.remove('is-auth');
+        if (loginScreen) {
+            loginScreen.style.setProperty('display', 'flex', 'important');
+            loginScreen.classList.remove('hidden');
+        }
         if (authShell) authShell.style.setProperty('display', 'none', 'important');
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}

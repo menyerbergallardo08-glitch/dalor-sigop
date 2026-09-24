@@ -20,6 +20,16 @@ var BCV_DATA = window.BCV_DATA = window.BCV_DATA || { rate: 850.0, source: 'BCV 
 var currentUser = window.currentUser || null;
 var authToken = window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
 
+/** authFetch — inyecta token en cada request usando window.fetch nativo (evita recursión) */
+function authFetch(url, options = {}) {
+    const t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    const h = { ...(options.headers || {}) };
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    if (options.body && !h['Content-Type']) h['Content-Type'] = 'application/json';
+    return window.fetch(url, { ...options, headers: h });
+}
+
+
 // --- BLOQUE L3480-L4951 ---
 // ----------------------------------------------------
 
@@ -38,6 +48,10 @@ function openResourceSubtab(subtabName) {
 
 
 function switchResourceSubtab(subtabName) {
+    try { 
+        sessionStorage.setItem('dalor_active_subtab_resources', subtabName); 
+        localStorage.setItem('dalor_active_subtab_resources', subtabName);
+    } catch(e) {}
 
     const allSubtabs = ['dashboard', 'fleet', 'machinery', 'tools', 'materials', 'personnel', 'rentals'];
 
@@ -86,7 +100,7 @@ async function loadResourceDashboard() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/resources/matrix-status`);
+        const res = await authFetch(`${API_BASE}/resources/matrix-status`);
 
         const data = await res.json();
 
@@ -201,18 +215,29 @@ async function loadResourceDashboard() {
 // ----------------------------------------------------
 
 async function loadFleetList() {
-
     const tbody = document.getElementById("fleetTableBody");
+    if (!tbody) return;
 
     tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando flota...</td></tr>`;
 
-
-
     try {
-
-        const res = await fetch(`${API_BASE}/assets/fleet-summary`);
+        const token = window.authToken || localStorage.getItem('dalor_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await authFetch(`${API_BASE}/assets/fleet-summary`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const fleet = await res.json();
-        const vehicles = fleet.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta' || (a.asset_code && a.asset_code.includes('-V-')));
+        
+        if (!Array.isArray(fleet)) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No se pudo procesar la respuesta de la flota.</td></tr>`;
+            return;
+        }
+
+        const vehicles = fleet.filter(a => a && (
+            a.asset_type === 'vehiculo' || 
+            a.asset_type === 'camioneta' || 
+            (typeof a.asset_code === 'string' && (a.asset_code.includes('-V-') || a.asset_code.startsWith('FLT-'))) ||
+            (typeof a.category === 'string' && a.category.toLowerCase().includes('flota'))
+        ));
 
         if (vehicles.length === 0) {
             tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No hay vehículos registrados en la flota.</td></tr>`;
@@ -220,28 +245,40 @@ async function loadFleetList() {
         }
 
         tbody.innerHTML = vehicles.map(v => {
+            if (!v) return '';
             let semColor = '#166534';
             let semBg = '#dcfce7';
-            if (v.traffic_light === 'ROJO_VENCIDO') {
+            const light = String(v?.traffic_light ?? 'VERDE_OK');
+            if (light === 'ROJO_VENCIDO') {
                 semColor = '#991b1b';
                 semBg = '#fee2e2';
-            } else if (v.traffic_light === 'AMARILLO_PROXIMO') {
+            } else if (light === 'AMARILLO_PROXIMO') {
                 semColor = '#92400e';
                 semBg = '#fef3c7';
             }
 
-            const inBase = v.status === 'disponible_base' || !v.current_project_id;
+            const inBase = (v?.status === 'disponible_base') || !v?.current_project_id;
+            const curOdo = Number(v?.current_odometer ?? 0);
+            const remKm = Number(v?.remaining_km_to_service ?? 0);
+            const plateStr = v?.license_plate || '-';
+            const locStr = v?.current_location || 'Sede Central Dalor';
+            const custStr = v?.custodian || 'Disponible en Base';
+            const vName = v?.name || 'Vehículo';
+            const safeName = String(vName).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            const safeCode = v?.asset_code || 'FLT';
+            const vId = v?.id ?? 0;
+            const vBrand = v?.brand ? `(${v.brand})` : '';
 
             return `
             <tr>
-                <td style="font-weight: 800; color: var(--dalor-blue);">${v.asset_code}</td>
-                <td style="font-weight: 700; color: var(--dalor-navy);">${v.name} ${v.brand ? `(${v.brand})` : ''}</td>
-                <td style="font-weight: 800; font-family: monospace;">${v.license_plate || '-'}</td>
-                <td style="font-weight: 800;">${v.current_odometer.toLocaleString()} Km</td>
-                <td>En ${v.remaining_km_to_service.toLocaleString()} Km</td>
+                <td style="font-weight: 800; color: var(--dalor-blue);">${safeCode}</td>
+                <td style="font-weight: 700; color: var(--dalor-navy);">${vName} ${vBrand}</td>
+                <td style="font-weight: 800; font-family: monospace;">${plateStr}</td>
+                <td style="font-weight: 800;">${curOdo.toLocaleString()} Km</td>
+                <td>En ${remKm.toLocaleString()} Km</td>
                 <td>
                     <span style="font-size: 10px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${semBg}; color: ${semColor};">
-                        ${v.traffic_light.replace('_', ' ')}
+                        ${light.replace(/_/g, ' ')}
                     </span>
                 </td>
                 <td>
@@ -249,51 +286,43 @@ async function loadFleetList() {
                         ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA'}
                     </span>
                 </td>
-                <td>${v.current_location}</td>
-                <td>${v.custodian}</td>
+                <td>${locStr}</td>
+                <td>${custStr}</td>
                 <td style="text-align: center; white-space: nowrap;">
-                    <button onclick="openAssetHistoryModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
+                    <button onclick="openAssetHistoryModal(${vId}, '${safeCode}', '${safeName}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
                         <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
                     </button>
-                    <button onclick="openOdometerOcrModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', '${v.license_plate || ''}', ${v.current_odometer})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
+                    <button onclick="openOdometerOcrModal(${vId}, '${safeCode}', '${safeName}', '${plateStr}', ${curOdo})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
                         <i class="fa-solid fa-camera"></i> Odómetro
                     </button>
-                    <button onclick="openCalibrateOdometerModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Resetear Odómetro con Clave de Director">
+                    <button onclick="openCalibrateOdometerModal(${vId}, '${safeCode}', '${safeName}', ${curOdo})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Resetear Odómetro con Clave de Director">
                         <i class="fa-solid fa-key"></i> Calibrar
                     </button>
-                    <button onclick="openRecordServiceModal(${v.id}, '${v.asset_code}', '${v.name.replace(/'/g, "\\'")}', ${v.current_odometer})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
+                    <button onclick="openRecordServiceModal(${vId}, '${safeCode}', '${safeName}', ${curOdo})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
                         <i class="fa-solid fa-wrench"></i> Servicio
                     </button>
                     ${inBase ? `
-                        <button onclick="openAssignModal('asset', ${v.id}, '${v.name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
+                        <button onclick="openAssignModal('asset', ${vId}, '${safeName}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
                             Asignar a Obra
                         </button>
                     ` : `
-                        <button onclick="openAssignModal('asset', ${v.id}, '${v.name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
+                        <button onclick="openAssignModal('asset', ${vId}, '${safeName}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
                             <i class="fa-solid fa-arrows-split-up-and-left"></i>
                         </button>
-                        <button onclick="returnResourceToBase('asset', ${v.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
+                        <button onclick="returnResourceToBase('asset', ${vId})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
                             <i class="fa-solid fa-warehouse"></i>
                         </button>
                     `}
-                    <button onclick="deleteAssetItem(${v.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Vehículo">
-
+                    <button onclick="deleteAssetItem(${vId})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Vehículo">
                         <i class="fa-solid fa-trash"></i>
-
                     </button>
-
                 </td>
-
             </tr>`;
-
         }).join('');
-
     } catch (e) {
-
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar flota.</td></tr>`;
-
+        console.error("[FLEET ERROR]", e);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar flota: ${e?.message || e}</td></tr>`;
     }
-
 }
 
 
@@ -434,7 +463,7 @@ async function submitRecordService(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/assets/${assetId}/record-service`, {
+        const res = await authFetch(`${API_BASE}/assets/${assetId}/record-service`, {
 
             method: "POST",
 
@@ -582,7 +611,7 @@ async function handleOdometerImageSelected(event) {
 
 
 
-        const res = await fetch(`${API_BASE}/ocr/scan-odometer`, {
+        const res = await authFetch(`${API_BASE}/ocr/scan-odometer`, {
 
             method: "POST",
 
@@ -674,7 +703,7 @@ async function submitConfirmOdometer(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/assets/${assetId}/record-odometer`, {
+        const res = await authFetch(`${API_BASE}/assets/${assetId}/record-odometer`, {
 
             method: "POST",
 
@@ -781,7 +810,7 @@ async function submitCalibrateOdometer(event) {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/assets/${assetId}/calibrate-odometer`, {
+        const res = await authFetch(`${API_BASE}/assets/${assetId}/calibrate-odometer`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -860,7 +889,7 @@ async function submitCalibrateAllOdometers(event) {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/assets/calibrate-all-odometers`, {
+        const res = await authFetch(`${API_BASE}/assets/calibrate-all-odometers`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -924,7 +953,7 @@ async function submitCreateVehicle(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/assets/`, {
+        const res = await authFetch(`${API_BASE}/assets/`, {
 
             method: "POST",
 
@@ -980,7 +1009,7 @@ async function loadMachineryList() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/assets/`);
+        const res = await authFetch(`${API_BASE}/assets/`);
 
         const assets = await res.json();
 
@@ -1068,7 +1097,7 @@ async function loadMachineryList() {
 
                     `}
 
-                    <button onclick="openAssetHistoryModal(${m.id}, '${m.asset_code}', '${m.name.replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
+                    <button onclick="openAssetHistoryModal(${m.id})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
                         <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
                     </button>
                     <button onclick="deleteAssetItem(${m.id})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Maquinaria">
@@ -1108,7 +1137,7 @@ async function loadToolsList() {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de herramientas agrupadas...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}/assets/tools-summary`);
+        const res = await authFetch(`${API_BASE}/assets/tools-summary`);
         if (res.ok) {
             groupedToolsList = await res.json();
             rawToolsList = groupedToolsList.flatMap(g => g.items || []);
@@ -1117,7 +1146,7 @@ async function loadToolsList() {
         }
 
         // Fallback si endpoint no está disponible
-        const fallbackRes = await fetch(`${API_BASE}/assets/`);
+        const fallbackRes = await authFetch(`${API_BASE}/assets/`);
         const assets = await fallbackRes.json();
         const nonTools = ['vehiculo', 'camioneta', 'camion', 'remolque', 'maquinaria', 'planta', 'generador', 'compresor'];
         rawToolsList = assets.filter(a => !nonTools.includes(a.asset_type));
@@ -1165,7 +1194,31 @@ async function loadToolsList() {
     }
 }
 
+let lastGroupedToolsList = [];
+let toolsCurrentPage = 1;
+let toolsPageSize = 10;
+
+function goToToolsPage(page) {
+    toolsCurrentPage = page;
+    renderGroupedToolsPaginated();
+    const tableEl = document.getElementById("toolsTableBody");
+    if (tableEl) tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function changeToolsPageSize(size) {
+    toolsPageSize = parseInt(size) || 10;
+    toolsCurrentPage = 1;
+    renderGroupedToolsPaginated();
+}
+
 function renderGroupedTools(list) {
+    lastGroupedToolsList = list || [];
+    toolsCurrentPage = 1;
+    renderGroupedToolsPaginated();
+}
+
+function renderGroupedToolsPaginated() {
+    const list = lastGroupedToolsList;
     const tbody = document.getElementById("toolsTableBody");
     const countBadge = document.getElementById("toolsCountBadge");
     if (countBadge) countBadge.innerText = `${list.length} modelos (${list.reduce((acc, g) => acc + g.total, 0)} unidades físicas)`;
@@ -1173,15 +1226,30 @@ function renderGroupedTools(list) {
     if (!tbody) return;
     if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">No se encontraron herramientas con los filtros seleccionados.</td></tr>`;
+        const container = document.getElementById("toolsPaginationContainer");
+        if (container) container.innerHTML = "";
         return;
     }
 
-    tbody.innerHTML = list.map((g, idx) => {
+    const { startIndex, endIndex } = (window.renderPaginationControls || renderPaginationControls)({
+        containerId: "toolsPaginationContainer",
+        totalItems: list.length,
+        currentPage: toolsCurrentPage,
+        pageSize: toolsPageSize,
+        onPageChange: "goToToolsPage",
+        onPageSizeChange: "changeToolsPageSize",
+        itemLabel: "modelo(s) de herramientas",
+        pageSizeOptions: [10, 20, 50, 100]
+    });
+
+    const pageItems = list.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageItems.map((g, idx) => {
         const sampleCode = g.items[0]?.asset_code || 'HER';
         const sampleBrand = g.items[0]?.brand || '';
         const sampleModel = g.items[0]?.model ? `(${g.items[0].model})` : '';
         const locDisplay = g.locations.length > 0 ? g.locations.slice(0, 2).join(', ') : 'Sede Central';
-        const rowCollapseId = `tool_units_row_${idx}`;
+        const rowCollapseId = `tool_units_row_${startIndex + idx}`;
 
         // Renderizar tabla interna de unidades individuales
         const unitsRows = g.items.map(it => {
@@ -1335,7 +1403,7 @@ async function openToolHistoryModal(encodedName) {
     openModal("modalToolHistory");
 
     try {
-        const res = await fetch(`${API_BASE}/resources/history?name=${encodeURIComponent(name)}`);
+        const res = await authFetch(`${API_BASE}/resources/history?name=${encodeURIComponent(name)}`);
         if (!res.ok) throw new Error("Error en servidor");
         const history = await res.json();
 
@@ -1401,7 +1469,7 @@ async function submitCreateTool(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/assets/`, {
+        const res = await authFetch(`${API_BASE}/assets/`, {
 
             method: "POST",
 
@@ -1447,7 +1515,7 @@ async function deleteAssetItem(assetId) {
 
     try {
 
-        await fetch(`${API_BASE}/assets/${assetId}`, { method: "DELETE" });
+        await authFetch(`${API_BASE}/assets/${assetId}`, { method: "DELETE" });
 
         await loadInitialMasterData();
 
@@ -1481,7 +1549,7 @@ async function loadPersonnelTableList() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/personnel/`);
+        const res = await authFetch(`${API_BASE}/personnel/`);
 
         allPersonnel = await res.json();
 
@@ -1656,7 +1724,7 @@ async function submitResourceAction(event) {
 
     try {
 
-        const res = await fetch(endpoint, {
+        const res = await authFetch(endpoint, {
 
             method: "POST",
 
@@ -1712,7 +1780,7 @@ async function returnResourceToBase(type, id) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/resources/return-to-base`, {
+        const res = await authFetch(`${API_BASE}/resources/return-to-base`, {
 
             method: "POST",
 
@@ -1913,7 +1981,7 @@ async function submitCreateAsset(e) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/assets/`, {
+        const res = await authFetch(`${API_BASE}/assets/`, {
 
             method: "POST",
 
@@ -2021,7 +2089,7 @@ async function submitCreatePersonnel(e) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/personnel/`, {
+        const res = await authFetch(`${API_BASE}/personnel/`, {
 
             method: "POST",
 
@@ -2064,48 +2132,7 @@ async function submitCreatePersonnel(e) {
 
 
 
-// --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
-if (typeof window !== 'undefined') {
-    window.deleteAssetItem = deleteAssetItem;
-    window.handleOdometerImageSelected = handleOdometerImageSelected;
-    window.loadFleetList = loadFleetList;
-    window.loadMachineryList = loadMachineryList;
-    window.loadPersonnelTableList = loadPersonnelTableList;
-    window.loadResourceDashboard = loadResourceDashboard;
-    window.loadToolsList = loadToolsList;
-    window.onAssetTypeChanged = onAssetTypeChanged;
-    window.openAssignModal = openAssignModal;
-    window.openNewAssetModal = openNewAssetModal;
-    window.openNewPersonnelModal = openNewPersonnelModal;
-    window.openNewToolModal = openNewToolModal;
-    window.openNewToolModal_v2 = openNewToolModal_v2;
-    window.openNewVehicleModal = openNewVehicleModal;
-    window.openNewVehicleModal_v2 = openNewVehicleModal_v2;
-    window.openOdometerOcrModal = openOdometerOcrModal;
-    window.openRecordServiceModal = openRecordServiceModal;
-    window.openResourceSubtab = openResourceSubtab;
-    window.returnResourceToBase = returnResourceToBase;
-    window.submitConfirmOdometer = submitConfirmOdometer;
-    window.submitCreateAsset = submitCreateAsset;
-    window.submitCreatePersonnel = submitCreatePersonnel;
-    window.submitCreateTool = submitCreateTool;
-    window.submitCreateVehicle = submitCreateVehicle;
-    window.submitRecordService = submitRecordService;
-    window.submitResourceAction = submitResourceAction;
-    window.switchResourceSubtab = switchResourceSubtab;
-    window.openCalibrateOdometerModal = openCalibrateOdometerModal;
-    window.submitCalibrateOdometer = submitCalibrateOdometer;
-    window.openCalibrateAllOdometersModal = openCalibrateAllOdometersModal;
-    window.submitCalibrateAllOdometers = submitCalibrateAllOdometers;
-    window.filterToolsList = filterToolsList;
-    window.assignAvailableToolFromGroup = assignAvailableToolFromGroup;
-    window.openToolHistoryModal = openToolHistoryModal;
-}
-
-export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, submitCalibrateAllOdometers, filterToolsList, assignAvailableToolFromGroup, openToolHistoryModal };
-
-
-async function openAssetHistoryModal(assetId, assetCode, assetName) {
+async function openAssetHistoryModal(assetId, assetCode = null, assetName = null) {
     const titleEl = document.getElementById("assetHistoryTitle");
     const subEl = document.getElementById("assetHistorySubtitle");
     const locEl = document.getElementById("assetHistCurrentLoc");
@@ -2114,15 +2141,21 @@ async function openAssetHistoryModal(assetId, assetCode, assetName) {
     const statusEl = document.getElementById("assetHistStatusBadge");
     const tbody = document.getElementById("assetHistoryTableBody");
 
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color: #2563eb;"></i> Bitácora & Trazabilidad: [${assetCode}] ${assetName}`;
+    const matched = (allAssets || []).find(a => a.id === assetId) || {};
+    const code = assetCode || matched.asset_code || matched.code || `ACT-${assetId}`;
+    const name = assetName || matched.name || 'Activo / Maquinaria';
+
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color: #2563eb;"></i> Bitácora & Trazabilidad: [${code}] ${name}`;
     if (subEl) subEl.innerText = `Consultando historial de asignaciones, choferes, obras y despachos...`;
     if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando bitácora de uso...</td></tr>`;
 
     openModal("modalAssetHistory");
 
     try {
-        const res = await fetch(`${API_BASE}/assets/${assetId}/history`);
-        if (!res.ok) throw new Error("Error consultando bitácora");
+        const token = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await authFetch(`${API_BASE}/assets/${assetId}/history`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const a = data.asset || {};
         const timeline = data.timeline || [];
@@ -2165,4 +2198,47 @@ async function openAssetHistoryModal(assetId, assetCode, assetName) {
     }
 }
 
-window.openAssetHistoryModal = openAssetHistoryModal;
+// --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
+if (typeof window !== 'undefined') {
+    window.deleteAssetItem = deleteAssetItem;
+    window.handleOdometerImageSelected = handleOdometerImageSelected;
+    window.loadFleetList = loadFleetList;
+    window.loadFleetTable = loadFleetList;
+    window.loadMachineryList = loadMachineryList;
+    window.loadPersonnelTableList = loadPersonnelTableList;
+    window.loadResourceDashboard = loadResourceDashboard;
+    window.loadToolsList = loadToolsList;
+    window.onAssetTypeChanged = onAssetTypeChanged;
+    window.openAssignModal = openAssignModal;
+    window.openNewAssetModal = openNewAssetModal;
+    window.openNewPersonnelModal = openNewPersonnelModal;
+    window.openNewToolModal = openNewToolModal;
+    window.openNewToolModal_v2 = openNewToolModal_v2;
+    window.openNewVehicleModal = openNewVehicleModal;
+    window.openNewVehicleModal_v2 = openNewVehicleModal_v2;
+    window.openOdometerOcrModal = openOdometerOcrModal;
+    window.openRecordServiceModal = openRecordServiceModal;
+    window.openResourceSubtab = openResourceSubtab;
+    window.returnResourceToBase = returnResourceToBase;
+    window.submitConfirmOdometer = submitConfirmOdometer;
+    window.submitCreateAsset = submitCreateAsset;
+    window.submitCreatePersonnel = submitCreatePersonnel;
+    window.submitCreateTool = submitCreateTool;
+    window.submitCreateVehicle = submitCreateVehicle;
+    window.submitRecordService = submitRecordService;
+    window.submitResourceAction = submitResourceAction;
+    window.switchResourceSubtab = switchResourceSubtab;
+    window.openCalibrateOdometerModal = openCalibrateOdometerModal;
+    window.submitCalibrateOdometer = submitCalibrateOdometer;
+    window.openCalibrateAllOdometersModal = openCalibrateAllOdometersModal;
+    window.submitCalibrateAllOdometers = submitCalibrateAllOdometers;
+    window.filterToolsList = filterToolsList;
+    window.assignAvailableToolFromGroup = assignAvailableToolFromGroup;
+    window.openToolHistoryModal = openToolHistoryModal;
+    window.openAssetHistoryModal = openAssetHistoryModal;
+    window.goToToolsPage = goToToolsPage;
+    window.changeToolsPageSize = changeToolsPageSize;
+    window.renderGroupedToolsPaginated = renderGroupedToolsPaginated;
+}
+
+export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, submitCalibrateAllOdometers, filterToolsList, assignAvailableToolFromGroup, openToolHistoryModal, openAssetHistoryModal, goToToolsPage, changeToolsPageSize, renderGroupedToolsPaginated };

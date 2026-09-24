@@ -19,6 +19,15 @@ var EXCHANGE_RATE = window.EXCHANGE_RATE = window.EXCHANGE_RATE || 850.0;
 var BCV_DATA = window.BCV_DATA = window.BCV_DATA || { rate: 850.0, source: 'BCV Oficial' };
 var currentUser = window.currentUser || null;
 var authToken = window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+/** authFetch - inyecta token en cada request usando window.fetch nativo */
+function authFetch(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
+}
+
 
 // --- BLOQUE L227-L322 ---
 // ==============================================================================
@@ -254,7 +263,7 @@ async function processOCRFile(rawFile) {
 
             try {
 
-                const resCat = await fetch(`${API_BASE}/expenses/categories`);
+                const resCat = await authFetch(`${API_BASE}/expenses/categories`);
 
                 allCategories = await resCat.json();
 
@@ -270,7 +279,7 @@ async function processOCRFile(rawFile) {
 
 
 
-        const res = await fetch(`${API_BASE}/ocr/scan-ticket`, {
+        const res = await authFetch(`${API_BASE}/ocr/scan-ticket`, {
 
             method: "POST",
 
@@ -734,7 +743,7 @@ async function submitFieldExpense(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/`, {
+        const res = await authFetch(`${API_BASE}/expenses/`, {
 
             method: "POST",
 
@@ -760,7 +769,7 @@ async function submitFieldExpense(event) {
 
                 payload.allow_duplicate = true;
 
-                const res2 = await fetch(`${API_BASE}/expenses/`, {
+                const res2 = await authFetch(`${API_BASE}/expenses/`, {
 
                     method: "POST",
 
@@ -964,7 +973,7 @@ async function submitManualExpense(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/`, {
+        const res = await authFetch(`${API_BASE}/expenses/`, {
 
             method: "POST",
 
@@ -1018,7 +1027,7 @@ async function loadPendingExpensesInbox() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/inbox/pending`);
+        const res = await authFetch(`${API_BASE}/expenses/inbox/pending`);
 
         allPendingExpenses = await res.json();
 
@@ -1106,122 +1115,90 @@ async function loadPendingExpensesInbox() {
 
 
 
-function openValidateExpenseModal(expenseId) {
-
-    const exp = allPendingExpenses.find(e => e.id === expenseId);
-
+async function openValidateExpenseModal(expenseId) {
+    const exp = (allPendingExpenses || []).find(e => e.id === expenseId);
     if (!exp) return;
 
+    // Asegurar carga fresca de proyectos y categorías contables
+    let projectsList = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+    let categoriesList = (window.allCategories && window.allCategories.length > 0) ? window.allCategories : (allCategories || []);
 
+    if (projectsList.length === 0 || categoriesList.length === 0) {
+        try {
+            const token = window.authToken || localStorage.getItem('dalor_token');
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+            const [pRes, cRes] = await Promise.all([
+                authFetch(`${API_BASE}/projects/`, { headers }),
+                authFetch(`${API_BASE}/expenses/categories`, { headers })
+            ]);
+            if (pRes.ok) {
+                projectsList = await pRes.json();
+                window.allProjects = allProjects = projectsList;
+            }
+            if (cRes.ok) {
+                categoriesList = await cRes.json();
+                window.allCategories = allCategories = categoriesList;
+            }
+        } catch(e) {
+            console.warn("[EXPENSES] Error recargando maestros para modal:", e);
+        }
+    }
 
     document.getElementById("val_expense_id").value = exp.id;
-
     document.getElementById("val_supplier_vendor").value = exp.supplier_vendor || "";
-
     document.getElementById("val_amount_usd").value = exp.amount_usd || "";
-
     document.getElementById("val_amount_bs").value = exp.amount_bs || "";
-
     document.getElementById("val_description").value = exp.description || "";
-
     document.getElementById("val_expense_type").value = exp.project_id ? "costo_obra" : "gasto_sede";
 
-
-
     // Foto
-
     const imgEl = document.getElementById("val_receipt_image");
-
     const linkEl = document.getElementById("val_receipt_link");
-
     const phEl = document.getElementById("val_receipt_placeholder");
 
     if (imgEl && exp.receipt_image_path) {
-
         imgEl.src = exp.receipt_image_path;
-
         imgEl.style.display = "block";
-
         if (phEl) phEl.style.display = "none";
-
         linkEl.href = exp.receipt_image_path;
-
         linkEl.style.display = "inline-block";
-
     } else if (imgEl) {
-
         imgEl.src = "";
-
         imgEl.style.display = "none";
-
         if (phEl) phEl.style.display = "block";
-
         linkEl.style.display = "none";
-
     }
-
-
 
     if (document.getElementById("val_is_tax_exempt")) {
-
         document.getElementById("val_is_tax_exempt").value = exp.is_tax_exempt ? "true" : "false";
-
     }
-
     const valBase = exp.base_amount_usd !== undefined && exp.base_amount_usd !== null ? exp.base_amount_usd : (exp.is_tax_exempt ? exp.amount_usd : +(exp.amount_usd / 1.16).toFixed(2));
-
     const valTax = exp.tax_amount_usd !== undefined && exp.tax_amount_usd !== null ? exp.tax_amount_usd : (exp.is_tax_exempt ? 0.0 : +(exp.amount_usd - valBase).toFixed(2));
-
     if (document.getElementById("val_base_usd")) document.getElementById("val_base_usd").value = Number(valBase).toFixed(2);
-
     if (document.getElementById("val_tax_usd")) document.getElementById("val_tax_usd").value = Number(valTax).toFixed(2);
 
-
-
     // Proyectos Select
-
     const projSelect = document.getElementById("val_project_id");
-
     if (projSelect) {
-
         projSelect.innerHTML = `<option value="">-- Seleccione Proyecto --</option>` + 
-
-            allProjects.map(p => `<option value="${p.id}" ${p.id === exp.project_id ? 'selected' : ''}>[${p.code}] ${p.name}</option>`).join('');
-
+            projectsList.map(p => `<option value="${p.id}" ${p.id === exp.project_id ? 'selected' : ''}>[${p.code || 'PRJ'}] ${p.name}</option>`).join('');
     }
-
-
 
     // Categorías Select (Orden Numérico & Preselección Inteligente por OCR)
-
     const catSelect = document.getElementById("val_category_id");
-
     if (catSelect) {
-
-        const sortedCats = sortCategoriesNumerically(allCategories);
-
+        const sortedCats = typeof sortCategoriesNumerically === 'function' ? sortCategoriesNumerically(categoriesList) : categoriesList;
         let selectedCatId = exp.category_id;
-
         if (!selectedCatId && exp.category_code) {
-
             const match = sortedCats.find(c => c.code === exp.category_code || c.code.startsWith(exp.category_code));
-
             if (match) selectedCatId = match.id;
-
         }
-
         catSelect.innerHTML = `<option value="">-- Seleccione Partida Dalor --</option>` + 
-
             sortedCats.map(c => `<option value="${c.id}" ${c.id === selectedCatId ? 'selected' : ''}>[${c.code}] ${c.name}</option>`).join('');
-
     }
 
-
-
     onValExpenseTypeChanged();
-
     openModal("modalValidateExpense");
-
 }
 
 
@@ -1346,7 +1323,7 @@ async function submitValidateExpense(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/inbox/${expId}/validate-impute`, {
+        const res = await authFetch(`${API_BASE}/expenses/inbox/${expId}/validate-impute`, {
 
             method: "PUT",
 
@@ -1406,7 +1383,7 @@ async function rejectExpense(expenseId) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/inbox/${expenseId}/reject?reason=${encodeURIComponent(reason)}`, {
+        const res = await authFetch(`${API_BASE}/expenses/inbox/${expenseId}/reject?reason=${encodeURIComponent(reason)}`, {
 
             method: "PUT"
 
@@ -1461,7 +1438,7 @@ async function loadExpensesLog() {
 
     try {
 
-        const res = await fetch(`${API_BASE}/expenses/`);
+        const res = await authFetch(`${API_BASE}/expenses/`);
 
         allExpensesCache = await res.json();
 
@@ -1977,7 +1954,7 @@ async function submitResetToCleanSlate(event) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/maintenance/reset-to-clean-slate`, {
+        const res = await authFetch(`${API_BASE}/maintenance/reset-to-clean-slate`, {
 
             method: "POST",
 

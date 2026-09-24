@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>DALOR SIGO-P - Simulador Interactivo de Flujo Operativo y Roles</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.8); }
+    }
+    .active-card {
+      border-color: #10b981 !important;
+      animation: pulse-glow 2s infinite;
+      transform: translateY(-2px);
+    }
+    .node-connector {
+      transition: all 0.5s ease;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans p-4 md:p-8 min-h-screen">
+
+  <!-- Header -->
+  <div class="max-w-6xl mx-auto mb-6 bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-2xl backdrop-blur-md">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 flex items-center justify-center font-black text-slate-950 text-xl shadow-lg">D</div>
+          <div>
+            <h1 class="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+              DALOR SIGO-P <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold uppercase tracking-wider">Simulador en Vivo</span>
+            </h1>
+            <p class="text-slate-400 text-xs mt-0.5">Recorrido visual interactivo del flujo de información y entrelazado de los 5 roles clave.</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Control Bar -->
+      <div class="flex items-center gap-3 bg-slate-950/60 p-2 rounded-xl border border-slate-700/60">
+        <button id="btnPrev" onclick="prevStep()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition disabled:opacity-40" disabled>◀ Anterior</button>
+        <button id="btnPlay" onclick="toggleAutoPlay()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black tracking-wide shadow-md shadow-emerald-900/40 transition flex items-center gap-1.5">
+          <span id="playIcon">▶</span> <span id="playText">Reproducir Simulación</span>
+        </button>
+        <button id="btnNext" onclick="nextStep()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition">Siguiente ▶</button>
+        <button onclick="resetSim()" class="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-semibold" title="Reiniciar">🔄</button>
+      </div>
+    </div>
+
+    <!-- Progress Timeline Bar -->
+    <div class="mt-6">
+      <div class="flex justify-between text-xs font-bold text-slate-400 mb-2">
+        <span id="stepBadge" class="text-emerald-400 font-mono">PASO 1 DE 5: Campo (Captura OCR)</span>
+        <span id="progressPct" class="text-slate-300 font-mono">20% Completado</span>
+      </div>
+      <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800 p-0.5">
+        <div id="timelineBar" class="bg-gradient-to-r from-amber-500 via-emerald-500 to-cyan-500 h-full rounded-full transition-all duration-700" style="width: 20%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Architecture Canvas -->
+  <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+    
+    <!-- CARD 1: CAMPO -->
+    <div id="card-0" onclick="goToStep(0)" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 cursor-pointer transition-all duration-300 active-card flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-2xl">📱</span>
+          <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">1. En Faena</span>
+        </div>
+        <h3 class="text-sm font-bold text-white mb-1">Supervisor de Campo</h3>
+        <p class="text-[11px] text-slate-400 leading-snug">Captura en 1-Touch foto del recibo o factura con OCR inteligente en sitio.</p>
+      </div>
+      <div class="mt-4 pt-3 border-t border-slate-700/60">
+        <div class="text-[10px] text-slate-400">Acción Simulada:</div>
+        <div class="text-xs font-mono font-bold text-amber-400 mt-0.5">📸 Factura $85.50 (Cinta 3M y Bornes)</div>
+      </div>
+    </div>
+
+    <!-- CARD 2: ALMACÉN -->
+    <div id="card-1" onclick="goToStep(1)" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-2xl">📦</span>
+          <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">2. Galpón / Pañol</span>
+        </div>
+        <h3 class="text-sm font-bold text-white mb-1">Almacén & Pañol</h3>
+        <p class="text-[11px] text-slate-400 leading-snug">Custodia de 30 equipos, guías de traslado y semáforo de cambio de aceite.</p>
+      </div>
+      <div class="mt-4 pt-3 border-t border-slate-700/60">
+        <div class="text-[10px] text-slate-400">Acción Simulada:</div>
+        <div class="text-xs font-mono font-bold text-blue-400 mt-0.5">🚚 Guía GT-001: Megger 10kV + Fluke 435</div>
+      </div>
+    </div>
+
+    <!-- CARD 3: RESIDENTE -->
+    <div id="card-2" onclick="goToStep(2)" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-2xl">👷‍♂️</span>
+          <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">3. Control Técnico</span>
+        </div>
+        <h3 class="text-sm font-bold text-white mb-1">Ingeniero Residente</h3>
+        <p class="text-[11px] text-slate-400 leading-snug">Checklist de tareas por fase, asignación de cuadrillas y cálculo de % avance.</p>
+      </div>
+      <div class="mt-4 pt-3 border-t border-slate-700/60">
+        <div class="text-[10px] text-slate-400">Acción Simulada:</div>
+        <div class="text-xs font-mono font-bold text-purple-400 mt-0.5">✅ 3 Tareas [x] -> Avance sube a 65%</div>
+      </div>
+    </div>
+
+    <!-- CARD 4: ADMINISTRACIÓN -->
+    <div id="card-3" onclick="goToStep(3)" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-2xl">💼</span>
+          <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">4. Administración</span>
+        </div>
+        <h3 class="text-sm font-bold text-white mb-1">Administración & CxC</h3>
+        <p class="text-[11px] text-slate-400 leading-snug">Aprueba inbox OCR, cobra anticipos a clientes y abona cuentas a proveedores.</p>
+      </div>
+      <div class="mt-4 pt-3 border-t border-slate-700/60">
+        <div class="text-[10px] text-slate-400">Acción Simulada:</div>
+        <div class="text-xs font-mono font-bold text-emerald-400 mt-0.5">💵 Cobra $5.000 Polar / Paga $500 CxP</div>
+      </div>
+    </div>
+
+    <!-- CARD 5: DIRECTOR -->
+    <div id="card-4" onclick="goToStep(4)" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-2xl">📊</span>
+          <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">5. Gerencia / Socios</span>
+        </div>
+        <h3 class="text-sm font-bold text-white mb-1">Director General</h3>
+        <p class="text-[11px] text-slate-400 leading-snug">Visibilidad 360° en su móvil: Job Costing, Flujo de Caja Líquido y Margen Real.</p>
+      </div>
+      <div class="mt-4 pt-3 border-t border-slate-700/60">
+        <div class="text-[10px] text-slate-400">Acción Simulada:</div>
+        <div class="text-xs font-mono font-bold text-cyan-400 mt-0.5">📈 Margen Obra: 95.3% | Caja: +$4.414</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Detailed Step Showcase -->
+  <div class="max-w-6xl mx-auto bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-2xl backdrop-blur-md">
+    <div id="stepDetailContent" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      <!-- Injected dynamically via JS -->
+    </div>
+  </div>
+
+  <!-- Live Interconnected Flow Table -->
+  <div class="max-w-6xl mx-auto mt-6 bg-slate-950/80 border border-slate-800 rounded-2xl p-5">
+    <div class="flex items-center justify-between mb-3">
+      <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Registro de Transacciones Interconectadas en Tiempo Real
+      </h4>
+      <span class="text-[11px] text-slate-500 font-mono">dalor-sigop.onrender.com (Neon DB)</span>
+    </div>
+    <div id="logList" class="space-y-2 text-xs font-mono">
+      <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 text-slate-400 flex items-center justify-between">
+        <span>[2026-09-10 20:30:15] <b class="text-amber-400">CAMPO:</b> Recibo de insumos cargado con OCR por $85.50 para Planta San Joaquín.</span>
+        <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">EN BANDEJA</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const steps = [
+      {
+        id: 0,
+        badge: "PASO 1 DE 5: Supervisor de Campo (Captura Rápida OCR)",
+        pct: "20%",
+        title: "1. Captura de Gastos en Sitio de Obra (Sin Acceso Financiero)",
+        actor: "Supervisor de Campo (campo / campo2026)",
+        description: "El supervisor se encuentra en la Subestación 115kV de San Joaquín. Realiza una compra de emergencia en ferretería (cintas de alta tensión y terminales por $85.50). Con su teléfono celular, toma la foto y el motor OCR extrae RIF, monto y fecha automáticamente.",
+        highlightBox: `
+          <div class="bg-amber-950/30 border border-amber-500/30 rounded-xl p-4">
+            <div class="text-xs font-bold text-amber-400 mb-2 flex items-center gap-2">📱 Pantalla Móvil del Supervisor</div>
+            <div class="space-y-1.5 text-xs text-slate-300 font-mono">
+              <div>• Proveedor Detectado: <span class="text-white font-bold">Ferretería Industrial Carabobo C.A.</span></div>
+              <div>• Monto Extraído: <span class="text-emerald-400 font-bold">$85.50 USD</span> (Tasa BCV 800)</div>
+              <div>• Proyecto Imputado: <span class="text-white">PRJ-2026-001 (S/E San Joaquín Polar)</span></div>
+              <div>• Estado: <span class="text-amber-300 font-bold">Pendiente de Validación por Administración</span></div>
+            </div>
+          </div>
+        `,
+        resultEffect: "La factura viaja inmediatamente a la bandeja de entrada de Administración. El supervisor no ve balances generales de la empresa ni montos de contrato.",
+        log: "[CAMPO] Factura #FAC-9012 por $85.50 enviada a bandeja OCR para aprobación."
+      },
+      {
+        id: 1,
+        badge: "PASO 2 DE 5: Almacén & Pañol Central (Custodia y Flota)",
+        pct: "40%",
+        title: "2. Despacho de Herramientas y Monitoreo de Odómetros",
+        actor: "Almacenista (almacen / almacen123)",
+        description: "El custodio del almacén central despacha la Camioneta Hilux (VEH-001), el Megóhmetro Megger 10kV (HER-001) y el Analizador Fluke 435 (HER-002) hacia la obra de Polar. Emite la Guía de Despacho Oficial GT-DALOR-2026-001 y valida que el vehículo tiene el semáforo verde de cambio de aceite (próximo servicio en 3.500 km).",
+        highlightBox: `
+          <div class="bg-blue-950/30 border border-blue-500/30 rounded-xl p-4">
+            <div class="text-xs font-bold text-blue-400 mb-2 flex items-center gap-2">📦 Guía de Salida GT-DALOR-2026-001</div>
+            <div class="space-y-1.5 text-xs text-slate-300 font-mono">
+              <div>• Activo 1: <span class="text-white font-bold">VEH-001 Toyota Hilux (En Obra)</span></div>
+              <div>• Activo 2: <span class="text-white font-bold">HER-001 Megóhmetro 10kV Megger</span></div>
+              <div>• Activo 3: <span class="text-white font-bold">HER-002 Analizador Fluke 435</span></div>
+              <div>• Destino: <span class="text-cyan-300">Cervecería Polar, Planta San Joaquín</span></div>
+            </div>
+          </div>
+        `,
+        resultEffect: "El estado de los equipos cambia automáticamente de 'Disponible en Base' a 'En Obra'. La directiva puede ver la ubicación exacta de sus activos en tiempo real.",
+        log: "[ALMACÉN] Guía GT-DALOR-2026-001 emitida. 3 Activos asignados en custodia a Planta San Joaquín."
+      },
+      {
+        id: 2,
+        badge: "PASO 3 DE 5: Ingeniero Residente (Avance Físico & Tareas)",
+        pct: "60%",
+        title: "3. Ejecución Técnica y Checklist de Fases WBS",
+        actor: "Ingeniero Residente (ingeniero / obra2026)",
+        description: "El ingeniero supervisa la ejecución en campo. Abre su tablero técnico y marca como completadas las tareas: 1) Pruebas de aislamiento a cables 115kV, 2) Calibración de relés de protección y 3) Revisión de interruptores SF6.",
+        highlightBox: `
+          <div class="bg-purple-950/30 border border-purple-500/30 rounded-xl p-4">
+            <div class="text-xs font-bold text-purple-400 mb-2 flex items-center gap-2">👷‍♂️ Checklist de Fases (WBS)</div>
+            <div class="space-y-1.5 text-xs text-slate-300 font-mono">
+              <div>• [x] Inspección visual y termografía preliminar (100%)</div>
+              <div>• [x] Pruebas de aislamiento Megger 10kV (100%)</div>
+              <div>• [x] Calibración de relés numéricos de protección (100%)</div>
+              <div>• [ ] Pruebas funcionales finales y energización (0%)</div>
+              <div class="pt-2 text-purple-300 font-bold">📈 Avance Físico Dinámico Calculado: 65.0%</div>
+            </div>
+          </div>
+        `,
+        resultEffect: "El sistema actualiza la barra de progreso físico en las tarjetas de proyecto. Los montos en dólares del contrato ($12.500) se mantienen ocultos para este usuario.",
+        log: "[INGENIERÍA] Avance físico de PRJ-2026-001 incrementado a 65.0% tras completar tareas de aislamiento."
+      },
+      {
+        id: 3,
+        badge: "PASO 4 DE 5: Administración & Finanzas (Flujo de Caja)",
+        pct: "80%",
+        title: "4. Aprobación OCR, Facturación CxC y Pagos a Proveedores",
+        actor: "Administración & Finanzas (administracion / admin2026)",
+        description: "El usuario administrativo entra a la Bandeja OCR y aprueba el gasto de $85.50 (que se imputa al Job Costing del proyecto). Simultáneamente, registra el cobro de un anticipo de $5.000 de Empresas Polar y paga una factura a proveedor de $500.",
+        highlightBox: `
+          <div class="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-4">
+            <div class="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-2">💼 Fricción de Caja y Movimientos</div>
+            <div class="space-y-1.5 text-xs text-slate-300 font-mono">
+              <div>• (+) Cobro Anticipo Polar: <span class="text-emerald-400 font-bold">+$5,000.00 USD</span> (CxC)</div>
+              <div>• (-) Pago Materiales Obra: <span class="text-rose-400 font-bold">-$500.00 USD</span> (CxP)</div>
+              <div>• (-) Gasto de Campo Aprobado: <span class="text-rose-400 font-bold">-$85.50 USD</span> (OCR)</div>
+              <div class="pt-2 text-emerald-300 font-bold">💰 Saldo Operativo Líquido Generado: +$4,414.50 USD</div>
+            </div>
+          </div>
+        `,
+        resultEffect: "El gasto de $85.50 se suma automáticamente al costo real de la obra. La cuenta por cobrar de Polar disminuye y el saldo líquido en bancos se actualiza.",
+        log: "[ADMINISTRACIÓN] Gasto OCR de $85.50 validado e imputado. Cobro de anticipo de $5,000.00 asentado en caja."
+      },
+      {
+        id: 4,
+        badge: "PASO 5 DE 5: Director General / Socios (Control 360°)",
+        pct: "100%",
+        title: "5. BI Ejecutivo: Job Costing, Margen Real y Punto de Equilibrio",
+        actor: "Director General / Socios (director / dalor2026)",
+        description: "El Director General abre su teléfono desde cualquier lugar. Observa la tarjeta del proyecto con los 4 cuadrantes financieros actualizados al segundo, el semáforo en verde y el reporte comparativo multi-obra.",
+        highlightBox: `
+          <div class="bg-cyan-950/30 border border-cyan-500/30 rounded-xl p-4">
+            <div class="text-xs font-bold text-cyan-400 mb-2 flex items-center gap-2">📊 Cuadrantes de Job Costing (PRJ-2026-001)</div>
+            <div class="grid grid-cols-2 gap-2 text-xs text-slate-300 font-mono">
+              <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+                <div class="text-[10px] text-slate-400">Monto Contrato:</div>
+                <div class="text-white font-bold">$12,500.00 USD</div>
+              </div>
+              <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+                <div class="text-[10px] text-slate-400">Presupuesto Límite:</div>
+                <div class="text-amber-400 font-bold">$8,200.00 USD</div>
+              </div>
+              <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+                <div class="text-[10px] text-slate-400">Gasto Real Incurrido:</div>
+                <div class="text-rose-400 font-bold">$585.50 USD</div>
+              </div>
+              <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+                <div class="text-[10px] text-slate-400">Margen Real Estimado:</div>
+                <div class="text-emerald-400 font-bold">95.3% (+$11,914.50)</div>
+              </div>
+            </div>
+            <div class="mt-3 text-xs text-cyan-300 font-mono flex justify-between">
+              <span>Avance Físico: <b>65%</b></span>
+              <span>Consumo Presupuesto: <b>7.1% (Verde)</b></span>
+            </div>
+          </div>
+        `,
+        resultEffect: "La dirección toma decisiones con datos 100% verídicos y auditables, sabiendo exactamente cuánto rinde cada obra y dónde está cada recurso.",
+        log: "[GERENCIA] Tablero Ejecutivo sincronizado. Job Costing en verde con margen del 95.3%."
+      }
+    ];
+
+    let currentStep = 0;
+    let autoPlayInterval = null;
+
+    function renderStep(index) {
+      currentStep = index;
+      const step = steps[index];
+
+      // Update Top Bars
+      document.getElementById("stepBadge").innerText = step.badge;
+      document.getElementById("progressPct").innerText = step.pct + " Completado";
+      document.getElementById("timelineBar").style.width = step.pct;
+
+      // Update Card Styling
+      for (let i = 0; i < 5; i++) {
+        const c = document.getElementById("card-" + i);
+        if (i === index) {
+          c.classList.add("active-card");
+        } else {
+          c.classList.remove("active-card");
+        }
+      }
+
+      // Update Buttons
+      document.getElementById("btnPrev").disabled = (index === 0);
+      document.getElementById("btnNext").disabled = (index === steps.length - 1);
+
+      // Render Showcase
+      const container = document.getElementById("stepDetailContent");
+      container.innerHTML = `
+        <div class="lg:col-span-7 space-y-4">
+          <div class="inline-block px-3 py-1 rounded-full bg-slate-900 text-emerald-400 font-mono text-xs font-bold border border-slate-700">
+            ${step.actor}
+          </div>
+          <h2 class="text-xl md:text-2xl font-black text-white">${step.title}</h2>
+          <p class="text-slate-300 text-sm leading-relaxed">${step.description}</p>
+          
+          <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs">
+            <span class="font-bold text-emerald-400">🔗 Impacto en la Cadena de Valor:</span>
+            <span class="text-slate-300 ml-1">${step.resultEffect}</span>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5">
+          ${step.highlightBox}
+        </div>
+      `;
+
+      // Append Log
+      const logList = document.getElementById("logList");
+      const newEntry = document.createElement("div");
+      newEntry.className = "p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 text-slate-300 flex items-center justify-between";
+      newEntry.innerHTML = `
+        <span>[${new Date().toLocaleTimeString()}] ${step.log}</span>
+        <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">SINCRONIZADO</span>
+      `;
+      logList.prepend(newEntry);
+    }
+
+    function nextStep() {
+      if (currentStep < steps.length - 1) {
+        renderStep(currentStep + 1);
+      } else {
+        if (autoPlayInterval) toggleAutoPlay();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        renderStep(currentStep - 1);
+      }
+    }
+
+    function goToStep(index) {
+      renderStep(index);
+    }
+
+    function resetSim() {
+      if (autoPlayInterval) toggleAutoPlay();
+      renderStep(0);
+    }
+
+    function toggleAutoPlay() {
+      const playText = document.getElementById("playText");
+      const playIcon = document.getElementById("playIcon");
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+        playText.innerText = "Reproducir Simulación";
+        playIcon.innerText = "▶";
+      } else {
+        playText.innerText = "Pausar Simulación";
+        playIcon.innerText = "⏸";
+        autoPlayInterval = setInterval(() => {
+          if (currentStep < steps.length - 1) {
+            nextStep();
+          } else {
+            renderStep(0);
+          }
+        }, 3500);
+      }
+    }
+
+    // Initial render
+    renderStep(0);
+  </script>
+</body>
+</html>

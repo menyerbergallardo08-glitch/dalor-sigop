@@ -177,11 +177,7 @@ function sortCategoriesNumerically(cats) {
 
 
 
-// Purga obligatoria de localStorage para garantizar que SIEMPRE aparezca la pantalla de login
 
-localStorage.removeItem('dalor_user');
-
-localStorage.removeItem('dalor_token');
 
 
 
@@ -313,19 +309,8 @@ window.APP_BUILD_VERSION = "2026.09.15.v93-clean-production";
 
 var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
 
-// Forzar purga de sesiones previas en cada actualización para garantizar que SIEMPRE pida login
-
-if (localStorage.getItem("dalor_build_version") !== APP_BUILD_VERSION) {
-
-    localStorage.clear();
-
-    sessionStorage.clear();
-
-    localStorage.setItem("dalor_build_version", APP_BUILD_VERSION);
-
-    localStorage.setItem("dalor_exchange_rate", "850.0");
-
-}
+// Registrar versión de build sin destruir sesión de usuario
+localStorage.setItem("dalor_build_version", APP_BUILD_VERSION);
 
 
 

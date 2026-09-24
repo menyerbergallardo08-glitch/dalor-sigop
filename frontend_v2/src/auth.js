@@ -22,10 +22,11 @@ export function checkAuthStatus() {
             sessionStorage.setItem('dalor_session_active', 'true');
             sessionStorage.setItem('dalor_user', JSON.stringify(State.currentUser));
             sessionStorage.setItem('dalor_token', State.authToken);
-            renderUserBadge();
-            applyPermissionMap(State.currentUser);
+            try { renderUserBadge(); } catch(e) { console.warn("renderUserBadge warn:", e); }
+            try { applyPermissionMap(State.currentUser); } catch(e) { console.warn("applyPermissionMap warn:", e); }
             return true;
         } catch (e) {
+            console.error("JSON parse error in checkAuthStatus:", e);
             sessionStorage.clear();
             localStorage.removeItem('dalor_user');
             localStorage.removeItem('dalor_token');

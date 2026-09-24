@@ -351,11 +351,11 @@ let selectedMaterialIds = [];
 
 
 
-// Inicialización
+let currentUser = window.currentUser || (() => {
+    try { return JSON.parse(localStorage.getItem('dalor_user') || sessionStorage.getItem('dalor_user') || 'null'); } catch(e) { return null; }
+})();
 
-let currentUser = null;
-
-let authToken = localStorage.getItem('dalor_token') || null;
+let authToken = window.authToken || localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token') || null;
 /** authFetch - inyecta token en cada request usando window.fetch nativo */
 function authFetch(url, options = {}) {
     var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
@@ -1485,8 +1485,8 @@ if (typeof window !== 'undefined') {
     window.selectedToolIds = selectedToolIds;
     window.selectedMaterialIds = selectedMaterialIds;
     window.EXCHANGE_RATE = EXCHANGE_RATE;
-    window.currentUser = currentUser;
-    window.authToken = authToken;
+    window.currentUser = window.currentUser || currentUser;
+    window.authToken = window.authToken || authToken;
 
     window.closeAllDropdowns = closeAllDropdowns;
     window.closeMobileSubmenu = closeMobileSubmenu;

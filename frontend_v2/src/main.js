@@ -28,22 +28,22 @@ window.authFetch = function(url, options = {}) {
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 };
 
-import { Api } from './api.js?v=2026.09.24.v98.31';
-import { State } from './state.js?v=2026.09.24.v98.31';
-import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js?v=2026.09.24.v98.31';
+import { Api } from './api.js';
+import { State } from './state.js';
+import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js';
 
 // Carga e Inicialización de Submódulos Especializados
-import './modules/core.js?v=2026.09.24.v98.31';
-import './modules/bcv.js?v=2026.09.24.v98.31';
-import './modules/maintenance.js?v=2026.09.24.v98.31';
-import './modules/projects.js?v=2026.09.24.v98.31';
-import './modules/resources.js?v=2026.09.24.v98.31';
-import './modules/quotations.js?v=2026.09.24.v98.31';
-import './modules/expenses.js?v=2026.09.24.v98.31';
-import './modules/financial.js?v=2026.09.24.v98.31';
-import './modules/materials.js?v=2026.09.24.v98.31';
-import './modules/dispatch.js?v=2026.09.24.v98.31';
-import './modules/rentals.js?v=2026.09.24.v98.31';
+import './modules/core.js';
+import './modules/bcv.js';
+import './modules/maintenance.js';
+import './modules/projects.js';
+import './modules/resources.js';
+import './modules/quotations.js';
+import './modules/expenses.js';
+import './modules/financial.js';
+import './modules/materials.js';
+import './modules/dispatch.js';
+import './modules/rentals.js';
 
 // Exportar al scope global para compatibilidad total con eventos inline de index.html
 window.Api = Api;
@@ -299,11 +299,12 @@ async function initApp() {
         window.initSearchDebounceBindings();
     }
     const isAuth = checkAuthStatus();
+    const currentUser = State.currentUser || window.currentUser;
     
     const loginScreen = document.getElementById('app-login-screen');
     const authShell = document.getElementById('app-authenticated-shell');
 
-    if (isAuth && State.currentUser) {
+    if (isAuth && currentUser) {
         document.body.classList.add('authenticated');
         document.documentElement.classList.add('is-auth');
         if (loginScreen) {
@@ -312,8 +313,8 @@ async function initApp() {
         }
         if (authShell) authShell.style.setProperty('display', 'block', 'important');
         
-        renderUserBadge();
-        applyPermissionMap(State.currentUser);
+        try { renderUserBadge(); } catch(e) { console.warn("renderUserBadge warn:", e); }
+        try { applyPermissionMap(currentUser); } catch(e) { console.warn("applyPermissionMap warn:", e); }
 
         // Restaurar la vista exacta y submódulo en el que estaba el usuario antes de refrescar
         let savedView = localStorage.getItem('dalor_active_view') || sessionStorage.getItem('dalor_active_view');

@@ -42,6 +42,7 @@
         if (window.authToken && window.currentUser && window.authToken !== 'null' && window.authToken !== 'undefined') {
             document.documentElement.classList.add('is-auth');
             document.addEventListener("DOMContentLoaded", function() {
+                if (document.body) document.body.classList.add('authenticated');
                 var authShell = document.getElementById('app-authenticated-shell');
                 var loginScreen = document.getElementById('app-login-screen');
                 if (authShell) authShell.style.setProperty('display', 'block', 'important');
@@ -58,13 +59,35 @@
             });
         }
     </script>
+
+    <style>
+        /* Reglas Instantáneas Anti-Flash Blanco & Visibilidad Inmediata */
+        html.is-auth #app-login-screen {
+            display: none !important;
+        }
+        html.is-auth #app-authenticated-shell {
+            display: block !important;
+        }
+        html.is-auth .main-content,
+        body.authenticated .main-content {
+            display: block !important;
+        }
+        html.is-auth .header-top,
+        body.authenticated .header-top {
+            display: flex !important;
+        }
+        html.is-auth .module-bar,
+        body.authenticated .module-bar {
+            display: block !important;
+        }
+    </style>
 </head>
 <body>
     <!-- PORTAL DE ACCESO / LOGIN CORPORATIVO -->
     <load ="src/partials/auth_login.html" />
 
     <!-- SHELL PRINCIPAL AUTENTICADO -->
-    <div id="app-authenticated-shell" style="display: none; width: 100%; min-height: 100vh;">
+    <div id="app-authenticated-shell" style="width: 100%; min-height: 100vh;">
         <!-- CABECERA FIJA SUPERIOR & TASA BCV -->
         <load ="src/partials/header.html" />
 

@@ -5,6 +5,16 @@ BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__
 PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
 DEFAULT_DB_PATH = os.path.join(PROJECT_ROOT, "dalor_sigop.db").replace("\\", "/")
 
+# Cargar automáticamente variables de entorno desde .env si existe
+for env_candidate in [os.path.join(PROJECT_ROOT, ".env"), os.path.join(BACKEND_DIR, ".env")]:
+    if os.path.exists(env_candidate):
+        with open(env_candidate, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip("'").strip('"'))
+
 class Settings(BaseModel):
     PROJECT_NAME: str = "DALOR - Sistema Integral de Gestión Operativa, Activos y Costeo"
     API_V1_STR: str = "/api/v1"

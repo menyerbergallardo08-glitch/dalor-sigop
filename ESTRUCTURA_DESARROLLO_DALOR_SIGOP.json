@@ -1,0 +1,436 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "audit_metadata": {
+    "system_name": "DALOR SIGO-P",
+    "full_name": "Sistema Integral de Gestión Operativa, Proyectos, Activos y Finanzas para Metalmecánica DALOR C.A.",
+    "audit_timestamp": "2026-09-24T19:59:30.528430",
+    "version": "2026.10.0-modular-vite",
+    "git_commit": "ba05cd7ad54512feef2ea6843fee192d7c2c502c",
+    "git_branch": "fix/operational-qa-adjustments",
+    "git_last_commit_subject": "fix(frontend_v2): sincronizacion quirurgica 1:1 de vistas, modales y paginacion con Vite",
+    "environment": "Development / Staging / Production Compatible"
+  },
+  "system_architecture": {
+    "architecture_pattern": "Decoupled Clean Architecture (REST API + Modular SPA)",
+    "backend": {
+      "framework": "FastAPI (Python 3.11+)",
+      "asgi_server": "Uvicorn (Workers / Reload)",
+      "orm": "SQLAlchemy Declarative Base",
+      "database_engine": "SQLite WAL Mode (Local) / PostgreSQL 15+ (Production/Render)",
+      "data_integrity": {
+        "wal_mode": true,
+        "foreign_keys": true,
+        "busy_timeout_ms": 30000,
+        "pbkdf2_sha256_cryptography": true
+      },
+      "api_base_url": "/api/v1",
+      "endpoint_controllers": [
+        {
+          "endpoint_file": "assets.py",
+          "router_name": "assets",
+          "lines": 761,
+          "bytes": 32353
+        },
+        {
+          "endpoint_file": "auth.py",
+          "router_name": "auth",
+          "lines": 240,
+          "bytes": 9732
+        },
+        {
+          "endpoint_file": "clients.py",
+          "router_name": "clients",
+          "lines": 106,
+          "bytes": 3904
+        },
+        {
+          "endpoint_file": "dispatch.py",
+          "router_name": "dispatch",
+          "lines": 453,
+          "bytes": 19096
+        },
+        {
+          "endpoint_file": "expenses.py",
+          "router_name": "expenses",
+          "lines": 654,
+          "bytes": 26808
+        },
+        {
+          "endpoint_file": "financial.py",
+          "router_name": "financial",
+          "lines": 1630,
+          "bytes": 76522
+        },
+        {
+          "endpoint_file": "maintenance.py",
+          "router_name": "maintenance",
+          "lines": 863,
+          "bytes": 43047
+        },
+        {
+          "endpoint_file": "materials.py",
+          "router_name": "materials",
+          "lines": 365,
+          "bytes": 15686
+        },
+        {
+          "endpoint_file": "ocr.py",
+          "router_name": "ocr",
+          "lines": 94,
+          "bytes": 3617
+        },
+        {
+          "endpoint_file": "personnel.py",
+          "router_name": "personnel",
+          "lines": 58,
+          "bytes": 2239
+        },
+        {
+          "endpoint_file": "projects.py",
+          "router_name": "projects",
+          "lines": 1117,
+          "bytes": 53159
+        },
+        {
+          "endpoint_file": "quotations.py",
+          "router_name": "quotations",
+          "lines": 229,
+          "bytes": 9639
+        },
+        {
+          "endpoint_file": "rentals.py",
+          "router_name": "rentals",
+          "lines": 780,
+          "bytes": 39006
+        },
+        {
+          "endpoint_file": "reports.py",
+          "router_name": "reports",
+          "lines": 86,
+          "bytes": 3599
+        },
+        {
+          "endpoint_file": "resources.py",
+          "router_name": "resources",
+          "lines": 254,
+          "bytes": 11733
+        },
+        {
+          "endpoint_file": "services.py",
+          "router_name": "services",
+          "lines": 50,
+          "bytes": 2139
+        },
+        {
+          "endpoint_file": "transfer_guides.py",
+          "router_name": "transfer_guides",
+          "lines": 259,
+          "bytes": 11389
+        }
+      ]
+    },
+    "frontend_v2": {
+      "engine": "Vite 5.4.8 (ESM Bundler & Optimization)",
+      "plugins": [
+        "vite-plugin-html-inject"
+      ],
+      "bundling_target": "ES2022 Modular JavaScript",
+      "static_distribution": "frontend_v2/dist/",
+      "modules_layer": {
+        "total_modules": 11,
+        "modules": [
+          {
+            "module_file": "bcv.js",
+            "lines": 246,
+            "bytes": 6560
+          },
+          {
+            "module_file": "core.js",
+            "lines": 1515,
+            "bytes": 47867
+          },
+          {
+            "module_file": "dispatch.js",
+            "lines": 1060,
+            "bytes": 52564
+          },
+          {
+            "module_file": "expenses.js",
+            "lines": 2032,
+            "bytes": 57776
+          },
+          {
+            "module_file": "financial.js",
+            "lines": 3264,
+            "bytes": 147524
+          },
+          {
+            "module_file": "maintenance.js",
+            "lines": 2811,
+            "bytes": 78745
+          },
+          {
+            "module_file": "materials.js",
+            "lines": 1480,
+            "bytes": 50003
+          },
+          {
+            "module_file": "projects.js",
+            "lines": 3224,
+            "bytes": 147105
+          },
+          {
+            "module_file": "quotations.js",
+            "lines": 1642,
+            "bytes": 67679
+          },
+          {
+            "module_file": "rentals.js",
+            "lines": 1538,
+            "bytes": 79209
+          },
+          {
+            "module_file": "resources.js",
+            "lines": 2244,
+            "bytes": 83754
+          }
+        ]
+      },
+      "views_layer": {
+        "total_views": 15,
+        "views": [
+          {
+            "view_file": "view-clients.html",
+            "view_id": "view-clients",
+            "lines": 70,
+            "bytes": 2118
+          },
+          {
+            "view_file": "view-dashboard.html",
+            "view_id": "view-dashboard",
+            "lines": 75,
+            "bytes": 2056
+          },
+          {
+            "view_file": "view-dispatch.html",
+            "view_id": "view-dispatch",
+            "lines": 346,
+            "bytes": 31465
+          },
+          {
+            "view_file": "view-executive.html",
+            "view_id": "view-executive",
+            "lines": 396,
+            "bytes": 15297
+          },
+          {
+            "view_file": "view-expenses-log.html",
+            "view_id": "view-expenses-log",
+            "lines": 217,
+            "bytes": 7578
+          },
+          {
+            "view_file": "view-financial.html",
+            "view_id": "view-financial",
+            "lines": 536,
+            "bytes": 38149
+          },
+          {
+            "view_file": "view-inbox.html",
+            "view_id": "view-inbox",
+            "lines": 91,
+            "bytes": 3123
+          },
+          {
+            "view_file": "view-maintenance.html",
+            "view_id": "view-maintenance",
+            "lines": 387,
+            "bytes": 15774
+          },
+          {
+            "view_file": "view-manual.html",
+            "view_id": "view-manual",
+            "lines": 127,
+            "bytes": 4084
+          },
+          {
+            "view_file": "view-projects.html",
+            "view_id": "view-projects",
+            "lines": 542,
+            "bytes": 31554
+          },
+          {
+            "view_file": "view-pwa.html",
+            "view_id": "view-pwa",
+            "lines": 361,
+            "bytes": 15129
+          },
+          {
+            "view_file": "view-quotations.html",
+            "view_id": "view-quotations",
+            "lines": 72,
+            "bytes": 2218
+          },
+          {
+            "view_file": "view-resources.html",
+            "view_id": "view-resources",
+            "lines": 695,
+            "bytes": 31037
+          },
+          {
+            "view_file": "view-services.html",
+            "view_id": "view-services",
+            "lines": 71,
+            "bytes": 2134
+          },
+          {
+            "view_file": "view-tree.html",
+            "view_id": "view-tree",
+            "lines": 19,
+            "bytes": 755
+          }
+        ]
+      },
+      "modals_layer": {
+        "total_modals": 57,
+        "modals": [
+          "modalAssetHistory",
+          "modalAssignResource",
+          "modalBadDebt",
+          "modalBcvCurrentRate",
+          "modalBcvDateValue",
+          "modalClient",
+          "modalClientRefund",
+          "modalConfirmDelivery",
+          "modalDeclareBadDebt",
+          "modalEditPayable",
+          "modalFinancialTransaction",
+          "modalManualTasa",
+          "modalMaterialConsume",
+          "modalMaterialDelivery",
+          "modalMaterialEntry",
+          "modalNewAsset",
+          "modalNewMaterial",
+          "modalNewPersonnel",
+          "modalNewUser",
+          "modalOdometerOcr",
+          "modalPayable",
+          "modalPayableHistory",
+          "modalPrintPreview",
+          "modalPrintPreviewContent",
+          "modalProjectAddendum",
+          "modalProjectDetail",
+          "modalQuickFlow",
+          "modalQuotation",
+          "modalQuotationTitle",
+          "modalReceiptViewer",
+          "modalReceivable",
+          "modalReceiveClientPayment",
+          "modalRentalLoan",
+          "modalRentalLoanTitle",
+          "modalRentalReturn",
+          "modalRequestProjectResources",
+          "modalService",
+          "modalTool",
+          "modalToolHistory",
+          "modalToolHistorySubtitle",
+          "modalToolHistoryTitle",
+          "modalTransferGuide",
+          "modalTreasuryExchange",
+          "modalUserManagement",
+          "modalUserPermissions",
+          "modalValidateExpense",
+          "modalVehicle",
+          "modalWithholdingVoucher",
+          "modal_action_type",
+          "modal_custodian_container",
+          "modal_odometer_container",
+          "modal_res_custodian",
+          "modal_res_id",
+          "modal_res_location",
+          "modal_res_odometer",
+          "modal_res_type",
+          "modal_target_project_id"
+        ]
+      }
+    }
+  },
+  "database_ledger_status": {
+    "engine": "SQLite WAL Engine (Production Ready for Postgres Migration)",
+    "database_file": "dalor_sigop.db",
+    "total_tables": 26,
+    "table_record_counts": {
+      "accounts_payable": 135,
+      "accounts_receivable": 122,
+      "asset_rental_loan_items": 21,
+      "asset_rentals_loans": 162,
+      "assets": 907,
+      "audit_logs": 1223,
+      "clients": 2,
+      "cost_centers": 0,
+      "dispatch_guide_items": 246,
+      "dispatch_guides": 147,
+      "expense_categories": 43,
+      "expenses": 25,
+      "financial_payments": 219,
+      "fixed_expense_settings": 0,
+      "material_movements": 85,
+      "materials": 17,
+      "partner_withdrawals": 74,
+      "personnel": 17,
+      "project_addendums": 6,
+      "project_phases": 15,
+      "projects": 90,
+      "quotation_items": 99,
+      "quotations": 85,
+      "resource_assignment_history": 84,
+      "service_items": 73,
+      "users": 9
+    }
+  },
+  "security_and_compliance": {
+    "auth_scheme": "Bearer JWT (PBKDF2-SHA256 password hashing)",
+    "role_based_access_control": [
+      {
+        "role": "director",
+        "title": "Director General (Superusuario)",
+        "scope": "Acceso total, auditoría contable, borrado, configuraciones"
+      },
+      {
+        "role": "administracion",
+        "title": "Administración & Finanzas",
+        "scope": "Facturación, CxC, CxP, Tesorería, Conciliación bancaria, Retiros de socios"
+      },
+      {
+        "role": "ingeniero",
+        "title": "Ingeniero Residente / Obras",
+        "scope": "Planificación de obras, asignación de personal, control de hitos, valuaciones"
+      },
+      {
+        "role": "campo",
+        "title": "Supervisor de Campo / Faenas",
+        "scope": "Recepción de recursos en sitio, reportes de avance diario, checklists"
+      },
+      {
+        "role": "almacen",
+        "title": "Jefe de Depósito / Pañol",
+        "scope": "Despachos, inventario de materiales, herramientas, odómetros de flota"
+      }
+    ],
+    "anti_double_submit_protection": true,
+    "reactive_token_expiration_interceptor": true,
+    "anti_white_screen_instant_styles": true
+  },
+  "audit_verification_summary": {
+    "html_partials_tag_balance": "100% BALANCED OK (0 mismatches)",
+    "all_15_views_tested": "PASSED (Headless Chrome CDP)",
+    "pagination_containers": [
+      "projectsPaginationContainer",
+      "cxcPaginationContainer",
+      "cxpPaginationContainer",
+      "treasuryPaginationContainer",
+      "partnersPaginationContainer"
+    ],
+    "bcv_rate_integration": "Dynamic Real-Time Fetch with Offline LocalStorage Fallback"
+  }
+}

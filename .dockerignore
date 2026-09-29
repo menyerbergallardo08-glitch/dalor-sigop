@@ -34,7 +34,14 @@ frontend_snapshot_backup/
 
 # Codigo legacy y entornos alternos
 frontend/app.legacy.js
-frontend_v2/
+frontend_v2/node_modules/
+frontend_v2/src/
+frontend_v2/public/
+frontend_v2/.vite/
+frontend_v2/package.json
+frontend_v2/package-lock.json
+frontend_v2/vite.config.js
+# frontend_v2/dist/ es NECESARIO para el build de Docker - NO excluir
 scratch/
 
 # Python cache y entornos virtuales

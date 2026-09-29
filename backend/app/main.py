@@ -102,7 +102,9 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/healthz")
+@app.head("/healthz")
 @app.get("/ping")
+@app.head("/ping")
 def healthcheck():
     return {
         "status": "healthy",

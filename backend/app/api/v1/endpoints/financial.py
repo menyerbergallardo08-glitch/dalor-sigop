@@ -621,7 +621,12 @@ def get_receivables(
         .order_by(AccountReceivable.id.desc())
     )
     is_paginated = page is not None and isinstance(page, int)
-    total = query.count() if is_paginated else None
+    if is_paginated:
+        from sqlalchemy import func as sa_func
+        count_q = query.statement.with_only_columns(sa_func.count()).order_by(None)
+        total = db.execute(count_q).scalar()
+    else:
+        total = None
     rows = query.offset((page - 1) * page_size).limit(page_size).all() if is_paginated else query.all()
 
     items = [{
@@ -977,7 +982,12 @@ def get_payables(
     query = query.order_by(AccountPayable.id.desc())
 
     is_paginated = page is not None and isinstance(page, int)
-    total = query.count() if is_paginated else None
+    if is_paginated:
+        from sqlalchemy import func as sa_func
+        count_q = query.statement.with_only_columns(sa_func.count()).order_by(None)
+        total = db.execute(count_q).scalar()
+    else:
+        total = None
     rows = query.offset((page - 1) * page_size).limit(page_size).all() if is_paginated else query.all()
 
     items = []

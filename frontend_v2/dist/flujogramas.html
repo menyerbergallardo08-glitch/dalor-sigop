@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Manual de Flujogramas & Arquitectura Lógica | DALOR SIGO-P ERP</title>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Mermaid.js para diagramas de flujo vectoriales nativos -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#002B49',
+                primaryTextColor: '#FFFFFF',
+                primaryBorderColor: '#F5B800',
+                lineColor: '#002B49',
+                secondaryColor: '#0284C7',
+                tertiaryColor: '#F8FAFC',
+                fontSize: '13px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+            }
+        });
+    </script>
+
+    <style>
+        :root {
+            --dalor-navy: #002B49;
+            --dalor-blue: #0072B8;
+            --dalor-gold: #F5B800;
+            --dalor-cyan: #0284c7;
+            --dalor-green: #059669;
+            --dalor-amber: #d97706;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --border-color: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #1e293b;
+            padding: 24px 16px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .header-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-top: 5px solid var(--dalor-gold);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .module-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 22px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            page-break-inside: avoid;
+        }
+
+        .module-header {
+            background: var(--dalor-navy);
+            color: #ffffff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border-bottom: 3px solid var(--dalor-gold);
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .diagram-container {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+            overflow-x: auto;
+            text-align: center;
+        }
+
+        .step-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        .step-table th {
+            background: #f1f5f9;
+            color: var(--dalor-navy);
+            text-align: left;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            font-weight: 800;
+        }
+
+        .step-table td {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+
+        .step-num {
+            background: #e0f2fe;
+            color: #0369a1;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .btn-print {
+            background: var(--dalor-gold);
+            color: var(--dalor-navy);
+            font-weight: 900;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-pdf {
+            background: var(--dalor-navy);
+            color: #ffffff;
+            font-weight: 700;
+            border: 1px solid var(--dalor-gold);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        @media print {
+            body { background: #ffffff; padding: 0; }
+            .btn-print, .btn-pdf { display: none; }
+            .module-card { box-shadow: none; border: 1px solid #cbd5e1; margin-bottom: 20px; }
+            @page { margin: 12mm; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Membrete y Cabecera Oficial -->
+    <div class="header-card">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <img src="logo_dalor.jpg" alt="DALOR Logo" style="height: 55px; max-width: 140px; object-fit: contain; border-radius: 4px;" onerror="this.style.display='none'">
+            <div>
+                <h1 style="font-size: 19px; font-weight: 900; color: var(--dalor-navy); text-transform: uppercase;">Metalmecánica Dalor, C.A.</h1>
+                <p style="font-size: 12px; font-weight: 700; color: var(--dalor-blue); margin: 2px 0;">RIF: J-31601195-0 &bull; Registro Nacional de Contratistas (RNC)</p>
+                <p style="font-size: 11px; color: #64748b;">Av. Cámara de las Industrias, Galpón 10, Z.I. El Tigre, Guacara, Edo. Carabobo</p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <a href="FLUJOGRAMAS_OFICIALES_DALOR_SIGOP.pdf" target="_blank" class="btn-pdf">
+                <i class="fa-solid fa-file-pdf"></i> Descargar PDF Directo
+            </a>
+            <button onclick="window.print()" class="btn-print">
+                <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Título Principal del Manual -->
+    <div style="margin-bottom: 20px; text-align: center;">
+        <h2 style="font-size: 20px; font-weight: 900; color: var(--dalor-navy); text-transform: uppercase; letter-spacing: 0.5px;">
+            Manual de Arquitectura Lógica & Flujogramas Visuales por Módulo
+        </h2>
+        <p style="font-size: 13px; color: #64748b; margin-top: 4px;">
+            Diagramas de flujo y matriz de procesos paso a paso para el sistema integral <b>DALOR SIGO-P ERP v2.0</b>
+        </p>
+    </div>
+
+    <!-- MÓDULO 1: COMERCIAL, PRESUPUESTOS & APU EN VIVO -->
+    <div class="module-card">
+        <div class="module-header">
+            <h3 style="font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-file-invoice-dollar" style="color: var(--dalor-gold);"></i>
+                MÓDULO 1: COMERCIAL, PRESUPUESTOS & APU EN VIVO
+            </h3>
+            <span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;">Fase Pre-Operativa</span>
+        </div>
+
+        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px;">
+            <i class="fa-solid fa-diagram-project"></i> Diagrama de Flujo Visual:
+        </h4>
+        
+        <div class="diagram-container">
+            <pre class="mermaid">
+flowchart LR
+    A["1. Solicitud Cliente & RIF"] --> B["2. Carga de Partidas"]
+    B --> C{"¿Partida Nueva?\nAPU en Vivo"}
+    C -- "A) Catálogo" --> D["Seleccionar APU Maestro"]
+    C -- "B) En Caliente" --> E["Escribir Partida, Cantidad\ny P.U. USD en Vivo"]
+    D --> F["3. Subtotal + IVA (16%)\nCotización Oficial DALOR"]
+    E --> F
+    F --> G["4. Emisión PDF\nMembrete & Logo"]
+    G --> H{"¿Aprobado por\nCliente?"}
+    H -- "Aprobado" --> I["🚀 Botón: Convertir en Proyecto\n(Traspaso a Módulo 2)"]
+    H -- "Rechazado" --> J["Archivar Cotización"]
+            </pre>
+        </div>
+
+        <table class="step-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Paso Operativo</th>
+                    <th style="width: 75%;">Descripción Funcional y Lógica en Sistema</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="step-num">Paso 1.1</span> Cliente & Condiciones</td>
+                    <td>Selección o creación de cliente con RIF verificado. Definición de título del servicio, tiempo estimado de entrega y días de validez de la oferta.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">Paso 1.2</span> Carga de Partidas (En Vivo)</td>
+                    <td><b>Doble modalidad:</b> Permite seleccionar partidas maestras del catálogo <b>o redactar directamente partidas mecánicas nuevas en caliente</b> con su unidad (Pzas, Mts, Global, Hrs), cantidad y Precio Unitario ($ USD) sin bloqueos.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">Paso 1.3</span> Emisión & Traspaso</td>
+                    <td>Emisión de cotización formal con membrete. Al ser aprobada por el cliente, el botón <b>'Aprobar & Convertir en Proyecto'</b> traspasa de inmediato el alcance, partidas y montos al Módulo de Proyectos.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MÓDULO 2: PLANIFICACIÓN DE PROYECTOS & CLASIFICACIÓN TERRITORIAL -->
+    <div class="module-card">
+        <div class="module-header">
+            <h3 style="font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-folder-tree" style="color: var(--dalor-gold);"></i>
+                MÓDULO 2: PLANIFICACIÓN DE PROYECTOS (EDT / WBS) & CLASIFICACIÓN
+            </h3>
+            <span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;">Formulación en 4 Pasos</span>
+        </div>
+
+        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px;">
+            <i class="fa-solid fa-diagram-project"></i> Diagrama de Flujo Visual:
+        </h4>
+        
+        <div class="diagram-container">
+            <pre class="mermaid">
+flowchart TD
+    A["Entrada: Presupuesto Convertido / Proyecto Nuevo"] --> B["Paso 1: Código, Nombre & Cliente"]
+    B --> C{"¿Clasificación Territorial?"}
+    C -- "Opción 1" --> D["🏢 EN SEDE: Taller Central Guacara\n(Sin viáticos foráneos)"]
+    C -- "Opción 2" --> E["📍 FORÁNEO: En Planta de Cliente\n(Habilita Viáticos, Hospedaje & Logística)"]
+    D --> F["Paso 2: 4 Fases EDT / WBS con Tareas Operativas"]
+    E --> F
+    F --> G["Paso 3: Asignación de Recursos\n• 13 Trabajadores de Nómina\n• Flota de Vehículos DALOR\n• Herramientas & Maquinaria"]
+    G --> H["Paso 4: Job Costing (5 Bolsas de Costo Estimado)\nM.O. | Combustible | Materiales | Equipos | Servicios"]
+    H --> I["Cálculo de Margen Operativo Proyectado"]
+    I --> J["Guardar Proyecto Activo + Token de Seguimiento Cliente"]
+            </pre>
+        </div>
+
+        <table class="step-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Paso Operativo</th>
+                    <th style="width: 75%;">Descripción Funcional y Lógica en Sistema</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="step-num">Paso 2.1</span> Clasificación Sede vs Foráneo</td>
+                    <td><b>🏢 En Sede (Taller Guacara):</b> Trabajos de fabricación y rectificación en planta DALOR.<br/><b>📍 Proyecto Foráneo:</b> Trabajos en frentes externos (PDVSA, Corpoelec, etc.) que activan el cálculo de viáticos de campo, hospedaje y traslados.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">Paso 2.2</span> Fases EDT / WBS</td>
+                    <td>Estructuración de 4 etapas (Movilización/SHA, Desmontaje/Oxicorte, Fabricación/Montaje y Control de Calidad/Pintura) con listas de chequeo operativo.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">Paso 2.3</span> Asignación de Recursos</td>
+                    <td>Asignación interactiva mediante etiquetas de los 13 trabajadores de nómina, camionetas/camiones y maquinaria mayor.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">Paso 2.4</span> Job Costing & Margen</td>
+                    <td>Distribución del presupuesto en 5 bolsas de costo controlado para monitorear desviaciones financieras durante la ejecución.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MÓDULO 3: DESPACHOS, GUÍAS DE TRASLADO & FLETES -->
+    <div class="module-card">
+        <div class="module-header">
+            <h3 style="font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-truck-ramp-box" style="color: var(--dalor-gold);"></i>
+                MÓDULO 3: DESPACHOS, GUÍAS DE TRASLADO & FLETES
+            </h3>
+            <span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;">Logística & Salida</span>
+        </div>
+
+        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px;">
+            <i class="fa-solid fa-diagram-project"></i> Diagrama de Flujo Visual:
+        </h4>
+        
+        <div class="diagram-container">
+            <pre class="mermaid">
+flowchart TD
+    A["Pieza Fabricada / Estructura Lista para Salida"] --> B["Seleccionar Cliente, Proyecto & Destino"]
+    B --> C{"¿Modalidad de Transporte?"}
+    
+    C -- "1. Flota Propia" --> D["🏢 Camión DALOR + Chofer Interno\n(Asigna unidad y chofer de nómina)"]
+    C -- "2. Retiro Cliente" --> E["🤝 Retiro por Cliente en Taller\n(Chofer y Placa Cliente • Flota DALOR Libre • Flete $0)"]
+    C -- "3. Flete Externo" --> F["🚚 Flete Tercerizado (Línea Externa)\n• Costo Flete: Genera CxP al Transportista\n• Cobro Flete al Cliente: Genera CxC con Margen"]
+
+    D --> G["Cargar Tabla de Piezas (Cant, Unidad, Condición, Peso)"]
+    E --> G
+    F --> G
+
+    G --> H["Emitir 'GUÍA DE TRASLADO Y NOTA DE ENTREGA'\nCorrelativo GD-2026-XXX con Logo DALOR"]
+    H --> I["Cuadro de 3 Firmas Legales SENIAT / Tránsito:\n1) Despachado DALOR  2) Transportista/Cliente  3) Receptor Cliente"]
+    I --> J["Confirmación de Recepción Conforme en Destino"]
+            </pre>
+        </div>
+
+        <table class="step-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Modalidad / Paso</th>
+                    <th style="width: 75%;">Descripción Funcional y Lógica en Sistema</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="step-num">Modalidad 1</span> Flota Propia DALOR</td>
+                    <td>Movilización en camiones NPR, Hilux, RAM con chofer de nómina y registro de odómetros.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">Modalidad 2</span> Retiro por Cliente en Taller</td>
+                    <td>El cliente retira directamente en los galpones de Guacara. <b>No bloquea camiones de DALOR</b> y registra la persona autorizada receptora.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">Modalidad 3</span> Flete Tercerizado (Dual)</td>
+                    <td><b>Costo del Flete ($ USD):</b> Genera la Cuenta por Pagar (CxP) al transportista.<br/><b>Monto Cobrado al Cliente ($ USD):</b> Genera la Cuenta por Cobrar (CxC) al cliente reflejando la ganancia logística de DALOR.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MÓDULO 4: ACTIVOS, TRASPASOS & ALQUILERES BIDIRECCIONALES -->
+    <div class="module-card">
+        <div class="module-header">
+            <h3 style="font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-toolbox" style="color: var(--dalor-gold);"></i>
+                MÓDULO 4: ACTIVOS, TRASPASO ENTRE OBRAS & ALQUILERES
+            </h3>
+            <span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;">Custodia & Operaciones</span>
+        </div>
+
+        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px;">
+            <i class="fa-solid fa-diagram-project"></i> Diagrama de Flujo Visual:
+        </h4>
+        
+        <div class="diagram-container">
+            <pre class="mermaid">
+flowchart TD
+    A["Inventario de Activos DALOR\n(Vehículos, Maquinarias, Generadores, Herramientas)"] --> B{"Tipo de Movimiento"}
+
+    B -- "1. Traspaso Directo" --> C["🔄 Traspaso Frente a Frente (Obra A ➔ Obra B)\n• Sin retorno a Base Central de Guacara\n• Actualiza Custodio, Ubicación y Proyecto\n• Traza Inmutable en ResourceAssignmentHistory"]
+
+    B -- "2. DALOR ➔ Terceros" --> D["📤 Alquiler / Préstamo de Equipo Propio a Cliente\n• Tarifa USD/Día + Fecha Límite de Retorno\n• Genera Cuenta por Cobrar (CxC) al Cliente"]
+
+    B -- "3. Terceros ➔ DALOR" --> E["📥 Alquiler de Maquinaria Externa para una Obra\n• Grúa telescópica, compresor o planta externa\n• Imputa costo a la bolsa de Equipos del Proyecto\n• Genera Cuenta por Pagar (CxP) al Proveedor"]
+
+    B -- "4. Flota & Mantenimiento" --> F["🚦 Control de Odómetros y Semáforos de Mantenimiento\n• VERDE: >500 Km  • AMARILLO: ≤500 Km  • ROJO: Vencido (5.000 Km)"]
+            </pre>
+        </div>
+
+        <table class="step-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Operación</th>
+                    <th style="width: 75%;">Descripción Funcional y Lógica en Sistema</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="step-num">Traspaso Directo</span> Frente a Frente</td>
+                    <td>Permite reasignar una máquina de una obra a otra directamente en campo mediante Guía de Traspaso, sin obligar al equipo a retornar a Guacara.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">DALOR ➔ Tercero</span> Alquiler Salida</td>
+                    <td>DALOR renta un generador o equipo propio a un cliente: fija tarifa diaria/semanal en USD y genera la **CxC** correspondiente.</td>
+                </tr>
+                <tr>
+                    <td><span class="step-num">Tercero ➔ DALOR</span> Alquiler Entrada</td>
+                    <td>DALOR arrienda una grúa de 50 Tn para un montaje: el costo se imputa al proyecto y genera la **CxP** al arrendador.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MÓDULO 5 & 6: GASTOS Y FINANZAS -->
+    <div class="module-card">
+        <div class="module-header">
+            <h3 style="font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-scale-balanced" style="color: var(--dalor-gold);"></i>
+                MÓDULOS 5 & 6: GASTOS OPERATIVOS (OCR/BCV) & FINANZAS (CxC/CxP)
+            </h3>
+            <span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;">Control Financiero</span>
+        </div>
+
+        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px;">
+            <i class="fa-solid fa-diagram-project"></i> Diagrama de Flujo Visual:
+        </h4>
+        
+        <div class="diagram-container">
+            <pre class="mermaid">
+flowchart TD
+    subgraph GASTOS_OCR ["MÓDULO 5: GASTOS & OCR"]
+        G1["Gasto en Campo / Taller"] --> G2["📱 Captura Foto en Celular (<1280px compresión)"]
+        G2 --> G3["🔍 Motor OCR: Extrae RIF, Factura, Monto & IVA"]
+        G3 --> G4["🇻🇪 Scraper BCV Oficial en Tiempo Real (USD ↔ Bs)"]
+        G4 --> G5["Imputar a 1 de 20 Categorías & Proyecto"]
+        G5 --> G6["Bandeja de Aprobación por Dirección"]
+        G6 --> G7["✅ Aprobado: Descuenta de Bolsa de Obra"]
+    end
+
+    subgraph FINANZAS_CENTRAL ["MÓDULO 6: FINANZAS, CxC & CxP"]
+        F1["Cartera de Cuentas por Cobrar (CxC)\n• Valuaciones de Obra • Fletes Cobrados • Alquileres a Clientes"] --> F2["Abonos Parciales / Liquidación Total"]
+        F1 --> F3["Castigo de Cartera Incobrable (Justificación Auditada)"]
+        
+        F4["Obligaciones por Pagar (CxP)\n• Materiales • Fletes Tercerizados • Alquileres de Grúas"] --> F5["Programación y Pago a Proveedores"]
+        
+        F6["Tesorería: Flujo Neto de Caja + Retiros Regulados de Socios"]
+    end
+            </pre>
+        </div>
+    </div>
+
+    <!-- Firmas de Aprobación -->
+    <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; text-align: center;">
+        <p style="font-size: 12px; color: #475569; margin-bottom: 16px;">
+            <b>VALIDEZ TÉCNICA:</b> Este manual y sus flujogramas representan la arquitectura operativa oficial aprobada para la ejecución en el software ERP <b>DALOR SIGO-P</b>.
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; font-size: 11px; margin-top: 10px;">
+            <div style="border-top: 1.5px solid var(--dalor-navy); padding-top: 6px;">
+                <b>ELABORADO POR:</b><br>Ingeniería de Software & Procesos<br>Antigravity AI Team
+            </div>
+            <div style="border-top: 1.5px solid var(--dalor-navy); padding-top: 6px;">
+                <b>REVISADO Y VALIDADO:</b><br>Gerencia de Operaciones & Taller<br>Metalmecánica DALOR, C.A.
+            </div>
+            <div style="border-top: 1.5px solid var(--dalor-navy); padding-top: 6px;">
+                <b>APROBADO POR:</b><br>Dirección General / Presidencia<br>Metalmecánica DALOR, C.A.
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

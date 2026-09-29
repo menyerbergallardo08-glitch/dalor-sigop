@@ -15,7 +15,8 @@ from app.models.models import (
     AccountReceivable,
     Expense,
     ExpenseCategory,
-    AuditLog
+    AuditLog,
+    ProjectAddendum
 )
 
 router = APIRouter()
@@ -233,13 +234,33 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     elif not recipient and not client:
         recipient = "Destinatario Libre / Particular"
 
-    if g_in.project_id and g_in.client_id:
+    if g_in.project_id:
         proj = db.query(Project).filter(Project.id == g_in.project_id).first()
-        if proj and proj.client_id and proj.client_id != g_in.client_id:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Inconsistencia: El proyecto [{proj.code}] pertenece a otro cliente y no puede cruzarse."
-            )
+        if proj:
+            proj_st = (proj.status or "").lower().strip()
+            if proj_st in ["culminado", "completado", "cerrado", "cancelado", "finalizado", "inactivo"]:
+                has_addendum = db.query(ProjectAddendum).filter(ProjectAddendum.project_id == proj.id).first()
+                if not has_addendum:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"La obra [{proj.code}] '{proj.name}' se encuentra {proj_st.upper()} y cerrada. No se permite despachar insumos a obras cerradas sin una adenda contractual aprobada."
+                    )
+
+            if g_in.client_id and proj.client_id and proj.client_id != g_in.client_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Inconsistencia: El proyecto [{proj.code}] pertenece a otro cliente y no puede cruzarse."
+                )
+
+    if g_in.asset_id:
+        veh_asset = db.query(Asset).filter(Asset.id == g_in.asset_id).first()
+        if veh_asset:
+            st = (veh_asset.status or "").lower()
+            if not veh_asset.is_active or st in ["en_mantenimiento", "mantenimiento", "en_reparacion", "reparacion", "inactivo", "desincorporado", "no_disponible"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El vehículo de flota [{veh_asset.asset_code}] '{veh_asset.name}' no está disponible para despacho (Estatus actual: {veh_asset.status})."
+                )
 
     client_id_val = client.id if client else None
 
@@ -379,7 +400,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
                 resource_code=veh.asset_code,
                 resource_name=veh.name,
                 project_id=g_in.project_id,
-                origin_location="Sede Central Dalor",
+                origin_location="Sede Central Dalor (Guacara)",
                 destination_location=dest,
                 custodian_name=g_in.driver_name,
                 driver_name=g_in.driver_name,

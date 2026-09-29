@@ -25,6 +25,17 @@ class ResourceStatus(str, enum.Enum):
 # ==============================================================================
 # 🔐 MÓDULO DE MANTENIMIENTO, SEGURIDAD & USUARIOS (TIPO PROFIT PLUS)
 # ==============================================================================
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, index=True, nullable=False)
+    display_name = Column(String(100), nullable=False)
+    description = Column(String(255), nullable=True)
+    permissions_json = Column(Text, nullable=False)
+    is_system = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class User(Base):
     __tablename__ = "users"
 
@@ -65,6 +76,7 @@ class PartnerWithdrawal(Base):
     amount_bs = Column(Float, default=0.0)
     exchange_rate = Column(Float, default=800.0)
     payment_method = Column(String(50), default="transferencia") # transferencia, efectivo_divisa, zelle, pago_movil
+    financial_account_id = Column(Integer, ForeignKey("financial_accounts.id"), nullable=True)
     reference_number = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -263,6 +275,8 @@ class Asset(Base):
     service_interval_km = Column(Float, default=5000.0)
     last_service_odometer = Column(Float, default=0.0)
     
+    category = Column(String(100), default="General")
+    
     # Condición de propiedad & Alquiler
     ownership_type = Column(String(50), default="propio") # propio, alquilado_a_tercero, prestado_de_tercero, alquilado_a_cliente, prestado_a_cliente
     external_entity_name = Column(String(150), nullable=True)
@@ -270,13 +284,31 @@ class Asset(Base):
     return_due_date = Column(DateTime, nullable=True)
 
     status = Column(String(50), default="disponible_base")
-    current_location = Column(String(150), default="Sede Central")
+    current_location = Column(String(150), default="Sede Central Dalor (Guacara)")
     current_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     current_custodian_name = Column(String(100), nullable=True)
     is_exclusive = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
 
     current_project = relationship("Project")
+    services = relationship("AssetService", back_populates="asset", cascade="all, delete-orphan", order_by="desc(AssetService.service_date)")
+
+class AssetService(Base):
+    __tablename__ = "asset_services"
+
+    id = Column(Integer, primary_key=True, index=True)
+    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True)
+    service_date = Column(DateTime, default=datetime.utcnow)
+    service_type = Column(String(100), nullable=False)
+    service_odometer = Column(Float, nullable=False, default=0.0)
+    technician_workshop = Column(String(150), nullable=True)
+    cost_usd = Column(Float, default=0.0)
+    cost_bs = Column(Float, default=0.0)
+    notes = Column(Text, nullable=True)
+    performed_by = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    asset = relationship("Asset", back_populates="services")
 
 class Personnel(Base):
     __tablename__ = "personnel"
@@ -365,6 +397,7 @@ class Expense(Base):
     odometer_at_fueling = Column(Float, nullable=True)
     
     payment_method = Column(String(50), default="caja_chica")
+    financial_account_id = Column(Integer, ForeignKey("financial_accounts.id"), nullable=True)
     status = Column(String(50), default="aprobado")
     has_receipt = Column(Boolean, default=True)
     receipt_image_path = Column(Text, nullable=True)
@@ -376,6 +409,30 @@ class Expense(Base):
     project = relationship("Project", back_populates="expenses")
     asset = relationship("Asset")
     reported_by = relationship("Personnel")
+
+    @property
+    def category_code(self):
+        return self.category.code if self.category else None
+
+    @property
+    def category_name(self):
+        return self.category.name if self.category else None
+
+    @property
+    def project_name(self):
+        return self.project.name if self.project else None
+
+    @property
+    def project_code(self):
+        return self.project.code if self.project else None
+
+    @property
+    def reported_by_name(self):
+        if self.partner_name and "Reportado por:" in self.partner_name:
+            return self.partner_name.replace("Reportado por:", "").strip()
+        if self.reported_by:
+            return self.reported_by.full_name
+        return self.partner_name or "Personal de Campo"
 
 # ==============================================================================
 # 💰 CUENTAS POR COBRAR (CxC), PAGAR (CxP) Y PAGOS FINANCIEROS
@@ -467,9 +524,31 @@ class AccountPayable(Base):
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Vinculación con Entrada Física de Almacén (3-Way Matching)
+    warehouse_movement_id = Column(Integer, ForeignKey("material_movements.id"), nullable=True)
+    warehouse_entry_ref = Column(String(100), nullable=True)
+
     project = relationship("Project", back_populates="payables")
     category = relationship("ExpenseCategory")
+    warehouse_movement = relationship("MaterialMovement")
     payments = relationship("FinancialPayment", back_populates="payable", cascade="all, delete-orphan")
+
+# ==============================================================================
+# 🏦 CUENTAS BANCARIAS Y CAJAS PERSONALIZADAS
+# ==============================================================================
+class FinancialAccount(Base):
+    __tablename__ = "financial_accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(120), nullable=False)
+    account_type = Column(String(20), nullable=False)  # "usd" o "bs"
+    bank_or_provider = Column(String(100), nullable=True)
+    account_number = Column(String(50), nullable=True)
+    is_active = Column(Boolean, default=True)
+    is_default = Column(Boolean, default=False)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    notes = Column(String(255), nullable=True)
 
 class FinancialPayment(Base):
     __tablename__ = "financial_payments"
@@ -480,6 +559,7 @@ class FinancialPayment(Base):
     receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
     payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
     bank_account = Column(String(50), nullable=True) # banesco_usd, banesco_bs, binance_usdt, efectivo_usd, caja_chica
+    financial_account_id = Column(Integer, ForeignKey("financial_accounts.id"), nullable=True)
     
     payment_date = Column(DateTime, default=datetime.utcnow)
     payment_method = Column(String(50), default="transferencia")
@@ -533,6 +613,29 @@ class MaterialMovement(Base):
 
     material = relationship("Material", back_populates="movements")
     project = relationship("Project")
+
+
+class ProjectMaterialRequisition(Base):
+    __tablename__ = "project_material_requisitions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    resource_type = Column(String(50), default="material") # material, herramienta, maquinaria, vehiculo
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=True, index=True)
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True, index=True)
+    material_code = Column(String(50), nullable=True)
+    material_name = Column(String(200), nullable=False)
+    unit_measure = Column(String(50), default="UND")
+    quantity_required = Column(Float, nullable=False, default=1.0)
+    quantity_dispatched = Column(Float, default=0.0)
+    estimated_cost_usd = Column(Float, default=0.0)
+    status = Column(String(50), default="pendiente") # pendiente, en_preparacion, despachado_parcial, despachado_total
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project", backref="material_requisitions")
+    material = relationship("Material")
+    asset = relationship("Asset")
 
 
 class DispatchGuide(Base):

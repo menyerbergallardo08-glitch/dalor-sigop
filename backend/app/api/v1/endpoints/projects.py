@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Respons
 from sqlalchemy.orm import Session, joinedload, selectinload
 from typing import List, Optional
 from datetime import datetime, timedelta
+import re
 from pydantic import BaseModel
 from app.core.database import get_db
-from app.models.models import Project, Client, Expense, ProjectPhase, Asset, Personnel, ResourceAssignmentHistory, AccountReceivable, FinancialPayment, ProjectAddendum, AuditLog
+from app.models.models import Project, Client, Expense, ProjectPhase, Asset, Personnel, ResourceAssignmentHistory, AccountReceivable, FinancialPayment, ProjectAddendum, AuditLog, Material, ProjectMaterialRequisition, MaterialMovement
 from app.schemas.schemas import ProjectCreate, ProjectOut, ProjectAddendumCreate, ProjectAddendumOut
 from app.services.excel_service import ExcelProjectService
 
@@ -29,7 +30,7 @@ def get_projects(db: Session = Depends(get_db)):
     )
     results = []
     for proj in projects:
-        spent = sum(e.amount_usd for e in proj.expenses) if proj.expenses else 0.0
+        spent = sum(e.amount_usd for e in proj.expenses if e.status == 'aprobado') if proj.expenses else 0.0
         
         # Calculate physical progress percentage based on tasks or completed phases
         total_tasks = 0
@@ -128,8 +129,8 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
     assigned_assets = db.query(Asset).filter(Asset.current_project_id == project_id, Asset.is_active == True).all()
     assigned_personnel = db.query(Personnel).filter(Personnel.current_project_id == project_id, Personnel.is_active == True).all()
     
-    # Gastos ejecutados
-    expenses = db.query(Expense).filter(Expense.project_id == project_id).all()
+    # Gastos ejecutados (solo aprobados)
+    expenses = db.query(Expense).filter(Expense.project_id == project_id, Expense.status == "aprobado").all()
     total_spent = sum(e.amount_usd for e in expenses)
 
     # Trazabilidad de Cobros y Cuentas por Cobrar (CxC) de la obra
@@ -170,8 +171,33 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
             "driver_name": g.driver_name,
             "items_count": len(g.items or []),
             "transfer_reason": g.transfer_reason,
-            "items_summary": ", ".join(f"{it.quantity} {it.unit or ''} {it.description}" for it in (g.items or [])[:3])
-        } for g in guides
+        }
+        for g in guides
+    ]
+
+    # Gastos asociados a la obra
+    project_expenses = (
+        db.query(Expense)
+        .options(joinedload(Expense.category), joinedload(Expense.reported_by))
+        .filter(Expense.project_id == project_id)
+        .order_by(Expense.expense_date.desc(), Expense.id.desc())
+        .all()
+    )
+    expenses_data = [
+        {
+            "id": e.id,
+            "expense_date": e.expense_date.strftime("%Y-%m-%d") if e.expense_date else (e.created_at.strftime("%Y-%m-%d") if e.created_at else "-"),
+            "supplier_vendor": e.supplier_vendor or "Comercio General",
+            "description": e.description or "-",
+            "category_name": e.category.name if e.category else "General",
+            "category_code": e.category.code if e.category else "",
+            "amount_usd": round(e.amount_usd or 0.0, 2),
+            "amount_bs": round(e.amount_bs or 0.0, 2) if e.amount_bs else 0.0,
+            "exchange_rate": e.exchange_rate or 850.0,
+            "status": e.status or "pendiente",
+            "receipt_image_path": e.receipt_image_path or "",
+            "reported_by_name": e.reported_by.full_name if e.reported_by else (e.reported_by.username if e.reported_by else "Admin")
+        } for e in project_expenses
     ]
 
     return {
@@ -209,6 +235,7 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
         ],
         "collections": collections_trace,
         "dispatch_guides": dispatch_guides_data,
+        "expenses": expenses_data,
         "phases": [
             {
                 "id": ph.id,
@@ -249,7 +276,78 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
                 "name": p.full_name,
                 "role": p.role_title
             } for p in assigned_personnel
-        ]
+        ],
+        "requested_materials": [
+            {
+                "id": r.id,
+                "material_id": r.material_id,
+                "material_code": r.material_code or (r.material.code if r.material else "MAT-REQ"),
+                "material_name": r.material_name or (r.material.name if r.material else "Insumo Requerido"),
+                "unit_measure": r.unit_measure or (r.material.unit_measure if r.material else "UND"),
+                "quantity_required": r.quantity_required,
+                "quantity_dispatched": r.quantity_dispatched or 0.0,
+                "quantity_pending": max(0.0, (r.quantity_required or 0.0) - (r.quantity_dispatched or 0.0)),
+                "estimated_cost_usd": r.estimated_cost_usd or 0.0,
+                "status": "despachado_total" if (r.quantity_dispatched or 0.0) >= r.quantity_required and r.quantity_required > 0 else ("despachado_parcial" if (r.quantity_dispatched or 0.0) > 0 else "pendiente"),
+                "notes": r.notes or "",
+                "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "-"
+            } for r in db.query(ProjectMaterialRequisition).filter(ProjectMaterialRequisition.project_id == project_id).order_by(ProjectMaterialRequisition.id.asc()).all()
+        ],
+        "expenses": expenses_data
+    }
+
+class MaterialRequestItemIn(BaseModel):
+    material_id: Optional[int] = None
+    material_name: Optional[str] = None
+    quantity: float = 1.0
+    unit_measure: Optional[str] = "UND"
+    notes: Optional[str] = None
+
+class ProjectMaterialRequestIn(BaseModel):
+    items: List[MaterialRequestItemIn]
+    notes: Optional[str] = None
+
+@router.post("/{project_id}/request-materials")
+def request_materials_for_project(
+    project_id: int,
+    req_in: ProjectMaterialRequestIn,
+    db: Session = Depends(get_db)
+):
+    proj = db.query(Project).filter(Project.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+
+    created = []
+    for it in req_in.items:
+        m = None
+        if it.material_id:
+            m = db.query(Material).filter(Material.id == it.material_id).first()
+        
+        m_name = m.name if m else (it.material_name or "Insumo Requerido")
+        m_code = m.code if m else "MAT-REQ"
+        m_unit = m.unit_measure if m else (it.unit_measure or "UND")
+        cost_est = (m.unit_cost_usd or 0.0) * it.quantity if m else 0.0
+
+        requisition = ProjectMaterialRequisition(
+            project_id=proj.id,
+            material_id=m.id if m else None,
+            material_code=m_code,
+            material_name=m_name,
+            unit_measure=m_unit,
+            quantity_required=it.quantity,
+            quantity_dispatched=0.0,
+            estimated_cost_usd=round(cost_est, 2),
+            status="pendiente",
+            notes=it.notes or req_in.notes or "Solicitado a almacén para avance de obra"
+        )
+        db.add(requisition)
+        created.append(requisition)
+
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Se registraron {len(created)} requerimientos de insumos a almacén para el proyecto {proj.code}.",
+        "items_count": len(created)
     }
 
 @router.post("/{project_id}/addendums", response_model=ProjectAddendumOut)
@@ -293,20 +391,24 @@ def create_project_addendum(project_id: int, payload: ProjectAddendumCreate, db:
         2
     )
 
-    # Si se especificó una nueva fase / etapa para el cronograma (nuevas capas/trabajos)
-    if payload.new_phase_name:
-        curr_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
-        new_phase = ProjectPhase(
-            project_id=project_id,
-            phase_number=len(curr_phases) + 1,
-            name=payload.new_phase_name.strip(),
-            description=f"Adenda N° {next_num}: {payload.title}. {payload.scope_description or ''}".strip(),
-            duration_days=payload.new_phase_duration_days or 7,
-            estimated_cost_usd=round(payload.additional_contract_usd, 2),
-            status="pendiente",
-            responsible_person=payload.authorized_by or "Residente de Obra"
-        )
-        db.add(new_phase)
+    # Si el proyecto estaba culminado, se reactiva a activo al aprobarse la adenda
+    if proj.status == "culminado":
+        proj.status = "activo"
+
+    # Siempre crear una fase/etapa en el cronograma para la adenda
+    phase_name = payload.new_phase_name.strip() if payload.new_phase_name else f"Etapa Adenda N° {next_num}: {payload.title}".strip()
+    curr_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
+    new_phase = ProjectPhase(
+        project_id=project_id,
+        phase_number=len(curr_phases) + 1,
+        name=phase_name,
+        description=f"Adenda N° {next_num}: {payload.title}. {payload.scope_description or ''}".strip(),
+        duration_days=payload.new_phase_duration_days or 7,
+        estimated_cost_usd=round(payload.additional_contract_usd, 2),
+        status="pendiente",
+        responsible_person=payload.authorized_by or "Residente de Obra"
+    )
+    db.add(new_phase)
 
     # Generar automáticamente la Cuenta por Cobrar (CxC) de la Adenda
     target_client_id = proj.client_id
@@ -360,16 +462,34 @@ def create_project_addendum(project_id: int, payload: ProjectAddendumCreate, db:
     db.refresh(addendum)
     return addendum
 
+def compute_next_project_code(db: Session, current_year: int) -> str:
+    projects = db.query(Project.code).all()
+    max_seq = 0
+    pattern = re.compile(rf"PRJ-{current_year}-(\d+)", re.IGNORECASE)
+    for (p_code,) in projects:
+        if p_code:
+            m = pattern.search(p_code)
+            if m:
+                try:
+                    num = int(m.group(1))
+                    if num > max_seq:
+                        max_seq = num
+                except ValueError:
+                    pass
+    return f"PRJ-{current_year}-{(max_seq + 1):03d}"
+
+@router.get("/next-code")
+def get_next_project_code_endpoint(db: Session = Depends(get_db)):
+    current_year = datetime.utcnow().year
+    next_code = compute_next_project_code(db, current_year)
+    return {"next_code": next_code, "year": current_year}
+
 @router.post("/", response_model=ProjectOut)
 def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
     code = (project_in.code or "").strip()
+    current_year = datetime.utcnow().year
     if not code or db.query(Project).filter(Project.code == code).first():
-        current_year = datetime.utcnow().year
-        seq = db.query(Project).count() + 1
-        code = f"PRJ-{current_year}-{seq:03d}"
-        while db.query(Project).filter(Project.code == code).first():
-            seq += 1
-            code = f"PRJ-{current_year}-{seq:03d}"
+        code = compute_next_project_code(db, current_year)
     
     total_budget = (
         project_in.estimated_labor_usd +
@@ -498,35 +618,46 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
                     )
                     db.add(hist)
 
-        # 5. Generar Factura / Valuación Inicial en Cuentas por Cobrar (CxC)
-        if new_project.contract_amount_usd and new_project.contract_amount_usd > 0:
-            target_client_id = new_project.client_id
-            if not target_client_id:
-                first_client = db.query(Client).first()
-                if first_client:
-                    target_client_id = first_client.id
-                    new_project.client_id = first_client.id
-                    new_project.client_name = first_client.name
-            
-            if target_client_id:
-                from app.models.models import AccountReceivable, FinancialPayment
-                cxc_entry = AccountReceivable(
-                    project_id=new_project.id,
-                    client_id=target_client_id,
-                    invoice_number=f"VAL-{new_project.code}-01",
-                    description=f"Contrato / Valuación Inicial: {new_project.name}",
-                    issue_date=datetime.utcnow(),
-                    due_date=datetime.utcnow() + timedelta(days=new_project.duration_days or 30),
-                    taxable_base_usd=new_project.contract_amount_usd,
-                    tax_amount_usd=0.0,
-                    amount_usd=new_project.contract_amount_usd,
-                    paid_amount_usd=0.0,
-                    balance_usd=new_project.contract_amount_usd,
-                    net_amount_usd=new_project.contract_amount_usd,
-                    status="pendiente"
-                )
-                db.add(cxc_entry)
+                    req_tool = ProjectMaterialRequisition(
+                        project_id=new_project.id,
+                        resource_type="herramienta",
+                        asset_id=asset.id,
+                        material_code=asset.asset_code,
+                        material_name=asset.name,
+                        unit_measure="UND",
+                        quantity_required=1.0,
+                        quantity_dispatched=0.0,
+                        estimated_cost_usd=0.0,
+                        status="pendiente",
+                        notes="Herramienta/Equipo asignado en planificación de obra"
+                    )
+                    db.add(req_tool)
 
+        # 4.5. Registrar Materiales e Insumos Requeridos (Lista de Picking para Almacén)
+        if getattr(project_in, 'assigned_material_items', None):
+            for mat_item in project_in.assigned_material_items:
+                m_id = mat_item.get("material_id")
+                qty = float(mat_item.get("quantity") or 1.0)
+                m_obj = db.query(Material).filter(Material.id == m_id).first() if m_id else None
+                m_name = m_obj.name if m_obj else mat_item.get("name", "Material Requerido")
+                m_code = m_obj.code if m_obj else mat_item.get("code", "MAT-REQ")
+                m_unit = m_obj.unit_measure if m_obj else mat_item.get("unit_measure", "UND")
+                cost_est = (m_obj.unit_cost_usd or 0.0) * qty if m_obj else 0.0
+
+                req_rec = ProjectMaterialRequisition(
+                    project_id=new_project.id,
+                    resource_type="material",
+                    material_id=m_id,
+                    material_code=m_code,
+                    material_name=m_name,
+                    unit_measure=m_unit,
+                    quantity_required=qty,
+                    quantity_dispatched=0.0,
+                    estimated_cost_usd=round(cost_est, 2),
+                    status="pendiente",
+                    notes=mat_item.get("notes", "Requerido en armado y formulación de obra")
+                )
+                db.add(req_rec)
         # Confirmar transacción atómica completa
         db.commit()
         db.refresh(new_project)
@@ -600,12 +731,12 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
     }
 
 class ProjectPhaseAdd(BaseModel):
-    phase_number: int = 1
+    phase_number: Optional[int] = None
     name: str
     description: Optional[str] = None
-    duration_days: int = 7
-    estimated_cost_usd: float = 0.0
-    status: str = "pendiente"
+    duration_days: Optional[int] = 7
+    estimated_cost_usd: Optional[float] = 0.0
+    status: Optional[str] = "pendiente"
     responsible_person: Optional[str] = None
 
 @router.post("/{project_id}/phases")
@@ -614,15 +745,18 @@ def add_project_phase(project_id: int, phase_in: ProjectPhaseAdd, db: Session = 
     if not proj:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
 
+    curr_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
+    p_num = phase_in.phase_number if (phase_in.phase_number and phase_in.phase_number > 0) else len(curr_phases) + 1
+
     new_phase = ProjectPhase(
         project_id=project_id,
-        phase_number=phase_in.phase_number,
-        name=phase_in.name,
-        description=phase_in.description,
-        duration_days=phase_in.duration_days,
-        estimated_cost_usd=phase_in.estimated_cost_usd,
-        status=phase_in.status,
-        responsible_person=phase_in.responsible_person
+        phase_number=p_num,
+        name=phase_in.name.strip(),
+        description=(phase_in.description or "").strip(),
+        duration_days=phase_in.duration_days or 7,
+        estimated_cost_usd=round(phase_in.estimated_cost_usd or 0.0, 2),
+        status=phase_in.status or "pendiente",
+        responsible_person=phase_in.responsible_person or "Residente de Obra"
     )
     db.add(new_phase)
     db.commit()
@@ -631,7 +765,15 @@ def add_project_phase(project_id: int, phase_in: ProjectPhaseAdd, db: Session = 
         "success": True,
         "message": f"Fase #{new_phase.phase_number} ('{new_phase.name}') agregada exitosamente al proyecto.",
         "id": new_phase.id,
-        "phase_number": new_phase.phase_number
+        "phase_number": new_phase.phase_number,
+        "phase": {
+            "id": new_phase.id,
+            "phase_number": new_phase.phase_number,
+            "name": new_phase.name,
+            "duration_days": new_phase.duration_days,
+            "estimated_cost_usd": new_phase.estimated_cost_usd,
+            "status": new_phase.status
+        }
     }
 
 @router.put("/{project_id}/phases/{phase_id}/status")
@@ -716,6 +858,70 @@ def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, 
         }
     raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
 
+class TaskCreateInput(BaseModel):
+    task_name: str
+
+@router.post("/{project_id}/phases/{phase_id}/tasks")
+def add_phase_task(project_id: int, phase_id: int, payload: TaskCreateInput, db: Session = Depends(get_db)):
+    phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+    
+    clean_task = payload.task_name.strip()
+    if not clean_task:
+        raise HTTPException(status_code=400, detail="El nombre de la tarea no puede estar vacío.")
+    
+    for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
+        if clean_task.startswith(pref):
+            clean_task = clean_task[len(pref):].strip()
+            
+    raw_desc = phase.description or ""
+    tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
+    if not tasks and raw_desc.strip():
+        tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
+        
+    tasks.append(f"[ ] {clean_task}")
+    phase.description = "; ".join(tasks)
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Tarea '{clean_task}' agregada a la etapa '{phase.name}'.",
+        "tasks": tasks
+    }
+
+@router.delete("/{project_id}/phases/{phase_id}/tasks/{task_index}")
+def delete_phase_task(project_id: int, phase_id: int, task_index: int, db: Session = Depends(get_db)):
+    phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+        
+    raw_desc = phase.description or ""
+    tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
+    if not tasks and raw_desc.strip():
+        tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
+        
+    if 0 <= task_index < len(tasks):
+        removed = tasks.pop(task_index)
+        phase.description = "; ".join(tasks)
+        if not tasks:
+            phase.status = "pendiente"
+        else:
+            all_done = all(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
+            any_done = any(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
+            if all_done:
+                phase.status = "completado"
+            elif any_done:
+                phase.status = "en_progreso"
+            else:
+                phase.status = "pendiente"
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Tarea '{removed}' eliminada exitosamente.",
+            "tasks": tasks
+        }
+    raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
+
 @router.get("/excel-template")
 def download_excel_template():
     excel_stream = ExcelProjectService.generate_project_template()
@@ -761,7 +967,7 @@ def update_project_status(project_id: int, status_in: ProjectStatusUpdate, db: S
             a.status = "disponible_base"
             a.current_project_id = None
             a.current_custodian_name = "Disponible en Base"
-            a.current_location = "Sede Central Dalor"
+            a.current_location = "Sede Central Dalor (Guacara)"
             released_assets_count += 1
             
             # Registrar bitácora de retorno
@@ -773,7 +979,7 @@ def update_project_status(project_id: int, status_in: ProjectStatusUpdate, db: S
                 resource_name=a.name,
                 custodian_name="Custodio Base",
                 origin_location=proj.location or "Planta / Obra",
-                destination_location="Sede Central Dalor",
+                destination_location="Sede Central Dalor (Guacara)",
                 status="disponible_base",
                 notes=f"Liberación automática por culminación y cierre de obra {proj.code}"
             )
@@ -784,7 +990,7 @@ def update_project_status(project_id: int, status_in: ProjectStatusUpdate, db: S
         for p in assigned_personnel:
             p.status = "disponible_base"
             p.current_project_id = None
-            p.current_location = "Sede Central Dalor"
+            p.current_location = "Sede Central Dalor (Guacara)"
             released_personnel_count += 1
             
             history_pers = ResourceAssignmentHistory(
@@ -795,7 +1001,7 @@ def update_project_status(project_id: int, status_in: ProjectStatusUpdate, db: S
                 resource_name=p.full_name,
                 custodian_name="Base Central",
                 origin_location=proj.location or "Planta / Obra",
-                destination_location="Sede Central Dalor",
+                destination_location="Sede Central Dalor (Guacara)",
                 status="disponible_base",
                 notes=f"Liberación automática por culminación y cierre de obra {proj.code}"
             )
@@ -929,6 +1135,15 @@ def request_project_dispatch(project_id: int, req: ProjectDispatchRequest, db: S
     if not proj:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
     
+    if proj.status == "culminado":
+        from app.models.models import ProjectAddendum
+        has_addendum = db.query(ProjectAddendum).filter(ProjectAddendum.project_id == proj.id).first()
+        if not has_addendum:
+            raise HTTPException(
+                status_code=400,
+                detail=f"La obra [{proj.code}] '{proj.name}' se encuentra CULMINADA y cerrada. No se permite solicitar ni despachar insumos sin una adenda contractual aprobada."
+            )
+
     dest_loc = req.destination_address or proj.location or "En Obra"
     dispatch_items = []
 

@@ -1,0 +1,31 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Test Login</title>
+</head>
+<body>
+    <div id="loginErrorMessage" style="display:none;"><span id="loginErrorText"></span></div>
+    <input id="portal_username" value="campo">
+    <input id="portal_password" value="campo2026">
+    <button id="btnSubmitPortalLogin">Login</button>
+    <div id="app-login-screen"></div>
+    <div id="app-authenticated-shell" style="display:none;"></div>
+    <nav class="mobile-bottom-nav"></nav>
+
+    <script src="https://dalor-sigop.onrender.com/app.js?v=20260908v13"></script>
+    <script>
+        console.log('Testing performLogin...');
+        performLogin('campo', 'campo2026').then(() => {
+            console.log('SUCCESS! currentUser:', window.currentUser);
+            console.log('SUCCESS! authToken:', window.authToken);
+            console.log('BODY CLASSES:', document.body.className);
+            document.title = 'LOGIN_SUCCESS_' + (window.currentUser ? window.currentUser.role_name : 'NONE');
+        }).catch(err => {
+            console.error('CATCH ERROR:', err);
+            document.title = 'LOGIN_ERROR_' + err.message;
+        });
+    </script>
+</body>
+</html>

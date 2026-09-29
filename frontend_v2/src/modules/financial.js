@@ -45,7 +45,12 @@ function authFetch(url, options = {}) {
     const freshToken = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     const headers = { ...(options.headers || {}) };
     if (freshToken) headers['Authorization'] = 'Bearer ' + freshToken;
-    if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete headers['Content-Type'];
+    }
     return window.fetch(url, { ...options, headers });
 }
 
@@ -102,7 +107,7 @@ function switchFinancialSubtab(subtabName) {
 
 let allReceivablesList = [];
 let cxcCurrentPage = 1;
-let cxcPageSize = 15;
+let cxcPageSize = 10;
 
 function goToCxcPage(page) {
     cxcCurrentPage = page;
@@ -320,26 +325,136 @@ async function openNewReceivableModal() {
 
 
 
-    populateSelect("cxc_client_id", allClients || [], c => `<option value="${c.id}">${c.name} (${c.rif || 'S/R'})</option>`);
+    populateSelect("cxc_client_id", [{id: '', name: '-- Seleccionar Cliente --'}, ...(allClients || [])], c => `<option value="${c.id}">${c.name} ${c.rif ? '(' + c.rif + ')' : ''}</option>`);
 
-    populateSelect("cxc_project_id", [{id: '', code: 'Sin Obra / General'}, ...(allProjects || [])], p => `<option value="${p.id || ''}">${p.code} - ${p.name || ''}</option>`);
+    const clientSelect = document.getElementById("cxc_client_id");
+    if (clientSelect) {
+        clientSelect.onchange = function() {
+            onCxcClientChanged();
+        };
+    }
 
-    
+    const projSelect = document.getElementById("cxc_project_id");
+    if (projSelect) {
+        projSelect.disabled = false;
+        projSelect.onchange = function() {
+            onCxcProjectChanged();
+        };
+    }
+
+    // Correlativo consecutivo oficial
+    try {
+        const resCode = await authFetch(`${API_BASE}/financial/next-invoice-code?prefix=FAC`);
+        if (resCode.ok) {
+            const dataCode = await resCode.json();
+            const invInp = document.getElementById("cxc_invoice_number");
+            if (invInp && (!invInp.value || invInp.value.startsWith('FAC-'))) {
+                invInp.value = dataCode.next_code;
+            }
+        }
+    } catch(e) {
+        console.warn("Error fetching next invoice code:", e);
+    }
+
+    // Inicializar estado del selector de obras
+    onCxcClientChanged();
 
     // Fecha de vencimiento a 15 días
-
     const d = new Date();
-
     d.setDate(d.getDate() + 15);
-
     const dueDateInput = document.getElementById("cxc_due_date");
-
     if (dueDateInput) dueDateInput.value = d.toISOString().split('T')[0];
 
-    
-
     openModal("modalReceivable");
+}
 
+function onCxcClientChanged() {
+    const clientSel = document.getElementById("cxc_client_id");
+    const projSel = document.getElementById("cxc_project_id");
+    const submitBtn = document.querySelector('#receivableForm button[type="submit"]');
+    if (!clientSel || !projSel) return;
+
+    const clientId = clientSel.value;
+    const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+    
+    // FILTRO ESTRICTO: Solo mostrar proyectos del cliente con saldo activo pendiente por facturar (> $0.05)
+    const clientProjects = safeProjects.filter(p => {
+        if (String(p.client_id) !== String(clientId)) return false;
+        const contract = parseFloat(p.contract_amount_usd) || 0;
+        const billed = parseFloat(p.total_billed_cxc_usd) || 0;
+        const unbilled = Math.max(0, contract - billed);
+        return unbilled > 0.05;
+    });
+
+    const warnElId = "cxc_no_project_warn";
+    let warnEl = document.getElementById(warnElId);
+
+    if (!clientId) {
+        projSel.innerHTML = '<option value="">-- Selecciona primero un cliente --</option>';
+        projSel.disabled = true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+            submitBtn.style.cursor = 'not-allowed';
+        }
+        if (warnEl) warnEl.remove();
+        return;
+    }
+
+    projSel.disabled = false;
+
+    if (clientProjects.length === 0) {
+        projSel.innerHTML = '<option value="" disabled selected>⚠️ Este cliente no posee obras con saldo pendiente por facturar</option>';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+            submitBtn.style.cursor = 'not-allowed';
+        }
+        if (!warnEl) {
+            warnEl = document.createElement("div");
+            warnEl.id = warnElId;
+            warnEl.style.cssText = "font-size: 11.5px; color: #dc2626; font-weight: 700; background: #fef2f2; border: 1px solid #fecaca; padding: 6px 10px; border-radius: 6px; margin-top: 4px;";
+            warnEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Este cliente no tiene proyectos con saldo disponible por facturar (contratos 100% facturados o sin obras registradas).';
+            projSel.parentNode.appendChild(warnEl);
+        }
+    } else {
+        if (warnEl) warnEl.remove();
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+        }
+        let opts = `<option value="">-- Seleccionar Obra (${clientProjects.length} con saldo por facturar) --</option>`;
+        opts += clientProjects.map(p => {
+            const unbilled = Math.max(0, (parseFloat(p.contract_amount_usd) || 0) - (parseFloat(p.total_billed_cxc_usd) || 0));
+            return `<option value="${p.id}">[${p.code}] ${p.name} (Por facturar: $${unbilled.toFixed(2)})</option>`;
+        }).join('');
+        projSel.innerHTML = opts;
+        if (clientProjects.length === 1) {
+            projSel.value = String(clientProjects[0].id);
+            onCxcProjectChanged();
+        }
+    }
+}
+
+function onCxcProjectChanged() {
+    const projSel = document.getElementById("cxc_project_id");
+    const pId = projSel?.value;
+    if (!pId) return;
+
+    const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+    const proj = safeProjects.find(p => String(p.id) === String(pId));
+    if (proj) {
+        const unbilled = Math.max(0, (proj.contract_amount_usd || 0) - (proj.total_billed_cxc_usd || 0));
+        const amtInput = document.getElementById("cxc_amount_usd");
+        if (amtInput && (!amtInput.value || parseFloat(amtInput.value) <= 0)) {
+            amtInput.value = unbilled > 0 ? unbilled.toFixed(2) : (proj.contract_amount_usd || 0).toFixed(2);
+        }
+        const descInput = document.getElementById("cxc_description");
+        if (descInput && (!descInput.value || descInput.value.trim() === '')) {
+            descInput.value = `Valuación de Obra - [${proj.code}] ${proj.name}`;
+        }
+    }
 }
 
 
@@ -472,7 +587,7 @@ async function submitCreateReceivable(e) {
 let allPayablesList = [];
 let lastPayablesList = [];
 let cxpCurrentPage = 1;
-let cxpPageSize = 15;
+let cxpPageSize = 10;
 let currentCxpFilter = 'all'; // all, pendiente, por_vencer, vencido, solvente
 let currentCxpSearch = '';
 let currentCxpDocType = 'all';
@@ -656,7 +771,16 @@ function renderPayablesPaginated() {
                     ${p.project_code || p.project_name || 'Sede Central'}
                 </span>
             </td>
-            <td style="font-size: 11.5px; color: #334155; max-width: 200px;">${p.description}</td>
+            <td style="font-size: 11.5px; color: #334155; max-width: 220px;">
+                <div>${p.description}</div>
+                ${(p.warehouse_movement_id || p.warehouse_entry_ref) ? `
+                    <div style="margin-top: 3px;">
+                        <span style="background: #ecfdf5; color: #047857; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 4px;" title="Entrada física en almacén vinculada: ${p.warehouse_entry_ref || p.warehouse_movement_id}">
+                            <i class="fa-solid fa-boxes-stacked"></i> ${p.warehouse_entry_ref || `Recepción #${p.warehouse_movement_id}`}
+                        </span>
+                    </div>
+                ` : ''}
+            </td>
             <td style="font-size: 11px; color: #64748b;">${p.issue_date || '-'}</td>
             <td style="font-size: 11px; font-weight: 700; color: ${p.aging_status === 'vencido' ? '#e11d48' : '#334155'};"><i class="fa-regular fa-calendar"></i> ${p.due_date || '-'}</td>
             <td style="font-weight: 800; color: #0f172a;">$${Number(p.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
@@ -763,6 +887,249 @@ function calcPayablePreview() {
     if (lblNet) lblNet.textContent = `$${net.toFixed(2)}`;
 }
 
+let unbilledWarehouseEntriesCache = [];
+
+async function loadUnbilledWarehouseEntries() {
+    try {
+        const res = await authFetch(`${API_BASE}/financial/unbilled-warehouse-entries`);
+        if (res.ok) {
+            unbilledWarehouseEntriesCache = await res.json();
+            window.unbilledWarehouseEntriesCache = unbilledWarehouseEntriesCache;
+        } else {
+            unbilledWarehouseEntriesCache = [];
+        }
+    } catch (e) {
+        console.warn("Error cargando entradas de almacén sin facturar:", e);
+        unbilledWarehouseEntriesCache = [];
+    }
+
+    const selectEl = document.getElementById("cxp_warehouse_entry_id");
+    if (selectEl) {
+        if (!unbilledWarehouseEntriesCache || unbilledWarehouseEntriesCache.length === 0) {
+            selectEl.innerHTML = `<option value="">⚠️ No hay entradas de almacén pendientes (Utilice la opción 'Cargar Mercancía Recibida Ahora')</option>`;
+        } else {
+            let opts = `<option value="">-- Seleccionar Entrada Física de Almacén (${unbilledWarehouseEntriesCache.length} disponibles) --</option>`;
+            opts += unbilledWarehouseEntriesCache.map(e => {
+                const dateStr = e.movement_date ? e.movement_date.split(' ')[0] : '';
+                return `<option value="${e.id}">[#${e.id} | ${dateStr}] ${e.material_name} - Cant: ${e.quantity} ${e.unit_measure} ($${Number(e.total_cost_usd || 0).toFixed(2)}) → ${e.destination}</option>`;
+            }).join('');
+            selectEl.innerHTML = opts;
+        }
+    }
+}
+
+function onCxpPayableTypeChanged() {
+    const ptype = document.getElementById("cxp_payable_type")?.value || 'costo_material_obra';
+    const isMaterial = ['costo_material_obra', 'stock_almacen', 'compra_materiales'].includes(ptype);
+    const panel = document.getElementById("cxp_warehouse_matching_panel");
+    if (panel) {
+        if (isMaterial) {
+            panel.style.display = 'block';
+            loadUnbilledWarehouseEntries();
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+}
+
+function onCxpWarehouseModeChange() {
+    const isLink = document.getElementById("cxp_wh_mode_link")?.checked;
+    const linkView = document.getElementById("cxp_wh_link_view");
+    const newView = document.getElementById("cxp_wh_new_view");
+    const lblLink = document.getElementById("lbl_wh_mode_link");
+    const lblNew = document.getElementById("lbl_wh_mode_new");
+
+    if (isLink) {
+        if (linkView) linkView.classList.remove("hidden");
+        if (newView) newView.classList.add("hidden");
+        if (lblLink) lblLink.style.borderColor = "#86efac";
+        if (lblNew) lblNew.style.borderColor = "#cbd5e1";
+    } else {
+        if (linkView) linkView.classList.add("hidden");
+        if (newView) newView.classList.remove("hidden");
+        if (lblLink) lblLink.style.borderColor = "#cbd5e1";
+        if (lblNew) lblNew.style.borderColor = "#86efac";
+
+        const tbody = document.getElementById("cxp_materials_tbody");
+        if (tbody && tbody.children.length === 0) {
+            addCxpMaterialRow();
+        }
+    }
+}
+
+function onCxpWarehouseEntrySelected() {
+    const selVal = document.getElementById("cxp_warehouse_entry_id")?.value;
+    const detailsEl = document.getElementById("cxp_wh_entry_details");
+    if (!selVal) {
+        if (detailsEl) detailsEl.classList.add("hidden");
+        return;
+    }
+
+    const entry = (unbilledWarehouseEntriesCache || []).find(e => String(e.id) === String(selVal));
+    if (entry && detailsEl) {
+        detailsEl.classList.remove("hidden");
+        detailsEl.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span><strong>Entrada #${entry.id}:</strong> ${entry.material_name} (${entry.quantity} ${entry.unit_measure})</span>
+                <span style="font-weight: 800; color: #16a34a;">Est: $${Number(entry.total_cost_usd || 0).toFixed(2)}</span>
+            </div>
+            <div style="font-size: 10px; color: #64748b; margin-top: 3px;">
+                Doc. Ref: <strong>${entry.reference_doc || 'S/N'}</strong> | Destino: ${entry.destination} | Fecha: ${entry.movement_date || '-'}
+            </div>
+        `;
+
+        // Autofill sugerido en monto y descripción si están vacíos
+        const amtInput = document.getElementById("cxp_amount_usd");
+        if (amtInput && (!amtInput.value || parseFloat(amtInput.value) === 0)) {
+            amtInput.value = Number(entry.total_cost_usd || 0).toFixed(2);
+            calcPayablePreview();
+        }
+
+        const descInput = document.getElementById("cxp_description");
+        if (descInput && (!descInput.value || descInput.value.trim() === '')) {
+            descInput.value = `Compra de ${entry.quantity} ${entry.unit_measure} de ${entry.material_name} (Entrada #${entry.id})`;
+        }
+    }
+}
+
+function addCxpMaterialRow(preselectedId = null, prefilledCost = null) {
+    const tbody = document.getElementById("cxp_materials_tbody");
+    if (!tbody) return;
+
+    const materials = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+    let matOpts = `<option value="">-- Seleccionar Material --</option>`;
+    matOpts += `<option value="__NEW__" style="color: #2563eb; font-weight: 800;">+ Crear Nuevo Artículo en Catálogo...</option>`;
+    matOpts += materials.map(m => `<option value="${m.id}" data-cost="${m.unit_cost_usd || 0}" ${preselectedId && Number(m.id) === Number(preselectedId) ? 'selected' : ''}>[${m.code || m.id}] ${m.name} (${m.unit || m.unit_measure || 'UND'})</option>`).join('');
+
+    const initialCost = (prefilledCost !== null && !isNaN(prefilledCost)) ? prefilledCost : 0.00;
+
+    const tr = document.createElement("tr");
+    tr.style.borderBottom = "1px solid #f1f5f9";
+    tr.innerHTML = `
+        <td style="padding: 6px 8px;">
+            <select class="cxp-mat-item-id form-select" onchange="onCxpMaterialRowMatChanged(this)" style="font-size: 11px; padding: 4px 6px;">
+                ${matOpts}
+            </select>
+        </td>
+        <td style="padding: 6px 8px;">
+            <input type="number" step="0.01" min="0.01" value="1.0" class="cxp-mat-item-qty form-input" oninput="calcCxpMaterialsTotal()" style="font-size: 11px; padding: 4px 6px; font-weight: 700;">
+        </td>
+        <td style="padding: 6px 8px;">
+            <input type="number" step="0.01" min="0" value="${Number(initialCost).toFixed(2)}" class="cxp-mat-item-cost form-input" oninput="calcCxpMaterialsTotal()" style="font-size: 11px; padding: 4px 6px; font-weight: 700; color: #166534;">
+        </td>
+        <td class="cxp-mat-item-subtotal" style="padding: 6px 8px; text-align: right; font-weight: 800; color: #0f172a; font-size: 11px;">
+            $${Number(initialCost).toFixed(2)}
+        </td>
+        <td style="padding: 6px 8px; text-align: center;">
+            <button type="button" onclick="removeCxpMaterialRow(this)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 12px;" title="Eliminar fila">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    calcCxpMaterialsTotal();
+}
+
+function onCxpMaterialRowMatChanged(sel) {
+    if (sel.value === "__NEW__") {
+        sel.value = "";
+        if (typeof window.openNewMaterialModalFromCxp === 'function') {
+            window.openNewMaterialModalFromCxp();
+        } else if (typeof openNewMaterialModal === 'function') {
+            openNewMaterialModal(true);
+        }
+        return;
+    }
+    const tr = sel.closest("tr");
+    if (!tr) return;
+    const selectedOpt = sel.options[sel.selectedIndex];
+    const cost = parseFloat(selectedOpt?.dataset?.cost) || 0;
+    const costInput = tr.querySelector(".cxp-mat-item-cost");
+    if (costInput && (!costInput.value || parseFloat(costInput.value) === 0)) {
+        costInput.value = cost.toFixed(2);
+    }
+    calcCxpMaterialsTotal();
+}
+
+function onMaterialCreatedFromCxp(newMat) {
+    if (newMat && newMat.id) {
+        if (!window.allMaterials) window.allMaterials = [];
+        const exists = window.allMaterials.some(m => Number(m.id) === Number(newMat.id));
+        if (!exists) {
+            window.allMaterials.unshift({
+                id: newMat.id,
+                code: newMat.code,
+                name: newMat.name,
+                category: newMat.category,
+                unit: newMat.unit || newMat.unit_measure || 'UND',
+                unit_measure: newMat.unit_measure || 'UND',
+                unit_cost_usd: newMat.unit_cost_usd || 0.0,
+                stock_quantity: newMat.stock_quantity || 0.0
+            });
+        }
+    }
+
+    // Actualizar los selectores en todas las filas existentes para incluir el nuevo ítem
+    const rows = document.querySelectorAll("#cxp_materials_tbody tr");
+    rows.forEach(tr => {
+        const sel = tr.querySelector(".cxp-mat-item-id");
+        if (sel) {
+            const currentVal = sel.value;
+            const materials = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+            let opts = `<option value="">-- Seleccionar Material --</option>`;
+            opts += `<option value="__NEW__" style="color: #2563eb; font-weight: 800;">+ Crear Nuevo Artículo en Catálogo...</option>`;
+            opts += materials.map(m => `<option value="${m.id}" data-cost="${m.unit_cost_usd || 0}">[${m.code || m.id}] ${m.name} (${m.unit || m.unit_measure || 'UND'})</option>`).join('');
+            sel.innerHTML = opts;
+            if (currentVal && currentVal !== "__NEW__") {
+                sel.value = currentVal;
+            }
+        }
+    });
+
+    // Añadir automáticamente la fila con el nuevo material seleccionado y su costo cargado
+    if (newMat && newMat.id) {
+        addCxpMaterialRow(newMat.id, newMat.unit_cost_usd || 0.0);
+    }
+
+    if (typeof showToastNotification === 'function') {
+        showToastNotification(`✅ Artículo "${newMat.name}" registrado e insertado en la lista de compras de CxP.`, 'success');
+    } else {
+        alert(`✅ Artículo "${newMat.name}" registrado e insertado en la lista de compras de CxP.`);
+    }
+}
+
+function removeCxpMaterialRow(btn) {
+    const tr = btn.closest("tr");
+    if (tr) tr.remove();
+    calcCxpMaterialsTotal();
+}
+
+function calcCxpMaterialsTotal() {
+    const rows = document.querySelectorAll("#cxp_materials_tbody tr");
+    let total = 0;
+    rows.forEach(tr => {
+        const qty = parseFloat(tr.querySelector(".cxp-mat-item-qty")?.value) || 0;
+        const cost = parseFloat(tr.querySelector(".cxp-mat-item-cost")?.value) || 0;
+        const sub = qty * cost;
+        total += sub;
+        const subEl = tr.querySelector(".cxp-mat-item-subtotal");
+        if (subEl) subEl.textContent = `$${sub.toFixed(2)}`;
+    });
+
+    const totalEl = document.getElementById("cxp_materials_total_usd");
+    if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
+    return total;
+}
+
+function applyCxpMaterialsTotalToAmount() {
+    const total = calcCxpMaterialsTotal();
+    const amtInput = document.getElementById("cxp_amount_usd");
+    if (amtInput) {
+        amtInput.value = total.toFixed(2);
+        calcPayablePreview();
+    }
+}
+
 async function openNewPayableModal() {
     // 1. Asegurar que los proyectos estén cargados para imputación de compras a obras
     if (!allProjects || allProjects.length === 0) {
@@ -790,7 +1157,23 @@ async function openNewPayableModal() {
     const dueDateInput = document.getElementById("cxp_due_date");
     if (dueDateInput) dueDateInput.value = d.toISOString().split('T')[0];
 
+    // Resetear formulario y componentes de 3-Way Matching
+    const ptypeSel = document.getElementById("cxp_payable_type");
+    if (ptypeSel) ptypeSel.value = "costo_material_obra";
+
+    const whModeLink = document.getElementById("cxp_wh_mode_link");
+    if (whModeLink) whModeLink.checked = true;
+
+    const tbody = document.getElementById("cxp_materials_tbody");
+    if (tbody) tbody.innerHTML = "";
+
+    const detailsEl = document.getElementById("cxp_wh_entry_details");
+    if (detailsEl) detailsEl.classList.add("hidden");
+
     onCxpModalDocTypeChange();
+    onCxpPayableTypeChanged();
+    onCxpWarehouseModeChange();
+
     openModal("modalPayable");
 }
 
@@ -798,13 +1181,9 @@ async function submitCreatePayable(e) {
     if (e && e.preventDefault) e.preventDefault();
 
     const submitBtn = document.getElementById("btnSubmitCreatePayable") || (e && e.target ? e.target.querySelector('button[type="submit"]') : null);
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.dataset.origText = submitBtn.dataset.origText || submitBtn.innerHTML;
-        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Registrando en CxP...`;
-    }
 
     const docType = document.getElementById("cxp_doc_type")?.value || 'factura';
+    const payableType = document.getElementById("cxp_payable_type")?.value || 'costo_material_obra';
     const amountUsd = parseFloat(document.getElementById("cxp_amount_usd")?.value) || 0;
     const retRate = (docType === 'factura') ? (parseFloat(document.getElementById("cxp_tax_withholding_rate")?.value) || 75.0) : 0;
     
@@ -817,12 +1196,67 @@ async function submitCreatePayable(e) {
         baseUsd = amountUsd;
     }
 
+    // ---------------------------------------------------------
+    // VALIDACIÓN AUDITORÍA DALOR: 3-WAY MATCHING PARA MATERIALES
+    // ---------------------------------------------------------
+    const isMaterial = ['costo_material_obra', 'stock_almacen', 'compra_materiales'].includes(payableType);
+    let warehouseMovementId = null;
+    let warehouseEntryRef = null;
+    let materialItems = null;
+
+    if (isMaterial) {
+        const isLinkMode = document.getElementById("cxp_wh_mode_link")?.checked;
+        if (isLinkMode) {
+            const whId = document.getElementById("cxp_warehouse_entry_id")?.value;
+            if (!whId) {
+                alert("⚠️ Control de Auditoría Dalor (3-Way Matching):\n\nPara registrar una compra de materiales o consumibles, debe seleccionar la Entrada de Almacén correspondiente o utilizar la opción '2. Cargar Mercancía Recibida Ahora'.");
+                return;
+            }
+            warehouseMovementId = parseInt(whId);
+            const foundEntry = (unbilledWarehouseEntriesCache || []).find(x => String(x.id) === String(whId));
+            warehouseEntryRef = foundEntry ? (foundEntry.reference_doc || `ENTRADA-${whId}`) : `ENTRADA-${whId}`;
+        } else {
+            // Modo B: Cargar Mercancía Recibida Ahora
+            const rows = document.querySelectorAll("#cxp_materials_tbody tr");
+            const items = [];
+            rows.forEach(tr => {
+                const matId = parseInt(tr.querySelector(".cxp-mat-item-id")?.value);
+                const qty = parseFloat(tr.querySelector(".cxp-mat-item-qty")?.value) || 0;
+                const cost = parseFloat(tr.querySelector(".cxp-mat-item-cost")?.value) || 0;
+                if (matId && qty > 0) {
+                    items.push({
+                        material_id: matId,
+                        quantity: qty,
+                        unit_cost_usd: cost,
+                        destination: payableType === 'stock_almacen' ? 'Almacén Central Dalor' : 'Obra / Proyecto'
+                    });
+                }
+            });
+
+            if (items.length === 0) {
+                alert("⚠️ Debe agregar al menos un material con cantidad válida mayor a 0 para ingresar al inventario físico.");
+                return;
+            }
+            materialItems = items;
+        }
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.dataset.origText = submitBtn.dataset.origText || submitBtn.innerHTML;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Registrando en CxP...`;
+    }
+
     const payload = {
         invoice_number: document.getElementById("cxp_invoice_number")?.value?.trim() || '',
         control_number: document.getElementById("cxp_control_number")?.value?.trim() || '',
         supplier_name: document.getElementById("cxp_supplier_name")?.value?.trim() || '',
         supplier_rif: document.getElementById("cxp_supplier_rif")?.value?.trim() || '',
         doc_type: docType,
+        payable_type: payableType,
+        warehouse_movement_id: warehouseMovementId,
+        warehouse_entry_ref: warehouseEntryRef,
+        material_items: materialItems,
         project_id: document.getElementById("cxp_project_id")?.value ? parseInt(document.getElementById("cxp_project_id").value) : null,
         description: document.getElementById("cxp_description")?.value?.trim() || '',
         due_date: new Date(document.getElementById("cxp_due_date").value).toISOString(),
@@ -868,9 +1302,9 @@ async function submitCreatePayable(e) {
             await openWithholdingVoucherModal(data.id);
         } else {
             if (typeof showToastNotification === 'function') {
-                showToastNotification(`✅ Cuenta por pagar registrada exitosamente en CxP.`, 'success');
+                showToastNotification(`✅ Cuenta por pagar registrada exitosamente con respaldo de almacén.`, 'success');
             } else {
-                alert(`✅ Cuenta por pagar registrada exitosamente en CxP.`);
+                alert(`✅ Cuenta por pagar registrada exitosamente con respaldo de almacén.`);
             }
         }
     } catch (err) {
@@ -1141,7 +1575,7 @@ function calcFinTransBsEquiv() {
     const equivLbl = document.getElementById("fin_bs_equiv_lbl");
     const amountUsd = parseFloat(document.getElementById("fin_trans_amount_usd")?.value) || 0;
     
-    const rate = (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : (window.EXCHANGE_RATE || 850.0));
+    const rate = window.BCV_DATA?.rate || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : (window.EXCHANGE_RATE || 850.0));
     const isBs = acc.includes("(Bs)") || method === 'pago_movil';
     
     if (container) {
@@ -1317,17 +1751,12 @@ async function submitFinancialPayment(e) {
     const fullNotes = selectedAcc ? `[Cuenta: ${selectedAcc}] ${notesVal}`.trim() : notesVal;
 
     const payload = {
-
         amount_usd: amountUsd,
-
-        exchange_rate: (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0),
-
+        exchange_rate: window.BCV_DATA?.rate || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0),
         payment_method: document.getElementById("fin_trans_method").value,
-
         reference_number: document.getElementById("fin_trans_ref").value.trim(),
-
-        notes: fullNotes
-
+        notes: fullNotes,
+        payment_type: type === 'cobro_cxc' ? 'cxc_cobro' : 'cxp_pago'
     };
 
 
@@ -1387,25 +1816,141 @@ async function submitFinancialPayment(e) {
 // ----------------------------------------------------
 
 window.loadFinancialSummary = loadTreasurySummary;
+
+function onTreasurySummaryPeriodChange() {
+    const period = document.getElementById('treasury_sum_period')?.value || 'all';
+    const customContainer = document.getElementById('treasury_sum_custom_dates');
+    const dfInput = document.getElementById('treasury_sum_date_from');
+    const dtInput = document.getElementById('treasury_sum_date_to');
+
+    // Sincronizar el selector de la tabla de traza inferior
+    const tracePeriod = document.getElementById('treasuryFilterPeriod');
+    if (tracePeriod) tracePeriod.value = period;
+
+    const traceCustom = document.getElementById('treasuryCustomDateContainer');
+
+    if (period === 'custom') {
+        if (customContainer) customContainer.style.display = 'flex';
+        if (traceCustom) traceCustom.style.display = 'flex';
+        return;
+    } else {
+        if (customContainer) customContainer.style.display = 'none';
+        if (traceCustom) traceCustom.style.display = 'none';
+    }
+
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (period === 'today') {
+        if (dfInput) dfInput.value = fmt(today);
+        if (dtInput) dtInput.value = fmt(today);
+    } else if (period === 'this_week') {
+        const first = new Date(today);
+        const dayOfWeek = today.getDay() || 7;
+        first.setDate(today.getDate() - (dayOfWeek - 1));
+        if (dfInput) dfInput.value = fmt(first);
+        if (dtInput) dtInput.value = fmt(today);
+    } else if (period === 'this_month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        if (dfInput) dfInput.value = fmt(firstDay);
+        if (dtInput) dtInput.value = fmt(lastDay);
+    } else if (period === 'last_month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+        if (dfInput) dfInput.value = fmt(firstDay);
+        if (dtInput) dtInput.value = fmt(lastDay);
+    } else if (period === 'this_year') {
+        if (dfInput) dfInput.value = `${today.getFullYear()}-01-01`;
+        if (dtInput) dtInput.value = `${today.getFullYear()}-12-31`;
+    } else {
+        if (dfInput) dfInput.value = '';
+        if (dtInput) dtInput.value = '';
+    }
+
+    const traceDf = document.getElementById('treasuryFilterDateFrom');
+    const traceDt = document.getElementById('treasuryFilterDateTo');
+    if (traceDf && dfInput) traceDf.value = dfInput.value;
+    if (traceDt && dtInput) traceDt.value = dtInput.value;
+
+    loadTreasurySummary();
+}
+
+function resetTreasurySummaryFilters() {
+    const periodSelect = document.getElementById('treasury_sum_period');
+    if (periodSelect) periodSelect.value = 'all';
+    const customContainer = document.getElementById('treasury_sum_custom_dates');
+    if (customContainer) customContainer.style.display = 'none';
+    const dfInput = document.getElementById('treasury_sum_date_from');
+    if (dfInput) dfInput.value = '';
+    const dtInput = document.getElementById('treasury_sum_date_to');
+    if (dtInput) dtInput.value = '';
+    const accSelect = document.getElementById('treasury_sum_account');
+    if (accSelect) accSelect.value = 'all';
+
+    const tracePeriod = document.getElementById('treasuryFilterPeriod');
+    if (tracePeriod) tracePeriod.value = 'all';
+    const traceType = document.getElementById('treasuryFilterType');
+    if (traceType) traceType.value = 'all';
+    const traceImpact = document.getElementById('treasuryFilterImpact');
+    if (traceImpact) traceImpact.value = 'all';
+    const traceSearch = document.getElementById('treasuryTraceSearch');
+    if (traceSearch) traceSearch.value = '';
+    const traceCustom = document.getElementById('treasuryCustomDateContainer');
+    if (traceCustom) traceCustom.style.display = 'none';
+    const traceDf = document.getElementById('treasuryFilterDateFrom');
+    if (traceDf) traceDf.value = '';
+    const traceDt = document.getElementById('treasuryFilterDateTo');
+    if (traceDt) traceDt.value = '';
+
+    loadTreasurySummary();
+}
+
 async function loadTreasurySummary() {
-
     const kpisContainer = document.getElementById("treasuryKPIsContainer");
-
     const cashflowDetails = document.getElementById("treasuryCashflowDetails");
-
     const creditDetails = document.getElementById("treasuryCreditDetails");
-
-
 
     loadCashFlowMatrix();
 
+    // Populate accounts selector dynamically if empty
+    const accSelect = document.getElementById("treasury_sum_account");
+    if (accSelect && accSelect.options.length <= 1) {
+        try {
+            const accRes = await authFetch(`${API_BASE}/financial/accounts`);
+            if (accRes.ok) {
+                const accounts = await accRes.json();
+                accounts.forEach(a => {
+                    const opt = document.createElement("option");
+                    opt.value = a.id;
+                    opt.textContent = `${a.account_name} (${a.currency.toUpperCase()})`;
+                    accSelect.appendChild(opt);
+                });
+            }
+        } catch(e) {}
+    }
+
+    // Build query params
+    const period = document.getElementById('treasury_sum_period')?.value || 'all';
+    const df = document.getElementById('treasury_sum_date_from')?.value;
+    const dt = document.getElementById('treasury_sum_date_to')?.value;
+    const accountId = document.getElementById('treasury_sum_account')?.value;
+
+    const queryParams = new URLSearchParams();
+    if (period !== 'all') {
+        if (df) queryParams.append('date_from', df);
+        if (dt) queryParams.append('date_to', dt);
+    }
+    if (accountId && accountId !== 'all') {
+        queryParams.append('account_id', accountId);
+    }
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
     try {
-        const res = await authFetch(`${API_BASE}/financial/summary`);
-
+        const res = await authFetch(`${API_BASE}/financial/summary${queryString}`);
         if (!res.ok) throw new Error("Error en servidor");
-
         const data = await res.json();
-
         const k = (data.kpis || data);
 
 
@@ -1576,7 +2121,8 @@ async function loadTreasurySummary() {
                                     method: (pm.payment_method || 'transferencia').replace(/_/g, ' '),
                                     amount_usd: usd,
                                     amount_bs: pm.amount_bs || (usd * bcvRate),
-                                    notes: pm.notes || ''
+                                    notes: pm.notes || '',
+                                    accountId: pm.financial_account_id || null
                                 });
                             });
                         } else if (c.paid_amount_usd > 0) {
@@ -1595,7 +2141,8 @@ async function loadTreasurySummary() {
                                 method: 'Directo',
                                 amount_usd: c.paid_amount_usd,
                                 amount_bs: c.paid_amount_usd * bcvRate,
-                                notes: ''
+                                notes: '',
+                                accountId: null
                             });
                         }
                     });
@@ -1623,7 +2170,8 @@ async function loadTreasurySummary() {
                                     method: (pm.payment_method || 'transferencia').replace(/_/g, ' '),
                                     amount_usd: usd,
                                     amount_bs: pm.amount_bs || (usd * bcvRate),
-                                    notes: pm.notes || ''
+                                    notes: pm.notes || '',
+                                    accountId: pm.financial_account_id || null
                                 });
                             });
                         } else if (p.paid_amount_usd > 0) {
@@ -1642,7 +2190,8 @@ async function loadTreasurySummary() {
                                 method: 'Directo',
                                 amount_usd: p.paid_amount_usd,
                                 amount_bs: p.paid_amount_usd * bcvRate,
-                                notes: ''
+                                notes: '',
+                                accountId: null
                             });
                         }
                     });
@@ -1664,7 +2213,8 @@ async function loadTreasurySummary() {
                             entity: w.partner_name || 'Accionista',
                             ref: w.reference_number || w.payment_method || '-',
                             amount_usd: w.amount_usd,
-                            amount_bs: w.amount_bs || (w.amount_usd * (w.exchange_rate || window.BCV_DATA?.rate || 850.0))
+                            amount_bs: w.amount_bs || (w.amount_usd * (w.exchange_rate || window.BCV_DATA?.rate || 850.0)),
+                            accountId: w.financial_account_id || null
                         });
                     });
                 }
@@ -1687,7 +2237,8 @@ async function loadTreasurySummary() {
                             ref: ex.voucher_number || '-',
                             method: (ex.payment_method || 'transferencia').replace(/_/g, ' '),
                             amount_usd: ex.amount_usd || 0,
-                            amount_bs: ex.amount_bs || 0
+                            amount_bs: ex.amount_bs || 0,
+                            accountId: ex.financial_account_id || null
                         });
                     });
                 }
@@ -1712,7 +2263,8 @@ async function loadTreasurySummary() {
                             method: (e.payment_method || 'caja chica').replace(/_/g, ' '),
                             amount_usd: usd,
                             amount_bs: e.amount_bs || (usd * bcvRate),
-                            notes: e.description || ''
+                            notes: e.description || '',
+                            accountId: e.financial_account_id || null
                         });
                     });
                 }
@@ -1740,7 +2292,7 @@ async function loadTreasurySummary() {
 let allTreasuryOperations = [];
 let filteredTreasuryOperations = [];
 let treasuryCurrentPage = 1;
-let treasuryPageSize = 15;
+let treasuryPageSize = 10;
 
 function getIsoDate(dStr) {
     if (!dStr) return '';
@@ -1774,6 +2326,10 @@ function applyTreasuryFilters() {
     const customFrom = document.getElementById("treasuryFilterDateFrom")?.value || "";
     const customTo = document.getElementById("treasuryFilterDateTo")?.value || "";
 
+    const topDf = document.getElementById("treasury_sum_date_from")?.value || "";
+    const topDt = document.getElementById("treasury_sum_date_to")?.value || "";
+    const filterAcc = document.getElementById("treasury_sum_account")?.value;
+
     const now = new Date();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -1793,6 +2349,12 @@ function applyTreasuryFilters() {
     const mondayIso = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
 
     filteredTreasuryOperations = (allTreasuryOperations || []).filter(op => {
+        // 0. Filtro por Cuenta Bancaria Seleccionada
+        if (filterAcc && filterAcc !== 'all') {
+            const accNum = parseInt(filterAcc);
+            if (op.accountId && op.accountId !== accNum) return false;
+        }
+
         // 1. Selector Tipo de Operación
         if (typeVal !== "all" && op.type !== typeVal) {
             return false;
@@ -1817,6 +2379,9 @@ function applyTreasuryFilters() {
         } else if (periodVal === "custom") {
             if (customFrom && (!op.rawDate || op.rawDate < customFrom)) return false;
             if (customTo && (!op.rawDate || op.rawDate > customTo)) return false;
+        } else if (topDf || topDt) {
+            if (topDf && (!op.rawDate || op.rawDate < topDf)) return false;
+            if (topDt && (!op.rawDate || op.rawDate > topDt)) return false;
         }
 
         // 4. Buscador en Vivo por Texto
@@ -1844,6 +2409,21 @@ function applyTreasuryFilters() {
     // Resetear a primera página y renderizar
     treasuryCurrentPage = 1;
     renderTreasuryTracePaginated();
+}
+
+function handleTreasuryPeriodChange() {
+    const pSelect = document.getElementById("treasuryFilterPeriod");
+    const topPeriod = document.getElementById("treasury_sum_period");
+    const cCont = document.getElementById("treasuryCustomDateContainer");
+    if (pSelect && cCont) {
+        cCont.style.display = (pSelect.value === 'custom') ? 'flex' : 'none';
+    }
+    if (pSelect && topPeriod && pSelect.value !== topPeriod.value) {
+        topPeriod.value = pSelect.value;
+        onTreasurySummaryPeriodChange();
+        return;
+    }
+    applyTreasuryFilters();
 }
 
 function updateTreasuryTraceKpis() {
@@ -1895,15 +2475,6 @@ function resetTreasuryFilters() {
     const toInput = document.getElementById("treasuryFilterDateTo");
     if (toInput) toInput.value = "";
 
-    applyTreasuryFilters();
-}
-
-function handleTreasuryPeriodChange() {
-    const pSelect = document.getElementById("treasuryFilterPeriod");
-    const cCont = document.getElementById("treasuryCustomDateContainer");
-    if (pSelect && cCont) {
-        cCont.style.display = (pSelect.value === 'custom') ? 'flex' : 'none';
-    }
     applyTreasuryFilters();
 }
 
@@ -2084,14 +2655,96 @@ function renderTreasuryTracePaginated() {
 // 📊 ESTADO DE FLUJO DE CAJA MATRICIAL MULTIMENSUAL (CASO PRÁCTICO CONTABLE)
 // ==============================================================================
 let currentCfRange = 'all';
+let currentCfCurrency = 'usd';
+let currentCfDateFrom = null;
+let currentCfDateTo = null;
+let lastCashFlowData = null;
 
 function setCashFlowRange(range) {
     currentCfRange = range;
-    ['all', 'h1', 'h2', 'last3'].forEach(r => {
+    currentCfDateFrom = null;
+    currentCfDateTo = null;
+    const df = document.getElementById("cf_date_from");
+    const dt = document.getElementById("cf_date_to");
+    if (df) df.value = '';
+    if (dt) dt.value = '';
+
+    const monthSelect = document.getElementById("cf_matrix_month");
+    if (monthSelect) monthSelect.value = '';
+
+    ['all', 'ytd', 'h1', 'h2'].forEach(r => {
         const btn = document.getElementById(`btn_cf_range_${r}`);
         if (btn) btn.className = (r === range) ? 'btn-primary' : 'btn-secondary';
     });
     loadCashFlowMatrix();
+}
+
+function onCashFlowMonthChange() {
+    const monthSelect = document.getElementById("cf_matrix_month");
+    const monthVal = monthSelect?.value;
+    if (monthVal) {
+        currentCfRange = 'custom_month';
+        ['all', 'ytd', 'h1', 'h2'].forEach(r => {
+            const btn = document.getElementById(`btn_cf_range_${r}`);
+            if (btn) btn.className = 'btn-secondary';
+        });
+    } else {
+        currentCfRange = 'all';
+        const btnAll = document.getElementById('btn_cf_range_all');
+        if (btnAll) btnAll.className = 'btn-primary';
+    }
+    loadCashFlowMatrix();
+}
+
+function applyCashFlowDateFilter() {
+    const df = document.getElementById("cf_date_from")?.value;
+    const dt = document.getElementById("cf_date_to")?.value;
+    if (!df || !dt) {
+        alert("Por favor selecciona ambas fechas (Desde y Hasta).");
+        return;
+    }
+    currentCfDateFrom = df;
+    currentCfDateTo = dt;
+    currentCfRange = 'custom_dates';
+    ['all', 'ytd', 'h1', 'h2'].forEach(r => {
+        const btn = document.getElementById(`btn_cf_range_${r}`);
+        if (btn) btn.className = 'btn-secondary';
+    });
+    const monthSelect = document.getElementById("cf_matrix_month");
+    if (monthSelect) monthSelect.value = '';
+    loadCashFlowMatrix();
+}
+
+function clearCashFlowDateFilter() {
+    currentCfDateFrom = null;
+    currentCfDateTo = null;
+    const df = document.getElementById("cf_date_from");
+    const dt = document.getElementById("cf_date_to");
+    if (df) df.value = '';
+    if (dt) dt.value = '';
+    setCashFlowRange('all');
+}
+
+function setCashFlowCurrency(curr) {
+    currentCfCurrency = curr;
+    const btnUsd = document.getElementById("btn_cf_curr_usd");
+    const btnBs = document.getElementById("btn_cf_curr_bs");
+    if (btnUsd && btnBs) {
+        if (curr === 'usd') {
+            btnUsd.style.background = '#2563eb';
+            btnUsd.style.color = '#ffffff';
+            btnBs.style.background = 'transparent';
+            btnBs.style.color = '#475569';
+        } else {
+            btnBs.style.background = '#059669';
+            btnBs.style.color = '#ffffff';
+            btnUsd.style.background = 'transparent';
+            btnUsd.style.color = '#475569';
+        }
+    }
+    if (lastCashFlowData) {
+        renderCashFlowMatrixTable(lastCashFlowData);
+    }
 }
 
 async function loadCashFlowMatrix() {
@@ -2102,26 +2755,30 @@ async function loadCashFlowMatrix() {
 
     const yearSelect = document.getElementById("cf_matrix_year");
     const year = yearSelect ? (parseInt(yearSelect.value) || 2026) : 2026;
+    const monthSelect = document.getElementById("cf_matrix_month");
+    const monthVal = monthSelect?.value ? parseInt(monthSelect.value) : null;
 
-    let startMonth = 1;
-    let endMonth = 12;
+    let url = `${API_BASE}/financial/cash-flow-matrix?year=${year}`;
 
-    if (currentCfRange === 'h1') {
-        startMonth = 1; endMonth = 6;
+    if (currentCfRange === 'custom_dates' && currentCfDateFrom && currentCfDateTo) {
+        url += `&start_date=${encodeURIComponent(currentCfDateFrom)}&end_date=${encodeURIComponent(currentCfDateTo)}`;
+    } else if (currentCfRange === 'custom_month' && monthVal) {
+        url += `&month=${monthVal}`;
+    } else if (currentCfRange === 'ytd') {
+        url += `&is_ytd=true`;
+    } else if (currentCfRange === 'h1') {
+        url += `&start_month=1&end_month=6`;
     } else if (currentCfRange === 'h2') {
-        startMonth = 7; endMonth = 12;
-    } else if (currentCfRange === 'last3') {
-        const curMonth = (new Date()).getMonth() + 1;
-        endMonth = Math.min(12, Math.max(1, curMonth));
-        startMonth = Math.max(1, endMonth - 2);
+        url += `&start_month=7&end_month=12`;
     }
 
     tbody.innerHTML = `<tr><td colspan="15" style="text-align: center; padding: 24px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Conciliando flujo de caja del período...</td></tr>`;
 
     try {
-        const res = await authFetch(`${API_BASE}/financial/cash-flow-matrix?year=${year}&start_month=${startMonth}&end_month=${endMonth}`);
+        const res = await authFetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        lastCashFlowData = data;
         renderCashFlowMatrixTable(data);
     } catch (err) {
         console.error("Error loading cash flow matrix:", err);
@@ -2134,29 +2791,44 @@ function renderCashFlowMatrixTable(data) {
     const tbody = document.getElementById("cashFlowMatrixTbody");
     if (!thead || !tbody || !data || !Array.isArray(data.months)) return;
 
+    const bcvBadge = document.getElementById("cf_bcv_badge");
+    const bcvRate = Number(data.bcv_rate || 857.01);
+    if (bcvBadge) {
+        bcvBadge.innerHTML = `<i class="fa-solid fa-building-columns"></i> BCV: ${bcvRate.toFixed(2)} Bs/$`;
+    }
+
+    const isBs = (currentCfCurrency === 'bs');
+    const currencyPrefix = isBs ? 'Bs. ' : '$';
+
+    const conv = (valUsd) => {
+        const num = Number(valUsd || 0);
+        return isBs ? (num * bcvRate) : num;
+    };
+
+    const fmt = (valUsd, isZeroDash = true) => {
+        const num = conv(valUsd);
+        if (isZeroDash && Math.abs(num) < 0.01) return '<span style="color: #cbd5e1;">-</span>';
+        const str = Math.abs(num).toLocaleString(isBs ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const res = `${currencyPrefix}${str}`;
+        return num < 0 ? `(${res})` : res;
+    };
+
     const months = data.months;
 
     // 1. Render Encabezado de Meses
     let theadHtml = `<tr>
         <th style="padding: 10px 14px; background: #1e3a8a; color: white; text-align: left; position: sticky; left: 0; z-index: 3; min-width: 240px; font-size: 12px; font-weight: 800; border-right: 2px solid #3b82f6;">
-            Concepto / Partida Contable
+            Concepto / Partida Contable (${isBs ? 'Bolívares Bs.' : 'Dólares USD'})
         </th>`;
     months.forEach(m => {
-        theadHtml += `<th style="padding: 10px 12px; background: #1e3a8a; color: white; text-align: right; min-width: 105px; font-size: 11.5px; font-weight: 800; border-right: 1px solid #2563eb;">
+        theadHtml += `<th style="padding: 10px 12px; background: #1e3a8a; color: white; text-align: right; min-width: 110px; font-size: 11.5px; font-weight: 800; border-right: 1px solid #2563eb;">
             ${m.month_name.toUpperCase()}
         </th>`;
     });
-    theadHtml += `<th style="padding: 10px 14px; background: #0f172a; color: #38bdf8; text-align: right; min-width: 120px; font-size: 12px; font-weight: 900;">
+    theadHtml += `<th style="padding: 10px 14px; background: #0f172a; color: #38bdf8; text-align: right; min-width: 125px; font-size: 12px; font-weight: 900;">
         TOTAL PERÍODO
     </th></tr>`;
     thead.innerHTML = theadHtml;
-
-    const fmt = (val, isZeroDash = true) => {
-        const num = Number(val || 0);
-        if (isZeroDash && Math.abs(num) < 0.01) return '<span style="color: #cbd5e1;">-</span>';
-        const str = Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2 });
-        return num < 0 ? `(${str})` : `${str}`;
-    };
 
     const row = (label, getVal, opts = {}) => {
         const isHeader = opts.isHeader || false;
@@ -2165,8 +2837,8 @@ function renderCashFlowMatrixTable(data) {
         const color = opts.color || 'inherit';
         const bg = opts.bg || (isHeader ? '#f8fafc' : (isTotal ? '#f1f5f9' : '#fff'));
 
-        let sum = 0;
-        months.forEach(m => { sum += Number(getVal(m) || 0); });
+        let sumUsd = 0;
+        months.forEach(m => { sumUsd += Number(getVal(m) || 0); });
 
         let tr = `<tr style="background: ${bg}; border-bottom: 1px solid ${isTotal ? '#cbd5e1' : '#f1f5f9'};">
             <td style="padding: ${isHeader ? '8px 12px' : '6px 14px'}; position: sticky; left: 0; background: ${bg}; z-index: 2; border-right: 2px solid #cbd5e1; font-weight: ${isHeader || isTotal ? '800' : '600'}; color: ${isHeader ? 'var(--dalor-navy)' : '#334155'}; padding-left: ${isSub ? '24px' : '12px'}; font-size: ${isHeader ? '12px' : '11px'};">
@@ -2179,7 +2851,7 @@ function renderCashFlowMatrixTable(data) {
             </td>`;
         });
         tr += `<td style="padding: 6px 14px; text-align: right; font-weight: 800; color: ${color}; background: ${isTotal ? '#e2e8f0' : '#f8fafc'};">
-            ${isHeader ? '' : fmt(sum)}
+            ${isHeader ? '' : fmt(sumUsd)}
         </td></tr>`;
         return tr;
     };
@@ -2279,12 +2951,132 @@ function printCashFlowMatrixReport() {
 // ==============================================================================
 // 🔁 MESA DE CAMBIO DE DIVISAS & ARBITRAJE CAMBIARIO
 // ==============================================================================
-function openTreasuryExchangeModal() {
+let bcvRatesHistoryCache = [];
+
+async function openTreasuryExchangeModal() {
     const form = document.getElementById("treasuryExchangeForm");
     if (form) form.reset();
+
+    // Fecha por defecto: hoy
+    const dateInput = document.getElementById("exch_date");
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    // Consultar tasa oficial BCV en vivo
+    try {
+        const res = await authFetch(`${API_BASE}/financial/bcv-rates/history?limit=30`);
+        if (res.ok) {
+            const data = await res.json();
+            bcvRatesHistoryCache = data.history || [];
+            const liveRate = data.current_rate || 857.01;
+            const rateInput = document.getElementById("exch_bcv_rate_input");
+            const rateLbl = document.getElementById("exch_bcv_rate_lbl");
+            const sourceLbl = document.getElementById("exch_bcv_rate_source_lbl");
+            if (rateInput) rateInput.value = Number(liveRate).toFixed(2);
+            if (rateLbl) rateLbl.innerText = `Bs. ${Number(liveRate).toFixed(2)}`;
+            if (sourceLbl) sourceLbl.innerText = `Tasa oficial en vivo (${Number(liveRate).toFixed(2)} Bs/$)`;
+        }
+    } catch (e) {
+        console.warn("Could not load BCV live rate:", e);
+    }
+
     onTreasuryExchangeTypeChanged();
     calcTreasuryExchangeDiff();
     openModal("modalTreasuryExchange");
+}
+
+function onTreasuryExchangeDateChanged() {
+    const dateVal = document.getElementById("exch_date")?.value;
+    if (!dateVal || !bcvRatesHistoryCache.length) return;
+    const match = bcvRatesHistoryCache.find(r => r.rate_date === dateVal);
+    if (match) {
+        const rateInput = document.getElementById("exch_bcv_rate_input");
+        const rateLbl = document.getElementById("exch_bcv_rate_lbl");
+        const sourceLbl = document.getElementById("exch_bcv_rate_source_lbl");
+        if (rateInput) rateInput.value = Number(match.rate).toFixed(2);
+        if (rateLbl) rateLbl.innerText = `Bs. ${Number(match.rate).toFixed(2)}`;
+        if (sourceLbl) sourceLbl.innerText = `Tasa histórica del ${match.rate_date} (${match.source})`;
+        calcTreasuryExchangeDiff();
+    }
+}
+
+async function openBcvRateHistoryModal() {
+    openModal("modalBcvRateHistory");
+    const tbody = document.getElementById("bcvHistoryTableBody");
+    if (!tbody) return;
+
+    if (!bcvRatesHistoryCache.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 16px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando tasas históricas...</td></tr>`;
+        try {
+            const res = await authFetch(`${API_BASE}/financial/bcv-rates/history?limit=60`);
+            if (res.ok) {
+                const data = await res.json();
+                bcvRatesHistoryCache = data.history || [];
+            }
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 16px; color: #e11d48;">Error al consultar histórico BCV.</td></tr>`;
+            return;
+        }
+    }
+
+    if (!bcvRatesHistoryCache.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 16px; color: #94a3b8;">No hay registros históricos de tasas.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = bcvRatesHistoryCache.map(r => `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 10px; font-weight: 700; color: #1e293b;">${r.rate_date}</td>
+            <td style="padding: 8px 10px; text-align: right; font-weight: 900; color: #0284c7;">Bs. ${Number(r.rate).toFixed(2)}</td>
+            <td style="padding: 8px 10px; color: #64748b; font-size: 11px;">${r.source}</td>
+            <td style="padding: 8px 10px; text-align: center;">
+                <button type="button" onclick="selectBcvHistoricalRate(${r.rate}, '${r.rate_date}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
+                    Seleccionar
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function selectBcvHistoricalRate(rate, date) {
+    const val = Number(rate);
+    if (isNaN(val) || val <= 0) return;
+
+    // 1. Sincronizar inputs de la mesa de cambio si está activa
+    const rateInput = document.getElementById("exch_bcv_rate_input");
+    const rateLbl = document.getElementById("exch_bcv_rate_lbl");
+    const sourceLbl = document.getElementById("exch_bcv_rate_source_lbl");
+    if (rateInput) rateInput.value = val.toFixed(2);
+    if (rateLbl) rateLbl.innerText = `Bs. ${val.toFixed(2)}`;
+    if (sourceLbl) sourceLbl.innerText = `Tasa histórica seleccionada (${date}: ${val.toFixed(2)} Bs/$)`;
+
+    const dateInput = document.getElementById("exch_date");
+    if (dateInput && date) dateInput.value = date;
+
+    // 2. Sincronizar input manual de contingencia
+    const manualInput = document.getElementById("manualTasaInput");
+    if (manualInput) manualInput.value = val.toFixed(2);
+
+    // 3. Sincronizar estado global, cabecera y tarjetas de KPIs
+    window.EXCHANGE_RATE = val;
+    if (window.BCV_DATA) {
+        window.BCV_DATA.rate = val;
+        window.BCV_DATA.date_value = date;
+    }
+    localStorage.setItem('dalor_exchange_rate', val);
+
+    const display = document.getElementById("bcvRateDisplay");
+    if (display) display.innerText = val.toFixed(2);
+
+    const kpiBcv = document.getElementById("kpi_partners_bcv_rate");
+    if (kpiBcv) kpiBcv.innerText = `${val.toFixed(2)} Bs/$`;
+
+    closeModal("modalBcvRateHistory");
+    if (typeof calcTreasuryExchangeDiff === 'function') calcTreasuryExchangeDiff();
+    if (typeof showRealtimeToast === 'function') {
+        showRealtimeToast(`Tasa histórica seleccionada: ${val.toFixed(2)} Bs/$ (${date})`, 'tasa_bcv', 'info');
+    }
 }
 
 function onTreasuryExchangeTypeChanged() {
@@ -2312,7 +3104,10 @@ function calcTreasuryExchangeDiff() {
     const opType = document.getElementById("exch_operation_type")?.value || "bs_a_usd";
     const srcAmt = parseFloat(document.getElementById("exch_source_amount")?.value) || 0;
     const tgtAmt = parseFloat(document.getElementById("exch_target_amount")?.value) || 0;
-    const bcvRate = window.BCV_DATA?.rate || (typeof State !== 'undefined' && State.exchangeRate) || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0);
+    
+    // Obtener tasa BCV desde el input interactivo o fallback
+    const rateInput = document.getElementById("exch_bcv_rate_input");
+    const bcvRate = (rateInput && parseFloat(rateInput.value)) ? parseFloat(rateInput.value) : (window.BCV_DATA?.rate || 857.01);
 
     const bcvLbl = document.getElementById("exch_bcv_rate_lbl");
     if (bcvLbl) bcvLbl.innerText = `Bs. ${bcvRate.toFixed(2)}`;
@@ -2375,7 +3170,9 @@ async function submitTreasuryExchange(e) {
     const tgtAmt = parseFloat(document.getElementById("exch_target_amount")?.value) || 0;
     const ref = (document.getElementById("exch_reference")?.value || "").trim();
     const notes = (document.getElementById("exch_notes")?.value || "").trim();
-    const bcvRate = window.BCV_DATA?.rate || (typeof State !== 'undefined' && State.exchangeRate) || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0);
+    const opDate = document.getElementById("exch_date")?.value || "";
+    const rateInput = document.getElementById("exch_bcv_rate_input");
+    const bcvRate = (rateInput && parseFloat(rateInput.value)) ? parseFloat(rateInput.value) : (window.BCV_DATA?.rate || 857.01);
 
     if (srcAmt <= 0 || tgtAmt <= 0) {
         alert("Los montos de origen y destino deben ser mayores a cero.");
@@ -2397,6 +3194,7 @@ async function submitTreasuryExchange(e) {
         source_amount: srcAmt,
         target_amount: tgtAmt,
         exchange_rate: bcvRate,
+        operation_date: opDate || null,
         reference_number: ref,
         notes: notes
     };
@@ -2424,7 +3222,6 @@ async function submitTreasuryExchange(e) {
             alert(`✅ ${data.message || 'Operación registrada con éxito.'}`);
         }
     } catch (err) {
-        alert("Error al procesar cambio de divisas: " + err.message);
     }
 }
 
@@ -2730,32 +3527,189 @@ async function submitQuickFlow(event) {
 
 
 
+let allPartnersWithdrawalsList = [];
+let partnersCurrentPage = 1;
+let partnersPageSize = 10;
+let partnersSelectedPartnerFilter = '';
+let partnersSearchQuery = '';
+
 async function loadPartnersWithdrawalsList() {
-
     const tbody = document.getElementById('partnersWithdrawalsTableBody');
-
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cuenta corriente de socios...</td></tr>`;
-
-
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cuenta corriente de socios...</td></tr>`;
 
     try {
-
         const token = window.authToken || localStorage.getItem('dalor_token') || null;
         const res = await authFetch(`${API_BASE}/financial/partners/withdrawals`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
-
         const list = await res.json();
-        allPartnersWithdrawalsList = Array.isArray(list) ? list : [];
+        allPartnersWithdrawalsList = Array.isArray(list) ? list : (list.items || []);
+
+        populatePartnersFilterDropdown();
         renderPartnersWithdrawalsPaginated();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar cuenta corriente de socios.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar cuenta corriente de socios.</td></tr>`;
     }
 }
 
-let allPartnersWithdrawalsList = [];
-let partnersCurrentPage = 1;
-let partnersPageSize = 15;
+function populatePartnersFilterDropdown() {
+    const select = document.getElementById("partners_filter_partner");
+    if (!select) return;
+    const partners = [...new Set(allPartnersWithdrawalsList.map(w => (w.partner_name || '').trim()).filter(Boolean))].sort();
+    
+    let html = `<option value="">Todos los Socios (${partners.length})</option>`;
+    partners.forEach(p => {
+        const sel = (partnersSelectedPartnerFilter === p) ? 'selected' : '';
+        html += `<option value="${p}" ${sel}>${p}</option>`;
+    });
+    select.innerHTML = html;
+}
+
+function filterPartnersWithdrawals() {
+    const select = document.getElementById("partners_filter_partner");
+    partnersSelectedPartnerFilter = select?.value || '';
+    const searchInput = document.getElementById("partners_search_input");
+    partnersSearchQuery = (searchInput?.value || '').trim().toLowerCase();
+    partnersCurrentPage = 1;
+    renderPartnersWithdrawalsPaginated();
+}
+
+function selectPartnerSummaryCard(partnerName) {
+    const select = document.getElementById("partners_filter_partner");
+    if (select) {
+        if (partnersSelectedPartnerFilter === partnerName) {
+            select.value = '';
+            partnersSelectedPartnerFilter = '';
+        } else {
+            select.value = partnerName;
+            partnersSelectedPartnerFilter = partnerName;
+        }
+        filterPartnersWithdrawals();
+    }
+}
+
+function renderPartnersWithdrawalsPaginated() {
+    const tbody = document.getElementById('partnersWithdrawalsTableBody');
+    if (!tbody) return;
+
+    const list = allPartnersWithdrawalsList || [];
+
+    // Calcular KPIs Totales Globales
+    const totalUsdAll = list.reduce((sum, w) => sum + Number(w.amount_usd || 0), 0);
+    const totalBsAll = list.reduce((sum, w) => sum + Number(w.amount_bs || 0), 0);
+    // Tasa del día en vivo (BCV_DATA) — no depende de registros históricos antiguos
+    const liveBcvRate = window.BCV_DATA?.rate || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 857.01);
+
+    const kpiUsd = document.getElementById("kpi_partners_total_usd");
+    const kpiBs = document.getElementById("kpi_partners_total_bs");
+    const kpiCount = document.getElementById("kpi_partners_count");
+    const kpiBcv = document.getElementById("kpi_partners_bcv_rate");
+
+    if (kpiUsd) kpiUsd.innerText = `$${totalUsdAll.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (kpiBs) kpiBs.innerText = `Bs. ${totalBsAll.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (kpiCount) kpiCount.innerText = `${list.length}`;
+    if (kpiBcv) kpiBcv.innerText = `${Number(liveBcvRate).toFixed(2)} Bs/$`;
+
+
+    // 2. Tarjetas de Resumen por Socio (#partnersSummaryCards)
+    const cardsContainer = document.getElementById("partnersSummaryCards");
+    if (cardsContainer) {
+        const partnerGroups = {};
+        list.forEach(w => {
+            const name = (w.partner_name || 'Sin Asignar').trim();
+            if (!partnerGroups[name]) {
+                partnerGroups[name] = { total_usd: 0, total_bs: 0, count: 0 };
+            }
+            partnerGroups[name].total_usd += Number(w.amount_usd || 0);
+            partnerGroups[name].total_bs += Number(w.amount_bs || 0);
+            partnerGroups[name].count += 1;
+        });
+
+        const sortedPartners = Object.keys(partnerGroups).sort((a, b) => partnerGroups[b].total_usd - partnerGroups[a].total_usd);
+
+        if (sortedPartners.length === 0) {
+            cardsContainer.innerHTML = `<div class="card" style="text-align: center; color: #94a3b8; padding: 12px; font-size: 11px;">No hay registros para resumir.</div>`;
+        } else {
+            cardsContainer.innerHTML = sortedPartners.map(pName => {
+                const grp = partnerGroups[pName];
+                const pct = totalUsdAll > 0 ? ((grp.total_usd / totalUsdAll) * 100).toFixed(1) : 0;
+                const isSelected = (partnersSelectedPartnerFilter.toLowerCase() === pName.toLowerCase());
+                return `
+                    <div onclick="selectPartnerSummaryCard('${pName.replace(/'/g, "\\'")}')" class="card" style="margin-bottom: 0; cursor: pointer; border-left: 4px solid ${isSelected ? '#059669' : '#7c3aed'}; padding: 10px 12px; background: ${isSelected ? '#f0fdf4' : '#ffffff'}; transition: all 0.2s;" title="Clic para filtrar por ${pName}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                            <span style="font-weight: 800; color: #1e293b; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">
+                                <i class="fa-solid fa-user-tie" style="color: ${isSelected ? '#059669' : '#7c3aed'};"></i> ${pName}
+                            </span>
+                            <span style="background: ${isSelected ? '#dcfce7' : '#ede9fe'}; color: ${isSelected ? '#166534' : '#7c3aed'}; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 10px;">
+                                ${pct}%
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <span style="font-size: 15px; font-weight: 900; color: ${isSelected ? '#166534' : '#7c3aed'};">
+                                $${grp.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            <span style="font-size: 10px; color: #64748b; font-weight: 600;">
+                                ${grp.count} retiro(s)
+                            </span>
+                        </div>
+                        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
+                            Bs. ${grp.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // 3. Filtrar listado para la tabla
+    let filtered = list;
+    if (partnersSelectedPartnerFilter) {
+        filtered = filtered.filter(w => (w.partner_name || '').trim().toLowerCase() === partnersSelectedPartnerFilter.toLowerCase());
+    }
+    if (partnersSearchQuery) {
+        filtered = filtered.filter(w => 
+            (w.concept || '').toLowerCase().includes(partnersSearchQuery) ||
+            (w.reference_number || '').toLowerCase().includes(partnersSearchQuery) ||
+            (w.partner_name || '').toLowerCase().includes(partnersSearchQuery)
+        );
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 16px;">No se encontraron retiros con los filtros seleccionados.</td></tr>`;
+        const pCont = document.getElementById("partnersPaginationContainer");
+        if (pCont) pCont.innerHTML = '';
+        return;
+    }
+
+    const { startIndex, endIndex, currentPage } = (typeof window.renderPaginationControls === 'function' ? window.renderPaginationControls : renderPaginationControls)({
+        containerId: "partnersPaginationContainer",
+        totalItems: filtered.length,
+        currentPage: partnersCurrentPage,
+        pageSize: partnersPageSize,
+        onPageChange: "goToPartnersPage",
+        onPageSizeChange: "changePartnersPageSize",
+        itemLabel: "retiro(s) de socio"
+    });
+    partnersCurrentPage = currentPage;
+
+    const pageItems = filtered.slice(startIndex, endIndex);
+    tbody.innerHTML = pageItems.map(w => `
+        <tr>
+            <td style="font-weight: 700; color: #64748b; font-size: 11px;">${w.date}</td>
+            <td style="font-weight: 800; color: #7c3aed;">${w.partner_name}</td>
+            <td style="font-weight: 600;">${w.concept}</td>
+            <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px; text-transform: uppercase;">${w.payment_method}</span></td>
+            <td style="color: #64748b; font-size: 11px;">${w.reference_number || '-'}</td>
+            <td style="font-weight: 900; color: #7c3aed; font-size: 13px;">$${Number(w.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            <td style="color: #475569; font-weight: 700;">Bs. ${Number(w.amount_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
+            <td style="text-align: center;">
+                <button type="button" onclick="confirmDeletePartnerWithdrawal(${w.id}, '${(w.partner_name || '').replace(/'/g, "\\'")}', ${w.amount_usd})" class="btn-secondary" style="padding: 2px 7px; font-size: 11px; color: #dc2626; border-color: #fca5a5;" title="Anular este retiro">
+                    <i class="fa-solid fa-trash-can"></i> Anular
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
 
 function goToPartnersPage(page) {
     partnersCurrentPage = page;
@@ -2770,41 +3724,34 @@ function changePartnersPageSize(size) {
     renderPartnersWithdrawalsPaginated();
 }
 
-function renderPartnersWithdrawalsPaginated() {
-    const tbody = document.getElementById('partnersWithdrawalsTableBody');
-    if (!tbody) return;
-
-    const list = allPartnersWithdrawalsList || [];
-    if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 16px;">No hay retiros de socios registrados.</td></tr>`;
-        const pCont = document.getElementById("partnersPaginationContainer");
-        if (pCont) pCont.innerHTML = '';
+async function confirmDeletePartnerWithdrawal(id, partnerName, amountUsd) {
+    if (!confirm(`¿Está seguro de anular el retiro #${id} de "${partnerName}" por $${amountUsd}? Esta acción eliminará el registro y restaurará el saldo en tesorería.`)) {
         return;
     }
 
-    const { startIndex, endIndex, currentPage } = (typeof window.renderPaginationControls === 'function' ? window.renderPaginationControls : renderPaginationControls)({
-        containerId: "partnersPaginationContainer",
-        totalItems: list.length,
-        currentPage: partnersCurrentPage,
-        pageSize: partnersPageSize,
-        onPageChange: "goToPartnersPage",
-        onPageSizeChange: "changePartnersPageSize",
-        itemLabel: "retiro(s) de socio"
-    });
-    partnersCurrentPage = currentPage;
+    try {
+        const token = window.authToken || localStorage.getItem('dalor_token') || null;
+        const res = await authFetch(`${API_BASE}/financial/partners/withdrawals/${id}`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
 
-    const pageItems = list.slice(startIndex, endIndex);
-    tbody.innerHTML = pageItems.map(w => `
-        <tr>
-            <td style="font-weight: 700; color: #64748b; font-size: 11px;">${w.date}</td>
-            <td style="font-weight: 800; color: #7c3aed;">${w.partner_name}</td>
-            <td style="font-weight: 600;">${w.concept}</td>
-            <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px; text-transform: uppercase;">${w.payment_method}</span></td>
-            <td style="color: #64748b; font-size: 11px;">${w.reference_number || '-'}</td>
-            <td style="font-weight: 900; color: #7c3aed; font-size: 13px;">$${w.amount_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-            <td style="color: #475569; font-weight: 700;">Bs. ${w.amount_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
-        </tr>
-    `).join('');
+        if (!res.ok) {
+            let err = `HTTP ${res.status}`;
+            try { const d = await res.json(); err = d.detail || err; } catch(_) {}
+            throw new Error(err);
+        }
+
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(`✅ Retiro #${id} anulado correctamente.`, 'success');
+        } else {
+            alert(`✅ Retiro #${id} anulado correctamente.`);
+        }
+        await loadPartnersWithdrawalsList();
+        await loadTreasurySummary();
+    } catch (e) {
+        alert("Error al anular retiro: " + e.message);
+    }
 }
 
 
@@ -2830,132 +3777,128 @@ function openNewPartnerWithdrawalModal() {
 
 
 
-function openReceiveClientPaymentModal() {
-
-    document.getElementById("receiveClientPaymentForm").reset();
+async function openReceiveClientPaymentModal() {
+    const form = document.getElementById("receiveClientPaymentForm");
+    if (form) form.reset();
 
     populateSelectDropdowns();
 
-    const rateEl = document.getElementById("rcp_rate");
-
-    if (rateEl) rateEl.value = EXCHANGE_RATE.toFixed(2);
-
-    calcClientPaymentBs();
-
-    openModal("modalReceiveClientPayment");
-
-}
-
-
-
-function calcClientPaymentBs() {
-
-    const usd = parseFloat(document.getElementById("rcp_amount_usd")?.value) || 0.0;
-
-    const rate = parseFloat(document.getElementById("rcp_rate")?.value) || EXCHANGE_RATE || 800.0;
-
-    const bs = usd * rate;
-
-    const preview = document.getElementById("rcp_total_bs_preview");
-
-    if (preview) {
-
-        preview.innerText = `Bs. ${bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
-
+    const projSel = document.getElementById("rcp_project_id");
+    if (projSel) {
+        projSel.innerHTML = `<option value="">-- Sin Proyecto Específico (Anticipo a Cuenta) --</option>`;
     }
 
+    // Cargar cuentas financieras en el selector de destino
+    const accSel = document.getElementById("rcp_financial_account_id");
+    if (accSel) {
+        accSel.innerHTML = `<option value="">-- Por Defecto según Método --</option>`;
+        try {
+            const accRes = await authFetch(`${API_BASE}/financial/accounts`);
+            if (accRes.ok) {
+                const accounts = await accRes.json();
+                accounts.forEach(a => {
+                    const opt = document.createElement("option");
+                    opt.value = a.id;
+                    opt.textContent = `${a.account_name} (${a.currency.toUpperCase()})`;
+                    accSel.appendChild(opt);
+                });
+            }
+        } catch(e) {}
+    }
+
+    const rateEl = document.getElementById("rcp_rate");
+    if (rateEl) rateEl.value = (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0).toFixed(2);
+
+    calcClientPaymentBs();
+    openModal("modalReceiveClientPayment");
 }
 
+function onRcpClientChanged() {
+    const clientSelect = document.getElementById("rcp_client_id");
+    const projSelect = document.getElementById("rcp_project_id");
+    if (!projSelect) return;
 
+    const clientId = parseInt(clientSelect?.value);
+    if (!clientId) {
+        projSelect.innerHTML = `<option value="">-- Sin Proyecto Específico (Anticipo a Cuenta) --</option>`;
+        return;
+    }
+
+    const allProjects = (typeof State !== 'undefined' && Array.isArray(State.projects)) ? State.projects : [];
+    const clientProjects = allProjects.filter(p => {
+        const pCliId = p.client_id || (p.client && p.client.id);
+        const st = (p.status || '').toLowerCase();
+        return pCliId === clientId && st !== 'cancelado' && st !== 'cerrado';
+    });
+
+    if (clientProjects.length === 0) {
+        projSelect.innerHTML = `<option value="">-- Sin Obras Activas (Anticipo a Cuenta) --</option>`;
+    } else {
+        projSelect.innerHTML = `<option value="">-- Sin Proyecto Específico (Anticipo a Cuenta) --</option>` +
+            clientProjects.map(p => `<option value="${p.id}">[${p.code}] ${p.name}</option>`).join('');
+    }
+}
+
+function calcClientPaymentBs() {
+    const usd = parseFloat(document.getElementById("rcp_amount_usd")?.value) || 0.0;
+    const rate = parseFloat(document.getElementById("rcp_rate")?.value) || EXCHANGE_RATE || 800.0;
+    const bs = usd * rate;
+    const preview = document.getElementById("rcp_total_bs_preview");
+    if (preview) {
+        preview.innerText = `Bs. ${bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
+    }
+}
 
 async function submitDirectClientPayment(event) {
-
     event.preventDefault();
 
     const clientId = parseInt(document.getElementById("rcp_client_id").value);
-
     const projIdVal = document.getElementById("rcp_project_id").value;
-
     const projId = projIdVal ? parseInt(projIdVal) : null;
-
+    const accIdVal = document.getElementById("rcp_financial_account_id")?.value;
+    const finAccId = accIdVal ? parseInt(accIdVal) : null;
     const amountUsd = parseFloat(document.getElementById("rcp_amount_usd").value) || 0.0;
-
     const rate = parseFloat(document.getElementById("rcp_rate").value) || EXCHANGE_RATE || 800.0;
 
-
-
     if (!clientId || amountUsd <= 0) {
-
         alert("Por favor selecciona un cliente y un monto válido.");
-
         return;
-
     }
-
-
 
     const payload = {
-
         client_id: clientId,
-
         project_id: projId,
-
+        financial_account_id: finAccId,
         amount_usd: amountUsd,
-
         exchange_rate: rate,
-
         payment_method: document.getElementById("rcp_method").value,
-
         reference_number: document.getElementById("rcp_ref").value.trim() || `COB-${Date.now().toString().slice(-6)}`,
-
         concept: document.getElementById("rcp_concept").value.trim() || "Abono / Cobranza de Cliente",
-
         notes: document.getElementById("rcp_notes").value.trim()
-
     };
 
-
-
     try {
-
         const res = await authFetch(`${API_BASE}/financial/direct-collection`, {
-
             method: "POST",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify(payload)
-
         });
 
-
-
         if (res.ok) {
-
             const data = await res.json();
-
             alert(`✅ ${data.message}\nComprobante Nº: ${data.receipt_number}`);
-
             closeModal("modalReceiveClientPayment");
-
-            loadReceivablesList();
-
+            if (typeof loadReceivablesList === "function") loadReceivablesList();
             if (typeof loadTreasurySummary === "function") loadTreasurySummary();
-
+            if (typeof loadCashFlowMatrix === "function") loadCashFlowMatrix();
+            if (typeof loadProjectsList === "function") loadProjectsList();
         } else {
-
             const err = await res.json();
-
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
-
         alert("Error de conexión al registrar cobro: " + e.message);
-
     }
-
 }
 
 
@@ -3017,18 +3960,25 @@ async function openCreateCxCForProject(projId) {
 
 
 
-    const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
-    const proj = safeProjects.find(p => p.id == pId);
+    let proj = null;
+    try {
+        const resP = await authFetch(`${API_BASE}/projects/${pId}/details`);
+        if (resP.ok) proj = await resP.json();
+    } catch(e) {
+        console.warn("Error fetching fresh project details:", e);
+    }
+
+    if (!proj) {
+        const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+        proj = safeProjects.find(p => p.id == pId);
+    }
 
     const contractAmt = parseFloat(proj?.contract_amount_usd) || 0;
     const billedAmt = parseFloat(proj?.total_billed_cxc_usd) || 0;
     const unbilledAmt = Math.max(0, Math.round((contractAmt - billedAmt) * 100) / 100);
-    const isFullyBilled = (billedAmt >= contractAmt - 0.05) && (contractAmt > 0);
 
-    if (proj && isFullyBilled) {
-        alert(`ℹ️ Esta obra ya cuenta con el 100% de su contrato facturado en Cuentas por Cobrar ($${billedAmt.toLocaleString('en-US', {minimumFractionDigits: 2})} USD de $${contractAmt.toLocaleString('en-US', {minimumFractionDigits: 2})} USD contratados).`);
-        return;
-    }
+    // Nota: se permite siempre emitir valuaciones adicionales incluso si el contrato inicial está cubierto.
+    // Esto cubre adendas, obras extra, ajustes de precio y desfases cambiarios.
 
     // Cambiar a vista de finanzas y subpestaña de CxC
     switchView('financial', 'finanzas');
@@ -3050,32 +4000,43 @@ async function openCreateCxCForProject(projId) {
 
         const projectSelect = document.getElementById("cxc_project_id");
         if (projectSelect) {
+            // SOLO MOSTRAR SU PROYECTO ASOCIADO
+            projectSelect.innerHTML = `<option value="${proj.id}" selected>[${proj.code}] ${proj.name} (Por facturar: $${unbilledAmt.toFixed(2)})</option>`;
             projectSelect.value = String(proj.id);
+            projectSelect.disabled = true;
         }
 
         const valIndex = (billedAmt > 0 ? 2 : 1);
         const descInput = document.getElementById("cxc_description");
         if (descInput) {
-            descInput.value = `Valuación N° ${valIndex} - [${proj.code}] ${proj.name}`;
+            descInput.value = (billedAmt > 0)
+                ? `Valuación Parcial N° ${valIndex} - [${proj.code}] ${proj.name}`
+                : `Facturación de Obra - [${proj.code}] ${proj.name}`;
         }
 
         const amtInput = document.getElementById("cxc_amount_usd");
         if (amtInput) {
-            const targetAmt = (billedAmt > 0 && unbilledAmt > 0) ? unbilledAmt : (contractAmt || 0);
+            const targetAmt = (unbilledAmt > 0) ? unbilledAmt : (contractAmt || 0);
             amtInput.value = targetAmt.toFixed(2);
             if (document.getElementById("cxc_tax_retained")) {
                 document.getElementById("cxc_tax_retained").value = "0.00";
             }
         }
 
-        const invInput = document.getElementById("cxc_invoice_number");
-        if (invInput) {
-            const randSuffix = Math.floor(10 + Math.random() * 90);
-            invInput.value = `VAL-${proj.code}-${String(valIndex).padStart(2, '0')}-${randSuffix}`;
+        try {
+            const resCode = await authFetch(`${API_BASE}/financial/next-invoice-code?prefix=FAC`);
+            if (resCode.ok) {
+                const dataCode = await resCode.json();
+                const invInput = document.getElementById("cxc_invoice_number");
+                if (invInput) invInput.value = dataCode.next_code;
+            }
+        } catch(e) {
+            const invInput = document.getElementById("cxc_invoice_number");
+            if (invInput) invInput.value = `FAC-2026-001`;
         }
 
         const toastMsg = (billedAmt > 0)
-            ? `📋 Valuación N° ${valIndex} de [${proj.code}]. Se precargó el saldo faltante del contrato: $${unbilledAmt.toLocaleString('en-US', {minimumFractionDigits: 2})} USD.`
+            ? `📋 Valuación de [${proj.code}]. Monto sugerido (Saldo restante): $${unbilledAmt.toLocaleString('en-US', {minimumFractionDigits: 2})} USD. Puedes ajustar el monto a facturar en esta valuación.`
             : `📋 Facturación completa de [${proj.code}]. Monto de contrato: $${contractAmt.toLocaleString('en-US', {minimumFractionDigits: 2})} USD.`;
         if (typeof showToastNotification === 'function') {
             showToastNotification(toastMsg, 'info');
@@ -3206,6 +4167,7 @@ if (typeof window !== 'undefined') {
     window.openNewReceivableModal = openNewReceivableModal;
     window.openQuickFlowModal = openQuickFlowModal;
     window.openReceiveClientPaymentModal = openReceiveClientPaymentModal;
+    window.onRcpClientChanged = onRcpClientChanged;
     window.openRecordPaymentModal = openRecordPaymentModal;
     window.selectQuickType = selectQuickType;
     window.submitBadDebtWriteOff = submitBadDebtWriteOff;
@@ -3259,6 +4221,257 @@ if (typeof window !== 'undefined') {
     window.openEditPayableModal = openEditPayableModal;
     window.submitEditPayable = submitEditPayable;
     window.deletePayablePrompt = deletePayablePrompt;
+    window.setCashFlowCurrency = setCashFlowCurrency;
+    window.onCashFlowMonthChange = onCashFlowMonthChange;
+    window.applyCashFlowDateFilter = applyCashFlowDateFilter;
+    window.clearCashFlowDateFilter = clearCashFlowDateFilter;
+    window.openBcvRateHistoryModal = openBcvRateHistoryModal;
+    window.selectBcvHistoricalRate = selectBcvHistoricalRate;
+    window.onTreasuryExchangeDateChanged = onTreasuryExchangeDateChanged;
+    window.filterPartnersWithdrawals = filterPartnersWithdrawals;
+    window.selectPartnerSummaryCard = selectPartnerSummaryCard;
+    window.confirmDeletePartnerWithdrawal = confirmDeletePartnerWithdrawal;
+    window.loadUnbilledWarehouseEntries = loadUnbilledWarehouseEntries;
+    window.onCxpPayableTypeChanged = onCxpPayableTypeChanged;
+    window.onCxpWarehouseModeChange = onCxpWarehouseModeChange;
+    window.onCxpWarehouseEntrySelected = onCxpWarehouseEntrySelected;
+    window.addCxpMaterialRow = addCxpMaterialRow;
+    window.onCxpMaterialRowMatChanged = onCxpMaterialRowMatChanged;
+    window.removeCxpMaterialRow = removeCxpMaterialRow;
+    window.calcCxpMaterialsTotal = calcCxpMaterialsTotal;
+    window.applyCxpMaterialsTotalToAmount = applyCxpMaterialsTotalToAmount;
+    window.onMaterialCreatedFromCxp = onMaterialCreatedFromCxp;
+    window.onCxcClientChanged = onCxcClientChanged;
+    window.onCxcProjectChanged = onCxcProjectChanged;
+    window.openManageAccountsModal = openManageAccountsModal;
+    window.submitNewFinancialAccount = submitNewFinancialAccount;
+    window.deactivateFinancialAccount = deactivateFinancialAccount;
+    window.loadFinancialAccounts = loadFinancialAccounts;
+    window.onTreasurySummaryPeriodChange = onTreasurySummaryPeriodChange;
+    window.resetTreasurySummaryFilters = resetTreasurySummaryFilters;
 }
 
-export { calcClientPaymentBs, calcQuickBs, loadPartnersWithdrawalsList, loadPayablesList, loadReceivablesList, loadTreasurySummary, openBadDebtModal, openCreateCxCForProject, openDeclareBadDebtModal, openFinancialSubtab, openMaterialConsumeModalWithProject, openNewPartnerWithdrawalModal, openNewPayableModal, openNewReceivableModal, openPayableHistoryModal, openQuickFlowModal, openReceiveClientPaymentModal, openRecordPaymentModal, selectQuickType, submitBadDebtWriteOff, submitCreatePayable, submitCreateReceivable, submitDeclareBadDebt, submitDirectClientPayment, submitFinancialPayment, submitQuickFlow, switchFinancialSubtab, goToCxcPage, changeCxcPageSize, renderReceivablesPaginated, goToCxpPage, changeCxpPageSize, renderPayablesPaginated, goToTreasuryPage, changeTreasuryPageSize, renderTreasuryTracePaginated, goToPartnersPage, changePartnersPageSize, renderPartnersWithdrawalsPaginated, setFilterCxc, filterCxcList, calcFinTransBsEquiv, onFinTransAccountChanged, openClientRefundModal, submitClientRefund, openTreasuryExchangeModal, onTreasuryExchangeTypeChanged, calcTreasuryExchangeDiff, submitTreasuryExchange, setCashFlowRange, loadCashFlowMatrix, printCashFlowMatrixReport, applyTreasuryFilters, resetTreasuryFilters, handleTreasuryPeriodChange, printTreasuryTraceReport, onCxpSearchInput, onCxpDocTypeFilterChange, applyCxpDateFilter, clearCxpDateFilter, setFilterCxp, onCxpModalDocTypeChange, calcPayablePreview, openWithholdingVoucherModal, printWithholdingVoucher, openEditPayableModal, submitEditPayable, deletePayablePrompt };
+// ─── CUENTAS BANCARIAS Y CAJAS PERSONALIZADAS ────────────────────────────────
+
+/** Variable global con las cuentas cargadas */
+var allFinancialAccounts = window.allFinancialAccounts = window.allFinancialAccounts || [];
+
+/**
+ * Carga cuentas desde la API y llena todos los selectores de cuenta del sistema.
+ * Se llama una vez al iniciar la app y luego de crear/editar cuentas.
+ */
+async function loadFinancialAccounts() {
+    try {
+        const resp = await fetch(`${API_BASE}/financial/accounts`, {
+            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const accounts = await resp.json();
+        allFinancialAccounts = window.allFinancialAccounts = accounts.filter(a => a.is_active);
+
+        // Poblar TODOS los selectores de cuenta del sistema
+        _fillAccountSelect('fin_trans_account', allFinancialAccounts);
+        _fillAccountSelect('refund_source_account', allFinancialAccounts);
+        _fillAccountSelect('exch_source_account', allFinancialAccounts);
+        _fillAccountSelect('exch_target_account', allFinancialAccounts);
+
+        const sumAccSel = document.getElementById('treasury_sum_account');
+        if (sumAccSel) {
+            const curVal = sumAccSel.value;
+            sumAccSel.innerHTML = '<option value="all">Todas las Cuentas / Caja</option>';
+            allFinancialAccounts.forEach(acc => {
+                const opt = document.createElement('option');
+                opt.value = acc.id;
+                opt.textContent = `${acc.name} (${acc.currency ? acc.currency.toUpperCase() : (acc.account_type || '').toUpperCase()})`;
+                sumAccSel.appendChild(opt);
+            });
+            if (curVal) sumAccSel.value = curVal;
+        }
+
+    } catch(err) {
+        console.error('[FinancialAccounts] Error cargando cuentas:', err);
+        // Fallback: insertar las cuentas hardcodeadas clásicas para no romper nada
+        const fallback = [
+            {name:'Banesco Panamá USD', account_type:'usd'},
+            {name:'Banesco Banco Universal (Bs)', account_type:'bs'},
+            {name:'Binance USDT', account_type:'usd'},
+            {name:'Zelle', account_type:'usd'},
+            {name:'Caja Efectivo USD', account_type:'usd'},
+            {name:'Caja Efectivo Bs', account_type:'bs'},
+        ];
+        allFinancialAccounts = window.allFinancialAccounts = fallback;
+        _fillAccountSelect('fin_trans_account', fallback);
+        _fillAccountSelect('refund_source_account', fallback);
+        _fillAccountSelect('exch_source_account', fallback);
+        _fillAccountSelect('exch_target_account', fallback);
+    }
+}
+
+/**
+ * Llena un <select> con las cuentas disponibles.
+ * Añade '(Bs)' al label si la cuenta es en bolívares, para que onFinTransAccountChanged funcione.
+ */
+function _fillAccountSelect(selectId, accounts) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    const currentVal = sel.value;
+    sel.innerHTML = '';
+    accounts.forEach(acc => {
+        const opt = document.createElement('option');
+        // El valor incluye la moneda para que la lógica de cálculo de Bs funcione
+        const bsLabel = acc.account_type === 'bs' ? ' (Bs)' : ` ($)`;
+        opt.value = acc.name;  // el valor es el nombre exacto (compatibilidad con backend)
+        opt.textContent = acc.name + (acc.name.includes('(Bs)') || acc.name.includes('($)') ? '' : bsLabel);
+        sel.appendChild(opt);
+    });
+    // Restaurar valor anterior si sigue disponible
+    if (currentVal && [...sel.options].some(o => o.value === currentVal)) {
+        sel.value = currentVal;
+    }
+}
+
+/** Abre el modal de gestión de cuentas y carga la lista */
+async function openManageAccountsModal() {
+    document.getElementById('modalManageAccounts')?.classList.remove('hidden');
+    // Limpiar campos del formulario
+    ['new_acc_name','new_acc_bank','new_acc_number','new_acc_notes'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    await _renderAccountsList();
+}
+
+/** Renderiza la tabla de cuentas dentro del modal */
+async function _renderAccountsList() {
+    const container = document.getElementById('manageAccountsList');
+    if (!container) return;
+    container.innerHTML = '<p style="text-align:center;color:#64748b;font-size:13px;">Cargando...</p>';
+    try {
+        const resp = await fetch(`${API_BASE}/financial/accounts`, {
+            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+        const accounts = await resp.json();
+
+        if (!accounts.length) {
+            container.innerHTML = '<p style="text-align:center;color:#94a3b8;font-size:13px;">No hay cuentas registradas aún.</p>';
+            return;
+        }
+
+        const rows = accounts.map(acc => `
+            <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 6px; font-weight:700; font-size:13px; color:${acc.is_active ? '#1e293b' : '#94a3b8'};">
+                    ${acc.is_active ? '🟢' : '🔴'} ${acc.name}
+                </td>
+                <td style="padding:8px 6px; font-size:12px; color:#475569;">
+                    ${acc.account_type === 'usd' ? '💵 USD' : '🇻🇪 Bs'}
+                </td>
+                <td style="padding:8px 6px; font-size:12px; color:#64748b;">${acc.bank_or_provider || '—'}</td>
+                <td style="padding:8px 6px; font-size:12px; color:#94a3b8;">${acc.account_number || '—'}</td>
+                <td style="padding:8px 6px; text-align:center;">
+                    ${acc.is_active ? `
+                        <button onclick="deactivateFinancialAccount(${acc.id})" 
+                            style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;" 
+                            title="Desactivar cuenta">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    ` : `<span style="font-size:10px;color:#94a3b8;">Inactiva</span>`}
+                </td>
+            </tr>
+        `).join('');
+
+        container.innerHTML = `
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                        <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">CUENTA</th>
+                        <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">MONEDA</th>
+                        <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">BANCO</th>
+                        <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">REF.</th>
+                        <th style="padding:8px 6px; text-align:center; font-size:11px; color:#64748b; font-weight:700;">ACCIÓN</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    } catch(err) {
+        container.innerHTML = `<p style="color:#dc2626;font-size:13px;">Error cargando cuentas: ${err.message}</p>`;
+    }
+}
+
+/** Crea una nueva cuenta bancaria o caja */
+async function submitNewFinancialAccount() {
+    const name = document.getElementById('new_acc_name')?.value?.trim();
+    const account_type = document.getElementById('new_acc_type')?.value;
+    const bank_or_provider = document.getElementById('new_acc_bank')?.value?.trim() || null;
+    const account_number = document.getElementById('new_acc_number')?.value?.trim() || null;
+    const notes = document.getElementById('new_acc_notes')?.value?.trim() || null;
+
+    if (!name) { alert('El nombre de la cuenta es obligatorio.'); return; }
+    if (!account_type) { alert('Debes seleccionar el tipo de moneda.'); return; }
+
+    try {
+        const resp = await fetch(`${API_BASE}/financial/accounts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+            },
+            body: JSON.stringify({ name, account_type, bank_or_provider, account_number, notes })
+        });
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.detail || `HTTP ${resp.status}`);
+        }
+        // Limpiar campos
+        ['new_acc_name','new_acc_bank','new_acc_number','new_acc_notes'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        // Recargar lista y selectores
+        await _renderAccountsList();
+        await loadFinancialAccounts();
+        // Feedback visual
+        const btn = document.querySelector('#modalManageAccounts .btn-primary');
+        if (btn) { btn.textContent = '✅ Creada'; setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-plus"></i> Crear Cuenta'; }, 2000); }
+    } catch(err) {
+        alert(`Error al crear la cuenta: ${err.message}`);
+    }
+}
+
+/** Desactiva (soft-delete) una cuenta por ID */
+async function deactivateFinancialAccount(accountId) {
+    if (!confirm('¿Seguro que quieres desactivar esta cuenta? Ya no aparecerá en los módulos financieros.')) return;
+    try {
+        const resp = await fetch(`${API_BASE}/financial/accounts/${accountId}`, {
+            method: 'DELETE',
+            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+        if (!resp.ok && resp.status !== 204) throw new Error(`HTTP ${resp.status}`);
+        await _renderAccountsList();
+        await loadFinancialAccounts();
+    } catch(err) {
+        alert(`Error al desactivar la cuenta: ${err.message}`);
+    }
+}
+
+// Auto-cargar las cuentas al iniciar el módulo financiero
+if (typeof window !== 'undefined') {
+    // Esperar a que el DOM esté listo y el token disponible
+    const _initAccounts = () => {
+        authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+        if (authToken) {
+            loadFinancialAccounts();
+        } else {
+            // Reintenta en 1.5s si el token aún no está disponible
+            setTimeout(_initAccounts, 1500);
+        }
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _initAccounts);
+    } else {
+        setTimeout(_initAccounts, 500);
+    }
+}
+
+export { calcClientPaymentBs, onRcpClientChanged, calcQuickBs, loadPartnersWithdrawalsList, loadPayablesList, loadReceivablesList, loadTreasurySummary, onTreasurySummaryPeriodChange, resetTreasurySummaryFilters, openBadDebtModal, openCreateCxCForProject, openDeclareBadDebtModal, openFinancialSubtab, openMaterialConsumeModalWithProject, openNewPartnerWithdrawalModal, openNewPayableModal, openNewReceivableModal, openPayableHistoryModal, openQuickFlowModal, openReceiveClientPaymentModal, openRecordPaymentModal, selectQuickType, submitBadDebtWriteOff, submitCreatePayable, submitCreateReceivable, submitDeclareBadDebt, submitDirectClientPayment, submitFinancialPayment, submitQuickFlow, switchFinancialSubtab, goToCxcPage, changeCxcPageSize, renderReceivablesPaginated, goToCxpPage, changeCxpPageSize, renderPayablesPaginated, goToTreasuryPage, changeTreasuryPageSize, renderTreasuryTracePaginated, goToPartnersPage, changePartnersPageSize, renderPartnersWithdrawalsPaginated, setFilterCxc, filterCxcList, calcFinTransBsEquiv, onFinTransAccountChanged, openClientRefundModal, submitClientRefund, openTreasuryExchangeModal, onTreasuryExchangeTypeChanged, calcTreasuryExchangeDiff, submitTreasuryExchange, setCashFlowRange, loadCashFlowMatrix, printCashFlowMatrixReport, applyTreasuryFilters, resetTreasuryFilters, handleTreasuryPeriodChange, printTreasuryTraceReport, onCxpSearchInput, onCxpDocTypeFilterChange, applyCxpDateFilter, clearCxpDateFilter, setFilterCxp, onCxpModalDocTypeChange, calcPayablePreview, openWithholdingVoucherModal, printWithholdingVoucher, openEditPayableModal, submitEditPayable, deletePayablePrompt, setCashFlowCurrency, onCashFlowMonthChange, applyCashFlowDateFilter, clearCashFlowDateFilter, openBcvRateHistoryModal, selectBcvHistoricalRate, onTreasuryExchangeDateChanged, filterPartnersWithdrawals, selectPartnerSummaryCard, confirmDeletePartnerWithdrawal, loadUnbilledWarehouseEntries, onCxpPayableTypeChanged, onCxpWarehouseModeChange, onCxpWarehouseEntrySelected, addCxpMaterialRow, onCxpMaterialRowMatChanged, removeCxpMaterialRow, calcCxpMaterialsTotal, applyCxpMaterialsTotalToAmount, onMaterialCreatedFromCxp, onCxcClientChanged, onCxcProjectChanged, openManageAccountsModal, submitNewFinancialAccount, deactivateFinancialAccount, loadFinancialAccounts };
+

@@ -7,17 +7,19 @@ from PIL import Image
 import boto3
 from botocore.config import Config
 
-R2_ENDPOINT = os.getenv("R2_ENDPOINT", "https://59ecd0c0c76314597b42719a564a6eb8.r2.cloudflarestorage.com")
-R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY", "5148d76de0731fe95c3fce0ded7fea92")
-R2_SECRET_KEY = os.getenv("R2_SECRET_KEY", "9d6a5329fafc5a729fbe772f69dc10c9bc6a4caf6cc9fa8af156320370b1fe09")
+R2_ENDPOINT = os.getenv("R2_ENDPOINT")
+R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY")
+R2_SECRET_KEY = os.getenv("R2_SECRET_KEY")
 R2_BUCKET = os.getenv("R2_BUCKET", "dalor-comprobantes")
-R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "https://pub-99920f720f2d4f58903e93998a2f4900.r2.dev")
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "")
 
 class R2StorageService:
     _client = None
 
     @classmethod
     def get_client(cls):
+        if not R2_ENDPOINT or not R2_ACCESS_KEY or not R2_SECRET_KEY:
+            return None
         if cls._client is None:
             try:
                 cls._client = boto3.client(
@@ -25,7 +27,7 @@ class R2StorageService:
                     endpoint_url=R2_ENDPOINT,
                     aws_access_key_id=R2_ACCESS_KEY,
                     aws_secret_access_key=R2_SECRET_KEY,
-                    config=Config(signature_version="s3v4"),
+                    config=Config(signature_version="s3v4", connect_timeout=2, read_timeout=3, retries={"max_attempts": 1}),
                     region_name="auto"
                 )
             except Exception as e:
@@ -38,7 +40,7 @@ class R2StorageService:
         """
         Optimiza la imagen con PIL (JPEG quality 80, max 1400px),
         la sube directamente a Cloudflare R2 y devuelve (presigned_url, s3_key).
-        Si R2 no está disponible, genera un Data URL Base64 de fallback.
+        Si R2 no está disponible o falla, devuelve la ruta estática local /uploads/{filename}.
         """
         try:
             # 1. Optimizar imagen
@@ -54,37 +56,48 @@ class R2StorageService:
             img.save(buf, format="JPEG", quality=80, optimize=True)
             optimized_bytes = buf.getvalue()
 
-            # 2. Subir a Cloudflare R2
+            # Asegurar persistencia local
+            from app.core.config import settings
+            local_disk_path = os.path.join(settings.UPLOAD_DIR, filename)
+            try:
+                if not os.path.exists(local_disk_path):
+                    with open(local_disk_path, "wb") as f_loc:
+                        f_loc.write(optimized_bytes)
+            except Exception as loc_err:
+                print(f"[R2Storage] Local save warning: {loc_err}")
+
+            # 2. Subir a Cloudflare R2 si está disponible
             client = cls.get_client()
             unique_key = f"receipts/{uuid.uuid4().hex[:12]}_{filename}"
             
             if client:
-                client.put_object(
-                    Bucket=R2_BUCKET,
-                    Key=unique_key,
-                    Body=optimized_bytes,
-                    ContentType="image/jpeg"
-                )
-                
-                # Generar Presigned URL segura de 7 días
                 try:
-                    presigned_url = client.generate_presigned_url(
-                        "get_object",
-                        Params={"Bucket": R2_BUCKET, "Key": unique_key},
-                        ExpiresIn=604800 # 7 días
+                    client.put_object(
+                        Bucket=R2_BUCKET,
+                        Key=unique_key,
+                        Body=optimized_bytes,
+                        ContentType="image/jpeg"
                     )
-                    return presigned_url, unique_key
-                except Exception:
-                    return f"{R2_PUBLIC_URL}/{unique_key}", unique_key
+                    
+                    # Generar Presigned URL segura de 7 días
+                    try:
+                        presigned_url = client.generate_presigned_url(
+                            "get_object",
+                            Params={"Bucket": R2_BUCKET, "Key": unique_key},
+                            ExpiresIn=604800 # 7 días
+                        )
+                        return presigned_url, unique_key
+                    except Exception:
+                        return f"{R2_PUBLIC_URL}/{unique_key}", unique_key
+                except Exception as r2_err:
+                    print(f"[R2Storage] R2 put_object warning (usando local): {r2_err}")
+                    return f"/uploads/{filename}", f"local_{filename}"
             else:
-                # Fallback Base64 si R2 no responde
-                b64 = base64.b64encode(optimized_bytes).decode("utf-8")
-                return f"data:image/jpeg;base64,{b64}", "local_base64"
+                return f"/uploads/{filename}", f"local_{filename}"
 
         except Exception as e:
             print(f"[R2Storage] Upload error: {e}")
-            b64 = base64.b64encode(image_bytes).decode("utf-8")
-            return f"data:image/jpeg;base64,{b64}", "fallback_base64"
+            return f"/uploads/{filename}", f"local_{filename}"
 
     @classmethod
     def get_file_url(cls, key_or_url: str) -> Optional[str]:

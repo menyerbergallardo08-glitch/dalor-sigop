@@ -386,12 +386,40 @@ async function loadClients() {
 
 
 
-function openNewClientModal() {
+async function openNewClientModal() {
+    const form = document.getElementById("clientForm");
+    if (form) form.reset();
 
-    document.getElementById("clientForm").reset();
+    const codeInput = document.getElementById("cli_code");
+    if (codeInput) {
+        codeInput.value = "Generando correlativo...";
+        codeInput.setAttribute("readonly", "true");
+        codeInput.style.backgroundColor = "#f1f5f9";
+        codeInput.style.cursor = "not-allowed";
+        codeInput.style.fontWeight = "700";
+    }
 
     openModal("modalClient");
 
+    try {
+        const res = await authFetch(`${API_BASE}/clients/next-code`);
+        if (res.ok) {
+            const data = await res.json();
+            if (codeInput && data && data.next_code) {
+                codeInput.value = data.next_code;
+            }
+        } else {
+            if (codeInput) {
+                const count = (window.appState && window.appState.clients) ? window.appState.clients.length + 1 : 3;
+                codeInput.value = `CLI-${String(count).padStart(3, '0')}`;
+            }
+        }
+    } catch (e) {
+        console.warn("No se pudo cargar correlativo dinámico:", e);
+        if (codeInput && (codeInput.value.includes("Generando") || !codeInput.value)) {
+            codeInput.value = "CLI-003";
+        }
+    }
 }
 
 

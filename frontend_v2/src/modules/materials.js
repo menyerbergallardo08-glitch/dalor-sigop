@@ -25,7 +25,12 @@ function authFetch(url, options = {}) {
     const t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     const h = { ...(options.headers || {}) };
     if (t) h['Authorization'] = 'Bearer ' + t;
-    if (options.body && !h['Content-Type']) h['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !h['Content-Type']) {
+        h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete h['Content-Type'];
+    }
     return window.fetch(url, { ...options, headers: h });
 }
 
@@ -79,6 +84,7 @@ async function loadMaterialsList() {
         });
 
         renderMaterialsTable(allMaterials);
+        loadProjectRequisitionsBadge();
         try {
             if (typeof populateSelectDropdowns === 'function') populateSelectDropdowns();
         } catch (errPop) {
@@ -203,8 +209,15 @@ function onNewMaterialCategoryChanged() {
     }
 }
 
-function openNewMaterialModal() {
-    document.getElementById("newMaterialForm").reset();
+function openNewMaterialModal(fromCxp = false) {
+    if (fromCxp) {
+        window.openedMaterialModalFromCxp = true;
+    }
+    const modalEl = document.getElementById("modalNewMaterial");
+    if (modalEl) {
+        modalEl.style.zIndex = "2200";
+    }
+    document.getElementById("newMaterialForm")?.reset();
     const customInp = document.getElementById("nmat_category_custom");
     if (customInp) {
         customInp.classList.add("hidden");
@@ -212,6 +225,10 @@ function openNewMaterialModal() {
         customInp.value = "";
     }
     openModal("modalNewMaterial");
+}
+
+function openNewMaterialModalFromCxp() {
+    openNewMaterialModal(true);
 }
 
 async function submitCreateMaterial(event) {
@@ -238,85 +255,162 @@ async function submitCreateMaterial(event) {
         location: document.getElementById("nmat_location").value.trim() || "Almacén Central Dalor"
     };
 
-
-
     try {
-
         const res = await authFetch(`${API_BASE}/materials/`, {
-
             method: "POST",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify(payload)
-
         });
 
-
-
         if (res.ok) {
-
-            alert("✅ Material registrado con éxito en el catálogo.");
-
+            const resData = await res.json().catch(() => ({}));
             closeModal("modalNewMaterial");
 
-            await loadInitialMasterData();
+            try { await loadInitialMasterData(); } catch(e) {}
+            try { loadMaterialsList(); } catch(e) {}
 
-            loadMaterialsList();
-
+            if (window.openedMaterialModalFromCxp) {
+                window.openedMaterialModalFromCxp = false;
+                if (typeof window.onMaterialCreatedFromCxp === 'function') {
+                    window.onMaterialCreatedFromCxp(resData);
+                }
+            } else {
+                alert("✅ Material registrado con éxito en el catálogo.");
+            }
         } else {
-
-            const err = await res.json();
-
+            const err = await res.json().catch(() => ({}));
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
-
         alert("Error de conexión al crear material: " + e.message);
-
     }
-
 }
 
+function addMaterialEntryRow(defaultMaterialId = null, defaultQty = 1, defaultCost = 0) {
+    const tbody = document.getElementById("me_materials_tbody");
+    if (!tbody) return;
 
+    const safeMaterials = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+    const rowId = "me_row_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+
+    const tr = document.createElement("tr");
+    tr.id = rowId;
+    tr.style.borderBottom = "1px solid #e2e8f0";
+
+    const optionsHtml = safeMaterials.map(m => {
+        const isSel = (defaultMaterialId && m.id === defaultMaterialId) ? 'selected' : '';
+        const cost = m.unit_cost_usd || 0;
+        return `<option value="${m.id}" data-cost="${cost}" data-unit="${m.unit_measure || 'UND'}" data-stock="${m.stock_quantity || 0}" ${isSel}>[${m.code}] ${m.name} (Stock: ${m.stock_quantity || 0} ${m.unit_measure || 'UND'})</option>`;
+    }).join('');
+
+    tr.innerHTML = `
+        <td style="padding: 6px 8px;">
+            <input type="text" placeholder="🔍 Escribe para filtrar material..." oninput="filterEntryRowDropdown(this)" style="font-size: 11px; padding: 4px 6px; width: 100%; margin-bottom: 4px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; background: #f8fafc;">
+            <select class="me-row-material form-select" onchange="onEntryMaterialRowChanged(this)" style="font-size: 11.5px; padding: 4px 6px; width: 100%;">
+                <option value="">-- Seleccionar Material --</option>
+                ${optionsHtml}
+            </select>
+        </td>
+        <td style="padding: 6px 8px; width: 110px;">
+            <input type="number" step="0.01" min="0.01" value="${defaultQty}" class="me-row-qty form-input" style="font-size: 11.5px; padding: 4px 6px; text-align: right;" oninput="calcMaterialEntryTotal()">
+        </td>
+        <td style="padding: 6px 8px; width: 130px;">
+            <input type="number" step="0.01" min="0" value="${defaultCost}" class="me-row-cost form-input" style="font-size: 11.5px; padding: 4px 6px; text-align: right;" oninput="calcMaterialEntryTotal()">
+        </td>
+        <td style="padding: 6px 8px; width: 120px; text-align: right; font-weight: 800; color: #059669; font-size: 12px;">
+            <span class="me-row-subtotal">$0.00</span>
+        </td>
+        <td style="padding: 6px 8px; width: 36px; text-align: center;">
+            <button type="button" onclick="removeMaterialEntryRow(this)" style="background: none; border: none; color: #dc2626; font-size: 18px; cursor: pointer; padding: 2px 6px; font-weight: bold; line-height: 1;" title="Eliminar este renglón">&times;</button>
+        </td>
+    `;
+
+    tbody.appendChild(tr);
+
+    if (defaultMaterialId) {
+        const sel = tr.querySelector(".me-row-material");
+        if (sel) {
+            sel.value = defaultMaterialId;
+            onEntryMaterialRowChanged(sel);
+        }
+    } else {
+        calcMaterialEntryTotal();
+    }
+}
+
+function removeMaterialEntryRow(btn) {
+    const tr = btn.closest("tr");
+    if (tr) tr.remove();
+    const tbody = document.getElementById("me_materials_tbody");
+    if (tbody && tbody.children.length === 0) {
+        addMaterialEntryRow();
+    } else {
+        calcMaterialEntryTotal();
+    }
+}
+
+function onEntryMaterialRowChanged(sel) {
+    const tr = sel.closest("tr");
+    if (!tr) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value) {
+        const costInput = tr.querySelector(".me-row-cost");
+        if (costInput && (!parseFloat(costInput.value) || parseFloat(costInput.value) === 0)) {
+            const cost = parseFloat(opt.getAttribute("data-cost")) || 0;
+            if (cost > 0) costInput.value = cost.toFixed(2);
+        }
+    }
+    calcMaterialEntryTotal();
+}
+
+function filterEntryRowDropdown(input) {
+    const q = (input.value || '').toLowerCase().trim();
+    const tr = input.closest("tr");
+    if (!tr) return;
+    const sel = tr.querySelector(".me-row-material");
+    if (!sel) return;
+    const safeMaterials = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+    const filtered = q ? safeMaterials.filter(m => (m.name || '').toLowerCase().includes(q) || (m.code || '').toLowerCase().includes(q)) : safeMaterials;
+    const currentVal = sel.value;
+    sel.innerHTML = `<option value="">-- Seleccionar Material (${filtered.length}) --</option>` +
+        filtered.map(m => {
+            const isSel = (String(m.id) === String(currentVal)) ? 'selected' : '';
+            return `<option value="${m.id}" data-cost="${m.unit_cost_usd || 0}" data-unit="${m.unit_measure || 'UND'}" data-stock="${m.stock_quantity || 0}" ${isSel}>[${m.code}] ${m.name} (Stock: ${m.stock_quantity || 0} ${m.unit_measure || 'UND'})</option>`;
+        }).join('');
+}
 
 function openMaterialEntryModal(materialId = null) {
+    const form = document.getElementById("materialEntryForm");
+    if (form) form.reset();
 
-    document.getElementById("materialEntryForm").reset();
+    const tbody = document.getElementById("me_materials_tbody");
+    if (tbody) tbody.innerHTML = "";
 
-    populateSelectDropdowns();
-
-    if (materialId) {
-
-        document.getElementById("me_material_id").value = materialId;
-
-    }
-
-    calcMaterialEntryTotal();
-
+    addMaterialEntryRow(materialId, 1, 0);
+    toggleMaterialEntryPaymentBox();
     openModal("modalMaterialEntry");
-
 }
-
-
 
 function calcMaterialEntryTotal() {
+    const rows = document.querySelectorAll("#me_materials_tbody tr");
+    let totalUsd = 0;
+    rows.forEach(tr => {
+        const qty = parseFloat(tr.querySelector(".me-row-qty")?.value) || 0;
+        const cost = parseFloat(tr.querySelector(".me-row-cost")?.value) || 0;
+        const subtotal = qty * cost;
+        totalUsd += subtotal;
+        const subtotalEl = tr.querySelector(".me-row-subtotal");
+        if (subtotalEl) subtotalEl.innerText = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    });
 
-    const qty = parseFloat(document.getElementById("me_quantity")?.value) || 0.0;
+    const previewUsd = document.getElementById("me_total_usd_preview");
+    if (previewUsd) previewUsd.innerText = `$${totalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
 
-    const cost = parseFloat(document.getElementById("me_unit_cost")?.value) || 0.0;
-
-    const total = qty * cost;
-
-    const previewEl = document.getElementById("me_total_usd_preview");
-
-    if (previewEl) previewEl.innerText = `$${total.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`;
-
+    const bcvRate = window.bcvRate || window.currentBcvRate || 1.0;
+    const totalBs = totalUsd * (bcvRate > 1 ? bcvRate : 1);
+    const previewBs = document.getElementById("me_total_bs_preview");
+    if (previewBs) previewBs.innerText = bcvRate > 1 ? `≈ Bs ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Tasa BCV: ${bcvRate})` : '';
 }
-
-
 
 function toggleMaterialEntryPaymentBox() {
     const isCxp = document.getElementById("me_register_cxp")?.checked || false;
@@ -335,25 +429,40 @@ async function submitMaterialEntry(event) {
         if (typeof event.preventDefault === 'function') event.preventDefault();
         if (typeof event.stopPropagation === 'function') event.stopPropagation();
     }
-    const matId = parseInt(document.getElementById("me_material_id")?.value);
-    const qty = parseFloat(document.getElementById("me_quantity")?.value) || 0.0;
-    const cost = parseFloat(document.getElementById("me_unit_cost")?.value) || 0.0;
-    const registerCxp = document.getElementById("me_register_cxp")?.checked || false;
-    const paymentChannel = document.getElementById("me_payment_channel")?.value || "caja_chica_usd";
-    const paymentRef = (document.getElementById("me_payment_ref")?.value || "").trim();
 
-    if (!matId || isNaN(matId) || qty <= 0) {
-        alert("Selecciona un material y cantidad válida.");
+    const rows = document.querySelectorAll("#me_materials_tbody tr");
+    const items = [];
+
+    rows.forEach(tr => {
+        const matId = parseInt(tr.querySelector(".me-row-material")?.value);
+        const qty = parseFloat(tr.querySelector(".me-row-qty")?.value) || 0;
+        const cost = parseFloat(tr.querySelector(".me-row-cost")?.value) || 0;
+        if (matId && !isNaN(matId) && qty > 0) {
+            items.push({
+                material_id: matId,
+                quantity: qty,
+                unit_cost_usd: cost
+            });
+        }
+    });
+
+    if (items.length === 0) {
+        alert("⚠️ Por favor añade al menos un material válido con cantidad mayor a 0.");
         return false;
     }
 
+    const registerCxp = document.getElementById("me_register_cxp")?.checked || false;
+    const paymentChannel = document.getElementById("me_payment_channel")?.value || "caja_chica_usd";
+    const paymentRef = (document.getElementById("me_payment_ref")?.value || "").trim();
+    const supplier = (document.getElementById("me_supplier")?.value || "").trim() || "Proveedor General";
+    const docRef = (document.getElementById("me_doc")?.value || "").trim() || "Factura Compra";
+    const notes = (document.getElementById("me_notes")?.value || "").trim();
+
     const payload = {
-        material_id: matId,
-        quantity: qty,
-        unit_cost_usd: cost,
-        supplier_name: (document.getElementById("me_supplier")?.value || "").trim() || "Proveedor General",
-        reference_doc: (document.getElementById("me_doc")?.value || "").trim() || "Compra Almacén",
-        notes: (document.getElementById("me_notes")?.value || "").trim(),
+        items: items,
+        supplier_name: supplier,
+        reference_doc: docRef,
+        notes: notes,
         performed_by: "Custodio de Almacén",
         register_in_cxp: registerCxp,
         due_days: 15,
@@ -400,6 +509,9 @@ function openMaterialConsumeModal(materialId = null) {
     document.getElementById("materialConsumeForm").reset();
     populateSelectDropdowns();
 
+    const searchInput = document.getElementById("mc_material_search");
+    if (searchInput) searchInput.value = "";
+
     const sel = document.getElementById("mc_material_id");
     if (materialId) {
         // Pre-seleccionado desde fila de tabla: bloquear selector para evitar cambio accidental
@@ -414,73 +526,65 @@ function openMaterialConsumeModal(materialId = null) {
         sel.style.cursor = '';
     }
 
+    onConsumeProjectChanged();
     onConsumeMaterialSelected();
     calcMaterialConsumeTotal();
     openModal("modalMaterialConsume");
 }
 
+function filterConsumeMaterialDropdown(query) {
+    const q = (query || '').toLowerCase().trim();
+    const sel = document.getElementById("mc_material_id");
+    if (!sel) return;
+    const safeMaterials = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+    const available = safeMaterials.filter(m => (parseFloat(m.stock_quantity) || 0) > 0);
+    const filtered = q ? available.filter(m => (m.name || '').toLowerCase().includes(q) || (m.code || '').toLowerCase().includes(q)) : available;
+    const currentVal = sel.value;
+    sel.innerHTML = `<option value="">-- Seleccionar Material (${filtered.length} con stock) --</option>` +
+        filtered.map(m => {
+            const isSel = (String(m.id) === String(currentVal)) ? 'selected' : '';
+            return `<option value="${m.id}" data-cost="${m.unit_cost_usd || 0}" data-unit="${m.unit_measure || 'UND'}" data-stock="${m.stock_quantity}" ${isSel}>[${m.code}] ${m.name} (Stock: ${m.stock_quantity} ${m.unit_measure || 'UND'})</option>`;
+        }).join('');
+    onConsumeMaterialSelected();
+}
 
-
+function onConsumeProjectChanged() {
+    const projIdVal = document.getElementById("mc_project_id")?.value;
+    const banner = document.getElementById("mc_guide_banner");
+    if (banner) {
+        banner.style.display = projIdVal ? "block" : "none";
+    }
+}
 
 function onConsumeMaterialSelected() {
-
     const sel = document.getElementById("mc_material_id");
-
     if (!sel || !sel.options[sel.selectedIndex]) return;
-
     const opt = sel.options[sel.selectedIndex];
-
     const stock = opt.getAttribute("data-stock") || "0";
-
     const unit = opt.getAttribute("data-unit") || "UND";
-
     const label = document.getElementById("mc_stock_available_label");
-
     if (label) label.innerText = `${parseFloat(stock).toLocaleString()} ${unit}`;
-
     calcMaterialConsumeTotal();
-
 }
-
-
 
 function calcMaterialConsumeTotal() {
-
     const sel = document.getElementById("mc_material_id");
-
     const qty = parseFloat(document.getElementById("mc_quantity")?.value) || 0.0;
-
     let cost = 0.0;
-
     if (sel && sel.options[sel.selectedIndex]) {
-
         cost = parseFloat(sel.options[sel.selectedIndex].getAttribute("data-cost")) || 0.0;
-
     }
-
     const total = qty * cost;
-
     const previewEl = document.getElementById("mc_cost_preview");
-
     if (previewEl) previewEl.value = `$${total.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`;
-
 }
 
-
-
 async function submitMaterialConsume(event) {
-
     event.preventDefault();
-
     const matId = parseInt(document.getElementById("mc_material_id").value);
-
     const qty = parseFloat(document.getElementById("mc_quantity").value) || 0.0;
-
     const projIdVal = document.getElementById("mc_project_id").value;
-
     const projId = projIdVal ? parseInt(projIdVal) : null;
-
-
 
     if (!matId || qty <= 0) {
         alert("Selecciona un material y cantidad válida mayor a 0.");
@@ -501,6 +605,9 @@ async function submitMaterialConsume(event) {
         }
     }
 
+    const driverName = (document.getElementById("mc_driver_name")?.value || "").trim();
+    const vehiclePlate = (document.getElementById("mc_vehicle_plate")?.value || "").trim();
+
     const payload = {
         material_id: matId,
         quantity: qty,
@@ -508,7 +615,9 @@ async function submitMaterialConsume(event) {
         destination: projId ? "Obra en Ejecución" : "Taller Central",
         reference_doc: document.getElementById("mc_doc").value.trim() || "Requisición Interna",
         notes: document.getElementById("mc_notes").value.trim(),
-        performed_by: document.getElementById("mc_performed_by").value.trim() || "Custodio de Almacén"
+        performed_by: document.getElementById("mc_performed_by").value.trim() || "Custodio de Almacén",
+        driver_name: driverName,
+        vehicle_plate: vehiclePlate
     };
 
     try {
@@ -521,34 +630,27 @@ async function submitMaterialConsume(event) {
             body: JSON.stringify(payload)
         });
 
-
-
         if (res.ok) {
-
             const data = await res.json();
-
-            alert(`✅ ${data.message}`);
-
             closeModal("modalMaterialConsume");
-
             await loadInitialMasterData();
-
             loadMaterialsList();
 
+            if (data.guide_number) {
+                const openGuide = confirm(`✅ ${data.message || 'Despacho procesado exitosamente.'}\n\nSe ha emitido automáticamente la Guía de Despacho Oficial N°: ${data.guide_number}\n\n¿Deseas abrirla en el módulo de Despachos ahora mismo?`);
+                if (openGuide && typeof window.navigateToDispatchGuide === 'function') {
+                    window.navigateToDispatchGuide(data.guide_number);
+                }
+            } else {
+                alert(`✅ ${data.message || 'Despacho registrado exitosamente.'}`);
+            }
         } else {
-
             const err = await res.json();
-
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
-
         alert("Error al procesar despacho de material: " + e.message);
-
     }
-
 }
 
 
@@ -1039,18 +1141,41 @@ async function submitGenerateTransferGuide(event) {
 
 // ==============================================================================
 
-function openMaterialDeliveryModal() {
-
+async function openMaterialDeliveryModal() {
     const form = document.getElementById("materialDeliveryForm");
-
     if (form) form.reset();
 
-    populateSelect("md_project_id", allProjects, p => `<option value="${p.id}" data-location="${p.location || ''}">${p.code} - ${p.name}</option>`);
+    let projects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+    if (projects.length === 0) {
+        try {
+            const res = await authFetch(`${API_BASE}/projects/`);
+            if (res.ok) {
+                projects = await res.json();
+                window.allProjects = allProjects = projects;
+            }
+        } catch(e) {
+            console.error("Error cargando proyectos para despacho:", e);
+        }
+    }
+
+    // Filtrar estrictamente solo obras ABIERTAS / ACTIVAS
+    const openProjects = (projects || []).filter(p => {
+        const st = (p.status || '').toLowerCase().trim();
+        return !['culminado', 'completado', 'cerrado', 'cancelado', 'finalizado', 'inactivo'].includes(st);
+    });
+
+    const sel = document.getElementById("md_project_id");
+    if (sel) {
+        if (openProjects.length === 0) {
+            sel.innerHTML = `<option value="">⚠️ No hay obras abiertas disponibles para despacho</option>`;
+        } else {
+            sel.innerHTML = `<option value="">-- Seleccione Proyecto Aprobado Destino --</option>` +
+                openProjects.map(p => `<option value="${p.id}" data-location="${p.location || ''}">[${p.code}] ${p.name}</option>`).join('');
+        }
+    }
 
     onMaterialDeliveryProjectChanged();
-
     openModal("modalMaterialDelivery");
-
 }
 
 
@@ -1418,6 +1543,684 @@ function submitGenerateMaterialDeliveryGuide(event) {
 
 }
 
+// ==============================================================================
+// 📥 BANDEJA DE REQUISICIONES DE OBRAS (PICKING & DESPACHO PARA ALMACÉN)
+// ==============================================================================
+
+var allProjectRequisitions = window.allProjectRequisitions = [];
+
+async function loadProjectRequisitionsBadge() {
+    try {
+        const res = await authFetch(`${API_BASE}/materials/project-requisitions?status=pendiente`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        // Contar la cantidad de PROYECTOS con requerimientos pendientes (no la suma de ítems)
+        const pendingProjects = new Set();
+        let hasPartial = false;
+        (data || []).forEach(r => {
+            if ((r.quantity_pending || 0) > 0) {
+                if (r.project_id) pendingProjects.add(r.project_id);
+                if ((r.quantity_dispatched || 0) > 0) hasPartial = true;
+            }
+        });
+        const pendingCount = pendingProjects.size;
+
+        const ids = [
+            "badgePendingRequisitions",
+            "badgePendingRequisitionsBanner",
+            "badgePendingRequisitionsDispatch",
+            "badgePendingRequisitionsNav",
+            "badgeRecursosDropdown"
+        ];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerText = pendingCount;
+                el.style.display = pendingCount > 0 ? "inline-block" : "none";
+                if (hasPartial) {
+                    el.title = `${pendingCount} obra(s) con requerimientos (posee pendientes parciales)`;
+                } else {
+                    el.title = `${pendingCount} obra(s) con requerimientos pendientes`;
+                }
+            }
+        });
+    } catch (e) {
+        console.warn("Could not load project requisitions badge:", e);
+    }
+}
+
+async function openProjectRequisitionsInboxModal(targetProjectId = null) {
+    if (typeof openModal === "function") {
+        openModal("modalProjectRequisitionsInbox");
+    }
+    await loadProjectRequisitionsInbox(targetProjectId);
+}
+
+async function loadProjectRequisitionsInbox(targetProjectId = null) {
+    const container = document.getElementById("reqInboxContainer");
+    if (!container) return;
+    container.innerHTML = `<div style="text-align: center; padding: 40px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px;"></i><p style="margin-top: 8px; font-size: 13px;">Cargando pedidos de insumos desde las Obras...</p></div>`;
+
+    try {
+        const res = await authFetch(`${API_BASE}/materials/project-requisitions`);
+        if (!res.ok) throw new Error("Error al consultar requisiciones de proyectos.");
+        const data = await res.json();
+        allProjectRequisitions = window.allProjectRequisitions = Array.isArray(data) ? data : [];
+
+        // Poblar selector de proyectos ordenado por código descendente con nombre
+        const pSelect = document.getElementById("reqInboxProjectFilter");
+        if (pSelect) {
+            const currentVal = targetProjectId !== null ? String(targetProjectId) : pSelect.value;
+            const uniqueProjects = [];
+            const seen = new Set();
+            allProjectRequisitions.forEach(r => {
+                if (r.project_id && !seen.has(r.project_id)) {
+                    seen.add(r.project_id);
+                    uniqueProjects.push({ id: r.project_id, code: r.project_code || `PRJ-${r.project_id}`, name: r.project_name || "Sin Título" });
+                }
+            });
+
+            // Ordenar proyectos descendente por código
+            uniqueProjects.sort((a, b) => (b.code || '').localeCompare(a.code || ''));
+
+            let optsHtml = '<option value="">-- Todas las Obras / Proyectos --</option>';
+            uniqueProjects.forEach(p => {
+                optsHtml += `<option value="${p.id}" ${currentVal == String(p.id) ? 'selected' : ''}>[${p.code}] ${p.name}</option>`;
+            });
+            pSelect.innerHTML = optsHtml;
+        }
+
+        filterProjectRequisitionsView();
+    } catch (e) {
+        console.error("Error loading project requisitions inbox:", e);
+        container.innerHTML = `<div style="text-align: center; padding: 30px; color: #ef4444;"><i class="fa-solid fa-triangle-exclamation" style="font-size: 24px;"></i><p style="margin-top: 8px;">Error al cargar las requisiciones: ${e.message}</p></div>`;
+    }
+}
+
+function filterProjectRequisitionsView() {
+    const searchVal = (document.getElementById("reqInboxSearch")?.value || "").toLowerCase().trim();
+    const projFilter = document.getElementById("reqInboxProjectFilter")?.value || "";
+    const statusFilter = document.getElementById("reqInboxStatusFilter")?.value || "pending";
+
+    let filtered = allProjectRequisitions || [];
+
+    if (statusFilter === "pending") {
+        filtered = filtered.filter(r => (r.quantity_pending || 0) > 0 && r.status !== "despachado");
+    }
+
+    if (projFilter) {
+        filtered = filtered.filter(r => String(r.project_id) === String(projFilter));
+    }
+
+    if (searchVal) {
+        filtered = filtered.filter(r => 
+            (r.material_name || "").toLowerCase().includes(searchVal) ||
+            (r.material_code || "").toLowerCase().includes(searchVal) ||
+            (r.project_code || "").toLowerCase().includes(searchVal) ||
+            (r.project_name || "").toLowerCase().includes(searchVal)
+        );
+    }
+
+    renderProjectRequisitionsGroups(filtered);
+}
+
+function onReqVehicleChanged(projectId) {
+    const sel = document.getElementById(`req_vehicle_sel_${projectId}`);
+    const plateInp = document.getElementById(`req_plate_${projectId}`);
+    const modelInp = document.getElementById(`req_vehicle_model_${projectId}`);
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) {
+        if (plateInp) plateInp.value = opt.getAttribute("data-plate") || "DALOR-01";
+        if (modelInp) modelInp.value = opt.getAttribute("data-model") || "";
+    }
+}
+
+function onReqDriverChanged(projectId) {
+    const sel = document.getElementById(`req_driver_sel_${projectId}`);
+    const nameInp = document.getElementById(`req_driver_${projectId}`);
+    const ciInp = document.getElementById(`req_driver_ci_${projectId}`);
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) {
+        if (nameInp) nameInp.value = opt.getAttribute("data-name") || "";
+        if (ciInp) ciInp.value = opt.getAttribute("data-ci") || "";
+    }
+}
+
+var currentReqPage = window.currentReqPage = 1;
+var reqPageSize = window.reqPageSize = 3;
+var currentFilteredReqs = window.currentFilteredReqs = [];
+
+function renderProjectRequisitionsGroups(reqs, resetPage = true) {
+    const container = document.getElementById("reqInboxContainer");
+    if (!container) return;
+
+    if (resetPage) {
+        currentReqPage = 1;
+    }
+    currentFilteredReqs = reqs || [];
+
+    if (!reqs || reqs.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 50px 20px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1;">
+                <i class="fa-solid fa-circle-check" style="font-size: 40px; color: #10b981; margin-bottom: 12px;"></i>
+                <h4 style="font-size: 16px; font-weight: 800; color: #1e293b;">¡No hay requerimientos pendientes de preparación!</h4>
+                <p style="font-size: 12px; color: #64748b; max-width: 480px; margin: 6px auto 0;">
+                    Todas las solicitudes de insumos formuladas en Obras han sido despachadas o no coinciden con los filtros seleccionados.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    // Agrupar por project_id
+    const groups = {};
+    reqs.forEach(r => {
+        const pId = r.project_id || 0;
+        if (!groups[pId]) {
+            groups[pId] = {
+                project_id: pId,
+                project_code: r.project_code || "S/P",
+                project_name: r.project_name || "Sin Obra Asignada",
+                items: []
+            };
+        }
+        groups[pId].items.push(r);
+    });
+
+    const allGroups = Object.values(groups);
+    const totalGroups = allGroups.length;
+    const totalPages = Math.max(1, Math.ceil(totalGroups / reqPageSize));
+    if (currentReqPage > totalPages) currentReqPage = totalPages;
+    const startIdx = (currentReqPage - 1) * reqPageSize;
+    const pagedGroups = allGroups.slice(startIdx, startIdx + reqPageSize);
+
+    let html = "";
+    pagedGroups.forEach(grp => {
+        const pendingCount = grp.items.filter(i => (i.quantity_pending || 0) > 0).length;
+        const firstItem = grp.items[0] || {};
+        const projVehs = firstItem.project_vehicles || [];
+        const projPers = firstItem.project_personnel || [];
+        const allFleet = firstItem.all_fleet || [];
+        const allPers = firstItem.all_personnel || [];
+
+        // Determinar Vehículo por Defecto
+        const defPlate = projVehs.length > 0 ? (projVehs[0].plate || 'S/P') : 'DALOR-01';
+        const defModel = projVehs.length > 0 ? projVehs[0].name : 'Flota DALOR';
+        
+        let vehOpts = '';
+        if (projVehs.length > 0) {
+            vehOpts += `<optgroup label="🚗 Asignado a esta Obra (Recomendado)">`;
+            projVehs.forEach(v => {
+                vehOpts += `<option value="${v.id}" data-plate="${v.plate}" data-model="${v.name}" selected>[${v.code}] ${v.name} (${v.plate})</option>`;
+            });
+            vehOpts += `</optgroup>`;
+        }
+        if (allFleet.length > 0) {
+            vehOpts += `<optgroup label="🚚 Otros Vehículos Flota DALOR">`;
+            allFleet.filter(f => !projVehs.some(pv => pv.id === f.id)).forEach(f => {
+                vehOpts += `<option value="${f.id}" data-plate="${f.plate}" data-model="${f.name}">[${f.code}] ${f.name} (${f.plate})</option>`;
+            });
+            vehOpts += `</optgroup>`;
+        }
+        vehOpts += `<optgroup label="🏢 Flete Tercerizado">`;
+        vehOpts += `<option value="externo" data-plate="S/P" data-model="Flete Externo">Flete Externo / Retiro Cliente</option>`;
+        vehOpts += `</optgroup>`;
+
+        // Determinar Conductor por Defecto
+        const defDriverName = projPers.length > 0 ? projPers[0].name : 'Transporte DALOR / Conductor Asignado';
+        const defDriverCi = projPers.length > 0 ? projPers[0].ci : 'V-DALOR';
+
+        let persOpts = '';
+        if (projPers.length > 0) {
+            persOpts += `<optgroup label="👷 Personal de esta Obra (Recomendado)">`;
+            projPers.forEach(p => {
+                persOpts += `<option value="${p.id}" data-name="${p.name}" data-ci="${p.ci}" selected>${p.name} (C.I: ${p.ci} - ${p.role})</option>`;
+            });
+            persOpts += `</optgroup>`;
+        }
+        if (allPers.length > 0) {
+            persOpts += `<optgroup label="🚛 Choferes & Personal DALOR">`;
+            allPers.filter(ap => !projPers.some(pp => pp.id === ap.id)).forEach(ap => {
+                persOpts += `<option value="${ap.id}" data-name="${ap.name}" data-ci="${ap.ci}">${ap.name} (C.I: ${ap.ci})</option>`;
+            });
+            persOpts += `</optgroup>`;
+        }
+        persOpts += `<optgroup label="✍️ Personalizado">`;
+        persOpts += `<option value="externo" data-name="" data-ci="">Otro Conductor (Ingreso manual)</option>`;
+        persOpts += `</optgroup>`;
+
+        html += `
+            <div class="card" style="border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 18px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                <!-- Header de Obra -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #1e3a8a; color: white; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px;">
+                                <i class="fa-solid fa-building"></i> ${grp.project_code}
+                            </span>
+                            <h4 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 0;">${grp.project_name}</h4>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 4px 10px; border-radius: 6px;">
+                            ${grp.items.length} insumos en lista (${pendingCount} pendientes)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Datos de Despacho & Logística para esta Obra -->
+                <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; display: grid; grid-template-columns: 1.2fr 1.2fr 1.6fr; gap: 12px; align-items: start;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+                            <span><i class="fa-solid fa-truck-pickup"></i> Vehículo Asignado a la Obra</span>
+                            <span style="font-size: 9.5px; color: #0284c7; font-weight: 700;">(Control Transporte)</span>
+                        </label>
+                        <select id="req_vehicle_sel_${grp.project_id}" onchange="onReqVehicleChanged(${grp.project_id})" class="form-select" style="font-size: 11px; padding: 5px 8px; background: white; margin-bottom: 4px;">
+                            ${vehOpts}
+                        </select>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" id="req_plate_${grp.project_id}" value="${defPlate}" placeholder="Placa" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 45%;" title="Placa del vehículo">
+                            <input type="text" id="req_vehicle_model_${grp.project_id}" value="${defModel}" placeholder="Modelo / Marca" class="form-input" style="font-size: 11px; padding: 4px 6px; width: 55%;" title="Modelo del vehículo">
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+                            <span><i class="fa-solid fa-id-card"></i> Chofer / Conductor</span>
+                            <span style="font-size: 9.5px; color: #0284c7; font-weight: 700;">(Datos Conductor)</span>
+                        </label>
+                        <select id="req_driver_sel_${grp.project_id}" onchange="onReqDriverChanged(${grp.project_id})" class="form-select" style="font-size: 11px; padding: 5px 8px; background: white; margin-bottom: 4px;">
+                            ${persOpts}
+                        </select>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" id="req_driver_${grp.project_id}" value="${defDriverName}" placeholder="Nombre Conductor" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 60%;" title="Nombre del chofer">
+                            <input type="text" id="req_driver_ci_${grp.project_id}" value="${defDriverCi}" placeholder="C.I. / Cédula" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 40%;" title="Cédula de identidad">
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: block; margin-bottom: 3px;">
+                            <i class="fa-solid fa-note-sticky"></i> Observaciones de Carga & Precinto
+                        </label>
+                        <textarea id="req_notes_${grp.project_id}" rows="2" placeholder="Ej: Material y herramientas verificadas en pañol para traslado de obra." class="form-input" style="font-size: 11px; padding: 5px 8px; background: white; resize: none;"></textarea>
+                    </div>
+                </div>
+
+                <!-- Tabla de Insumos Requeridos -->
+                <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; text-align: left;">
+                        <thead>
+                            <tr style="background: #f8fafc; color: #475569; font-weight: 700; border-bottom: 1px solid #e2e8f0;">
+                                <th style="padding: 8px 10px; width: 36px; text-align: center;">
+                                    <input type="checkbox" onchange="toggleSelectAllProjectReqs(${grp.project_id}, this.checked)" title="Seleccionar todos con stock">
+                                </th>
+                                <th style="padding: 8px 10px;">Código</th>
+                                <th style="padding: 8px 10px;">Descripción del Insumo</th>
+                                <th style="padding: 8px 10px; text-align: center;">Solicitado</th>
+                                <th style="padding: 8px 10px; text-align: center;">Despachado</th>
+                                <th style="padding: 8px 10px; text-align: center;">Saldo Pendiente</th>
+                                <th style="padding: 8px 10px; text-align: center;">Stock en Pañol</th>
+                                <th style="padding: 8px 10px; text-align: center; width: 140px;">A Despachar</th>
+                                <th style="padding: 8px 10px; text-align: center; width: 90px;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${grp.items.map(it => {
+                                const isDone = (it.quantity_pending || 0) <= 0 || it.status === "despachado";
+                                const stockVal = it.stock_available || 0;
+                                const hasZeroStock = stockVal <= 0;
+                                const isBlocked = isDone || hasZeroStock;
+                                const defaultDispatchQty = isBlocked ? 0 : Math.min(it.quantity_pending, stockVal);
+                                
+                                const stockBadge = hasZeroStock
+                                    ? `<span style="background: #fee2e2; color: #b91c1c; padding: 2px 7px; border-radius: 4px; font-weight: 800; font-size: 10.5px;"><i class="fa-solid fa-ban"></i> 0.00 (SIN STOCK)</span>`
+                                    : (it.has_enough_stock 
+                                        ? `<span style="background: #dcfce7; color: #15803d; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 10.5px;"><i class="fa-solid fa-circle-check"></i> ${stockVal.toFixed(2)} ${it.unit_measure}</span>`
+                                        : `<span style="background: #fef3c7; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 10.5px;"><i class="fa-solid fa-triangle-exclamation"></i> ${stockVal.toFixed(2)} ${it.unit_measure} (Parcial)</span>`);
+
+                                return `
+                                    <tr style="border-bottom: 1px solid #f1f5f9; ${isDone ? 'background: #f8fafc; opacity: 0.65;' : ''} ${hasZeroStock && !isDone ? 'background: #fff1f2;' : ''}">
+                                        <td style="padding: 8px 10px; text-align: center;">
+                                            <input type="checkbox" class="req-check-${grp.project_id}" data-req-id="${it.id}" data-project-id="${grp.project_id}" data-stock="${stockVal}" data-pending="${it.quantity_pending}" ${!isBlocked ? 'checked' : ''} ${isBlocked ? 'disabled' : ''}>
+                                        </td>
+                                        <td style="padding: 8px 10px; font-family: monospace; font-weight: 700; color: #334155;">
+                                            ${it.material_code}
+                                        </td>
+                                        <td style="padding: 8px 10px;">
+                                            <div style="font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                ${it.resource_type === 'herramienta' ? '<span class="badge-tag" style="background:#e0e7ff; color:#3730a3; font-size:9.5px;"><i class="fa-solid fa-wrench"></i> Herramienta</span>' :
+                                                  it.resource_type === 'maquinaria' ? '<span class="badge-tag" style="background:#ffedd5; color:#9a3412; font-size:9.5px;"><i class="fa-solid fa-tractor"></i> Maquinaria</span>' :
+                                                  it.resource_type === 'vehiculo' ? '<span class="badge-tag" style="background:#fef3c7; color:#92400e; font-size:9.5px;"><i class="fa-solid fa-truck-pickup"></i> Vehículo</span>' :
+                                                  '<span class="badge-tag" style="background:#f0fdf4; color:#166534; font-size:9.5px;"><i class="fa-solid fa-boxes-stacked"></i> Material</span>'}
+                                                <span>${it.material_name}</span>
+                                            </div>
+                                            ${it.notes ? `<span style="font-size: 10px; color: #64748b;">Nota: ${it.notes}</span>` : ''}
+                                        </td>
+                                        <td style="padding: 8px 10px; text-align: center; font-weight: 600;">
+                                            ${(it.quantity_required || 0).toFixed(2)} ${it.unit_measure}
+                                        </td>
+                                        <td style="padding: 8px 10px; text-align: center; color: #059669; font-weight: 600;">
+                                            ${(it.quantity_dispatched || 0).toFixed(2)} ${it.unit_measure}
+                                        </td>
+                                        <td style="padding: 8px 10px; text-align: center; font-weight: 800; color: ${isDone ? '#10b981' : '#e11d48'};">
+                                            ${isDone ? '0.00 (Listo)' : `${(it.quantity_pending || 0).toFixed(2)} ${it.unit_measure}`}
+                                        </td>
+                                        <td style="padding: 8px 10px; text-align: center;">
+                                            ${stockBadge}
+                                        </td>
+                                        <td style="padding: 8px 10px; text-align: center;">
+                                            <input type="number" step="0.01" min="0" max="${Math.min(it.quantity_pending, stockVal)}" id="req_qty_${it.id}" value="${defaultDispatchQty}" oninput="onReqQtyChanged(${it.id}, ${it.quantity_pending}, ${stockVal})" class="form-input" style="font-size: 11.5px; padding: 4px 6px; text-align: center; width: 100px; font-weight: 700; ${hasZeroStock ? 'background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed;' : ''}" ${isBlocked ? 'disabled' : ''}>
+                                            <div id="req_warn_${it.id}" style="${defaultDispatchQty < it.quantity_pending && defaultDispatchQty > 0 ? '' : 'display: none;'}">
+                                                ${defaultDispatchQty < it.quantity_pending && defaultDispatchQty > 0 ? `<span style="color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; display: inline-block; margin-top: 3px;">⚠️ Parcial: Quedan ${(it.quantity_pending - defaultDispatchQty).toFixed(2)} por stock</span>` : ''}
+                                            </div>
+                                        </td>
+                                        <td style="padding: 8px 10px; text-align: center;">
+                                            ${isDone ? '<span class="badge-tag" style="background:#e2e8f0; color:#475569; font-size:10px;">Completado</span>' :
+                                              hasZeroStock ? '<span style="color: #ef4444; font-size: 10px; font-weight: 700;"><i class="fa-solid fa-ban"></i> Sin Stock</span>' : `
+                                                <button type="button" onclick="quickDispatchSingleRequisition(${it.id}, ${grp.project_id})" class="btn-secondary" style="font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;" title="Despachar solo este ítem ahora">
+                                                    ⚡ Rápido
+                                                </button>
+                                            `}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Botón de Despacho de la Obra -->
+                <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 12px; gap: 10px;">
+                    <button type="button" onclick="submitDispatchProjectGroup(${grp.project_id})" class="btn-primary" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); font-weight: 800; font-size: 12px; padding: 8px 18px; border-radius: 6px; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);">
+                        <i class="fa-solid fa-truck-ramp-box"></i> Despachar Ítems Marcados y Emitir Guía de Traslado (${grp.project_code})
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    // Barra de Paginación de la Bandeja
+    html += `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 14px; flex-wrap: wrap; gap: 10px;">
+            <div style="font-size: 12px; font-weight: 600; color: #475569;">
+                Mostrando obras <span style="font-weight: 800; color: #0f172a;">${startIdx + 1} - ${Math.min(totalGroups, startIdx + reqPageSize)}</span> de <span style="font-weight: 800; color: #0f172a;">${totalGroups}</span> con requerimientos
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" onclick="goToReqPage(${currentReqPage - 1})" class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" ${currentReqPage <= 1 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                    <i class="fa-solid fa-chevron-left"></i> Anterior
+                </button>
+                <span style="font-size: 11.5px; font-weight: 700; color: #1e293b; padding: 0 8px;">
+                    Página ${currentReqPage} de ${totalPages}
+                </span>
+                <button type="button" onclick="goToReqPage(${currentReqPage + 1})" class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" ${currentReqPage >= totalPages ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                    Siguiente <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #475569;">
+                <span>Por página:</span>
+                <select onchange="changeReqPageSize(this.value)" style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 6px; font-size: 11px; background: white;">
+                    <option value="2" ${reqPageSize === 2 ? 'selected' : ''}>2 obras</option>
+                    <option value="3" ${reqPageSize === 3 ? 'selected' : ''}>3 obras</option>
+                    <option value="5" ${reqPageSize === 5 ? 'selected' : ''}>5 obras</option>
+                    <option value="10" ${reqPageSize === 10 ? 'selected' : ''}>10 obras</option>
+                </select>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function goToReqPage(page) {
+    currentReqPage = page;
+    renderProjectRequisitionsGroups(currentFilteredReqs, false);
+}
+
+function changeReqPageSize(newSize) {
+    reqPageSize = parseInt(newSize) || 3;
+    currentReqPage = 1;
+    renderProjectRequisitionsGroups(currentFilteredReqs, false);
+}
+
+function onReqQtyChanged(reqId, maxPending, stockAvailable) {
+    const inp = document.getElementById(`req_qty_${reqId}`);
+    const warnEl = document.getElementById(`req_warn_${reqId}`);
+    if (!inp) return;
+
+    let val = parseFloat(inp.value) || 0;
+    if (val < 0) {
+        val = 0;
+        inp.value = 0;
+    }
+
+    // 1. No puede ser mayor a lo solicitado
+    if (val > maxPending) {
+        alert(`⚠️ La cantidad a despachar (${val}) no puede ser mayor a lo solicitado (Saldo pendiente: ${maxPending}). Se ajustó automáticamente.`);
+        val = maxPending;
+        inp.value = maxPending;
+    }
+
+    // 2. No puede ser mayor al stock disponible
+    if (val > stockAvailable) {
+        alert(`⚠️ Stock insuficiente en almacén/pañol: Solo hay ${stockAvailable} unidades disponibles.`);
+        val = stockAvailable;
+        inp.value = stockAvailable;
+    }
+
+    // 3. Advertencia si es menor por tema de inventario
+    if (warnEl) {
+        if (val < maxPending && val > 0) {
+            const diff = (maxPending - val).toFixed(2);
+            warnEl.style.display = "block";
+            warnEl.innerHTML = `<span style="color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; display: inline-block; margin-top: 3px;">⚠️ Entrega parcial: Quedarán ${diff} pendientes por inventario.</span>`;
+        } else if (val === 0) {
+            warnEl.style.display = "block";
+            warnEl.innerHTML = `<span style="color: #dc2626; background: #fee2e2; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; display: inline-block; margin-top: 3px;">⛔ Cantidad 0: No se incluirá en el traslado.</span>`;
+        } else {
+            warnEl.style.display = "none";
+        }
+    }
+}
+
+function toggleSelectAllProjectReqs(projectId, checked) {
+    document.querySelectorAll(`.req-check-${projectId}`).forEach(chk => {
+        if (!chk.disabled) chk.checked = checked;
+    });
+}
+
+async function submitDispatchProjectGroup(projectId) {
+    const checkboxes = document.querySelectorAll(`.req-check-${projectId}:checked`);
+    if (!checkboxes || checkboxes.length === 0) {
+        alert("⚠️ Por favor selecciona al menos un insumo disponible de la lista para despachar.");
+        return;
+    }
+
+    const items = [];
+    let hasPartial = false;
+
+    for (const chk of checkboxes) {
+        const reqId = parseInt(chk.getAttribute("data-req-id"));
+        const stock = parseFloat(chk.getAttribute("data-stock") || 0);
+        const pending = parseFloat(chk.getAttribute("data-pending") || 0);
+        const qtyInp = document.getElementById(`req_qty_${reqId}`);
+        const qty = parseFloat(qtyInp?.value || 0);
+
+        if (stock <= 0) {
+            alert("⛔ No se puede despachar un ítem con stock 0 en almacén.");
+            if (qtyInp) qtyInp.focus();
+            return;
+        }
+
+        if (qty <= 0) {
+            alert("⚠️ La cantidad a despachar para los ítems seleccionados debe ser mayor a 0.");
+            if (qtyInp) qtyInp.focus();
+            return;
+        }
+
+        if (qty > pending) {
+            alert(`⚠️ La cantidad a despachar (${qty}) no puede ser mayor a lo solicitado (${pending}).`);
+            if (qtyInp) qtyInp.focus();
+            return;
+        }
+
+        if (qty > stock) {
+            alert(`⚠️ Stock insuficiente: Solicitas ${qty} pero solo hay ${stock} en almacén.`);
+            if (qtyInp) qtyInp.focus();
+            return;
+        }
+
+        if (qty < pending) {
+            hasPartial = true;
+        }
+
+        items.push({
+            requisition_id: reqId,
+            quantity_to_dispatch: qty
+        });
+    }
+
+    const driverName = (document.getElementById(`req_driver_${projectId}`)?.value || "").trim() || "Transporte DALOR / Conductor Asignado";
+    const driverCi = (document.getElementById(`req_driver_ci_${projectId}`)?.value || "").trim() || "V-DALOR";
+    const vehiclePlate = (document.getElementById(`req_plate_${projectId}`)?.value || "").trim() || "DALOR-01";
+    const vehicleModel = (document.getElementById(`req_vehicle_model_${projectId}`)?.value || "").trim();
+    const vehicleAssetId = document.getElementById(`req_vehicle_sel_${projectId}`)?.value;
+    const notes = (document.getElementById(`req_notes_${projectId}`)?.value || "").trim();
+
+    let confirmMsg = `¿Confirmas el despacho de ${items.length} insumo(s) para la obra seleccionada?\n\nSe descontará el stock en Almacén y se emitirá la Guía de Despacho oficial.`;
+    if (hasPartial) {
+        confirmMsg += `\n\n⚠️ ADVERTENCIA: Uno o más ítems tienen un despacho menor a lo solicitado por disponibilidad de inventario. El resto quedará como saldo pendiente en la obra.`;
+    }
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    try {
+        const payload = {
+            project_id: projectId,
+            items: items,
+            driver_name: driverName,
+            driver_id_doc: driverCi,
+            vehicle_plate: vehiclePlate,
+            vehicle_model: vehicleModel,
+            asset_id: (vehicleAssetId && vehicleAssetId !== 'externo' && !isNaN(parseInt(vehicleAssetId))) ? parseInt(vehicleAssetId) : null,
+            notes: notes
+        };
+
+        const res = await authFetch(`${API_BASE}/materials/dispatch-project-requisition`, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            await loadProjectRequisitionsBadge();
+            await loadMaterialsList();
+            await loadProjectRequisitionsInbox(projectId);
+
+            const guideNumber = data.guide_number;
+            const openGuide = confirm(`✅ ${data.message || 'Despacho registrado exitosamente.'}\n\nSe ha emitido la Guía Oficial N°: ${guideNumber}\n\n¿Deseas abrir la Guía de Despacho en pantalla completa ahora?`);
+            if (openGuide && typeof window.navigateToDispatchGuide === 'function') {
+                if (typeof closeModal === 'function') closeModal('modalProjectRequisitionsInbox');
+                window.navigateToDispatchGuide(guideNumber);
+            }
+        } else {
+            const err = await res.json();
+            alert("❌ Error al procesar despacho: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        console.error("Error submitting project requisition dispatch:", e);
+        alert("❌ Error de comunicación: " + e.message);
+    }
+}
+
+async function quickDispatchSingleRequisition(reqId, projectId) {
+    const qtyInp = document.getElementById(`req_qty_${reqId}`);
+    const qty = parseFloat(qtyInp?.value || 0);
+
+    const chk = document.querySelector(`.req-check-${projectId}[data-req-id="${reqId}"]`);
+    const stock = parseFloat(chk?.getAttribute("data-stock") || 0);
+    const pending = parseFloat(chk?.getAttribute("data-pending") || 0);
+
+    if (stock <= 0) {
+        alert("⛔ No se puede despachar: Stock disponible en almacén es 0.");
+        return;
+    }
+
+    if (qty <= 0) {
+        alert("⚠️ Ingresa una cantidad válida mayor a 0 para despachar.");
+        if (qtyInp) qtyInp.focus();
+        return;
+    }
+
+    if (qty > pending) {
+        alert(`⚠️ La cantidad a despachar (${qty}) no puede ser mayor a lo solicitado (${pending}).`);
+        if (qtyInp) qtyInp.focus();
+        return;
+    }
+
+    if (qty > stock) {
+        alert(`⚠️ Stock insuficiente: Requieres ${qty} pero solo hay ${stock} en pañol.`);
+        if (qtyInp) qtyInp.focus();
+        return;
+    }
+
+    const driverName = (document.getElementById(`req_driver_${projectId}`)?.value || "").trim() || "Transporte DALOR / Conductor Asignado";
+    const driverCi = (document.getElementById(`req_driver_ci_${projectId}`)?.value || "").trim() || "V-DALOR";
+    const vehiclePlate = (document.getElementById(`req_plate_${projectId}`)?.value || "").trim() || "DALOR-01";
+    const vehicleModel = (document.getElementById(`req_vehicle_model_${projectId}`)?.value || "").trim();
+    const vehicleAssetId = document.getElementById(`req_vehicle_sel_${projectId}`)?.value;
+    const notes = (document.getElementById(`req_notes_${projectId}`)?.value || "").trim();
+
+    let confirmMsg = `¿Confirmas el despacho rápido de este insumo (${qty} unidades)?\nSe generará la Guía de Despacho oficial de traslado.`;
+    if (qty < pending) {
+        confirmMsg += `\n\n⚠️ ADVERTENCIA: La cantidad a despachar (${qty}) es menor a lo solicitado (${pending}) por inventario. Quedarán ${(pending - qty).toFixed(2)} pendientes.`;
+    }
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    try {
+        const payload = {
+            project_id: projectId,
+            items: [{ requisition_id: reqId, quantity_to_dispatch: qty }],
+            driver_name: driverName,
+            driver_id_doc: driverCi,
+            vehicle_plate: vehiclePlate,
+            vehicle_model: vehicleModel,
+            asset_id: (vehicleAssetId && vehicleAssetId !== 'externo' && !isNaN(parseInt(vehicleAssetId))) ? parseInt(vehicleAssetId) : null,
+            notes: notes
+        };
+
+        const res = await authFetch(`${API_BASE}/materials/dispatch-project-requisition`, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            await loadProjectRequisitionsBadge();
+            await loadMaterialsList();
+            await loadProjectRequisitionsInbox(projectId);
+
+            const guideNumber = data.guide_number;
+            const openGuide = confirm(`✅ Despacho procesado exitosamente.\n\nSe ha emitido la Guía Oficial N°: ${guideNumber}\n\n¿Deseas ver la Guía de Despacho ahora?`);
+            if (openGuide && typeof window.navigateToDispatchGuide === 'function') {
+                if (typeof closeModal === 'function') closeModal('modalProjectRequisitionsInbox');
+                window.navigateToDispatchGuide(guideNumber);
+            }
+        } else {
+            const err = await res.json();
+            alert("❌ Error: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        console.error("Error in quick dispatch:", e);
+        alert("❌ Error de comunicación: " + e.message);
+    }
+}
+
 // --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
 if (typeof window !== 'undefined') {
     window.addMaterialDeliveryRow = addMaterialDeliveryRow;
@@ -1445,12 +2248,38 @@ if (typeof window !== 'undefined') {
     window.submitGenerateTransferGuide = submitGenerateTransferGuide;
     window.submitMaterialConsume = submitMaterialConsume;
     window.submitMaterialEntry = submitMaterialEntry;
+    window.addMaterialEntryRow = addMaterialEntryRow;
+    window.removeMaterialEntryRow = removeMaterialEntryRow;
+    window.onEntryMaterialRowChanged = onEntryMaterialRowChanged;
+    window.filterEntryRowDropdown = filterEntryRowDropdown;
+    window.filterConsumeMaterialDropdown = filterConsumeMaterialDropdown;
+    window.onConsumeProjectChanged = onConsumeProjectChanged;
     window.toggleMaterialEntryPaymentBox = toggleMaterialEntryPaymentBox;
     window.onNewMaterialCategoryChanged = onNewMaterialCategoryChanged;
+    window.openNewMaterialModalFromCxp = openNewMaterialModalFromCxp;
+    // Requisiciones de Obra
+    window.loadProjectRequisitionsBadge = loadProjectRequisitionsBadge;
+    window.openProjectRequisitionsInboxModal = openProjectRequisitionsInboxModal;
+    window.loadProjectRequisitionsInbox = loadProjectRequisitionsInbox;
+    window.filterProjectRequisitionsView = filterProjectRequisitionsView;
+    window.toggleSelectAllProjectReqs = toggleSelectAllProjectReqs;
+    window.submitDispatchProjectGroup = submitDispatchProjectGroup;
+    window.quickDispatchSingleRequisition = quickDispatchSingleRequisition;
+    window.goToReqPage = goToReqPage;
+    window.changeReqPageSize = changeReqPageSize;
+    window.onReqQtyChanged = onReqQtyChanged;
+    window.onReqVehicleChanged = onReqVehicleChanged;
+    window.onReqDriverChanged = onReqDriverChanged;
 }
 
 export { 
     addMaterialDeliveryRow, 
+    addMaterialEntryRow,
+    removeMaterialEntryRow,
+    onEntryMaterialRowChanged,
+    filterEntryRowDropdown,
+    filterConsumeMaterialDropdown,
+    onConsumeProjectChanged,
     calcMaterialConsumeTotal, 
     calcMaterialEntryTotal, 
     filterMaterialsTable, 
@@ -1463,6 +2292,7 @@ export {
     openMaterialDeliveryModal, 
     openMaterialEntryModal, 
     openNewMaterialModal, 
+    openNewMaterialModalFromCxp,
     openTransferGuideModal, 
     renderInitialMaterialDeliveryRows, 
     renderMaterialsTable, 
@@ -1476,5 +2306,17 @@ export {
     submitMaterialConsume, 
     submitMaterialEntry, 
     toggleMaterialEntryPaymentBox, 
-    onNewMaterialCategoryChanged 
+    onNewMaterialCategoryChanged,
+    loadProjectRequisitionsBadge,
+    openProjectRequisitionsInboxModal,
+    loadProjectRequisitionsInbox,
+    filterProjectRequisitionsView,
+    toggleSelectAllProjectReqs,
+    submitDispatchProjectGroup,
+    quickDispatchSingleRequisition,
+    goToReqPage,
+    changeReqPageSize,
+    onReqQtyChanged,
+    onReqVehicleChanged,
+    onReqDriverChanged
 };

@@ -24,24 +24,23 @@ function authFetch(url, options = {}) {
     var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     var _h = Object.assign({}, options.headers || {});
     if (_t) _h['Authorization'] = 'Bearer ' + _t;
-    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !_h['Content-Type']) {
+        _h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete _h['Content-Type'];
+    }
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 }
 
 
 // --- BLOQUE L918-L1119 ---
 // Control de Tasa Oficial BCV Automatizada con Blindaje Fail-Safe
-
 BCV_DATA = window.BCV_DATA = {
-
-    rate: 832.49,
-
+    rate: 859.06,
     date_value: '',
-
     source: 'BCV Oficial',
-
     source_tier: 'oficial_directo'
-
 };
 
 
@@ -188,38 +187,28 @@ function submitManualTasa(e) {
 
     if (!isNaN(val) && val > 0) {
 
-        EXCHANGE_RATE = val;
+        EXCHANGE_RATE = window.EXCHANGE_RATE = val;
+        if (window.BCV_DATA) window.BCV_DATA.rate = val;
 
         localStorage.setItem('dalor_exchange_rate', val);
 
         const display = document.getElementById("bcvRateDisplay");
-
         if (display) display.innerText = val.toFixed(2);
 
-        
+        const kpiBcv = document.getElementById("kpi_partners_bcv_rate");
+        if (kpiBcv) kpiBcv.innerText = `${val.toFixed(2)} Bs/$`;
 
         const dot = document.getElementById("bcvStatusDot");
-
         if (dot) {
-
             dot.style.background = '#f59e0b';
-
             dot.style.boxShadow = '0 0 5px #f59e0b';
-
         }
 
-        
-
         const srcName = document.getElementById("bcvSourceName");
-
         if (srcName) srcName.innerText = 'Manual:';
 
-
-
         closeModal("modalManualTasa");
-
         calcManualBs();
-
         showRealtimeToast(`Tasa manual establecida a ${val.toFixed(2)} Bs/$ (Modo Contingencia)`, 'tasa_bcv', 'warning');
 
     }

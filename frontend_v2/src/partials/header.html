@@ -2,28 +2,23 @@
 
         <div class="header-container">
 
-            <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <!-- Botón Menú Móvil (Solo visible en Celular) -->
+                <button id="btnMobileDrawer" onclick="toggleMobileNavDrawer()" class="mobile-hamburger-btn" aria-label="Abrir Menú">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
 
                 <div class="logo-box">
-
                     <img src="logo_dalor.jpg" alt="DALOR Logo" class="logo-img">
-
                 </div>
 
-                <div style="border-left: 1px solid #475569; padding-left: 12px;">
-
-                    <div style="display: flex; align-items: center; gap: 8px;">
-
+                <div style="border-left: 1px solid #475569; padding-left: 10px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-size: 13px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #ffffff;">SIGO-P</span>
-
-                        <span class="badge-tag">ERP v2.0 Enterprise</span>
-
+                        <span class="badge-tag hide-on-mobile">ERP v2.0 Enterprise</span>
                     </div>
-
-                    <p style="font-size: 11px; color: #94a3b8; margin-top: 1px;">Gestión de Proyectos, Finanzas, BI & Mantenimiento</p>
-
+                    <p style="font-size: 11px; color: #94a3b8; margin-top: 1px;" class="hide-on-mobile">Gestión de Proyectos, Finanzas, BI & Mantenimiento</p>
                 </div>
-
             </div>
 
 
@@ -32,7 +27,7 @@
 
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
 
-                <button id="btnQuickFlow" onclick="openQuickFlowModal()" class="btn-primary" style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 11px; padding: 6px 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(245, 184, 0, 0.4); white-space: nowrap;">
+                <button id="btnQuickFlow" onclick="openQuickFlowModal()" class="btn-primary hide-on-mobile" style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 11px; padding: 6px 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(245, 184, 0, 0.4); white-space: nowrap;">
 
                     <i class="fa-solid fa-bolt"></i> 3 Toques
 
@@ -48,7 +43,7 @@
 
                     </span>
 
-                    <span id="bcvRateDisplay" style="font-size: 13px; font-weight: 900; color: var(--dalor-gold); font-family: monospace; letter-spacing: 0.5px;">848.55</span>
+                    <span id="bcvRateDisplay" style="font-size: 13px; font-weight: 900; color: var(--dalor-gold); font-family: monospace; letter-spacing: 0.5px;">859.06</span>
 
                     <span style="color: #cbd5e1; font-weight: 700; font-size: 11px;">Bs/$</span>
 

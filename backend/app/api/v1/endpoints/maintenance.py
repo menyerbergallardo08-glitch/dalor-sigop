@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 
+import re
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.models import User, AuditLog
+from app.models.models import User, AuditLog, Role
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.api.deps import get_current_user, require_roles
 
@@ -29,7 +30,115 @@ def get_db_file_path():
     return default_path
 
 # ------------------------------------------------------------------------------
-# 1. GESTIÓN DE USUARIOS
+# 1. GESTIÓN DE ROLES (PROFIT PLUS STYLE)
+# ------------------------------------------------------------------------------
+class RoleCreate(BaseModel):
+    name: str
+    display_name: str
+    description: str = None
+    permissions_json: str
+
+class RoleUpdate(BaseModel):
+    display_name: str = None
+    description: str = None
+    permissions_json: str = None
+
+@router.get("/roles", dependencies=[Depends(require_roles(["director_general", "administrador_financiero"]))])
+def list_roles(db: Session = Depends(get_db)):
+    roles = db.query(Role).order_by(Role.id.asc()).all()
+    return [{
+        "id": r.id,
+        "name": r.name,
+        "display_name": r.display_name,
+        "description": r.description or "",
+        "permissions_json": r.permissions_json,
+        "is_system": r.is_system,
+        "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else ""
+    } for r in roles]
+
+@router.post("/roles", dependencies=[Depends(require_roles(["director_general"]))])
+def create_role(role_in: RoleCreate, db: Session = Depends(get_db)):
+    clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', role_in.name.strip().lower())
+    existing = db.query(Role).filter(Role.name == clean_name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"El rol con identificador '{clean_name}' ya existe.")
+
+    new_role = Role(
+        name=clean_name,
+        display_name=role_in.display_name.strip(),
+        description=role_in.description.strip() if role_in.description else "",
+        permissions_json=role_in.permissions_json,
+        is_system=False
+    )
+    db.add(new_role)
+    db.commit()
+    db.refresh(new_role)
+
+    audit = AuditLog(
+        username="director_general",
+        module="mantenimiento",
+        action="crear_rol",
+        details=f"Rol de seguridad '{new_role.display_name}' ({new_role.name}) creado"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {"success": True, "message": f"Rol '{new_role.display_name}' creado con éxito.", "id": new_role.id}
+
+@router.put("/roles/{role_id}", dependencies=[Depends(require_roles(["director_general"]))])
+def update_role(role_id: int, role_in: RoleUpdate, db: Session = Depends(get_db)):
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Rol no encontrado.")
+
+    if role_in.display_name is not None:
+        role.display_name = role_in.display_name.strip()
+    if role_in.description is not None:
+        role.description = role_in.description.strip()
+    if role_in.permissions_json is not None:
+        role.permissions_json = role_in.permissions_json
+    db.commit()
+
+    audit = AuditLog(
+        username="director_general",
+        module="mantenimiento",
+        action="actualizar_rol",
+        details=f"Rol '{role.display_name}' ({role.name}) actualizado"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {"success": True, "message": f"Rol '{role.display_name}' actualizado con éxito."}
+
+@router.delete("/roles/{role_id}", dependencies=[Depends(require_roles(["director_general"]))])
+def delete_role(role_id: int, db: Session = Depends(get_db)):
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Rol no encontrado.")
+    if role.is_system:
+        raise HTTPException(status_code=400, detail="No se pueden eliminar los roles nativos del sistema.")
+
+    in_use = db.query(User).filter(User.role_name == role.name).first()
+    if in_use:
+        raise HTTPException(status_code=400, detail=f"No se puede eliminar el rol porque está asignado al usuario '{in_use.username}'.")
+
+    name = role.display_name
+    db.delete(role)
+    db.commit()
+
+    audit = AuditLog(
+        username="director_general",
+        module="mantenimiento",
+        action="eliminar_rol",
+        details=f"Rol '{name}' eliminado"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {"success": True, "message": f"Rol '{name}' eliminado con éxito."}
+
+# ------------------------------------------------------------------------------
+# 2. GESTIÓN DE USUARIOS
 # ------------------------------------------------------------------------------
 class UserCreate(BaseModel):
     username: str
@@ -37,6 +146,14 @@ class UserCreate(BaseModel):
     email: str = None
     password: str
     role_name: str = "ingeniero_obra"
+    permissions_json: str = None
+
+class UserUpdate(BaseModel):
+    full_name: str = None
+    email: str = None
+    role_name: str = None
+    permissions_json: str = None
+    password: str = None
 
 class UserPermissionsUpdate(BaseModel):
     permissions_json: str
@@ -64,22 +181,30 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="El nombre de usuario ya existe.")
 
     hashed_pw = get_password_hash(user_in.password)
-    default_perms = '{"comercial": true, "proyectos": true, "finanzas": false, "recursos": true, "gastos": true, "executive_bi": false, "mantenimiento": false}'
     
+    # Resolving permissions: from payload, or role, or default
+    perms = user_in.permissions_json
+    if not perms:
+        assigned_role = db.query(Role).filter(Role.name == user_in.role_name).first()
+        if assigned_role and assigned_role.permissions_json:
+            perms = assigned_role.permissions_json
+        else:
+            perms = '{"comercial": true, "proyectos": true, "finanzas": false, "recursos": true, "gastos": true, "executive_bi": false, "mantenimiento": false}'
+
     new_user = User(
         username=user_in.username.strip().lower(),
         full_name=user_in.full_name.strip(),
         email=user_in.email,
         hashed_password=hashed_pw,
         role_name=user_in.role_name,
-        permissions_json=default_perms,
+        permissions_json=perms,
         is_active=True,
         is_superuser=(user_in.role_name == "director_general")
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
+
     audit = AuditLog(
         user_id=new_user.id,
         username=new_user.username,
@@ -91,6 +216,37 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
     db.commit()
 
     return {"success": True, "message": f"Usuario '{new_user.username}' creado con éxito.", "id": new_user.id}
+
+@router.put("/users/{user_id}", dependencies=[Depends(require_roles(["director_general"]))])
+def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    if user_in.full_name is not None:
+        user.full_name = user_in.full_name.strip()
+    if user_in.email is not None:
+        user.email = user_in.email.strip()
+    if user_in.role_name is not None:
+        user.role_name = user_in.role_name.strip()
+        user.is_superuser = (user.role_name == "director_general")
+    if user_in.permissions_json is not None:
+        user.permissions_json = user_in.permissions_json
+    if user_in.password:
+        user.hashed_password = get_password_hash(user_in.password)
+
+    db.commit()
+    audit = AuditLog(
+        user_id=user.id,
+        username=user.username,
+        module="mantenimiento",
+        action="modificar_usuario",
+        details=f"Perfil y permisos de usuario {user.username} actualizados"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {"success": True, "message": f"Usuario '{user.username}' actualizado con éxito."}
 
 @router.put("/users/{user_id}/permissions", dependencies=[Depends(require_roles(["director_general"]))])
 def update_user_permissions(user_id: int, perm_in: UserPermissionsUpdate, db: Session = Depends(get_db)):
@@ -254,14 +410,14 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
     # 0. Desvincular referencias a proyectos en Activos y Personal para satisfacer FKs de PostgreSQL
     db.query(Asset).update({
         "status": "disponible_base",
-        "current_location": "Sede Central Dalor",
+        "current_location": "Sede Central Dalor (Guacara)",
         "current_project_id": None,
         "current_custodian_name": None
     }, synchronize_session=False)
 
     db.query(Personnel).update({
         "status": "disponible_base",
-        "current_location": "Sede Central Dalor",
+        "current_location": "Sede Central Dalor (Guacara)",
         "current_project_id": None,
         "role_title": ""
     }, synchronize_session=False)
@@ -324,14 +480,14 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
     db.query(Personnel).update({
         "role_title": "",
         "status": "disponible_base",
-        "current_location": "Sede Central Dalor",
+        "current_location": "Sede Central Dalor (Guacara)",
         "current_project_id": None
     })
 
     # 5. Resetear activos a su estado base disponible en Sede y asegurar 916 items
     db.query(Asset).update({
         "status": "disponible_base",
-        "current_location": "Sede Central Dalor",
+        "current_location": "Sede Central Dalor (Guacara)",
         "current_project_id": None,
         "current_custodian_name": None,
         "is_active": True
@@ -361,7 +517,7 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
                 current_odometer=0.0,
                 last_service_odometer=0.0,
                 service_interval_km=5000.0,
-                current_location="Sede Central Dalor",
+                current_location="Sede Central Dalor (Guacara)",
                 status="disponible_base",
                 is_active=True
             ))
@@ -399,7 +555,7 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
                                     model=t.get("model"),
                                     serial_number=t.get("serial_number"),
                                     status="disponible_base",
-                                    current_location=t.get("location", "Sede Central Dalor"),
+                                    current_location=t.get("location", "Sede Central Dalor (Guacara)"),
                                     current_odometer=0.0,
                                     last_service_odometer=0.0,
                                     is_active=True
@@ -800,7 +956,7 @@ def sync_dalor_catalog(db: Session = Depends(get_db)):
                 role_title="",
                 phone=p_data["phone"],
                 status="disponible_base",
-                current_location="Sede Central Dalor",
+                current_location="Sede Central Dalor (Guacara)",
                 roster_type="guacara_fijo"
             )
             db.add(p)

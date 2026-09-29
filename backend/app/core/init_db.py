@@ -4,8 +4,8 @@ from sqlalchemy import text
 from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.models.models import (
-    User, Client, Project, ProjectPhase, Asset, Personnel, Material,
-    ExpenseCategory, CostCenter, ServiceItem
+    User, Role, Client, Project, ProjectPhase, Asset, Personnel, Material,
+    ExpenseCategory, CostCenter, ServiceItem, FinancialAccount
 )
 
 def init_db():
@@ -71,8 +71,9 @@ def init_db():
             "ALTER TABLE dispatch_guides ALTER COLUMN project_id DROP NOT NULL;",
             "ALTER TABLE dispatch_guides ALTER COLUMN client_id DROP NOT NULL;",
             "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(150);",
-            "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS transfer_reason VARCHAR(100) DEFAULT 'Despacho de Producción';",
             "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS is_freeform BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE project_material_requisitions ADD COLUMN IF NOT EXISTS resource_type VARCHAR(50) DEFAULT 'material';",
+            "ALTER TABLE project_material_requisitions ADD COLUMN IF NOT EXISTS asset_id INTEGER;",
             # V4.1.2: Índices corregidos y FKs justificadas
             "DROP INDEX IF EXISTS idx_dispatch_items_guide_id;",
             "CREATE INDEX IF NOT EXISTS idx_dispatch_items_guide_id ON dispatch_guide_items (dispatch_guide_id);",
@@ -94,6 +95,86 @@ def init_db():
     db = SessionLocal()
     try:
         print("--> Verifying and synchronizing Dalor SIGO-P Database...")
+
+        # 0. Roles del Sistema y Catálogo de Permisos
+        import json
+        if db.query(Role).count() == 0:
+            print("--> Seeding default system roles...")
+            roles_seed = [
+                Role(
+                    name="director_general",
+                    display_name="👑 Director General / Socio",
+                    description="Acceso irrestricto a todos los módulos, auditoría forense, aprobación y configuración.",
+                    permissions_json=json.dumps({
+                        "comercial": {"view": True, "create": True, "edit": True, "delete": True},
+                        "proyectos": {"view": True, "create": True, "edit": True, "delete": True, "cpi_spi": True},
+                        "finanzas": {"view": True, "create": True, "edit": True, "payments": True, "partners": True},
+                        "gastos": {"view": True, "ocr": True, "approve": True, "reject": True, "delete": True},
+                        "recursos": {"view": True, "dispatch": True, "manage_fleet": True, "manage_materials": True},
+                        "mantenimiento": {"view": True, "users": True, "roles": True, "audit": True, "reset": True}
+                    }),
+                    is_system=True
+                ),
+                Role(
+                    name="administrador_financiero",
+                    display_name="💼 Administración & Finanzas",
+                    description="Gestión completa de CxC, CxP, bancos, auditoría de comprobantes y flujo de caja.",
+                    permissions_json=json.dumps({
+                        "comercial": {"view": True, "create": True, "edit": True, "delete": False},
+                        "proyectos": {"view": True, "create": False, "edit": False, "delete": False, "cpi_spi": True},
+                        "finanzas": {"view": True, "create": True, "edit": True, "payments": True, "partners": False},
+                        "gastos": {"view": True, "ocr": True, "approve": True, "reject": True, "delete": False},
+                        "recursos": {"view": True, "dispatch": True, "manage_fleet": False, "manage_materials": True},
+                        "mantenimiento": {"view": True, "users": False, "roles": False, "audit": True, "reset": False}
+                    }),
+                    is_system=True
+                ),
+                Role(
+                    name="ingeniero_obra",
+                    display_name="📐 Ingeniero Residente / Obras",
+                    description="Planificación técnica, EDT/WBS, requisición de materiales y seguimiento de avance.",
+                    permissions_json=json.dumps({
+                        "comercial": {"view": True, "create": True, "edit": False, "delete": False},
+                        "proyectos": {"view": True, "create": True, "edit": True, "delete": False, "cpi_spi": True},
+                        "finanzas": {"view": False, "create": False, "edit": False, "payments": False, "partners": False},
+                        "gastos": {"view": True, "ocr": True, "approve": False, "reject": False, "delete": False},
+                        "recursos": {"view": True, "dispatch": True, "manage_fleet": False, "manage_materials": False},
+                        "mantenimiento": {"view": False, "users": False, "roles": False, "audit": False, "reset": False}
+                    }),
+                    is_system=True
+                ),
+                Role(
+                    name="supervisor_campo",
+                    display_name="👷 Supervisor de Campo / Faena",
+                    description="Captura OCR móvil de comprobantes, reporte de gastos y recepción de materiales.",
+                    permissions_json=json.dumps({
+                        "comercial": {"view": False, "create": False, "edit": False, "delete": False},
+                        "proyectos": {"view": True, "create": False, "edit": False, "delete": False, "cpi_spi": False},
+                        "finanzas": {"view": False, "create": False, "edit": False, "payments": False, "partners": False},
+                        "gastos": {"view": True, "ocr": True, "approve": False, "reject": False, "delete": False},
+                        "recursos": {"view": True, "dispatch": False, "manage_fleet": False, "manage_materials": False},
+                        "mantenimiento": {"view": False, "users": False, "roles": False, "audit": False, "reset": False}
+                    }),
+                    is_system=True
+                ),
+                Role(
+                    name="almacenista",
+                    display_name="📦 Custodio de Almacén & Pañol",
+                    description="Control de existencias de materiales, herramientas, guías de despacho y transferencias.",
+                    permissions_json=json.dumps({
+                        "comercial": {"view": False, "create": False, "edit": False, "delete": False},
+                        "proyectos": {"view": True, "create": False, "edit": False, "delete": False, "cpi_spi": False},
+                        "finanzas": {"view": False, "create": False, "edit": False, "payments": False, "partners": False},
+                        "gastos": {"view": False, "ocr": False, "approve": False, "reject": False, "delete": False},
+                        "recursos": {"view": True, "dispatch": True, "manage_fleet": True, "manage_materials": True},
+                        "mantenimiento": {"view": False, "users": False, "roles": False, "audit": False, "reset": False}
+                    }),
+                    is_system=True
+                )
+            ]
+            for r in roles_seed:
+                db.add(r)
+            db.commit()
 
         # 1. Clean Official Users (Purge old/fictional users if present)
         director = db.query(User).filter(User.username == "director").first()
@@ -199,21 +280,21 @@ def init_db():
             # Keep existing IDs or clean and insert full roster
             existing_codes = {p.code for p in db.query(Personnel.code).all()}
             full_roster = [
-                Personnel(code="PERS-001", full_name="Robert Rodríguez", role_title="", identification_id="V-18450123", phone="0414-1234567", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-002", full_name="Carlos Hurtado", role_title="", identification_id="V-16982341", phone="0412-9876543", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-003", full_name="Julio Saavedra", role_title="", identification_id="V-20114562", phone="0414-5558899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-004", full_name="Vicente Rodríguez", role_title="", identification_id="V-15332901", phone="0424-7778899", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-005", full_name="Hender Rodríguez", role_title="", identification_id="V-19345612", phone="0414-3334455", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-006", full_name="Herby Rodríguez", role_title="", identification_id="V-21098432", phone="0412-6667788", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-007", full_name="Eliú Suárez", role_title="", identification_id="V-17849201", phone="0424-1112233", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-008", full_name="Danny Chaparro", role_title="", identification_id="V-22119045", phone="0416-9990011", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-009", full_name="Ernesto Chaparro", role_title="", identification_id="V-24558912", phone="0414-8889900", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-010", full_name="Mervis Parra", role_title="", identification_id="V-18776234", phone="0412-4445566", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-011", full_name="Paola Garay", role_title="", identification_id="V-20334891", phone="0414-2223344", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-012", full_name="Geraldine Páez", role_title="", identification_id="V-23450912", phone="0424-5556677", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-013", full_name="Eleonora Galetti", role_title="", identification_id="V-19882314", phone="0412-1110099", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-014", full_name="José Gregorio Mendoza", role_title="", identification_id="V-14998231", phone="0416-3332211", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo"),
-                Personnel(code="PERS-015", full_name="Wilmer Albornoz", role_title="", identification_id="V-16773412", phone="0414-7776655", status="disponible_base", current_location="Sede Central Dalor", roster_type="guacara_fijo")
+                Personnel(code="PERS-001", full_name="Robert Rodríguez", role_title="", identification_id="V-18450123", phone="0414-1234567", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-002", full_name="Carlos Hurtado", role_title="", identification_id="V-16982341", phone="0412-9876543", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-003", full_name="Julio Saavedra", role_title="", identification_id="V-20114562", phone="0414-5558899", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-004", full_name="Vicente Rodríguez", role_title="", identification_id="V-15332901", phone="0424-7778899", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-005", full_name="Hender Rodríguez", role_title="", identification_id="V-19345612", phone="0414-3334455", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-006", full_name="Herby Rodríguez", role_title="", identification_id="V-21098432", phone="0412-6667788", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-007", full_name="Eliú Suárez", role_title="", identification_id="V-17849201", phone="0424-1112233", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-008", full_name="Danny Chaparro", role_title="", identification_id="V-22119045", phone="0416-9990011", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-009", full_name="Ernesto Chaparro", role_title="", identification_id="V-24558912", phone="0414-8889900", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-010", full_name="Mervis Parra", role_title="", identification_id="V-18776234", phone="0412-4445566", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-011", full_name="Paola Garay", role_title="", identification_id="V-20334891", phone="0414-2223344", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-012", full_name="Geraldine Páez", role_title="", identification_id="V-23450912", phone="0424-5556677", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-013", full_name="Eleonora Galetti", role_title="", identification_id="V-19882314", phone="0412-1110099", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-014", full_name="José Gregorio Mendoza", role_title="", identification_id="V-14998231", phone="0416-3332211", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo"),
+                Personnel(code="PERS-015", full_name="Wilmer Albornoz", role_title="", identification_id="V-16773412", phone="0414-7776655", status="disponible_base", current_location="Sede Central Dalor (Guacara)", roster_type="guacara_fijo")
             ]
             for p in full_roster:
                 if p.code not in existing_codes:
@@ -261,14 +342,14 @@ def init_db():
                         current_odometer=0.0,
                         last_service_odometer=0.0,
                         service_interval_km=5000.0,
-                        current_location="Sede Central Dalor",
+                        current_location="Sede Central Dalor (Guacara)",
                         status="disponible_base",
                         is_active=True
                     ))
                 else:
                     existing_v.is_active = True
                     existing_v.status = "disponible_base"
-                    existing_v.current_location = "Sede Central Dalor"
+                    existing_v.current_location = "Sede Central Dalor (Guacara)"
 
             # Cargar herramientas y equipos desde clean_tools.json si existe
             tools_json_paths = [
@@ -303,7 +384,7 @@ def init_db():
                                         model=t.get("model"),
                                         serial_number=t.get("serial_number"),
                                         status="disponible_base",
-                                        current_location=t.get("location", "Sede Central Dalor"),
+                                        current_location=t.get("location", "Sede Central Dalor (Guacara)"),
                                         current_odometer=0.0,
                                         last_service_odometer=0.0,
                                         is_active=True
@@ -426,14 +507,11 @@ def init_db():
                 db.flush()
         db.commit()
 
-        # 6. Clients & Corporate Directory: ONLY OXICAR
-        db.query(Client).filter(Client.code != "MDCLI-001", Client.code != "CLI-OXICAR").delete(synchronize_session=False)
-        db.commit()
-
-        oxicar = db.query(Client).filter((Client.code == "MDCLI-001") | (Client.code == "CLI-OXICAR")).first()
+        # 6. Clients & Corporate Directory: Ensure default client exists if empty
+        oxicar = db.query(Client).filter((Client.code == "MDCLI-001") | (Client.code == "CLI-OXICAR") | (Client.code == "CLI-001")).first()
         if not oxicar:
             oxicar = Client(
-                code="MDCLI-001",
+                code="CLI-001",
                 name="OXICAR (Oxígenos Carabobo C.A.)",
                 rif="J-07509812-4",
                 contact_name="Gerencia de Planta & Mantenimiento",
@@ -444,18 +522,25 @@ def init_db():
                 is_active=True
             )
             db.add(oxicar)
-        else:
-            oxicar.code = "MDCLI-001"
-            oxicar.name = "OXICAR (Oxígenos Carabobo C.A.)"
-            oxicar.rif = "J-07509812-4"
-            oxicar.address = "Zona Industrial Municipal Sur, Valencia, Edo. Carabobo"
-            oxicar.industry = "Gases Industriales / Metalmecánica"
-            oxicar.is_active = True
         db.commit()
 
         # 7. Catalogo de Servicios / Partidas APU
         # Catálogo en blanco: No se autogeneran ni precargan partidas estándar.
         # Las partidas de servicio y APU deben ser registradas manualmente por Dalor.
+
+        # 8. Seed de Cuentas Bancarias y Cajas Predeterminadas
+        if db.query(FinancialAccount).count() == 0:
+            print("--> Seeding default financial accounts (banks & cash registers)...")
+            default_accounts = [
+                FinancialAccount(name="Banesco Panamá USD", account_type="usd", bank_or_provider="Banesco Panamá", is_default=True, sort_order=1),
+                FinancialAccount(name="Banesco Banco Universal (Bs)", account_type="bs", bank_or_provider="Banesco Venezuela", sort_order=2),
+                FinancialAccount(name="Binance USDT", account_type="usd", bank_or_provider="Binance", sort_order=3),
+                FinancialAccount(name="Zelle", account_type="usd", bank_or_provider="Zelle", sort_order=4),
+                FinancialAccount(name="Caja Efectivo USD", account_type="usd", bank_or_provider="Caja Interna", sort_order=5),
+                FinancialAccount(name="Caja Efectivo Bs", account_type="bs", bank_or_provider="Caja Interna", sort_order=6),
+            ]
+            db.add_all(default_accounts)
+            db.commit()
 
         print("--> Dalor SIGO-P Database successfully verified & synced!")
     except Exception as e:

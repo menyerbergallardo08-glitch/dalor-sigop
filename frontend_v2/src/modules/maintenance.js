@@ -24,7 +24,12 @@ function authFetch(url, options = {}) {
     var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     var _h = Object.assign({}, options.headers || {});
     if (_t) _h['Authorization'] = 'Bearer ' + _t;
-    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !_h['Content-Type']) {
+        _h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete _h['Content-Type'];
+    }
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 }
 
@@ -336,7 +341,11 @@ function renderClientsPaginated() {
         return;
     }
 
-    const { startIndex, endIndex } = (window.renderPaginationControls || renderPaginationControls)({
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: clients.length }));
+
+    const { startIndex, endIndex } = paginateFn({
         containerId: "clientsPaginationContainer",
         totalItems: clients.length,
         currentPage: clientsCurrentPage,
@@ -357,7 +366,13 @@ function renderClientsPaginated() {
             <td>${c.contact_name || '<span style="color:#94a3b8;">-</span>'}</td>
             <td>${c.contact_phone || c.contact_email || '<span style="color:#94a3b8;">-</span>'}</td>
             <td>${c.address || '<span style="color:#94a3b8;">-</span>'}</td>
-            <td style="text-align: center;">
+            <td style="text-align: center; white-space: nowrap;">
+                <button onclick="openClientHistoryModal(${c.id})" class="btn-secondary" style="padding: 4px 8px; color: #059669; margin-right: 4px;" title="Ver Ficha e Historial">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </button>
+                <button onclick="openEditClientModal(${c.id})" class="btn-secondary" style="padding: 4px 8px; color: var(--dalor-blue); margin-right: 4px;" title="Editar Cliente">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>
                 <button onclick="deleteClient(${c.id})" class="btn-secondary" style="padding: 4px 8px; color: #ef4444;" title="Inactivar Cliente">
                     <i class="fa-solid fa-trash"></i>
                 </button>
@@ -384,14 +399,171 @@ async function loadClients() {
     }
 }
 
+function onClientSearchInput(val) {
+    const q = (val || '').toLowerCase().trim();
+    if (!q) {
+        lastClientsList = allClients;
+    } else {
+        lastClientsList = (allClients || []).filter(c => 
+            (c.name && c.name.toLowerCase().includes(q)) ||
+            (c.code && c.code.toLowerCase().includes(q)) ||
+            (c.rif && c.rif.toLowerCase().includes(q)) ||
+            (c.contact_name && c.contact_name.toLowerCase().includes(q)) ||
+            (c.address && c.address.toLowerCase().includes(q))
+        );
+    }
+    clientsCurrentPage = 1;
+    renderClientsPaginated();
+}
+
+function openEditClientModal(clientId) {
+    const c = (allClients || []).find(item => item.id === clientId);
+    if (!c) {
+        alert("Cliente no encontrado.");
+        return;
+    }
+    document.getElementById("edit_cli_id").value = c.id;
+    document.getElementById("edit_cli_code").value = c.code || ('CLI-' + String(c.id).padStart(3, '0'));
+    document.getElementById("edit_cli_name").value = c.name || "";
+    document.getElementById("edit_cli_rif").value = c.rif || "";
+    document.getElementById("edit_cli_industry").value = c.industry || "";
+    document.getElementById("edit_cli_contact").value = c.contact_name || "";
+    document.getElementById("edit_cli_phone").value = c.contact_phone || "";
+    document.getElementById("edit_cli_email").value = c.contact_email || "";
+    document.getElementById("edit_cli_address").value = c.address || "";
+    openModal("modalEditClient");
+}
+
+async function submitEditClient(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    const clientId = document.getElementById("edit_cli_id").value;
+    const payload = {
+        name: document.getElementById("edit_cli_name").value.trim(),
+        rif: document.getElementById("edit_cli_rif").value.trim(),
+        industry: document.getElementById("edit_cli_industry").value.trim(),
+        contact_name: document.getElementById("edit_cli_contact").value.trim(),
+        contact_phone: document.getElementById("edit_cli_phone").value.trim(),
+        contact_email: document.getElementById("edit_cli_email").value.trim(),
+        address: document.getElementById("edit_cli_address").value.trim()
+    };
+    if (!payload.name) {
+        alert("La razón social es obligatoria.");
+        return;
+    }
+    try {
+        const res = await authFetch(`${API_BASE}/clients/${clientId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            closeModal("modalEditClient");
+            if (typeof showToastNotification === 'function') {
+                showToastNotification("Cliente actualizado exitosamente", "success");
+            } else if (typeof showToast === 'function') {
+                showToast("Cliente actualizado exitosamente", "success");
+            } else {
+                alert("Cliente actualizado exitosamente.");
+            }
+            await loadInitialMasterData();
+            loadClients();
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        console.error("Error al actualizar cliente:", e);
+        alert("Error de conexión al actualizar cliente.");
+    }
+}
+
+async function openClientHistoryModal(clientId) {
+    const c = (allClients || []).find(item => item.id === clientId);
+    if (!c) return;
+
+    document.getElementById("clientHistoryTitle").textContent = `Ficha Histórica: ${c.name}`;
+    document.getElementById("clientHistorySubtitle").textContent = `Código: ${c.code || '-'} | RIF: ${c.rif || '-'}`;
+    const body = document.getElementById("clientHistoryBody");
+    body.innerHTML = `<div style="text-align: center; padding: 30px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px;"></i> Consultando base de datos histórica...</div>`;
+    openModal("modalClientHistory");
+
+    try {
+        const res = await authFetch(`${API_BASE}/clients/${clientId}/history`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const clientInfo = data.client || {};
+        
+        let html = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Contratado</div>
+                    <div style="font-size: 18px; font-weight: 800; color: #059669; margin-top: 4px;">$${Number(data.total_contracted_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Proyectos Registrados</div>
+                    <div style="font-size: 18px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">${data.projects_count || 0}</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center;">
+                    <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Cotizaciones Emitidas</div>
+                    <div style="font-size: 18px; font-weight: 800; color: var(--dalor-blue); margin-top: 4px;">${data.quotations_count || 0}</div>
+                </div>
+            </div>
+
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">Información de Contacto y Planta</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                    <div><strong>Contacto:</strong> ${clientInfo.contact_name || 'No especificado'}</div>
+                    <div><strong>Teléfono:</strong> ${clientInfo.contact_phone || 'No especificado'}</div>
+                    <div><strong>Email:</strong> ${clientInfo.contact_email || 'No especificado'}</div>
+                    <div><strong>Dirección:</strong> ${clientInfo.address || 'No especificada'}</div>
+                    <div><strong>Sector / Industria:</strong> ${clientInfo.industry || 'No especificado'}</div>
+                </div>
+            </div>
+        `;
+
+        body.innerHTML = html;
+    } catch (e) {
+        console.error("Error al cargar historial de cliente:", e);
+        body.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444;">No se pudo cargar el historial del cliente.</div>`;
+    }
+}
 
 
-function openNewClientModal() {
 
-    document.getElementById("clientForm").reset();
+async function openNewClientModal() {
+    const form = document.getElementById("clientForm");
+    if (form) form.reset();
+
+    const codeInput = document.getElementById("cli_code");
+    if (codeInput) {
+        codeInput.value = "Generando correlativo...";
+        codeInput.setAttribute("readonly", "true");
+        codeInput.style.backgroundColor = "#f1f5f9";
+        codeInput.style.cursor = "not-allowed";
+        codeInput.style.fontWeight = "700";
+    }
 
     openModal("modalClient");
 
+    try {
+        const res = await authFetch(`${API_BASE}/clients/next-code`);
+        if (res.ok) {
+            const data = await res.json();
+            if (codeInput && data && data.next_code) {
+                codeInput.value = data.next_code;
+            }
+        } else {
+            if (codeInput) {
+                const count = (window.appState && window.appState.clients) ? window.appState.clients.length + 1 : 3;
+                codeInput.value = `CLI-${String(count).padStart(3, '0')}`;
+            }
+        }
+    } catch (e) {
+        console.warn("No se pudo cargar correlativo dinámico:", e);
+        if (codeInput && (codeInput.value.includes("Generando") || !codeInput.value)) {
+            codeInput.value = "CLI-003";
+        }
+    }
 }
 
 
@@ -490,122 +662,159 @@ async function deleteClient(clientId) {
 
 // ----------------------------------------------------
 
-async function loadComparisonDashboard() {
+let allComparisonProjectsCache = [];
+let currentFilteredComparison = [];
+let currentComparisonPage = 1;
+let comparisonPageSize = 10;
+let comparisonSearchTimer = null;
 
-    try {
+function debouncedFilterComparisonDashboard() {
+    clearTimeout(comparisonSearchTimer);
+    comparisonSearchTimer = setTimeout(() => {
+        filterComparisonDashboard();
+    }, 250);
+}
+window.debouncedFilterComparisonDashboard = debouncedFilterComparisonDashboard;
 
-        const res = await authFetch(`${API_BASE}/reports/comparison-dashboard`);
+function filterComparisonDashboard() {
+    const search = (document.getElementById("dashboard_filter_search")?.value || "").toLowerCase().trim();
+    const health = document.getElementById("dashboard_filter_health")?.value;
 
-        const data = await res.json();
+    currentFilteredComparison = allComparisonProjectsCache.filter(p => {
+        if (health) {
+            const h = (p.health_status || '').toUpperCase();
+            if (health.startsWith("VERDE") && !h.includes("VERDE")) return false;
+            if (health.startsWith("AMARILLO") && !h.includes("AMARILLO")) return false;
+            if (health.startsWith("ROJO") && !h.includes("ROJO")) return false;
+        }
+        if (search) {
+            const matchText = `${p.project_code || ''} ${p.project_name || ''} ${p.client_name || ''}`.toLowerCase();
+            if (!matchText.includes(search)) return false;
+        }
+        return true;
+    });
 
+    currentComparisonPage = 1;
+    renderComparisonTablePaginated(currentFilteredComparison);
+}
+window.filterComparisonDashboard = filterComparisonDashboard;
 
+function renderComparisonTablePaginated(list) {
+    const tbody = document.getElementById("comparisonTableBody");
+    if (!tbody) return;
 
-        // KPIs Globales
+    const countBadge = document.getElementById("dashboardProjectCountBadge");
+    if (countBadge) countBadge.innerText = `${list.length} obras listadas`;
 
-        document.getElementById("dashboardKPIsContainer").innerHTML = `
-
-            <div class="card" style="text-align: center; margin-bottom: 0;">
-
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Proyectos Activos</span>
-
-                <p style="font-size: 20px; font-weight: 900; color: var(--dalor-navy);">${data.global_summary.active_projects_count}</p>
-
-            </div>
-
-            <div class="card" style="text-align: center; margin-bottom: 0;">
-
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Contratos Totales ($)</span>
-
-                <p style="font-size: 20px; font-weight: 900; color: var(--dalor-navy);">$${data.global_summary.total_contracted_usd.toLocaleString()}</p>
-
-            </div>
-
-            <div class="card" style="text-align: center; margin-bottom: 0;">
-
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Gasto Real Ejecutado ($)</span>
-
-                <p style="font-size: 20px; font-weight: 900; color: #e11d48;">$${data.global_summary.total_spent_usd.toLocaleString()}</p>
-
-            </div>
-
-            <div class="card" style="text-align: center; margin-bottom: 0;">
-
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Margen Neto Consolidado</span>
-
-                <p style="font-size: 20px; font-weight: 900; color: #059669;">${data.global_summary.global_margin_percent}% ($${data.global_summary.net_margin_usd.toLocaleString()})</p>
-
-            </div>
-
-        `;
-
-
-
-        // Tabla Comparativa
-
-        document.getElementById("comparisonTableBody").innerHTML = data.projects_comparison.map(p => {
-
-            let badgeBg = "#dcfce7";
-
-            let badgeColor = "#166534";
-
-            if (p.health_status === "ROJO_SOBRECOSTO") {
-
-                badgeBg = "#fee2e2";
-
-                badgeColor = "#991b1b";
-
-            } else if (p.health_status === "AMARILLO_ALERTA") {
-
-                badgeBg = "#fef3c7";
-
-                badgeColor = "#92400e";
-
-            }
-
-
-
-            return `
-
-            <tr>
-
-                <td style="font-weight: 800; color: var(--dalor-blue);">${p.project_code}</td>
-
-                <td style="font-weight: 700;">${p.project_name}</td>
-
-                <td>${p.client_name}</td>
-
-                <td style="font-weight: 800;">$${p.contract_amount_usd.toLocaleString()}</td>
-
-                <td style="font-weight: 800; color: #e11d48;">$${p.actual_spent_usd.toLocaleString()}</td>
-
-                <td style="font-weight: 800; color: #059669;">$${p.gross_margin_usd.toLocaleString()}</td>
-
-                <td style="font-weight: 800; color: #059669;">${p.gross_margin_percent}%</td>
-
-                <td style="font-weight: 800; color: var(--dalor-navy);">${p.cpi_index}</td>
-
-                <td style="text-align: center;">
-
-                    <span style="font-size: 10px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor};">
-
-                        ${p.health_status.replace('_', ' ')}
-
-                    </span>
-
-                </td>
-
-            </tr>`;
-
-        }).join('');
-
-
-
-    } catch (e) {
-
-        console.error("Error al cargar dashboard comparativo:", e);
-
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 24px; color: #94a3b8;">No se encontraron obras que coincidan con la búsqueda o filtro seleccionado.</td></tr>`;
+        const pagContainer = document.getElementById("comparisonDashboardPagination");
+        if (pagContainer) pagContainer.innerHTML = "";
+        return;
     }
 
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : null);
+
+    let pageItems = list;
+    if (paginateFn) {
+        const { startIndex, endIndex } = paginateFn({
+            containerId: "comparisonDashboardPagination",
+            totalItems: list.length,
+            currentPage: currentComparisonPage,
+            pageSize: comparisonPageSize,
+            onPageChange: "goToComparisonPage",
+            onPageSizeChange: "changeComparisonPageSize",
+            itemLabel: "obra(s) analizada(s)",
+            pageSizeOptions: [5, 10, 20, 50],
+            allowAll: true
+        });
+        pageItems = list.slice(startIndex, endIndex);
+    } else {
+        const totalPages = Math.ceil(list.length / comparisonPageSize) || 1;
+        if (currentComparisonPage > totalPages) currentComparisonPage = totalPages;
+        if (currentComparisonPage < 1) currentComparisonPage = 1;
+        const startIdx = (currentComparisonPage - 1) * comparisonPageSize;
+        const endIdx = startIdx + comparisonPageSize;
+        pageItems = list.slice(startIdx, endIdx);
+    }
+
+    tbody.innerHTML = pageItems.map(p => {
+        let badgeBg = "#dcfce7";
+        let badgeColor = "#166534";
+        if (p.health_status === "ROJO_SOBRECOSTO") {
+            badgeBg = "#fee2e2";
+            badgeColor = "#991b1b";
+        } else if (p.health_status === "AMARILLO_ALERTA") {
+            badgeBg = "#fef3c7";
+            badgeColor = "#92400e";
+        }
+
+        return `
+        <tr>
+            <td style="font-weight: 800; color: var(--dalor-blue); font-size: 11px;">${p.project_code}</td>
+            <td style="font-weight: 700; font-size: 11px;">${p.project_name}</td>
+            <td style="font-size: 11px; color: #475569;">${p.client_name}</td>
+            <td style="font-weight: 800; font-size: 11px;">$${(p.contract_amount_usd || 0).toLocaleString()}</td>
+            <td style="font-weight: 800; font-size: 11px; color: #e11d48;">$${(p.actual_spent_usd || 0).toLocaleString()}</td>
+            <td style="font-weight: 800; font-size: 11px; color: #059669;">$${(p.gross_margin_usd || 0).toLocaleString()}</td>
+            <td style="font-weight: 800; font-size: 11px; color: #059669;">${p.gross_margin_percent}%</td>
+            <td style="font-weight: 800; font-size: 11px; color: var(--dalor-navy);">${p.cpi_index}</td>
+            <td style="text-align: center;">
+                <span style="font-size: 9.5px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor};">
+                    ${(p.health_status || '').replace('_', ' ')}
+                </span>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function goToComparisonPage(page) {
+    currentComparisonPage = page;
+    renderComparisonTablePaginated(currentFilteredComparison);
+}
+window.goToComparisonPage = goToComparisonPage;
+
+function changeComparisonPageSize(size) {
+    comparisonPageSize = parseInt(size) || 10;
+    currentComparisonPage = 1;
+    renderComparisonTablePaginated(currentFilteredComparison);
+}
+window.changeComparisonPageSize = changeComparisonPageSize;
+
+async function loadComparisonDashboard() {
+    try {
+        const res = await authFetch(`${API_BASE}/reports/comparison-dashboard`);
+        const data = await res.json();
+
+        // KPIs Globales
+        document.getElementById("dashboardKPIsContainer").innerHTML = `
+            <div class="card" style="text-align: center; margin-bottom: 0;">
+                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Proyectos Activos</span>
+                <p style="font-size: 20px; font-weight: 900; color: var(--dalor-navy);">${data.global_summary.active_projects_count}</p>
+            </div>
+            <div class="card" style="text-align: center; margin-bottom: 0;">
+                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Contratos Totales ($)</span>
+                <p style="font-size: 20px; font-weight: 900; color: var(--dalor-navy);">$${data.global_summary.total_contracted_usd.toLocaleString()}</p>
+            </div>
+            <div class="card" style="text-align: center; margin-bottom: 0;">
+                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Gasto Real Ejecutado ($)</span>
+                <p style="font-size: 20px; font-weight: 900; color: #e11d48;">$${data.global_summary.total_spent_usd.toLocaleString()}</p>
+            </div>
+            <div class="card" style="text-align: center; margin-bottom: 0;">
+                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Margen Neto Consolidado</span>
+                <p style="font-size: 20px; font-weight: 900; color: #059669;">${data.global_summary.global_margin_percent}% ($${data.global_summary.net_margin_usd.toLocaleString()})</p>
+            </div>
+        `;
+
+        allComparisonProjectsCache = data.projects_comparison || [];
+        currentFilteredComparison = [...allComparisonProjectsCache];
+        currentComparisonPage = 1;
+        renderComparisonTablePaginated(currentFilteredComparison);
+    } catch (e) {
+        console.error("Error al cargar dashboard comparativo:", e);
+    }
 }
 
 
@@ -635,64 +844,250 @@ async function loadCategoriesTree() {
 
 
         container.innerHTML = tree.map(parent => `
-
-            <div class="card" style="margin-bottom: 0; border-top: 3px solid var(--dalor-blue);">
-
+            <div class="card" style="margin-bottom: 0; border-top: 3px solid var(--dalor-blue); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.08)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';" onclick="openCategoryHistoryModal(${parent.id}, '${(parent.code || '').replace(/'/g, "\\'")}', '${(parent.name || '').replace(/'/g, "\\'")}', ${parent.total_spent_usd})">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 8px;">
-
                     <div>
-
                         <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 6px; border-radius: 4px;">${parent.code}</span>
-
                         <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); display: inline-block; margin-left: 6px;">${parent.name}</h4>
-
                     </div>
-
                     <div style="text-align: right;">
-
-                        <span style="font-size: 10px; color: #64748b; display: block;">Gasto Real</span>
-
+                        <span style="font-size: 10px; color: #64748b; display: block;">Gasto Real Acumulado</span>
                         <span style="font-weight: 800; color: #e11d48; font-size: 13px;">$${parent.total_spent_usd.toFixed(2)}</span>
-
                     </div>
+                </div>
 
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 6px;">
+                    <span style="font-size: 10px; color: var(--dalor-blue); font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-list-check"></i> Ver Bitácora Completa <i class="fa-solid fa-chevron-right" style="font-size: 8px;"></i>
+                    </span>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 4px;">
-
                     ${parent.subcategories && parent.subcategories.length > 0 ? parent.subcategories.map(sub => `
-
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #475569; padding: 4px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #f1f5f9;">
-
+                        <div style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #475569; padding: 6px 10px; background: #f8fafc; border-radius: 4px; border: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='#f8fafc'" onclick="openCategoryHistoryModal(${sub.id}, '${(sub.code || '').replace(/'/g, "\\'")}', '${(sub.name || '').replace(/'/g, "\\'")}', ${sub.spent_usd}); event.stopPropagation();">
                             <span><b>${sub.code}</b> ${sub.name}</span>
-
-                            <span style="font-weight: 700; color: var(--dalor-navy);">$${sub.spent_usd.toFixed(2)}</span>
-
+                            <span style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: 700; color: var(--dalor-navy);">$${sub.spent_usd.toFixed(2)}</span>
+                                <i class="fa-solid fa-chevron-right" style="font-size: 9px; color: #94a3b8;"></i>
+                            </span>
                         </div>
-
                     `).join('') : `
-
                         <div style="font-size: 11px; color: #94a3b8; font-style: italic; padding: 4px 6px;">
-
                             Partida directa sin sub-cuentas &bull; Ppto ref: $${(parent.monthly_budget_usd || 0).toLocaleString()}
-
                         </div>
-
                     `}
-
                 </div>
-
             </div>
-
         `).join('');
-
     } catch (e) {
-
         container.innerHTML = `<div style="grid-column: span 2; text-align: center; color: #e11d48;">Error al cargar árbol.</div>`;
+    }
+}
+window.loadCategoriesTree = loadCategoriesTree;
 
+// ----------------------------------------------------
+// BITÁCORA DE PARTIDA CONTABLE (HISTORIAL EN MODAL)
+// ----------------------------------------------------
+let allCatHistoryItems = [];
+let filteredCatHistoryItems = [];
+let currentCatHistoryPage = 1;
+let catHistoryPageSize = 10;
+let catHistoryDebounceTimer = null;
+
+async function openCategoryHistoryModal(catId, catCode, catName, totalSpent) {
+    const titleEl = document.getElementById("catHistTitle");
+    const subtitleEl = document.getElementById("catHistSubtitle");
+    const totalSpentEl = document.getElementById("catHistTotalSpent");
+    const totalBsEl = document.getElementById("catHistTotalBs");
+    const countBadge = document.getElementById("catHistCountBadge");
+    const tbody = document.getElementById("catHistTableBody");
+
+    if (titleEl) titleEl.innerText = `Bitácora: [${catCode}] ${catName}`;
+    if (subtitleEl) subtitleEl.innerText = `Histórico de comprobantes y egresos imputados a esta partida contable`;
+    if (totalSpentEl) totalSpentEl.innerText = `$${(totalSpent || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+    const bcvRate = window.EXCHANGE_RATE || (window.BCV_DATA ? window.BCV_DATA.rate : 850.0) || 850.0;
+    if (totalBsEl) totalBsEl.innerText = `${((totalSpent || 0) * bcvRate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} Bs`;
+
+    const searchInput = document.getElementById("catHistSearchInput");
+    if (searchInput) searchInput.value = "";
+    const statusFilter = document.getElementById("catHistStatusFilter");
+    if (statusFilter) statusFilter.value = "";
+
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: #64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando comprobantes de la partida [${catCode}]...</td></tr>`;
     }
 
+    if (typeof window.openModal === 'function') {
+        window.openModal("modalCategoryHistory");
+    } else if (typeof openModal === 'function') {
+        openModal("modalCategoryHistory");
+    } else {
+        document.getElementById("modalCategoryHistory")?.classList.remove("hidden");
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/expenses/?category_id=${catId}&status=all`);
+        if (!res.ok) throw new Error("Error en servidor al consultar gastos");
+        const items = await res.json();
+        allCatHistoryItems = Array.isArray(items) ? items : [];
+
+        // Calcular totales reales de la lista
+        const sumUsd = allCatHistoryItems.reduce((acc, x) => acc + (x.amount_usd || 0), 0);
+        const sumBs = allCatHistoryItems.reduce((acc, x) => acc + (x.amount_bs || (x.amount_usd || 0) * bcvRate), 0);
+
+        if (totalSpentEl) totalSpentEl.innerText = `$${sumUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        if (totalBsEl) totalBsEl.innerText = `${sumBs.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} Bs`;
+        if (countBadge) countBadge.innerText = `${allCatHistoryItems.length} registros`;
+
+        filterCategoryHistory();
+    } catch (err) {
+        console.error("Error al cargar historial de partida:", err);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48; padding: 20px;">No se pudo cargar la bitácora: ${err.message}</td></tr>`;
+        }
+    }
 }
+window.openCategoryHistoryModal = openCategoryHistoryModal;
+
+function debouncedFilterCategoryHistory() {
+    clearTimeout(catHistoryDebounceTimer);
+    catHistoryDebounceTimer = setTimeout(() => {
+        filterCategoryHistory();
+    }, 250);
+}
+window.debouncedFilterCategoryHistory = debouncedFilterCategoryHistory;
+
+function filterCategoryHistory() {
+    const search = (document.getElementById("catHistSearchInput")?.value || "").toLowerCase().trim();
+    const status = document.getElementById("catHistStatusFilter")?.value || "";
+
+    filteredCatHistoryItems = allCatHistoryItems.filter(exp => {
+        if (status) {
+            const expStat = (exp.status || '').toLowerCase();
+            if (status === "aprobado" && !expStat.includes("aprobado")) return false;
+            if (status === "pendiente" && !expStat.includes("pendiente")) return false;
+        }
+        if (search) {
+            const vendor = (exp.supplier_vendor || exp.merchant || '').toLowerCase();
+            const proj = (exp.project_name || (exp.project ? exp.project.name : '') || '').toLowerCase();
+            const projCode = (exp.project_code || (exp.project ? exp.project.code : '') || '').toLowerCase();
+            const desc = (exp.description || '').toLowerCase();
+            const reporter = (exp.reported_by_name || (exp.reported_by ? exp.reported_by.full_name : '') || '').toLowerCase();
+            const combined = `${vendor} ${proj} ${projCode} ${desc} ${reporter}`;
+            if (!combined.includes(search)) return false;
+        }
+        return true;
+    });
+
+    currentCatHistoryPage = 1;
+    renderCategoryHistoryTable();
+}
+window.filterCategoryHistory = filterCategoryHistory;
+
+function renderCategoryHistoryTable() {
+    const tbody = document.getElementById("catHistTableBody");
+    if (!tbody) return;
+
+    const countBadge = document.getElementById("catHistCountBadge");
+    if (countBadge) countBadge.innerText = `${filteredCatHistoryItems.length} registros listados`;
+
+    if (filteredCatHistoryItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: #94a3b8;"><i class="fa-solid fa-folder-open" style="font-size: 24px; display: block; margin-bottom: 8px;"></i> No se encontraron comprobantes o gastos en esta partida.</td></tr>`;
+        const pagContainer = document.getElementById("catHistPagination");
+        if (pagContainer) pagContainer.innerHTML = "";
+        return;
+    }
+
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : null);
+
+    let pageItems = filteredCatHistoryItems;
+    if (paginateFn) {
+        const { startIndex, endIndex } = paginateFn({
+            containerId: "catHistPagination",
+            totalItems: filteredCatHistoryItems.length,
+            currentPage: currentCatHistoryPage,
+            pageSize: catHistoryPageSize,
+            onPageChange: "goToCategoryHistoryPage",
+            onPageSizeChange: "changeCategoryHistoryPageSize",
+            itemLabel: "gasto(s)",
+            pageSizeOptions: [5, 10, 20, 50],
+            allowAll: true
+        });
+        pageItems = filteredCatHistoryItems.slice(startIndex, endIndex);
+    }
+
+    const bcvRate = window.EXCHANGE_RATE || (window.BCV_DATA ? window.BCV_DATA.rate : 850.0) || 850.0;
+
+    tbody.innerHTML = pageItems.map(exp => {
+        const rawDate = exp.expense_date || exp.date || exp.created_at || '';
+        const dateStr = rawDate ? String(rawDate).split('T')[0] : 'S/F';
+        const vendor = exp.supplier_vendor || exp.merchant || 'Comercio General';
+        
+        let projDisplay = "Sede Central (Sin Proyecto)";
+        if (exp.project_name && exp.project_name !== "Sin Proyecto") {
+            projDisplay = exp.project_code ? `[${exp.project_code}] ${exp.project_name}` : exp.project_name;
+        } else if (exp.project) {
+            projDisplay = `[${exp.project.code}] ${exp.project.name}`;
+        }
+
+        let typeLabel = "Gasto Operativo";
+        let typeBadgeColor = "#0284c7";
+        let typeBadgeBg = "#e0f2fe";
+        if (exp.expense_type === "costo_obra") {
+            typeLabel = "Costo de Obra";
+            typeBadgeColor = "#059669";
+            typeBadgeBg = "#dcfce7";
+        } else if (exp.expense_type === "retiro_socio") {
+            typeLabel = "Retiro de Socio";
+            typeBadgeColor = "#b45309";
+            typeBadgeBg = "#fef3c7";
+        }
+
+        const amtUsd = Number(exp.amount_usd || 0);
+        const amtBs = Number(exp.amount_bs || (amtUsd * bcvRate));
+
+        const isApproved = (exp.status || '').toLowerCase() === "aprobado";
+        const statusBadge = isApproved 
+            ? `<span style="font-size: 10px; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px;">APROBADO</span>`
+            : `<span style="font-size: 10px; font-weight: 800; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px;">PENDIENTE</span>`;
+
+        const receiptPath = exp.receipt_image_path || exp.receipt_url || '';
+        const receiptBtn = receiptPath 
+            ? `<button type="button" onclick="viewReceiptImage('${receiptPath.replace(/'/g, "\\'")}')" class="btn-secondary" style="font-size: 10px; padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; color: var(--dalor-blue);"><i class="fa-solid fa-receipt"></i> Ver</button>`
+            : `<span style="color: #94a3b8; font-size: 10px;">—</span>`;
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 7px 8px; color: #475569; white-space: nowrap;">${dateStr}</td>
+                <td style="padding: 7px 8px; font-weight: 700; color: var(--dalor-navy);">${vendor}</td>
+                <td style="padding: 7px 8px; color: #334155; font-size: 10.5px;">${projDisplay}</td>
+                <td style="padding: 7px 8px;">
+                    <span style="font-size: 9.5px; font-weight: 800; background: ${typeBadgeBg}; color: ${typeBadgeColor}; padding: 2px 6px; border-radius: 4px;">${typeLabel}</span>
+                </td>
+                <td style="padding: 7px 8px; text-align: right; font-weight: 800; color: #059669;">$${amtUsd.toFixed(2)}</td>
+                <td style="padding: 7px 8px; text-align: right; font-weight: 700; color: #475569;">${amtBs.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} Bs</td>
+                <td style="padding: 7px 8px; text-align: center;">${statusBadge}</td>
+                <td style="padding: 7px 8px; text-align: center;">${receiptBtn}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function goToCategoryHistoryPage(page) {
+    currentCatHistoryPage = page;
+    renderCategoryHistoryTable();
+}
+window.goToCategoryHistoryPage = goToCategoryHistoryPage;
+
+function changeCategoryHistoryPageSize(size) {
+    catHistoryPageSize = parseInt(size) || 10;
+    currentCatHistoryPage = 1;
+    renderCategoryHistoryTable();
+}
+window.changeCategoryHistoryPageSize = changeCategoryHistoryPageSize;
 
 
 
@@ -825,9 +1220,9 @@ function applyPermissionMap(user) {
     const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
     const isAlmacen = isDirector || uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
 
-    // Dropdown Comercial (SOLO Director General)
+    // Dropdown Comercial
     const dCom = document.getElementById('dropdown-comercial');
-    if (dCom) dCom.style.display = isDirector ? 'inline-block' : 'none';
+    if (dCom) dCom.style.display = 'inline-block';
 
     // Dropdown Proyectos (Director e Ingeniero)
     const dProj = document.getElementById('dropdown-proyectos');
@@ -1261,342 +1656,424 @@ function openMaintenanceSubtab(subtab) {
 
 
 
+let allSystemRoles = [];
+
 function switchMaintenanceSubtab(subtab) {
     try { sessionStorage.setItem('dalor_active_subtab_maintenance', subtab); } catch(e) {}
 
-    ['users', 'audit', 'clean'].forEach(t => {
-
+    ['users', 'roles', 'audit', 'clean'].forEach(t => {
         const pane = document.getElementById(`subtab-maint-${t}`);
-
         const btn = document.getElementById(`tabbtn-maint-${t}`);
-
         if (pane) pane.classList.add('hidden');
-
         if (btn) btn.classList.remove('active');
-
     });
 
-
-
     const activePane = document.getElementById(`subtab-maint-${subtab}`);
-
     const activeBtn = document.getElementById(`tabbtn-maint-${subtab}`);
-
     if (activePane) activePane.classList.remove('hidden');
-
     if (activeBtn) activeBtn.classList.add('active');
 
-
-
     if (subtab === 'users') loadMaintenanceUsersList();
-
+    if (subtab === 'roles') loadMaintenanceRolesList();
     if (subtab === 'audit') loadMaintenanceAuditLogs();
-
 }
-
-
 
 async function loadMaintenanceUsersList() {
-
     const tbody = document.getElementById('maintenanceUsersTableBody');
-
     if (!tbody) return;
-
     tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando usuarios...</td></tr>`;
 
-
-
     try {
-
         const res = await authFetch(`${API_BASE}/maintenance/users`);
-
         allSystemUsers = await res.json();
 
-
-
         if (allSystemUsers.length === 0) {
-
             tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 16px;">No hay usuarios registrados.</td></tr>`;
-
             return;
-
         }
-
-
 
         const roleBadges = {
-
-            'director': '<span style="background: #ede9fe; color: #5b21b6; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">👑 Director General</span>',
-
-            'admin_finanzas': '<span style="background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">💼 Administración & Finanzas</span>',
-
+            'director_general': '<span style="background: #ede9fe; color: #5b21b6; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">👑 Director General</span>',
+            'administrador_financiero': '<span style="background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">💼 Administración & Finanzas</span>',
             'ingeniero_obra': '<span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">👷 Ingeniero Residente</span>',
-
-            'supervisor_campo': '<span style="background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">📱 Supervisor Campo</span>'
-
+            'supervisor_campo': '<span style="background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">📱 Supervisor Campo</span>',
+            'auditor_control': '<span style="background: #ffedd5; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">🔍 Auditor de Control</span>'
         };
 
-
-
         tbody.innerHTML = allSystemUsers.map(u => `
-
             <tr>
-
                 <td style="font-weight: 800; color: var(--dalor-navy);">${u.username}</td>
-
                 <td style="font-weight: 700;">${u.full_name}</td>
-
                 <td style="color: #64748b;">${u.email || '-'}</td>
-
-                <td>${roleBadges[u.role_name] || u.role_name}</td>
-
+                <td>${roleBadges[u.role_name] || `<span style="background: #f1f5f9; color: #334155; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;">🛡️ ${u.role_name}</span>`}</td>
                 <td style="color: #64748b; font-size: 11px;">${u.last_login}</td>
-
                 <td>
-
                     <span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 800; background: ${u.is_active ? '#dcfce7' : '#fee2e2'}; color: ${u.is_active ? '#166534' : '#991b1b'};">
-
                         ${u.is_active ? 'Activo' : 'Inactivo'}
-
                     </span>
-
                 </td>
-
                 <td style="text-align: center; white-space: nowrap;">
-
                     <button onclick="openUserPermissionsModal(${u.id})" class="btn-secondary" style="padding: 3px 7px; font-size: 11px; margin-right: 4px;" title="Modificar Mapa de Permisos">
-
                         <i class="fa-solid fa-key" style="color: #0284c7;"></i> Permisos
-
                     </button>
-
                     <button onclick="toggleUserStatus(${u.id})" class="btn-secondary" style="padding: 3px 7px; font-size: 11px; color: ${u.is_active ? '#e11d48' : '#059669'};" title="Activar/Desactivar Cuenta">
-
                         <i class="fa-solid fa-power-off"></i>
-
                     </button>
-
                 </td>
-
             </tr>
-
         `).join('');
 
-
-
     } catch (e) {
-
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar directorio de usuarios.</td></tr>`;
-
     }
-
 }
 
-
-
-function openNewUserModal() {
-
-    document.getElementById('newUserForm').reset();
-
-    document.getElementById('modalNewUser').classList.remove('hidden');
-
-}
-
-
-
-function onUserRoleTemplateChanged() {
-
-    // Helper if needed
-
-}
-
-
-
-async function submitCreateUser(event) {
-
-    event.preventDefault();
-
-    const username = document.getElementById('maint_username').value.trim();
-
-    const full_name = document.getElementById('maint_fullname').value.trim();
-
-    const email = document.getElementById('maint_email').value.trim();
-
-    const password = document.getElementById('maint_password').value;
-
-    const role_name = document.getElementById('maint_role').value;
-
-
-
-    const roleTemplates = {
-
-        'director': {
-
-            comercial_view: true, comercial_edit: true,
-
-            proyectos_view: true, proyectos_edit: true,
-
-            finanzas_view: true, finanzas_edit: true,
-
-            recursos_view: true, recursos_edit: true,
-
-            gastos_view: true, gastos_edit: true,
-
-            executive_dashboard: true, mantenimiento_admin: true
-
-        },
-
-        'admin_finanzas': {
-
-            comercial_view: true, comercial_edit: true,
-
-            proyectos_view: true, proyectos_edit: false,
-
-            finanzas_view: true, finanzas_edit: true,
-
-            recursos_view: true, recursos_edit: false,
-
-            gastos_view: true, gastos_edit: true,
-
-            executive_dashboard: true, mantenimiento_admin: false
-
-        },
-
-        'ingeniero_obra': {
-
-            comercial_view: true, comercial_edit: false,
-
-            proyectos_view: true, proyectos_edit: true,
-
-            finanzas_view: false, finanzas_edit: false,
-
-            recursos_view: true, recursos_edit: true,
-
-            gastos_view: true, gastos_edit: true,
-
-            executive_dashboard: false, mantenimiento_admin: false
-
-        },
-
-        'supervisor_campo': {
-
-            comercial_view: false, comercial_edit: false,
-
-            proyectos_view: true, proyectos_edit: false,
-
-            finanzas_view: false, finanzas_edit: false,
-
-            recursos_view: true, recursos_edit: false,
-
-            gastos_view: true, gastos_edit: true,
-
-            executive_dashboard: false, mantenimiento_admin: false
-
-        }
-
-    };
-
-
+// -----------------------------------------------------------------------------
+// GESTIÓN DE ROLES (PROFIT PLUS STYLE)
+// -----------------------------------------------------------------------------
+async function loadMaintenanceRolesList() {
+    const tbody = document.getElementById('maintenanceRolesTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando roles de seguridad...</td></tr>`;
 
     try {
+        const res = await authFetch(`${API_BASE}/maintenance/roles`);
+        if (!res.ok) throw new Error("Error fetching roles");
+        allSystemRoles = await res.json();
 
-        const res = await authFetch(`${API_BASE}/maintenance/users`, {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({
-
-                username, full_name, email, password, role_name,
-
-                permissions: roleTemplates[role_name] || {}
-
-            })
-
-        });
-
-
-
-        const data = await res.json();
-
-        if (!res.ok) {
-
-            alert(data.detail || 'Error al crear usuario.');
-
+        if (allSystemRoles.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 16px;">No hay roles definidos.</td></tr>`;
             return;
-
         }
 
+        tbody.innerHTML = allSystemRoles.map(r => {
+            let perms = {};
+            try { perms = typeof r.permissions_json === 'string' ? JSON.parse(r.permissions_json) : r.permissions_json; } catch(e) { perms = {}; }
 
+            const moduleBadges = [];
+            if (perms.comercial || perms.comercial_view) moduleBadges.push('<span style="background: #e0f2fe; color: #0369a1; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700;">Comercial</span>');
+            if (perms.proyectos || perms.proyectos_view) moduleBadges.push('<span style="background: #dcfce7; color: #166534; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700;">Proyectos</span>');
+            if (perms.finanzas || perms.finanzas_view) moduleBadges.push('<span style="background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700;">Finanzas</span>');
+            if (perms.recursos || perms.recursos_view) moduleBadges.push('<span style="background: #ede9fe; color: #5b21b6; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700;">Recursos</span>');
+            if (perms.gastos || perms.gastos_view) moduleBadges.push('<span style="background: #ffedd5; color: #c2410c; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700;">Gastos</span>');
+            if (perms.executive_bi || perms.executive_dashboard) moduleBadges.push('<span style="background: #fae8ff; color: #86198f; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700;">BI Ejecutivo</span>');
+            if (perms.mantenimiento || perms.mantenimiento_admin) moduleBadges.push('<span style="background: #fee2e2; color: #991b1b; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700;">Config/Seguridad</span>');
 
-        alert(`¡Usuario '${username}' creado con éxito en el sistema!`);
-
-        closeModal('modalNewUser');
-
-        loadMaintenanceUsersList();
+            return `
+                <tr>
+                    <td style="font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-shield-halved" style="color: #d97706; margin-right: 5px;"></i> ${r.display_name}
+                    </td>
+                    <td style="font-family: monospace; font-size: 11px; color: #475569;">${r.name}</td>
+                    <td style="font-size: 11px; color: #64748b; max-width: 250px;">${r.description || '-'}</td>
+                    <td>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                            ${moduleBadges.length > 0 ? moduleBadges.join('') : '<span style="color: #94a3b8; font-size: 10px;">Sin permisos</span>'}
+                        </div>
+                    </td>
+                    <td>
+                        <span style="padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; background: ${r.is_system ? '#e2e8f0' : '#dbeafe'}; color: ${r.is_system ? '#475569' : '#1e40af'};">
+                            ${r.is_system ? '🔒 Nativo' : '✨ Personalizado'}
+                        </span>
+                    </td>
+                    <td style="text-align: center; white-space: nowrap;">
+                        <button onclick="openEditRoleModal(${r.id})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" title="Editar Permisos del Rol">
+                            <i class="fa-solid fa-pen-to-square"></i> Editar
+                        </button>
+                        ${!r.is_system ? `
+                            <button onclick="deleteRole(${r.id}, '${r.display_name}')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #e11d48;" title="Eliminar Rol">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
     } catch (e) {
-
-        alert('Error de conexión al registrar usuario.');
-
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar roles.</td></tr>`;
     }
-
 }
 
+function openNewRoleModal() {
+    const form = document.getElementById('roleForm');
+    if (form) form.reset();
+    document.getElementById('role_form_id').value = '';
+    document.getElementById('roleModalTitle').textContent = 'Crear Rol de Seguridad';
+    document.getElementById('role_name').readOnly = false;
+    document.getElementById('role_perm_comercial').checked = true;
+    document.getElementById('role_perm_proyectos').checked = true;
+    document.getElementById('role_perm_finanzas').checked = false;
+    document.getElementById('role_perm_recursos').checked = true;
+    document.getElementById('role_perm_gastos').checked = true;
+    document.getElementById('role_perm_bi').checked = false;
+    document.getElementById('role_perm_mantenimiento').checked = false;
+    openModal('modalRoleForm');
+}
 
+function autoGenerateRoleSlug() {
+    const idField = document.getElementById('role_form_id');
+    if (idField && idField.value) return; // don't override on edit
+    const title = document.getElementById('role_display_name').value;
+    const slug = title.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    document.getElementById('role_name').value = slug;
+}
+
+function openEditRoleModal(roleId) {
+    const role = allSystemRoles.find(r => r.id === roleId);
+    if (!role) return;
+
+    document.getElementById('role_form_id').value = role.id;
+    document.getElementById('roleModalTitle').textContent = `Editar Rol: ${role.display_name}`;
+    document.getElementById('role_display_name').value = role.display_name;
+    document.getElementById('role_name').value = role.name;
+    document.getElementById('role_name').readOnly = role.is_system;
+    document.getElementById('role_description').value = role.description || '';
+
+    let perms = {};
+    try { perms = typeof role.permissions_json === 'string' ? JSON.parse(role.permissions_json) : role.permissions_json; } catch(e) { perms = {}; }
+
+    document.getElementById('role_perm_comercial').checked = !!(perms.comercial || perms.comercial_view);
+    document.getElementById('role_perm_proyectos').checked = !!(perms.proyectos || perms.proyectos_view);
+    document.getElementById('role_perm_finanzas').checked = !!(perms.finanzas || perms.finanzas_view);
+    document.getElementById('role_perm_recursos').checked = !!(perms.recursos || perms.recursos_view);
+    document.getElementById('role_perm_gastos').checked = !!(perms.gastos || perms.gastos_view);
+    document.getElementById('role_perm_bi').checked = !!(perms.executive_bi || perms.executive_dashboard);
+    document.getElementById('role_perm_mantenimiento').checked = !!(perms.mantenimiento || perms.mantenimiento_admin);
+
+    openModal('modalRoleForm');
+}
+
+async function submitRoleForm(event) {
+    event.preventDefault();
+    const roleId = document.getElementById('role_form_id').value;
+    const displayName = document.getElementById('role_display_name').value.trim();
+    const name = document.getElementById('role_name').value.trim();
+    const description = document.getElementById('role_description').value.trim();
+
+    const permissions = {
+        comercial: document.getElementById('role_perm_comercial').checked,
+        comercial_view: document.getElementById('role_perm_comercial').checked,
+        comercial_edit: document.getElementById('role_perm_comercial').checked,
+        proyectos: document.getElementById('role_perm_proyectos').checked,
+        proyectos_view: document.getElementById('role_perm_proyectos').checked,
+        proyectos_edit: document.getElementById('role_perm_proyectos').checked,
+        finanzas: document.getElementById('role_perm_finanzas').checked,
+        finanzas_view: document.getElementById('role_perm_finanzas').checked,
+        finanzas_edit: document.getElementById('role_perm_finanzas').checked,
+        recursos: document.getElementById('role_perm_recursos').checked,
+        recursos_view: document.getElementById('role_perm_recursos').checked,
+        recursos_edit: document.getElementById('role_perm_recursos').checked,
+        gastos: document.getElementById('role_perm_gastos').checked,
+        gastos_view: document.getElementById('role_perm_gastos').checked,
+        gastos_edit: document.getElementById('role_perm_gastos').checked,
+        executive_bi: document.getElementById('role_perm_bi').checked,
+        executive_dashboard: document.getElementById('role_perm_bi').checked,
+        mantenimiento: document.getElementById('role_perm_mantenimiento').checked,
+        mantenimiento_admin: document.getElementById('role_perm_mantenimiento').checked
+    };
+
+    try {
+        let res;
+        if (roleId) {
+            res = await authFetch(`${API_BASE}/maintenance/roles/${roleId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    display_name: displayName,
+                    description: description,
+                    permissions_json: JSON.stringify(permissions)
+                })
+            });
+        } else {
+            res = await authFetch(`${API_BASE}/maintenance/roles`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    display_name: displayName,
+                    description: description,
+                    permissions_json: JSON.stringify(permissions)
+                })
+            });
+        }
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.detail || 'Error al guardar rol.');
+            return;
+        }
+
+        alert(data.message || 'Rol guardado exitosamente.');
+        closeModal('modalRoleForm');
+        loadMaintenanceRolesList();
+    } catch(e) {
+        alert('Error de conexión al guardar rol.');
+    }
+}
+
+async function deleteRole(roleId, roleName) {
+    if (!confirm(`¿Está seguro de eliminar el rol '${roleName}'? Esta acción no se puede deshacer.`)) return;
+    try {
+        const res = await authFetch(`${API_BASE}/maintenance/roles/${roleId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.detail || 'Error al eliminar rol.');
+            return;
+        }
+        alert(data.message || 'Rol eliminado con éxito.');
+        loadMaintenanceRolesList();
+    } catch(e) {
+        alert('Error de conexión al eliminar rol.');
+    }
+}
+
+// -----------------------------------------------------------------------------
+// CREACIÓN DE USUARIO CON PERMISOS MODULARES
+// -----------------------------------------------------------------------------
+async function openNewUserModal() {
+    const form = document.getElementById('newUserForm');
+    if (form) form.reset();
+
+    // Populate roles dynamically if available
+    try {
+        if (!allSystemRoles || allSystemRoles.length === 0) {
+            const res = await authFetch(`${API_BASE}/maintenance/roles`);
+            if (res.ok) allSystemRoles = await res.json();
+        }
+        const select = document.getElementById('nusr_role');
+        if (select && allSystemRoles.length > 0) {
+            select.innerHTML = allSystemRoles.map(r => `
+                <option value="${r.name}">${r.display_name}</option>
+            `).join('');
+        }
+    } catch(e) {}
+
+    onNewUserRoleChanged();
+    openModal('modalNewUser');
+}
+
+function onNewUserRoleChanged() {
+    const roleSelect = document.getElementById('nusr_role');
+    if (!roleSelect) return;
+    const selectedRoleName = roleSelect.value;
+    const role = allSystemRoles.find(r => r.name === selectedRoleName);
+
+    if (role) {
+        let perms = {};
+        try { perms = typeof role.permissions_json === 'string' ? JSON.parse(role.permissions_json) : role.permissions_json; } catch(e) { perms = {}; }
+        document.getElementById('nusr_perm_comercial').checked = !!(perms.comercial || perms.comercial_view);
+        document.getElementById('nusr_perm_proyectos').checked = !!(perms.proyectos || perms.proyectos_view);
+        document.getElementById('nusr_perm_finanzas').checked = !!(perms.finanzas || perms.finanzas_view);
+        document.getElementById('nusr_perm_recursos').checked = !!(perms.recursos || perms.recursos_view);
+        document.getElementById('nusr_perm_gastos').checked = !!(perms.gastos || perms.gastos_view);
+        document.getElementById('nusr_perm_bi').checked = !!(perms.executive_bi || perms.executive_dashboard);
+        document.getElementById('nusr_perm_mantenimiento').checked = !!(perms.mantenimiento || perms.mantenimiento_admin);
+    } else {
+        // Fallback standard templates
+        const isDirector = selectedRoleName === 'director_general' || selectedRoleName === 'director';
+        const isFinanzas = selectedRoleName === 'administrador_financiero' || selectedRoleName === 'admin_finanzas';
+        document.getElementById('nusr_perm_comercial').checked = true;
+        document.getElementById('nusr_perm_proyectos').checked = true;
+        document.getElementById('nusr_perm_finanzas').checked = isDirector || isFinanzas;
+        document.getElementById('nusr_perm_recursos').checked = true;
+        document.getElementById('nusr_perm_gastos').checked = true;
+        document.getElementById('nusr_perm_bi').checked = isDirector;
+        document.getElementById('nusr_perm_mantenimiento').checked = isDirector;
+    }
+}
+
+const onUserRoleTemplateChanged = onNewUserRoleChanged;
+
+async function submitCreateUser(event) {
+    event.preventDefault();
+    const username = document.getElementById('nusr_username').value.trim();
+    const full_name = document.getElementById('nusr_fullname').value.trim();
+    const email = document.getElementById('nusr_email').value.trim();
+    const password = document.getElementById('nusr_password').value;
+    const role_name = document.getElementById('nusr_role').value;
+
+    const permissions = {
+        comercial: document.getElementById('nusr_perm_comercial').checked,
+        comercial_view: document.getElementById('nusr_perm_comercial').checked,
+        comercial_edit: document.getElementById('nusr_perm_comercial').checked,
+        proyectos: document.getElementById('nusr_perm_proyectos').checked,
+        proyectos_view: document.getElementById('nusr_perm_proyectos').checked,
+        proyectos_edit: document.getElementById('nusr_perm_proyectos').checked,
+        finanzas: document.getElementById('nusr_perm_finanzas').checked,
+        finanzas_view: document.getElementById('nusr_perm_finanzas').checked,
+        finanzas_edit: document.getElementById('nusr_perm_finanzas').checked,
+        recursos: document.getElementById('nusr_perm_recursos').checked,
+        recursos_view: document.getElementById('nusr_perm_recursos').checked,
+        recursos_edit: document.getElementById('nusr_perm_recursos').checked,
+        gastos: document.getElementById('nusr_perm_gastos').checked,
+        gastos_view: document.getElementById('nusr_perm_gastos').checked,
+        gastos_edit: document.getElementById('nusr_perm_gastos').checked,
+        executive_bi: document.getElementById('nusr_perm_bi').checked,
+        executive_dashboard: document.getElementById('nusr_perm_bi').checked,
+        mantenimiento: document.getElementById('nusr_perm_mantenimiento').checked,
+        mantenimiento_admin: document.getElementById('nusr_perm_mantenimiento').checked
+    };
+
+    try {
+        const res = await authFetch(`${API_BASE}/maintenance/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username, full_name, email, password, role_name,
+                permissions_json: JSON.stringify(permissions)
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.detail || 'Error al crear usuario.');
+            return;
+        }
+
+        alert(`¡Usuario '${username}' creado con éxito con sus permisos asignados!`);
+        closeModal('modalNewUser');
+        loadMaintenanceUsersList();
+    } catch (e) {
+        alert('Error de conexión al registrar usuario.');
+    }
+}
 
 function openUserPermissionsModal(userId) {
-
     const user = allSystemUsers.find(u => u.id === userId);
-
     if (!user) return;
 
-
-
     document.getElementById('perm_target_user_id').value = user.id;
-
     document.getElementById('permModalUsername').textContent = user.username;
-
     document.getElementById('permModalFullName').textContent = user.full_name;
 
+    let p = {};
+    if (typeof user.permissions_json === 'string') {
+        try { p = JSON.parse(user.permissions_json); } catch(e) { p = {}; }
+    } else if (user.permissions_json) {
+        p = user.permissions_json;
+    } else if (user.permissions) {
+        p = user.permissions;
+    }
 
-
-    const p = user.permissions || {};
-
-    
-
-    document.getElementById('perm_comercial_view').checked = !!p.comercial_view;
-
-    document.getElementById('perm_comercial_edit').checked = !!p.comercial_edit;
-
-    document.getElementById('perm_proyectos_view').checked = !!p.proyectos_view;
-
-    document.getElementById('perm_proyectos_edit').checked = !!p.proyectos_edit;
-
-    document.getElementById('perm_finanzas_view').checked = !!p.finanzas_view;
-
-    document.getElementById('perm_finanzas_edit').checked = !!p.finanzas_edit;
-
-    document.getElementById('perm_recursos_view').checked = !!p.recursos_view;
-
-    document.getElementById('perm_recursos_edit').checked = !!p.recursos_edit;
-
-    document.getElementById('perm_gastos_view').checked = !!p.gastos_view;
-
-    document.getElementById('perm_gastos_edit').checked = !!p.gastos_edit;
-
-    document.getElementById('perm_executive_dashboard').checked = !!p.executive_dashboard;
-
-    document.getElementById('perm_mantenimiento_admin').checked = !!p.mantenimiento_admin;
-
-
+    document.getElementById('perm_comercial_view').checked = !!(p.comercial_view !== undefined ? p.comercial_view : p.comercial);
+    document.getElementById('perm_comercial_edit').checked = !!(p.comercial_edit !== undefined ? p.comercial_edit : p.comercial);
+    document.getElementById('perm_proyectos_view').checked = !!(p.proyectos_view !== undefined ? p.proyectos_view : p.proyectos);
+    document.getElementById('perm_proyectos_edit').checked = !!(p.proyectos_edit !== undefined ? p.proyectos_edit : p.proyectos);
+    document.getElementById('perm_finanzas_view').checked = !!(p.finanzas_view !== undefined ? p.finanzas_view : p.finanzas);
+    document.getElementById('perm_finanzas_edit').checked = !!(p.finanzas_edit !== undefined ? p.finanzas_edit : p.finanzas);
+    document.getElementById('perm_recursos_view').checked = !!(p.recursos_view !== undefined ? p.recursos_view : p.recursos);
+    document.getElementById('perm_recursos_edit').checked = !!(p.recursos_edit !== undefined ? p.recursos_edit : p.recursos);
+    document.getElementById('perm_gastos_view').checked = !!(p.gastos_view !== undefined ? p.gastos_view : p.gastos);
+    document.getElementById('perm_gastos_edit').checked = !!(p.gastos_edit !== undefined ? p.gastos_edit : p.gastos);
+    document.getElementById('perm_executive_dashboard').checked = !!(p.executive_dashboard !== undefined ? p.executive_dashboard : p.executive_bi);
+    document.getElementById('perm_mantenimiento_admin').checked = !!(p.mantenimiento_admin !== undefined ? p.mantenimiento_admin : p.mantenimiento);
 
     document.getElementById('modalUserPermissions').classList.remove('hidden');
-
 }
-
-
 
 async function submitSaveUserPermissions() {
 
@@ -1822,470 +2299,433 @@ function resetMaintenanceAuditFilters() {
 
 // --- BLOQUE L10370-L10941 ---
 // ==============================================================================
-
-// 📊 16. DASHBOARD GERENCIAL BI CON LAS 4 RESPUESTAS CLARAS
-
+// 📊 16. DASHBOARD GERENCIAL BI CON MAPA DE VENEZUELA Y POWERBI DARK NAVY
 // ==============================================================================
 
 let biSummaryData = null;
-
-let chartRadialCash = null;
-
-let chartRadialOverhead = null;
-
-let chartRadialMargin = null;
-
-let chartRadialPartners = null;
-
-let chartRankingExp = null;
-
-let chartDonutCost = null;
-
-
+let biRawProjects = [];
+let chartBiMonthlyRev = null;
+let chartBiService = null;
+let chartBiClients = null;
+let chartBiStatus = null;
+let chartBiMethods = null;
+let biCurrentFilter = { region: 'all', year: '2026', client: 'all' };
 
 async function loadExecutiveDashboard() {
-
-    const alertsContainer = document.getElementById("executiveAlertsContainer");
-
     const pnlTbody = document.getElementById("executivePnlTableBody");
-
-
-
-    if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Consolidando las 4 métricas directivas...</td></tr>`;
-
-
+    if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #64748b; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Consolidando analítica ejecutiva y mapa georreferenciado...</td></tr>`;
 
     try {
+        let qParams = [];
+        if (biCurrentFilter.year && biCurrentFilter.year !== 'all') qParams.push(`year=${encodeURIComponent(biCurrentFilter.year)}`);
+        if (biCurrentFilter.client && biCurrentFilter.client !== 'all') qParams.push(`client_id=${encodeURIComponent(biCurrentFilter.client)}`);
+        if (biCurrentFilter.region && biCurrentFilter.region !== 'all') qParams.push(`region=${encodeURIComponent(biCurrentFilter.region)}`);
+        const qStr = qParams.length ? `?${qParams.join('&')}` : '';
 
-        const res = await authFetch(`${API_BASE}/financial/summary`);
+        const [resMetrics, resClients] = await Promise.all([
+            authFetch(`${API_BASE}/financial/bi-metrics${qStr}`),
+            authFetch(`${API_BASE}/clients/`)
+        ]);
 
-        if (!res.ok) throw new Error("Error al obtener datos");
-
-        biSummaryData = await res.json();
-
-        const k = biSummaryData.kpis;
-
-
-
-        // 1. Poblar Filtros Slicers
-
-        populateBISlicers();
-
-
-
-        // 2. Render Alertas Directivas
-
-        if (alertsContainer) {
-
-            if (biSummaryData.alerts && biSummaryData.alerts.length > 0) {
-
-                alertsContainer.innerHTML = biSummaryData.alerts.map(a => `
-
-                    <div style="background: ${a.level === 'danger' ? '#fef2f2' : '#fffbeb'}; border: 1px solid ${a.level === 'danger' ? '#fecdd3' : '#fde68a'}; border-left: 5px solid ${a.level === 'danger' ? '#e11d48' : '#f59e0b'}; padding: 8px 14px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
-
-                        <div>
-
-                            <strong style="color: ${a.level === 'danger' ? '#9f1239' : '#92400e'}; font-size: 12px;">${a.title}</strong>
-
-                            <p style="font-size: 11px; color: #475569; margin-top: 1px;">${a.message}</p>
-
-                        </div>
-
-                        <button onclick="switchView('financial', 'finanzas')" class="btn-secondary" style="font-size: 10px; padding: 3px 6px;">
-
-                            Ver Finanzas <i class="fa-solid fa-arrow-right"></i>
-
-                        </button>
-
-                    </div>
-
-                `).join('');
-
-            } else {
-
-                alertsContainer.innerHTML = '';
-
-            }
-
+        if (resClients.ok) {
+            const clients = await resClients.json();
+            populateBIClientSlicer(clients);
         }
 
-
-
-        // 3. Render Las 4 Respuestas Claras Directivas
-
-        // 1. Caja Libre Disponible
-
-        document.getElementById('bi_kpi_cashflow_val').textContent = `$${k.net_operating_cash_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-        
-
-        // 2. Gastos Fijos Cubiertos (Break-Even %)
-
-        document.getElementById('bi_kpi_overhead_pct').textContent = `${k.fixed_overhead_covered_percent}%`;
-
-        document.getElementById('bi_kpi_overhead_target').textContent = `$${k.monthly_fixed_budget_usd.toLocaleString()}/mes`;
-
-
-
-        // 3. Ganancia Real de Obras
-
-        document.getElementById('bi_kpi_profit_val').textContent = `$${k.net_accrual_profit_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-        document.getElementById('bi_kpi_margin_pct').textContent = `${k.net_margin_percent}%`;
-
-
-
-        // 4. Retiros de Socios
-
-        document.getElementById('bi_kpi_partners_val').textContent = `$${k.total_partner_withdrawals_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-
-
-        // Sidebar
-
-        document.getElementById('bi_side_cxc_val').textContent = `$${k.pending_cxc_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-        document.getElementById('bi_side_cxp_val').textContent = `$${k.pending_cxp_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-        document.getElementById('bi_side_alerts_count').textContent = biSummaryData.alerts ? biSummaryData.alerts.length : 0;
-
-
-
-        // 4. Render 4 Arcos Radiales (% Progress)
-
-        renderCleanRadialCharts(k);
-
-
-
-        // 5. Render Gráficos Analíticos
-
-        renderBIAnalyticsCharts(biSummaryData);
-
-
-
-        // 6. Render Tabla P&L
-
-        renderBIPnlTable(biSummaryData.projects_pnl);
-
-
+        if (resMetrics.ok) {
+            biSummaryData = await resMetrics.json();
+            renderExecutiveDashboardContent(biSummaryData);
+        } else {
+            throw new Error(`HTTP ${resMetrics.status}`);
+        }
 
     } catch (e) {
-
-        if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48; padding: 20px;">Error al consolidar dashboard.</td></tr>`;
-
+        console.error("Error al cargar BI:", e);
+        if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48; padding: 20px;">Error al consolidar dashboard ejecutivo: ${e?.message || e}</td></tr>`;
     }
-
 }
 
-
-
-function populateBISlicers() {
-
-    const projSelect = document.getElementById('bi_slicer_project');
-
+function populateBIClientSlicer(clientsList) {
     const cliSelect = document.getElementById('bi_slicer_client');
+    if (!cliSelect) return;
+    const cur = cliSelect.value;
+    const list = Array.isArray(clientsList) ? clientsList : [];
 
-
-
-    if (projSelect && allProjects.length > 0) {
-
-        const cur = projSelect.value;
-
-        projSelect.innerHTML = `<option value="all">Todas las Obras (${allProjects.length})</option>` +
-
-            allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name.substring(0, 25)}</option>`).join('');
-
-        if (cur) projSelect.value = cur;
-
-    }
-
-
-
-    if (cliSelect && allClients.length > 0) {
-
-        const cur = cliSelect.value;
-
-        cliSelect.innerHTML = `<option value="all">Todos los Clientes (${allClients.length})</option>` +
-
-            allClients.map(c => `<option value="${c.id}">${c.name.substring(0, 25)}</option>`).join('');
-
-        if (cur) cliSelect.value = cur;
-
-    }
-
+    let opts = '<option value="all">Todos los Clientes</option>';
+    list.forEach(c => {
+        opts += `<option value="${c.id}">${c.name}</option>`;
+    });
+    cliSelect.innerHTML = opts;
+    if (cur) cliSelect.value = cur;
 }
 
-
-
-function renderCleanRadialCharts(k) {
-
-    // 1. Radial Cash Flow
-
-    const ctxCash = document.getElementById('radialChartCash');
-
-    if (ctxCash) {
-
-        if (chartRadialCash) chartRadialCash.destroy();
-
-        chartRadialCash = new Chart(ctxCash, {
-
-            type: 'doughnut',
-
-            data: {
-
-                datasets: [{
-
-                    data: [85, 15],
-
-                    backgroundColor: ['#059669', '#e2e8f0'],
-
-                    borderWidth: 0
-
-                }]
-
-            },
-
-            options: { cutout: '76%', responsive: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
-
-        });
-
+function filterBIExtended(type, val, btnEl) {
+    if (type === 'region') {
+        biCurrentFilter.region = val;
+        const buttons = document.querySelectorAll('#biRegionSlicers .bi-filter-pill-light');
+        buttons.forEach(b => b.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+    } else if (type === 'year') {
+        biCurrentFilter.year = val;
+    } else if (type === 'client') {
+        biCurrentFilter.client = val;
     }
-
-
-
-    // 2. Radial Overhead (Break-Even %)
-
-    const pctOverhead = Math.max(0, Math.min(100, k.fixed_overhead_covered_percent));
-
-    const ctxOh = document.getElementById('radialChartOverhead');
-
-    if (ctxOh) {
-
-        if (chartRadialOverhead) chartRadialOverhead.destroy();
-
-        chartRadialOverhead = new Chart(ctxOh, {
-
-            type: 'doughnut',
-
-            data: {
-
-                datasets: [{
-
-                    data: [pctOverhead, 100 - pctOverhead],
-
-                    backgroundColor: [pctOverhead >= 100 ? '#059669' : '#0284c7', '#e2e8f0'],
-
-                    borderWidth: 0
-
-                }]
-
-            },
-
-            options: { cutout: '76%', responsive: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
-
-        });
-
-    }
-
-
-
-    // 3. Radial Margin
-
-    const pctMargin = Math.max(0, Math.min(100, Math.round(k.net_margin_percent)));
-
-    const ctxMar = document.getElementById('radialChartMargin');
-
-    if (ctxMar) {
-
-        if (chartRadialMargin) chartRadialMargin.destroy();
-
-        chartRadialMargin = new Chart(ctxMar, {
-
-            type: 'doughnut',
-
-            data: {
-
-                datasets: [{
-
-                    data: [pctMargin, 100 - pctMargin],
-
-                    backgroundColor: ['#002B49', '#e2e8f0'],
-
-                    borderWidth: 0
-
-                }]
-
-            },
-
-            options: { cutout: '76%', responsive: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
-
-        });
-
-    }
-
-
-
-    // 4. Radial Partners
-
-    const ctxPart = document.getElementById('radialChartPartners');
-
-    if (ctxPart) {
-
-        if (chartRadialPartners) chartRadialPartners.destroy();
-
-        chartRadialPartners = new Chart(ctxPart, {
-
-            type: 'doughnut',
-
-            data: {
-
-                datasets: [{
-
-                    data: [70, 30],
-
-                    backgroundColor: ['#7c3aed', '#e2e8f0'],
-
-                    borderWidth: 0
-
-                }]
-
-            },
-
-            options: { cutout: '76%', responsive: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
-
-        });
-
-    }
-
+    loadExecutiveDashboard();
 }
 
+function renderExecutiveDashboardContent(data) {
+    if (!data || !data.success) return;
+    const s = data.summary || {};
+    const regions = data.regions || [];
+    const monthly = data.monthly_revenue || [];
+    const topClients = data.top_clients || [];
+    const statusCounts = data.project_statuses || {};
+    const paymentMethods = data.payment_methods || [];
+    const serviceLines = data.service_lines || [];
+    const pnlList = data.projects_pnl || [];
 
+    // 1. Badge de región seleccionada
+    const badgeEl = document.getElementById('biMapSelectedBadge');
+    if (badgeEl) {
+        const names = {
+            all: 'Todo el Territorio Nacional',
+            carabobo: 'Carabobo (Centro / Guacara)',
+            miranda: 'Miranda / Caracas',
+            aragua: 'Aragua (Maracay / Cagua)',
+            oriente: 'Oriente (Anzoátegui / Monagas)',
+            zulia_falcon: 'Occidente (Zulia / Falcón)',
+            bolivar: 'Guayana / Sur (Bolívar)',
+            centro_occidente: 'Lara / Centro-Occidente'
+        };
+        badgeEl.textContent = names[biCurrentFilter.region] || 'Todo el Territorio';
+    }
 
-function renderBIAnalyticsCharts(data) {
+    // 2. Nodos Georreferenciados del Mapa de Venezuela (100% REALES)
+    const nodeMap = {
+        carabobo: { node: 'mapNodeCarabobo', text: 'mapCaraboboAmount' },
+        miranda: { node: 'mapNodeMiranda', text: 'mapMirandaAmount' },
+        aragua: { node: 'mapNodeAragua', text: 'mapAraguaAmount' },
+        oriente: { node: 'mapNodeOriente', text: 'mapOrienteAmount' },
+        zulia_falcon: { node: 'mapNodeZulia', text: 'mapOccidenteAmount' },
+        bolivar: { node: 'mapNodeBolivar', text: 'mapBolivarAmount' },
+        centro_occidente: { node: 'mapNodeCentroOccidente', text: 'mapCentroOccAmount' }
+    };
 
-    const ctxRank = document.getElementById('chartRankingExpenses');
+    let anyActiveRegion = false;
+    regions.forEach(r => {
+        const cfg = nodeMap[r.key];
+        if (!cfg) return;
+        const nodeEl = document.getElementById(cfg.node);
+        const textEl = document.getElementById(cfg.text);
 
-    if (ctxRank) {
-
-        if (chartRankingExp) chartRankingExp.destroy();
-
-        
-
-        const labels = ['Materiales de Obra', 'Mano de Obra Cuadrilla', 'Combustible & Traslados', 'Equipos & Maquinaria', 'Nómina Fija Taller', 'Alquiler Galpón'];
-
-        const values = [4800, 3200, 1850, 1200, 3200, 1100];
-
-
-
-        chartRankingExp = new Chart(ctxRank, {
-
-            type: 'bar',
-
-            data: {
-
-                labels: labels,
-
-                datasets: [{
-
-                    label: 'Monto ($)',
-
-                    data: values,
-
-                    backgroundColor: '#0072B8',
-
-                    borderRadius: 6,
-
-                    barThickness: 13
-
-                }]
-
-            },
-
-            options: {
-
-                indexAxis: 'y',
-
-                responsive: true,
-
-                maintainAspectRatio: false,
-
-                plugins: { legend: { display: false } },
-
-                scales: {
-
-                    x: { grid: { display: false }, ticks: { font: { size: 9 } } },
-
-                    y: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } }
-
-                }
-
+        if (r.has_active_projects || r.projects_count > 0) {
+            anyActiveRegion = true;
+            if (nodeEl) nodeEl.style.display = 'block';
+            if (textEl) {
+                const amt = r.collected_usd > 0 ? r.collected_usd : r.invoiced_usd;
+                textEl.textContent = `$${(amt >= 1000 ? (amt / 1000).toFixed(1) + 'k' : amt.toFixed(0))}`;
             }
+        } else {
+            if (nodeEl) nodeEl.style.display = 'none';
+        }
+    });
 
-        });
-
+    const emptyOverlay = document.getElementById('biEmptyMapOverlay');
+    if (emptyOverlay) {
+        emptyOverlay.style.display = anyActiveRegion ? 'none' : 'flex';
     }
 
+    // 3. Totales de Cabecera (Tarjetas de KPIs)
+    const hTotal = document.getElementById('biTotalIngresosHeader');
+    if (hTotal) hTotal.textContent = `$${(s.total_collected_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+    const sFact = document.getElementById('biTotalFacturadoSub');
+    if (sFact) sFact.textContent = `$${(s.total_invoiced_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
-    const ctxDonut = document.getElementById('chartDonutCostDistribution');
+    const sEfect = document.getElementById('biTasaCobranzaSub');
+    if (sEfect) sEfect.textContent = `${(s.collection_rate_pct || 0).toFixed(1)}%`;
 
-    if (ctxDonut) {
+    const mProm = document.getElementById('biMargenPromedio');
+    if (mProm) mProm.textContent = `${(s.margin_pct || 0).toFixed(1)}%`;
 
-        if (chartDonutCost) chartDonutCost.destroy();
+    const oAct = document.getElementById('biObrasActivasCount');
+    if (oAct) oAct.textContent = s.active_projects_count || 0;
 
+    const cCalle = document.getElementById('biCarteraCalle');
+    if (cCalle) cCalle.textContent = `$${(s.total_pending_cxc_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
+    const pProv = document.getElementById('biPasivoProveedores');
+    if (pProv) pProv.textContent = `$${(s.total_cost_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
-        chartDonutCost = new Chart(ctxDonut, {
+    const mTotal = document.getElementById('biMonthKpiTotal');
+    if (mTotal) mTotal.textContent = `$${(s.total_collected_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
-            type: 'doughnut',
+    // 4. Gráfico Evolución Mensual Real
+    renderBIMonthlyChartReal(monthly);
 
-            data: {
+    // 5. Gráfico de Líneas de Servicio Reales
+    renderBIServiceLineChartReal(serviceLines);
 
-                labels: ['Costos Directos Obras (58%)', 'Gastos Fijos Sede (28%)', 'Retiros de Socios (14%)'],
+    // 6. Donas Reales (Top Clientes, Estado de Obras, Métodos de Pago)
+    renderBIDonutsReal(topClients, statusCounts, paymentMethods);
 
-                datasets: [{
+    // 7. Tabla P&L Detallada
+    renderBIPnlTable(pnlList);
+}
 
-                    data: [58, 28, 14],
+function renderBIMonthlyChartReal(monthlyData) {
+    const ctx = document.getElementById('chartBiMonthlyRevenue');
+    const emptyEl = document.getElementById('chartBiMonthlyEmpty');
+    if (!ctx) return;
+    if (chartBiMonthlyRev) chartBiMonthlyRev.destroy();
 
-                    backgroundColor: ['#0072B8', '#0d9488', '#7c3aed'],
+    const list = Array.isArray(monthlyData) ? monthlyData : [];
+    if (list.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'flex';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
 
-                    borderWidth: 2,
+    const labels = list.map(m => m.label || m.month);
+    const collectedVals = list.map(m => m.collected_usd || 0);
+    const invoicedVals = list.map(m => m.invoiced_usd || 0);
 
-                    borderColor: '#ffffff'
-
-                }]
-
-            },
-
-            options: {
-
-                cutout: '62%',
-
-                responsive: true,
-
-                maintainAspectRatio: false,
-
-                plugins: {
-
-                    legend: {
-
-                        position: 'right',
-
-                        labels: { boxWidth: 10, font: { size: 10 } }
-
+    chartBiMonthlyRev = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Cobrado Real ($)',
+                    data: collectedVals,
+                    backgroundColor: '#059669',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                },
+                {
+                    label: 'Facturado ($)',
+                    data: invoicedVals,
+                    backgroundColor: '#93c5fd',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { color: '#475569', font: { size: 10, weight: '700' }, boxWidth: 12 }
+                },
+                tooltip: {
+                    backgroundColor: '#ffffff',
+                    titleColor: '#0f172a',
+                    bodyColor: '#334155',
+                    borderColor: '#cbd5e1',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: (ctx) => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                     }
-
                 }
-
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#64748b', font: { size: 10, weight: '600' } }
+                },
+                y: {
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: {
+                        color: '#64748b',
+                        font: { size: 9.5 },
+                        callback: (v) => `$${(v >= 1000 ? (v/1000).toFixed(0) + 'k' : v)}`
+                    }
+                }
             }
-
-        });
-
-    }
-
+        }
+    });
 }
 
+function renderBIServiceLineChartReal(serviceLines) {
+    const ctx = document.getElementById('chartBiServiceLine');
+    const emptyEl = document.getElementById('chartBiServiceEmpty');
+    if (!ctx) return;
+    if (chartBiService) chartBiService.destroy();
 
+    const list = Array.isArray(serviceLines) ? serviceLines : [];
+    if (list.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'flex';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    const labels = list.map(l => l.name);
+    const vals = list.map(l => l.percentage);
+    const colors = ['#2563eb', '#0284c7', '#059669', '#d97706', '#64748b'];
+
+    chartBiService = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Participación (%)',
+                data: vals,
+                backgroundColor: colors.slice(0, labels.length),
+                borderRadius: 4,
+                barThickness: 16
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#ffffff',
+                    titleColor: '#0f172a',
+                    bodyColor: '#334155',
+                    borderColor: '#cbd5e1',
+                    borderWidth: 1,
+                    callbacks: { label: (ctx) => ` Participación: ${ctx.parsed.x}%` }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: { color: '#64748b', callback: (v) => `${v}%`, font: { size: 9.5 } },
+                    max: 100
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#334155', font: { size: 10, weight: '700' } }
+                }
+            }
+        }
+    });
+}
+
+function renderBIDonutsReal(topClients, statusCounts, paymentMethods) {
+    // Dona 1: Top Clientes Real
+    const ctxCli = document.getElementById('chartBiDonutClients');
+    const emptyCli = document.getElementById('chartBiClientsEmpty');
+    if (ctxCli) {
+        if (chartBiClients) chartBiClients.destroy();
+        const list = Array.isArray(topClients) ? topClients : [];
+        if (list.length === 0) {
+            if (emptyCli) emptyCli.style.display = 'flex';
+        } else {
+            if (emptyCli) emptyCli.style.display = 'none';
+            const labels = list.map(c => `${c.name} (${c.percentage}%)`);
+            const dataVals = list.map(c => c.total_usd);
+
+            chartBiClients = new Chart(ctxCli, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataVals,
+                        backgroundColor: ['#2563eb', '#0284c7', '#059669', '#d97706', '#94a3b8'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    cutout: '68%',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#475569', boxWidth: 10, font: { size: 9.5 } }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // Dona 2: Estado de Proyectos Real
+    const ctxSt = document.getElementById('chartBiDonutProjectsStatus');
+    const emptySt = document.getElementById('chartBiStatusEmpty');
+    if (ctxSt) {
+        if (chartBiStatus) chartBiStatus.destroy();
+        const enEjec = statusCounts?.en_ejecucion || 0;
+        const culm = statusCounts?.culminados || 0;
+        const plan = statusCounts?.planificados || 0;
+        const totalProjs = enEjec + culm + plan;
+
+        if (totalProjs === 0) {
+            if (emptySt) emptySt.style.display = 'flex';
+        } else {
+            if (emptySt) emptySt.style.display = 'none';
+            chartBiStatus = new Chart(ctxSt, {
+                type: 'doughnut',
+                data: {
+                    labels: [`En Ejecución (${enEjec})`, `Culminadas (${culm})`, `Planificadas (${plan})`],
+                    datasets: [{
+                        data: [enEjec, culm, plan],
+                        backgroundColor: ['#2563eb', '#059669', '#94a3b8'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    cutout: '68%',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#475569', boxWidth: 10, font: { size: 9.5 } }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // Dona 3: Método de Pago Real
+    const ctxPay = document.getElementById('chartBiDonutPaymentMethods');
+    const emptyPay = document.getElementById('chartBiMethodsEmpty');
+    if (ctxPay) {
+        if (chartBiMethods) chartBiMethods.destroy();
+        const list = Array.isArray(paymentMethods) ? paymentMethods : [];
+        if (list.length === 0) {
+            if (emptyPay) emptyPay.style.display = 'flex';
+        } else {
+            if (emptyPay) emptyPay.style.display = 'none';
+            const labels = list.map(m => `${m.label} (${m.percentage}%)`);
+            const dataVals = list.map(m => m.total_usd);
+
+            chartBiMethods = new Chart(ctxPay, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataVals,
+                        backgroundColor: ['#2563eb', '#059669', '#0284c7', '#d97706', '#94a3b8'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    cutout: '68%',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#475569', boxWidth: 10, font: { size: 9.5 } }
+                        }
+                    }
+                }
+            });
+        }
+    }
+}
 
 let lastBiPnlList = [];
 let biPnlCurrentPage = 1;
@@ -2294,8 +2734,6 @@ let biPnlPageSize = 10;
 function goToBiPnlPage(page) {
     biPnlCurrentPage = page;
     renderBIPnlTablePaginated();
-    const c = document.getElementById("executivePnlTableBody");
-    if (c) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function changeBiPnlPageSize(size) {
@@ -2316,7 +2754,7 @@ function renderBIPnlTablePaginated() {
 
     const list = lastBiPnlList || [];
     if (list.length === 0) {
-        pnlTbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 20px;">No hay proyectos para el filtro seleccionado.</td></tr>`;
+        pnlTbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 18px;">No hay registros para este filtro.</td></tr>`;
         const pCont = document.getElementById("biPnlPaginationContainer");
         if (pCont) pCont.innerHTML = '';
         return;
@@ -2329,71 +2767,46 @@ function renderBIPnlTablePaginated() {
         pageSize: biPnlPageSize,
         onPageChange: "goToBiPnlPage",
         onPageSizeChange: "changeBiPnlPageSize",
-        itemLabel: "obra(s) en BI",
-        pageSizeOptions: [5, 10, 20, 50]
+        itemLabel: "obra(s)",
+        pageSizeOptions: [5, 10, 20]
     });
     biPnlCurrentPage = currentPage;
 
     const pageItems = list.slice(startIndex, endIndex);
     pnlTbody.innerHTML = pageItems.map(p => {
-        const isProfitable = p.net_profit_usd >= 0;
+        const isProfitable = (p.net_profit_usd || 0) >= 0;
+        const rawP = (biRawProjects || []).find(rp => rp.id === (p.project_id || p.id));
+        const loc = rawP?.location || p.location || 'Sede Central (Guacara)';
         return `
-        <tr>
-            <td style="font-weight: 800; color: var(--dalor-navy);">${p.code}</td>
-            <td style="font-weight: 700;">${p.name}</td>
-            <td style="color: #475569;">${p.client_name || 'General'}</td>
-            <td style="font-weight: 700;">$${p.contract_amount_usd.toLocaleString()}</td>
-            <td style="font-weight: 700; color: #0284c7;">$${p.invoiced_cxc_usd.toLocaleString()}</td>
-            <td style="font-weight: 700; color: #059669;">$${p.collected_cxc_usd.toLocaleString()}</td>
-            <td style="font-weight: 800; color: #e11d48;">$${p.total_cost_usd.toLocaleString()}</td>
-            <td style="font-weight: 900; color: ${isProfitable ? '#059669' : '#e11d48'}; font-size: 13px;">
-                $${p.net_profit_usd.toLocaleString()}
+        <tr style="border-bottom: 1px solid #e2e8f0; hover: background: #f8fafc;">
+            <td style="padding: 9px 8px; font-weight: 800; color: #0284c7;">${p.code}</td>
+            <td style="padding: 9px 8px; font-weight: 700; color: #0f172a;">${p.name}</td>
+            <td style="padding: 9px 8px; color: #334155; font-weight: 600;">${p.client_name || 'General'}</td>
+            <td style="padding: 9px 8px; color: #475569; font-size: 11px;"><i class="fa-solid fa-location-dot" style="color:#0284c7;"></i> ${loc}</td>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 700; color: #0f172a;">$${(p.contract_amount_usd || 0).toLocaleString()}</td>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 700; color: #059669;">$${(p.collected_cxc_usd || 0).toLocaleString()}</td>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 800; color: #dc2626;">$${(p.total_cost_usd || 0).toLocaleString()}</td>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 900; color: ${isProfitable ? '#059669' : '#dc2626'};">
+                $${(p.net_profit_usd || 0).toLocaleString()}
             </td>
-            <td style="font-weight: 800; color: ${isProfitable ? '#059669' : '#e11d48'};">
-                ${p.net_margin_percent}%
-            </td>
-            <td style="font-weight: 800; color: var(--dalor-navy); text-align: center;">
-                <span style="padding: 2px 6px; border-radius: 4px; background: ${p.cpi_efficiency >= 1.0 ? '#d1fae5' : '#fee2e2'}; color: ${p.cpi_efficiency >= 1.0 ? '#065f46' : '#991b1b'}; font-size: 11px;">
-                    ${p.cpi_efficiency}
-                </span>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 800; color: ${isProfitable ? '#059669' : '#dc2626'};">
+                ${p.net_margin_percent || 0}%
             </td>
         </tr>`;
     }).join('');
 }
 
-
-
 function filterBIDashboard() {
-
-    if (!biSummaryData || !biSummaryData.projects_pnl) return;
-
-    const projVal = document.getElementById('bi_slicer_project').value;
-
-    const cliVal = document.getElementById('bi_slicer_client').value;
-
-
-
-    let filtered = biSummaryData.projects_pnl;
-
-
-
-    if (projVal !== 'all') {
-
-        filtered = filtered.filter(p => p.id == projVal);
-
-    }
-
-    if (cliVal !== 'all') {
-
-        filtered = filtered.filter(p => p.client_id == cliVal);
-
-    }
-
-
-
-    renderBIPnlTable(filtered);
-
+    renderExecutiveDashboardContent();
 }
+
+function populateBISlicers() {
+    populateBIClientSlicer();
+}
+
+function renderBIAnalyticsCharts() {}
+
+function renderCleanRadialCharts() {}
 
 
 
@@ -2765,6 +3178,7 @@ if (typeof window !== 'undefined') {
     window.fillAndSubmitQuickLogin = fillAndSubmitQuickLogin;
     window.fillQuickLogin = fillQuickLogin;
     window.filterBIDashboard = filterBIDashboard;
+    window.filterBIExtended = filterBIExtended;
     window.handleLogout = handleLogout;
     window.loadBackupsList = loadBackupsList;
     window.loadCategoriesTree = loadCategoriesTree;
@@ -2806,6 +3220,24 @@ if (typeof window !== 'undefined') {
     window.goToClientsPage = goToClientsPage;
     window.changeClientsPageSize = changeClientsPageSize;
     window.renderClientsPaginated = renderClientsPaginated;
+    window.onClientSearchInput = onClientSearchInput;
+    window.openEditClientModal = openEditClientModal;
+    window.submitEditClient = submitEditClient;
+    window.openClientHistoryModal = openClientHistoryModal;
+    window.debouncedFilterComparisonDashboard = debouncedFilterComparisonDashboard;
+    window.filterComparisonDashboard = filterComparisonDashboard;
+    window.goToComparisonPage = goToComparisonPage;
+    window.changeComparisonPageSize = changeComparisonPageSize;
+    window.openCategoryHistoryModal = openCategoryHistoryModal;
+    window.debouncedFilterCategoryHistory = debouncedFilterCategoryHistory;
+    window.filterCategoryHistory = filterCategoryHistory;
+    window.loadMaintenanceRolesList = loadMaintenanceRolesList;
+    window.openNewRoleModal = openNewRoleModal;
+    window.openEditRoleModal = openEditRoleModal;
+    window.autoGenerateRoleSlug = autoGenerateRoleSlug;
+    window.submitRoleForm = submitRoleForm;
+    window.deleteRole = deleteRole;
+    window.onNewUserRoleChanged = onNewUserRoleChanged;
 }
 
-export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, goToBiPnlPage, changeBiPnlPageSize, renderBIPnlTablePaginated, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus, goToClientsPage, changeClientsPageSize, renderClientsPaginated };
+export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterBIExtended, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, debouncedFilterComparisonDashboard, filterComparisonDashboard, goToComparisonPage, changeComparisonPageSize, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadMaintenanceRolesList, openNewRoleModal, openEditRoleModal, autoGenerateRoleSlug, submitRoleForm, deleteRole, onNewUserRoleChanged, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, goToBiPnlPage, changeBiPnlPageSize, renderBIPnlTablePaginated, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus, goToClientsPage, changeClientsPageSize, renderClientsPaginated, onClientSearchInput, openEditClientModal, submitEditClient, openClientHistoryModal, openCategoryHistoryModal, debouncedFilterCategoryHistory, filterCategoryHistory, goToCategoryHistoryPage, changeCategoryHistoryPageSize };

@@ -138,14 +138,19 @@ async function initDispatchForm() {
                 const res = await authFetch(`${API_BASE}/projects/`);
                 if (res.ok) projects = window.allProjects = await res.json();
             }
-            projSel.innerHTML = '<option value="">-- Seleccionar Proyecto DALOR --</option>' +
-                projects.map(p => `<option value="${p.id}" data-client-id="${p.client_id || ''}">${p.code || ('PRJ-' + p.id)} - ${p.name}</option>`).join('');
+            const openProjects = (projects || []).filter(p => {
+                const st = (p.status || '').toLowerCase().trim();
+                return !['culminado', 'completado', 'cerrado', 'cancelado', 'finalizado', 'inactivo'].includes(st);
+            });
+            projSel.innerHTML = '<option value="">-- Seleccionar Proyecto Activo DALOR --</option>' +
+                openProjects.map(p => `<option value="${p.id}" data-client-id="${p.client_id || ''}">[${p.code || ('PRJ-' + p.id)}] ${p.name}</option>`).join('');
         }
+
     } catch (err) {
         console.warn('Error cargando proyectos para despacho:', err);
     }
 
-    // Cargar Vehículos DALOR (Flota)
+    // Cargar Vehículos DALOR (Flota) filtrando disponibilidad operativa
     try {
         const assetSel = document.getElementById('disp_select_asset');
         if (assetSel) {
@@ -156,10 +161,54 @@ async function initDispatchForm() {
             }
             const vehicles = assets.filter(a => 
                 (a.category && a.category.toLowerCase().includes('veh')) || 
-                (a.sub_category && a.sub_category.toLowerCase().includes('veh'))
+                (a.sub_category && a.sub_category.toLowerCase().includes('veh')) ||
+                (a.asset_type && a.asset_type.toLowerCase().includes('veh')) ||
+                (a.asset_code && a.asset_code.toLowerCase().includes('veh'))
             );
-            assetSel.innerHTML = '<option value="">-- Seleccionar Vehículo de Flota DALOR --</option>' +
-                vehicles.map(v => `<option value="${v.id}" data-plate="${v.serial_chassis || v.internal_code || ''}" data-model="${v.name}">${v.name} (${v.internal_code || v.serial_chassis || 'S/P'})</option>`).join('');
+
+            const availableVehicles = [];
+            const unavailableVehicles = [];
+
+            vehicles.forEach(v => {
+                const st = (v.status || '').toLowerCase().trim();
+                const isInactive = v.is_active === false;
+                const isAssigned = Boolean(v.current_project_id);
+                const isUnavail = isInactive || isAssigned || 
+                    ['en_obra', 'asignado', 'en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
+                
+                if (isUnavail) {
+                    unavailableVehicles.push(v);
+                } else {
+                    availableVehicles.push(v);
+                }
+            });
+
+            let optsHtml = '';
+            if (availableVehicles.length === 0) {
+                optsHtml += `<option value="" disabled selected>-- No hay vehículos de flota disponibles (0 disponibles) --</option>`;
+            } else {
+                optsHtml += `<option value="">-- Seleccionar Vehículo de Flota DALOR (${availableVehicles.length} disponibles) --</option>`;
+                optsHtml += availableVehicles.map(v => {
+                    const plate = v.license_plate || v.serial_chassis || v.internal_code || '';
+                    const code = v.asset_code || v.internal_code || '';
+                    return `<option value="${v.id}" data-plate="${plate}" data-model="${v.name}" data-status="${v.status}">✅ [DISPONIBLE] ${v.name} (${code} - Placa: ${plate || 'S/P'})</option>`;
+                }).join('');
+            }
+
+            if (unavailableVehicles.length > 0) {
+                optsHtml += `<optgroup label="⛔ Vehículos No Disponibles (En Obra / Mantenimiento / Taller / Inactivos)">`;
+                optsHtml += unavailableVehicles.map(v => {
+                    let st = (v.status || 'No Disponible').toUpperCase();
+                    if (v.current_project_id && (st === 'DISPONIBLE' || st === 'DISPONIBLE_BASE')) {
+                        st = 'EN OBRA';
+                    }
+                    const plate = v.license_plate || v.serial_chassis || '';
+                    return `<option value="${v.id}" disabled style="color: #94a3b8; background-color: #f8fafc;">⛔ [${st}] ${v.name} (${v.asset_code || ''} - Placa: ${plate || 'S/P'})</option>`;
+                }).join('');
+                optsHtml += `</optgroup>`;
+            }
+
+            assetSel.innerHTML = optsHtml;
         }
     } catch (err) {
         console.warn('Error cargando vehículos para despacho:', err);
@@ -433,6 +482,18 @@ async function submitCreateDispatchGuide(event) {
 
     if (transportType === 'propio_dalor') {
         assetId = document.getElementById('disp_select_asset')?.value || null;
+        if (assetId) {
+            const selectedVeh = (window.allAssets || []).find(a => String(a.id) === String(assetId));
+            if (selectedVeh) {
+                const st = (selectedVeh.status || '').toLowerCase().trim();
+                const isUnavail = selectedVeh.is_active === false || 
+                    ['en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
+                if (isUnavail) {
+                    alert(`⛔ El vehículo seleccionado [${selectedVeh.asset_code || ''}] '${selectedVeh.name}' NO se encuentra disponible para despacho (Estatus actual: ${selectedVeh.status}). Por favor selecciona una unidad operativa.`);
+                    return;
+                }
+            }
+        }
         driverName = (document.getElementById('disp_driver_name_propio')?.value || "").trim();
         driverIdDoc = (document.getElementById('disp_driver_id_propio')?.value || "").trim();
         vehiclePlate = (document.getElementById('disp_plate_propio')?.value || "").trim();
@@ -558,6 +619,9 @@ async function loadDispatchGuidesList() {
 
         updateFilterCounters();
         renderDispatchTable();
+        if (typeof window.loadProjectRequisitionsBadge === 'function') {
+            window.loadProjectRequisitionsBadge();
+        }
     } catch (err) {
         console.error('Error cargando guías de despacho:', err);
         if (tbody) {
@@ -673,7 +737,11 @@ function renderDispatchPaginated() {
         return;
     }
 
-    const { startIndex, endIndex } = (window.renderPaginationControls || renderPaginationControls)({
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: guides.length }));
+
+    const { startIndex, endIndex } = paginateFn({
         containerId: "dispatchPaginationContainer",
         totalItems: guides.length,
         currentPage: dispatchCurrentPage,
@@ -889,19 +957,36 @@ async function printOfficialDispatchGuide(guideId) {
                 <meta charset="UTF-8">
                 <title>Guía de Despacho ${g.guide_number} - DALOR</title>
                 <style>
-                    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #0f172a; margin: 0; padding: 24px; }
-                    .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #002B49; padding-bottom: 14px; margin-bottom: 14px; }
-                    .info-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 16px; }
+                    @page {
+                        size: letter portrait;
+                        margin: 12mm 15mm;
+                    }
+                    body { 
+                        font-family: 'Segoe UI', Arial, sans-serif; 
+                        font-size: 11.5px; 
+                        color: #0f172a; 
+                        margin: 0; 
+                        padding: 24px; 
+                        -webkit-print-color-adjust: exact; 
+                        print-color-adjust: exact;
+                    }
+                    .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #002B49; padding-bottom: 14px; margin-bottom: 14px; page-break-inside: avoid; }
+                    .info-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 16px; page-break-inside: avoid; }
                     .info-card { border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; background: #f8fafc; }
                     .info-card h4 { margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; color: #002B49; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11.5px; }
-                    th { background: #002B49; color: white; padding: 8px; text-align: left; font-size: 11px; text-transform: uppercase; }
-                    .signatures-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 30px; text-align: center; }
-                    .sig-box { border: 1px solid #94a3b8; border-radius: 4px; padding: 8px 6px; height: 95px; display: flex; flex-direction: column; justify-content: space-between; font-size: 10.5px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; page-break-inside: auto; }
+                    thead { display: table-header-group; }
+                    tfoot { display: table-footer-group; }
+                    tr { page-break-inside: avoid; page-break-after: auto; }
+                    th { background: #002B49 !important; color: white !important; padding: 7px 8px; text-align: left; font-size: 10.5px; text-transform: uppercase; }
+                    td { padding: 6px 8px; }
+                    .signatures-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 24px; text-align: center; page-break-inside: avoid; }
+                    .sig-box { border: 1px solid #94a3b8; border-radius: 4px; padding: 8px 6px; height: 95px; display: flex; flex-direction: column; justify-content: space-between; font-size: 10.5px; page-break-inside: avoid; }
                     .sig-line { border-top: 1px dashed #64748b; margin-top: 35px; padding-top: 4px; font-weight: 700; color: #334155; }
                     @media print {
-                        body { padding: 10px; }
+                        body { padding: 0; }
                         button { display: none !important; }
+                        .no-print { display: none !important; }
                     }
                 </style>
             </head>

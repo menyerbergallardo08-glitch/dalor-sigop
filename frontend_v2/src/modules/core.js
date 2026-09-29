@@ -361,7 +361,12 @@ function authFetch(url, options = {}) {
     var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     var _h = Object.assign({}, options.headers || {});
     if (_t) _h['Authorization'] = 'Bearer ' + _t;
-    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !_h['Content-Type']) {
+        _h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete _h['Content-Type'];
+    }
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 }
 
@@ -630,11 +635,11 @@ function renderPaginationControls({
     containerId,
     totalItems = 0,
     currentPage = 1,
-    pageSize = 15,
+    pageSize = 10,
     onPageChange = '',
     onPageSizeChange = '',
     itemLabel = 'registro(s)',
-    pageSizeOptions = [10, 25, 50, 100],
+    pageSizeOptions = [10, 15, 25, 50, 100],
     allowAll = true
 }) {
     const container = document.getElementById(containerId);
@@ -877,7 +882,7 @@ function populateSelectDropdowns() {
 
     if (document.getElementById("cxp_project_id")) document.getElementById("cxp_project_id").innerHTML = projOptions;
 
-    if (document.getElementById("rcp_project_id")) document.getElementById("rcp_project_id").innerHTML = projOptions;
+    if (document.getElementById("rcp_project_id")) document.getElementById("rcp_project_id").innerHTML = `<option value="">-- Sin Proyecto Específico (Anticipo a Cuenta) --</option>`;
 
     if (document.getElementById("mc_project_id")) document.getElementById("mc_project_id").innerHTML = 
 

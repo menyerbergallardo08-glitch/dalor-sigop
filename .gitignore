@@ -17,7 +17,8 @@ backups/daily/
 *.db-shm
 *.log
 node_modules/
-dist/
+# dist/ is intentionally tracked so Render can serve the compiled frontend
+# frontend_v2/node_modules are excluded above
 scratch/
 *.png
 *.jpg

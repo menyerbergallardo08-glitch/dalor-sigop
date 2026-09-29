@@ -16,7 +16,12 @@ function authFetch(url, options = {}) {
     var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     var _h = Object.assign({}, options.headers || {});
     if (_t) _h['Authorization'] = 'Bearer ' + _t;
-    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !_h['Content-Type']) {
+        _h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete _h['Content-Type'];
+    }
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 }
 
@@ -35,6 +40,23 @@ async function loadRentalsList() {
 
         allRentals = window.allRentals = await res.json();
         updateRentalsKPIs(allRentals);
+
+        // Poblar selector inteligente de clientes en filtros (Punto 7)
+        const clientFilter = document.getElementById("rentalFilterClient");
+        if (clientFilter) {
+            const currentSelected = clientFilter.value;
+            const entities = new Set();
+            (window.allClients || []).forEach(c => {
+                if (c.name) entities.add(c.name.trim());
+            });
+            (allRentals || []).forEach(r => {
+                if (r.external_entity) entities.add(r.external_entity.trim());
+            });
+            const sortedEntities = Array.from(entities).sort();
+            clientFilter.innerHTML = `<option value="">Todos los Clientes / Contrapartes (${sortedEntities.length})</option>` +
+                sortedEntities.map(e => `<option value="${e}" ${e === currentSelected ? 'selected' : ''}>${e}</option>`).join('');
+        }
+
         applyRentalsFilter();
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 20px; color: #e11d48; font-weight: 600;">Error al cargar registros: ${e.message}</td></tr>`;
@@ -73,6 +95,7 @@ function updateRentalsKPIs(items) {
 // --- FILTRADO Y PAGINACIÓN ---
 function applyRentalsFilter() {
     const q = (document.getElementById("rentalFilterSearch")?.value || "").toLowerCase().trim();
+    const clientVal = (document.getElementById("rentalFilterClient")?.value || "").toLowerCase().trim();
     const dir = document.getElementById("rentalFilterDirection")?.value || "";
     const type = document.getElementById("rentalFilterType")?.value || "";
     const status = document.getElementById("rentalFilterStatus")?.value || "";
@@ -88,6 +111,10 @@ function applyRentalsFilter() {
             (r.contact_person || '').toLowerCase().includes(q) ||
             (r.notes || '').toLowerCase().includes(q)
         );
+    }
+
+    if (clientVal) {
+        filtered = filtered.filter(r => (r.external_entity || '').toLowerCase().trim() === clientVal);
     }
 
     if (dir) {
@@ -844,6 +871,84 @@ function cancelRentalClientRisk() {
     if (alertBox) alertBox.style.display = "none";
 }
 
+function renderRentalClientsList(clients) {
+    const listEl = document.getElementById("rentalClientsPredictiveList");
+    if (!listEl) return;
+    if (!clients || clients.length === 0) {
+        listEl.innerHTML = `<div style="padding: 10px; font-size: 11.5px; color: #94a3b8; text-align: center;">No se encontraron clientes registrados con ese nombre. Puedes ingresarlo como texto libre.</div>`;
+        listEl.style.display = "block";
+        return;
+    }
+
+    listEl.innerHTML = clients.map(c => {
+        const safeName = (c.name || '').replace(/'/g, "\\'");
+        const safeContact = (c.contact_name || '').replace(/'/g, "\\'");
+        const safePhone = (c.contact_phone || c.phone || '').replace(/'/g, "\\'");
+        const cId = c.id || 0;
+        return `
+            <div onclick="selectRentalPredictiveClient('${safeName}', '${safeContact}', '${safePhone}', ${cId})" 
+                 style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;"
+                 onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">
+                <div>
+                    <div style="font-weight: 700; color: #0f172a; font-size: 12px;">${c.name}</div>
+                    <div style="font-size: 10.5px; color: #64748b;">
+                        ${c.rif ? `<span style="font-family: monospace; font-weight: 700; color: #0284c7;">[${c.rif}]</span> ` : ''}
+                        ${c.contact_name ? `Resp: ${c.contact_name}` : ''}
+                    </div>
+                </div>
+                <div style="font-size: 11px; font-weight: 700; color: #059669;">
+                    ${c.contact_phone || c.phone || ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    listEl.style.display = "block";
+}
+
+function onRentalClientInput(val) {
+    onRentalClientSelected(val);
+    const query = (val || '').toLowerCase().trim();
+    const clients = window.allClients || [];
+    if (!query) {
+        renderRentalClientsList(clients);
+        return;
+    }
+    const filtered = clients.filter(c => 
+        (c.name && c.name.toLowerCase().includes(query)) ||
+        (c.rif && c.rif.toLowerCase().includes(query)) ||
+        (c.contact_name && c.contact_name.toLowerCase().includes(query))
+    );
+    renderRentalClientsList(filtered);
+}
+
+function toggleRentalClientsDropdown() {
+    const listEl = document.getElementById("rentalClientsPredictiveList");
+    if (!listEl) return;
+    if (listEl.style.display === "block") {
+        listEl.style.display = "none";
+    } else {
+        const inp = document.getElementById("rentalExternalEntity");
+        onRentalClientInput(inp?.value || "");
+    }
+}
+
+function selectRentalPredictiveClient(name, contact, phone, clientId) {
+    const inp = document.getElementById("rentalExternalEntity");
+    const contactInput = document.getElementById("rentalContactPerson");
+    const phoneInput = document.getElementById("rentalContactPhone");
+    const listEl = document.getElementById("rentalClientsPredictiveList");
+
+    if (inp) inp.value = name;
+    if (contactInput) contactInput.value = contact || "";
+    if (phoneInput) phoneInput.value = phone || "";
+    if (listEl) listEl.style.display = "none";
+
+    const direction = document.getElementById("rentalDirection")?.value || "dalor_a_tercero";
+    if (direction === "dalor_a_tercero" && clientId) {
+        checkRentalClientCreditRisk(clientId);
+    }
+}
+
 function onRentalClientSelected(val) {
     const alertBox = document.getElementById("rentalClientRiskAlert");
     if (!val) {
@@ -1522,6 +1627,10 @@ if (typeof window !== 'undefined') {
     window.checkRentalClientCreditRisk = checkRentalClientCreditRisk;
     window.confirmRentalClientRisk = confirmRentalClientRisk;
     window.cancelRentalClientRisk = cancelRentalClientRisk;
+    window.onRentalClientInput = onRentalClientInput;
+    window.toggleRentalClientsDropdown = toggleRentalClientsDropdown;
+    window.selectRentalPredictiveClient = selectRentalPredictiveClient;
+    window.renderRentalClientsList = renderRentalClientsList;
 }
 
 export { 
@@ -1534,5 +1643,6 @@ export {
     filterRentalResources, clearRentalResourceSearch, onRentalClientSelected,
     selectPredictiveRentalResource, onRentalReturnDateChanged,
     onRentalExtensionModeChanged, updateExtensionCalculatedTotal,
-    checkRentalClientCreditRisk, confirmRentalClientRisk, cancelRentalClientRisk
+    checkRentalClientCreditRisk, confirmRentalClientRisk, cancelRentalClientRisk,
+    onRentalClientInput, toggleRentalClientsDropdown, selectRentalPredictiveClient, renderRentalClientsList
 };

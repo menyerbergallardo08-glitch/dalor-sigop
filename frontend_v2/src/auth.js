@@ -81,7 +81,7 @@ export function applyPermissionMap(user) {
 
     // Control de Dropdowns de la Barra de Módulos (Navbar)
     const dCom = document.getElementById('dropdown-comercial');
-    if (dCom) dCom.style.display = isDirector ? 'inline-block' : 'none';
+    if (dCom) dCom.style.display = 'inline-block';
 
     const dProj = document.getElementById('dropdown-proyectos');
     if (dProj) dProj.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';

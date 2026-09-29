@@ -59,29 +59,19 @@
                     <i class="fa-solid fa-folder-tree" style="color: var(--dalor-blue);"></i>
 
                     <span>Proyectos & Obras</span>
-
                     <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
 
                 </button>
 
                 <div class="dropdown-menu">
-
                     <div class="dropdown-item" onclick="switchView('projects', 'proyectos')">
-
                         <i class="fa-solid fa-clipboard-list" style="color: #0284c7;"></i>
-
-                        <span>Planificación & Armado de Proyectos</span>
-
+                        <span>Obras, Planificación & Job Costing</span>
                     </div>
-
                     <div class="dropdown-item" onclick="switchView('dashboard', 'proyectos')">
-
                         <i class="fa-solid fa-chart-column" style="color: #10b981;"></i>
-
-                        <span>Dashboard de Rentabilidad</span>
-
+                        <span>Matriz Comparativa de Rentabilidad & CPI</span>
                     </div>
-
                 </div>
 
             </div>
@@ -142,7 +132,7 @@
                     <i class="fa-solid fa-truck-ramp-box" style="color: var(--dalor-blue);"></i>
 
                     <span>Activos & Recursos</span>
-
+                    <span id="badgeRecursosDropdown" style="background: #e11d48; color: white; border-radius: 9999px; font-size: 10px; padding: 1px 6px; font-weight: 800; margin-left: 4px; display: none;">0</span>
                     <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: #94a3b8;"></i>
 
                 </button>
@@ -194,12 +184,15 @@
 
                     </div>
 
+                    <div class="dropdown-item" onclick="openProjectRequisitionsInboxModal()">
+                        <i class="fa-solid fa-clipboard-list" style="color: #4f46e5;"></i>
+                        <span style="font-weight: 700; color: #4338ca;">📦 Bandeja Requisiciones de Obra</span>
+                        <span id="badgePendingRequisitionsNav" style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 10px; font-size: 10px; margin-left: auto; font-weight: 800; display: none;">0</span>
+                    </div>
+
                     <div class="dropdown-item" onclick="switchView('dispatch', 'operaciones')">
-
                         <i class="fa-solid fa-truck-fast" style="color: #0284c7;"></i>
-
-                        <span>Guías de Despacho & Formato Libre</span>
-
+                        <span style="font-weight: 700;">Control de Despachos & Salida de Taller</span>
                     </div>
 
                     <div class="dropdown-item" onclick="openRentalsSubtab()">
@@ -253,19 +246,8 @@
                     </div>
 
                     <div class="dropdown-item" id="item-gasto-manual" onclick="switchView('manual', 'gastos')">
-
                         <i class="fa-solid fa-money-bill-transfer" style="color: #10b981;"></i>
-
                         <span>Carga Oficina & Transferencias</span>
-
-                    </div>
-
-                    <div class="dropdown-item" id="item-gasto-dashboard" onclick="switchView('dashboard', 'gastos')">
-
-                        <i class="fa-solid fa-chart-pie" style="color: var(--dalor-blue);"></i>
-
-                        <span>Control de Gastos Acumulados & Job Costing</span>
-
                     </div>
 
                     <div class="dropdown-item" id="item-gasto-log" onclick="switchView('expenses-log', 'gastos')">
@@ -354,4 +336,156 @@
 
         </div>
 
+    </nav>
+
+    <!-- DRAWER LATERAL MÓVIL MODERNO (TOUCH FRIENDLY) -->
+    <div id="mobileDrawerOverlay" class="mobile-drawer-overlay hidden" onclick="closeMobileNavDrawer()"></div>
+    <aside id="mobileNavDrawer" class="mobile-nav-drawer" aria-label="Menú Móvil">
+        <!-- Encabezado del Drawer -->
+        <div class="mobile-drawer-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="logo_dalor.jpg" alt="DALOR Logo" style="height: 32px; background: white; padding: 2px 6px; border-radius: 6px;">
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 900; color: #ffffff; margin: 0;">DALOR ERP</h3>
+                    <span id="mobileUserRoleBadge" style="font-size: 10px; color: var(--dalor-gold); font-weight: 700; text-transform: uppercase;">Supervisor</span>
+                </div>
+            </div>
+            <button onclick="closeMobileNavDrawer()" class="mobile-drawer-close" aria-label="Cerrar">&times;</button>
+        </div>
+
+        <!-- Acceso Rápido OCR en Móvil -->
+        <div style="padding: 12px 14px 6px 14px;">
+            <button onclick="mobileNavigate('pwa', 'gastos')" class="mobile-ocr-cta-btn">
+                <i class="fa-solid fa-camera-retro" style="font-size: 18px; color: var(--dalor-gold);"></i>
+                <div style="text-align: left; line-height: 1.2;">
+                    <div style="font-size: 13px; font-weight: 800;">Escanear Comprobante / Factura</div>
+                    <div style="font-size: 10px; opacity: 0.85;">Captura con cámara y lectura IA Gemini</div>
+                </div>
+                <i class="fa-solid fa-chevron-right" style="margin-left: auto; font-size: 12px;"></i>
+            </button>
+        </div>
+
+        <!-- Lista de Módulos para Móvil -->
+        <div class="mobile-drawer-content">
+            <!-- 1. Comercial -->
+            <div class="mobile-module-group">
+                <div class="mobile-module-title"><i class="fa-solid fa-briefcase" style="color: #0284c7;"></i> Comercial & Ventas</div>
+                <button onclick="mobileNavigate('quotations', 'comercial')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-file-invoice-dollar" style="color: #0284c7;"></i>
+                    <span>Presupuestos & APU</span>
+                </button>
+                <button onclick="mobileNavigate('clients', 'comercial')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-building-user" style="color: #0d9488;"></i>
+                    <span>Directorio de Clientes</span>
+                </button>
+                <button onclick="mobileNavigate('services', 'comercial')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-list-check" style="color: #8b5cf6;"></i>
+                    <span>Catálogo de Servicios</span>
+                </button>
+            </div>
+
+            <!-- 2. Proyectos -->
+            <div class="mobile-module-group">
+                <div class="mobile-module-title"><i class="fa-solid fa-folder-tree" style="color: #059669;"></i> Proyectos & Obras</div>
+                <button onclick="mobileNavigate('projects', 'proyectos')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-bars-progress" style="color: #0284c7;"></i>
+                    <span>Obras & Órdenes Activas</span>
+                </button>
+                <button onclick="mobileNavigate('dashboard', 'proyectos')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-scale-balanced" style="color: #10b981;"></i>
+                    <span>Comparativo Rentabilidad</span>
+                </button>
+                <button onclick="mobileNavigate('tree', 'proyectos')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-sitemap" style="color: #0d9488;"></i>
+                    <span>Árbol de Partidas & Bitácora</span>
+                </button>
+            </div>
+
+            <!-- 3. Finanzas -->
+            <div class="mobile-module-group">
+                <div class="mobile-module-title"><i class="fa-solid fa-coins" style="color: #d97706;"></i> Finanzas & Tesorería</div>
+                <button onclick="mobileNavigate('financial', 'finanzas')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-chart-line" style="color: #0284c7;"></i>
+                    <span>Dashboard Financiero</span>
+                </button>
+            </div>
+
+            <!-- 4. Gastos & Facturación -->
+            <div class="mobile-module-group">
+                <div class="mobile-module-title"><i class="fa-solid fa-receipt" style="color: #e11d48;"></i> Gastos & Facturación</div>
+                <button onclick="mobileNavigate('pwa', 'gastos')" class="mobile-drawer-item" style="font-weight: 800; color: #0284c7;">
+                    <i class="fa-solid fa-camera" style="color: #0284c7;"></i>
+                    <span>Cargar Gasto OCR (PWA)</span>
+                </button>
+                <button onclick="mobileNavigate('inbox', 'gastos')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-inbox" style="color: #d97706;"></i>
+                    <span>Buzón de Aprobaciones</span>
+                </button>
+                <button onclick="mobileNavigate('expenses-log', 'gastos')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-book-journal-whills" style="color: #059669;"></i>
+                    <span>Libro Oficial de Gastos</span>
+                </button>
+            </div>
+
+            <!-- 5. Almacén & Logística -->
+            <div class="mobile-module-group">
+                <div class="mobile-module-title"><i class="fa-solid fa-boxes-stacked" style="color: #7c3aed;"></i> Almacén & Despacho</div>
+                <button onclick="mobileNavigate('dispatch', 'almacen')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-truck-ramp-box" style="color: #0284c7;"></i>
+                    <span>Guías de Despacho</span>
+                </button>
+            </div>
+
+            <!-- 6. Activos & Flota -->
+            <div class="mobile-module-group">
+                <div class="mobile-module-title"><i class="fa-solid fa-truck-pickup" style="color: #ea580c;"></i> Activos & Mantenimiento</div>
+                <button onclick="mobileNavigate('resources', 'activos')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-screwdriver-wrench" style="color: #0284c7;"></i>
+                    <span>Maquinaria & Vehículos</span>
+                </button>
+                <button onclick="mobileNavigate('maintenance', 'mantenimiento')" class="mobile-drawer-item">
+                    <i class="fa-solid fa-shield-halved" style="color: #d97706;"></i>
+                    <span>Seguridad & Configuración</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer del Drawer -->
+        <div style="padding: 12px 14px; border-top: 1px solid #e2e8f0; background: #f8fafc; margin-top: auto;">
+            <button onclick="handleLogout()" class="mobile-drawer-logout-btn">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Cerrar Sesión</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- BARRA INFERIOR PERMANENTE PARA CELULARES (MOBILE BOTTOM NAVIGATION) -->
+    <nav id="mobileBottomNav" class="mobile-bottom-nav" aria-label="Navegación Móvil Principal">
+        <button onclick="switchView('projects', 'proyectos')" class="mobile-bottom-btn" id="mNav-projects">
+            <i class="fa-solid fa-folder-tree"></i>
+            <span>Obras</span>
+        </button>
+
+        <button onclick="switchView('inbox', 'gastos')" class="mobile-bottom-btn" id="mNav-inbox">
+            <i class="fa-solid fa-inbox"></i>
+            <span>Buzón</span>
+        </button>
+
+        <!-- Botón Central Destacado de Captura OCR -->
+        <button onclick="switchView('pwa', 'gastos')" class="mobile-bottom-btn mobile-bottom-fab" id="mNav-pwa" title="Escanear Comprobante con Cámara">
+            <div class="fab-circle">
+                <i class="fa-solid fa-camera"></i>
+            </div>
+            <span>Escanear</span>
+        </button>
+
+        <button onclick="switchView('financial', 'finanzas')" class="mobile-bottom-btn" id="mNav-financial">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Finanzas</span>
+        </button>
+
+        <button onclick="toggleMobileNavDrawer()" class="mobile-bottom-btn" id="mNav-menu">
+            <i class="fa-solid fa-bars"></i>
+            <span>Menú</span>
+        </button>
     </nav>

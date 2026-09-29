@@ -2,14 +2,14 @@ import os
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.models import Expense, ExpenseCategory, Project, Asset, Personnel, AuditLog
+from app.models.models import Expense, ExpenseCategory, Project, Asset, Personnel, AuditLog, PartnerWithdrawal
 from app.schemas.schemas import ExpenseCreate, ExpenseOut
 
 router = APIRouter()
@@ -60,12 +60,26 @@ def get_expenses(
     status: Optional[str] = "aprobado",
     db: Session = Depends(get_db)
 ):
-    query = db.query(Expense)
+    query = db.query(Expense).options(
+        joinedload(Expense.category),
+        joinedload(Expense.project),
+        joinedload(Expense.reported_by)
+    )
     if project_id:
         query = query.filter(Expense.project_id == project_id)
     if category_id:
-        query = query.filter(Expense.category_id == category_id)
-    if status:
+        cat = db.query(ExpenseCategory).filter(ExpenseCategory.id == category_id).first()
+        if cat:
+            prefix = cat.code.split('.')[0] if '.' in cat.code else cat.code
+            child_ids = [c[0] for c in db.query(ExpenseCategory.id).filter(
+                (ExpenseCategory.parent_id == cat.id) | 
+                (ExpenseCategory.code.startswith(prefix + '.')) |
+                (ExpenseCategory.id == cat.id)
+            ).all()]
+            query = query.filter(Expense.category_id.in_(child_ids))
+        else:
+            query = query.filter(Expense.category_id == category_id)
+    if status and status != "all":
         query = query.filter(Expense.status == status)
     if alert_only:
         query = query.filter(Expense.alert_flag == True)
@@ -120,23 +134,38 @@ def get_categories_tree(db: Session = Depends(get_db)):
         prefix = p.code.split('.')[0] if '.' in p.code else p.code
         subcats = [c for c in cats if (c.parent_id == p.id or c.code.startswith(prefix + '.')) and c.id != p.id]
         subcats.sort(key=cat_sort_key)
-        p_spent = spent_by_cat.get(p.id, 0.0) + sum(spent_by_cat.get(s.id, 0.0) for s in subcats)
+        p_direct = spent_by_cat.get(p.id, 0.0)
+        sub_spent = sum(spent_by_cat.get(s.id, 0.0) for s in subcats)
+        total_p = round(p_direct + sub_spent, 2)
         
+        sub_items = [
+            {
+                "id": s.id,
+                "code": s.code,
+                "name": s.name,
+                "monthly_budget_usd": float(getattr(s, "monthly_budget_usd", 0.0) or 0.0),
+                "spent_usd": round(spent_by_cat.get(s.id, 0.0), 2)
+            } for s in subcats
+        ]
+
+        # Si el padre tiene gastos imputados directamente a su cuenta raíz,
+        # mostrarlos explícitamente en el desglose para que la suma cuadre exactamente con el total
+        if p_direct > 0 and len(subcats) > 0:
+            sub_items.insert(0, {
+                "id": p.id,
+                "code": f"{p.code} (Base)",
+                "name": f"Imputación Directa a Cuenta Raíz ({p.name})",
+                "monthly_budget_usd": float(getattr(p, "monthly_budget_usd", 0.0) or 0.0),
+                "spent_usd": round(p_direct, 2)
+            })
+
         tree.append({
             "id": p.id,
             "code": p.code,
             "name": p.name,
             "monthly_budget_usd": float(getattr(p, "monthly_budget_usd", 0.0) or 0.0),
-            "total_spent_usd": round(p_spent, 2),
-            "subcategories": [
-                {
-                    "id": s.id,
-                    "code": s.code,
-                    "name": s.name,
-                    "monthly_budget_usd": float(getattr(s, "monthly_budget_usd", 0.0) or 0.0),
-                    "spent_usd": round(spent_by_cat.get(s.id, 0.0), 2)
-                } for s in subcats
-            ]
+            "total_spent_usd": total_p,
+            "subcategories": sub_items
         })
     return tree
 
@@ -277,26 +306,77 @@ def validate_and_impute_expense(
     if not exp:
         raise HTTPException(status_code=404, detail="Comprobante no encontrado.")
 
-    exp.category_id = val_in.category_id
-    exp.project_id = val_in.project_id
+    # Validar categoría contable existente
+    cat = db.query(ExpenseCategory).filter(ExpenseCategory.id == val_in.category_id).first()
+    if not cat:
+        first_cat = db.query(ExpenseCategory).first()
+        cat_id = first_cat.id if first_cat else 1
+    else:
+        cat_id = cat.id
+
+    exp.category_id = cat_id
     exp.expense_type = val_in.expense_type
-    exp.partner_name = val_in.partner_name
+
+    if val_in.expense_type == "costo_obra":
+        exp.project_id = val_in.project_id
+        exp.partner_name = None
+    elif val_in.expense_type == "gasto_sede":
+        exp.project_id = None
+        exp.partner_name = None
+    elif val_in.expense_type == "retiro_socio":
+        exp.project_id = None
+        exp.partner_name = val_in.partner_name or "Socio Dalor"
+
     exp.supplier_vendor = val_in.supplier_vendor
     exp.description = val_in.description
     exp.amount_usd = val_in.amount_usd
     exp.amount_bs = round(val_in.amount_usd * val_in.exchange_rate, 2)
     exp.exchange_rate = val_in.exchange_rate
     exp.is_tax_exempt = val_in.is_tax_exempt
+
     if val_in.is_tax_exempt:
         exp.base_amount_usd = val_in.amount_usd
         exp.tax_amount_usd = 0.0
     else:
-        exp.base_amount_usd = val_in.base_amount_usd if val_in.base_amount_usd is not None else round(val_in.amount_usd / 1.16, 2)
-        exp.tax_amount_usd = val_in.tax_amount_usd if val_in.tax_amount_usd is not None else round(val_in.amount_usd - exp.base_amount_usd, 2)
+        b = val_in.base_amount_usd if (val_in.base_amount_usd is not None and val_in.base_amount_usd > 0) else round(val_in.amount_usd / 1.16, 2)
+        t = val_in.tax_amount_usd if (val_in.tax_amount_usd is not None and val_in.tax_amount_usd >= 0) else round(val_in.amount_usd - b, 2)
+        exp.base_amount_usd = b
+        exp.tax_amount_usd = t
+
     exp.payment_method = val_in.payment_method
     exp.fuel_liters = val_in.fuel_liters
     exp.odometer_at_fueling = val_in.odometer_at_fueling
     exp.status = "aprobado"
+
+    # Sincronización automática con Retiros de Socios para conciliación financiera
+    ref_tag = f"EXP-{exp.id}"
+    existing_w = db.query(PartnerWithdrawal).filter(PartnerWithdrawal.reference_number == ref_tag).first()
+    if val_in.expense_type == "retiro_socio":
+        p_name = val_in.partner_name or "Socio Dalor"
+        if existing_w:
+            existing_w.partner_name = p_name
+            existing_w.withdrawal_date = exp.expense_date
+            existing_w.concept = val_in.description or f"Retiro de Socio - Comprobante #{exp.id}"
+            existing_w.amount_usd = val_in.amount_usd
+            existing_w.amount_bs = round(val_in.amount_usd * val_in.exchange_rate, 2)
+            existing_w.exchange_rate = val_in.exchange_rate
+            existing_w.payment_method = val_in.payment_method or "caja_chica"
+        else:
+            new_w = PartnerWithdrawal(
+                partner_name=p_name,
+                withdrawal_date=exp.expense_date,
+                concept=val_in.description or f"Retiro de Socio - Comprobante #{exp.id}",
+                amount_usd=val_in.amount_usd,
+                amount_bs=round(val_in.amount_usd * val_in.exchange_rate, 2),
+                exchange_rate=val_in.exchange_rate,
+                payment_method=val_in.payment_method or "caja_chica",
+                reference_number=ref_tag,
+                notes=f"Generado automáticamente desde aprobación de gasto #{exp.id}"
+            )
+            db.add(new_w)
+    else:
+        if existing_w:
+            db.delete(existing_w)
 
     # Alerta Combustible si aplica
     if val_in.fuel_liters and val_in.fuel_liters > 0:

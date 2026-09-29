@@ -11,7 +11,13 @@ from app.models.models import (
     Project,
     Expense,
     ExpenseCategory,
-    AccountPayable
+    AccountPayable,
+    DispatchGuide,
+    DispatchGuideItem,
+    ProjectMaterialRequisition,
+    Asset,
+    Personnel,
+    ResourceAssignmentHistory
 )
 from app.services.bcv_scraper import BCVScraperService
 
@@ -30,10 +36,16 @@ class MaterialCreate(BaseModel):
     unit_cost_usd: float = 0.0
     location: str = "Almacen Central Dalor"
 
-class MaterialEntryCreate(BaseModel):
+class MaterialEntryItem(BaseModel):
     material_id: int
     quantity: float
     unit_cost_usd: float
+
+class MaterialEntryCreate(BaseModel):
+    material_id: Optional[int] = None
+    quantity: Optional[float] = None
+    unit_cost_usd: Optional[float] = None
+    items: Optional[List[MaterialEntryItem]] = None
     supplier_name: Optional[str] = "Proveedor General"
     reference_doc: Optional[str] = None
     notes: Optional[str] = None
@@ -43,14 +55,36 @@ class MaterialEntryCreate(BaseModel):
     payment_channel: Optional[str] = "caja_chica_usd"
     payment_ref: Optional[str] = None
 
-class MaterialConsumeCreate(BaseModel):
+class MaterialConsumeItem(BaseModel):
     material_id: int
     quantity: float
+
+class MaterialConsumeCreate(BaseModel):
+    material_id: Optional[int] = None
+    quantity: Optional[float] = None
+    items: Optional[List[MaterialConsumeItem]] = None
     project_id: Optional[int] = None
-    destination: str = "Taller Central"
+    destination: Optional[str] = "Taller Central"
     reference_doc: Optional[str] = None
     notes: Optional[str] = None
     performed_by: Optional[str] = "Custodio de Almacen"
+    driver_name: Optional[str] = None
+    vehicle_plate: Optional[str] = None
+
+class RequisitionDispatchItem(BaseModel):
+    requisition_id: int
+    quantity_to_dispatch: float
+
+class RequisitionDispatchCreate(BaseModel):
+    project_id: int
+    items: List[RequisitionDispatchItem]
+    driver_name: Optional[str] = "Transporte DALOR"
+    driver_id_doc: Optional[str] = "V-DALOR"
+    vehicle_plate: Optional[str] = "DALOR-01"
+    vehicle_model: Optional[str] = None
+    asset_id: Optional[int] = None
+    carrier_company: Optional[str] = "DALOR C.A."
+    notes: Optional[str] = None
 
 # ------------------------------------------------------------------------------
 # 1. LISTADO DE MATERIALES & STOCK EN TIEMPO REAL
@@ -128,93 +162,120 @@ def create_material(m_in: MaterialCreate, db: Session = Depends(get_db)):
         db.add(mov)
         db.commit()
 
-    return {"success": True, "message": "Material creado exitosamente.", "id": mat.id}
+    return {
+        "success": True,
+        "message": "Material creado exitosamente.",
+        "id": mat.id,
+        "code": mat.code,
+        "name": mat.name,
+        "category": mat.category,
+        "unit": mat.unit_measure,
+        "unit_measure": mat.unit_measure,
+        "unit_cost_usd": mat.unit_cost_usd,
+        "stock_quantity": mat.stock_quantity
+    }
 
 # ------------------------------------------------------------------------------
-# 3. ENTRADA DE MATERIAL (COMPRA / INGRESO A ALMACEN)
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# 3. ENTRADA DE MATERIAL (COMPRA / INGRESO A ALMACEN)
+# 3. ENTRADA DE MATERIAL (COMPRA / INGRESO A ALMACEN - SOPORTE MULTI-RENGLÓN)
 # ------------------------------------------------------------------------------
 @router.post("/entry")
 def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_db)):
-    if entry.quantity <= 0:
-        raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a cero.")
+    # 1. Normalizar ítems (soporte multi-renglón y retrocompatibilidad mono-ítem)
+    raw_items = entry.items if (entry.items and len(entry.items) > 0) else []
+    if not raw_items and entry.material_id:
+        if (entry.quantity or 0) <= 0:
+            raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a cero.")
+        raw_items = [MaterialEntryItem(
+            material_id=entry.material_id,
+            quantity=entry.quantity,
+            unit_cost_usd=entry.unit_cost_usd or 0.0
+        )]
+
+    if not raw_items:
+        raise HTTPException(status_code=400, detail="Debe ingresar al menos un renglón de material con cantidad válida.")
 
     try:
-        # Bloqueo de fila para concurrencia segura (Row-level Lock)
-        mat = db.query(Material).filter(Material.id == entry.material_id).with_for_update().first()
-        if not mat:
-            raise HTTPException(status_code=404, detail="Material no encontrado.")
-
-        # Obtener Tasa Oficial BCV Dinámica
         bcv_data = BCVScraperService.get_official_rate()
         current_rate = float(bcv_data.get("rate", 842.21))
 
-        prev_stock = mat.stock_quantity
-        prev_cost = mat.unit_cost_usd
-        prev_total = prev_stock * prev_cost
+        invoice_total_usd = 0.0
+        processed_items_desc = []
+        created_movements = []
 
-        new_qty = entry.quantity
-        new_unit_cost = entry.unit_cost_usd
-        entry_total = new_qty * new_unit_cost
+        for item in raw_items:
+            if item.quantity <= 0:
+                continue
 
-        total_qty = prev_stock + new_qty
+            mat = db.query(Material).filter(Material.id == item.material_id).with_for_update().first()
+            if not mat:
+                raise HTTPException(status_code=404, detail=f"Material #{item.material_id} no encontrado.")
 
-        is_discrete = (mat.unit_measure or "").strip().lower() in ["und", "unid", "unidad", "unidades", "pza", "pieza", "piezas", "rollo", "rollos"]
-        if is_discrete:
-            mat.stock_quantity = float(round(total_qty))
-        else:
-            mat.stock_quantity = round(total_qty, 2)
-        
-        # Actualización al último costo registrado de reposición (Item 13)
-        mat.unit_cost_usd = round(new_unit_cost, 4)
-        mat.total_cost_usd = round(mat.stock_quantity * mat.unit_cost_usd, 2)
+            item_total = item.quantity * item.unit_cost_usd
+            invoice_total_usd += item_total
 
-        movement = MaterialMovement(
-            material_id=mat.id,
-            movement_type="entrada_compra",
-            quantity=new_qty,
-            unit_cost_usd=new_unit_cost,
-            total_cost_usd=entry_total,
-            destination="Almacen Central",
-            reference_doc=entry.reference_doc or "Compra de Material",
-            notes=f"Proveedor: {entry.supplier_name or 'N/A'}. {entry.notes or ''}",
-            performed_by=entry.performed_by
-        )
-        db.add(movement)
+            total_qty = mat.stock_quantity + item.quantity
+            is_discrete = (mat.unit_measure or "").strip().lower() in ["und", "unid", "unidad", "unidades", "pza", "pieza", "piezas", "rollo", "rollos"]
+            mat.stock_quantity = float(round(total_qty)) if is_discrete else round(total_qty, 2)
+            mat.unit_cost_usd = round(item.unit_cost_usd, 4)
+            mat.total_cost_usd = round(mat.stock_quantity * mat.unit_cost_usd, 2)
+
+            movement = MaterialMovement(
+                material_id=mat.id,
+                movement_type="entrada_compra",
+                quantity=item.quantity,
+                unit_cost_usd=item.unit_cost_usd,
+                total_cost_usd=round(item_total, 2),
+                destination="Almacen Central",
+                reference_doc=entry.reference_doc or "Compra de Material",
+                notes=f"Proveedor: {entry.supplier_name or 'N/A'}. {entry.notes or ''}",
+                performed_by=entry.performed_by or "Custodio de Almacén"
+            )
+            db.add(movement)
+            db.flush()
+            created_movements.append(movement)
+            processed_items_desc.append(f"{item.quantity:g} {mat.unit_measure} de {mat.name}")
+
+        invoice_total_usd = round(invoice_total_usd, 2)
+        summary_desc = f"Compra ({len(processed_items_desc)} ítems): " + "; ".join(processed_items_desc[:4])
+        if len(processed_items_desc) > 4:
+            summary_desc += f" y {len(processed_items_desc) - 4} más..."
 
         cash_expense = None
+        created_cxp = None
+        first_mov_id = created_movements[0].id if created_movements else None
+        ref_code = entry.reference_doc or f"CXP-ENT-{first_mov_id or int(datetime.utcnow().timestamp())}"
+
         if entry.register_in_cxp:
-            # Registrar como Cuenta por Pagar a Proveedores a crédito (Item 12)
             due_date = datetime.utcnow() + timedelta(days=entry.due_days or 15)
-            cxp = AccountPayable(
-                invoice_number=entry.reference_doc or f"CXP-MAT-{mat.id}-{int(datetime.utcnow().timestamp())}",
-                supplier_name=entry.supplier_name or "Proveedor Materiales",
+            created_cxp = AccountPayable(
+                invoice_number=ref_code,
+                supplier_name=entry.supplier_name or "Proveedor de Materiales",
                 payable_type="stock_almacen",
-                description=f"Compra de Material: {mat.name} (Cant: {new_qty} {mat.unit_measure})",
+                project_id=None,
+                description=summary_desc[:250],
                 due_date=due_date,
-                amount_usd=entry_total,
-                amount_bs=round(entry_total * current_rate, 2),
+                amount_usd=invoice_total_usd,
+                amount_bs=round(invoice_total_usd * current_rate, 2),
                 exchange_rate=current_rate,
-                balance_usd=entry_total,
+                balance_usd=invoice_total_usd,
                 status="pendiente",
-                notes=f"Generado automáticamente desde entrada de almacén (Tasa BCV: {current_rate} Bs/$). {entry.notes or ''}"
+                warehouse_movement_id=first_mov_id,
+                warehouse_entry_ref=ref_code,
+                notes=f"Generado automáticamente desde entrada de almacén multi-renglón ({len(raw_items)} ítems). {entry.notes or ''}"
             )
-            db.add(cxp)
+            db.add(created_cxp)
         else:
-            # Compra de Contado: Egresa de Caja/Banco inmediatamente (Item 12)
             cat = db.query(ExpenseCategory).filter(ExpenseCategory.code == "10.0").first() or db.query(ExpenseCategory).first()
             ref_info = f"Ref: {entry.payment_ref or entry.reference_doc or 'Contado Almacén'}."
             note_info = f" {entry.notes}" if entry.notes else ""
             cash_expense = Expense(
                 category_id=cat.id if cat else 1,
-                expense_type="costo_obra" if mat.location != "Almacén Central Dalor" else "gasto_sede",
+                expense_type="gasto_sede",
                 expense_date=datetime.utcnow(),
-                description=f"Compra Contado Stock: {mat.name} ({new_qty} {mat.unit_measure}). {ref_info}{note_info}",
-                supplier_vendor=entry.supplier_name or "Proveedor Materiales",
-                amount_usd=entry_total,
-                amount_bs=round(entry_total * current_rate, 2),
+                description=f"Compra Contado Stock ({len(raw_items)} ítems). {summary_desc[:180]}. {ref_info}{note_info}",
+                supplier_vendor=entry.supplier_name or "Proveedor de Materiales",
+                amount_usd=invoice_total_usd,
+                amount_bs=round(invoice_total_usd * current_rate, 2),
                 exchange_rate=current_rate,
                 payment_method=entry.payment_channel or "caja_chica_usd",
                 status="aprobado"
@@ -225,11 +286,12 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
 
         return {
             "success": True,
-            "message": f"Entrada registrada: +{new_qty} {mat.unit_measure} de {mat.name}.",
-            "new_stock": mat.stock_quantity,
-            "new_unit_cost_usd": mat.unit_cost_usd,
-            "total_value_usd": mat.total_cost_usd,
-            "expense_id": cash_expense.id if cash_expense else None
+            "message": f"Entrada multi-renglón procesada exitosamente ({len(raw_items)} ítems ingresados por ${invoice_total_usd:,.2f} USD).",
+            "items_count": len(raw_items),
+            "total_usd": invoice_total_usd,
+            "expense_id": cash_expense.id if cash_expense else None,
+            "cxp_id": created_cxp.id if created_cxp else None,
+            "invoice_number": ref_code
         }
     except HTTPException:
         db.rollback()
@@ -238,78 +300,146 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Fallo en transacción atómica de almacén: {str(e)}")
 
+
 # ------------------------------------------------------------------------------
-# 4. SALIDA / DESPACHO DE MATERIAL (A PROYECTO O TALLER)
+# 4. SALIDA / DESPACHO DE MATERIAL (A PROYECTO O TALLER - CON GUÍA FORMAL GD-XXXX)
 # ------------------------------------------------------------------------------
 @router.post("/consume")
 def record_material_consumption(consume: MaterialConsumeCreate, db: Session = Depends(get_db)):
-    if consume.quantity <= 0:
-        raise HTTPException(status_code=400, detail="La cantidad a despachar debe ser mayor a cero.")
+    # Normalizar ítems (soporte multi-renglón y mono-ítem)
+    raw_items = consume.items if (consume.items and len(consume.items) > 0) else []
+    if not raw_items and consume.material_id:
+        if (consume.quantity or 0) <= 0:
+            raise HTTPException(status_code=400, detail="La cantidad a despachar debe ser mayor a cero.")
+        raw_items = [MaterialConsumeItem(material_id=consume.material_id, quantity=consume.quantity)]
+
+    if not raw_items:
+        raise HTTPException(status_code=400, detail="Debe indicar al menos un material y cantidad a despachar.")
 
     try:
-        # Bloqueo de fila para concurrencia segura (Row-level Lock with_for_update)
-        mat = db.query(Material).filter(Material.id == consume.material_id).with_for_update().first()
-        if not mat:
-            raise HTTPException(status_code=404, detail="Material no encontrado.")
-
-        if consume.quantity > mat.stock_quantity:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Stock insuficiente ({mat.stock_quantity} {mat.unit_measure} disponibles en pañol)."
-            )
-
-        # Obtener Tasa Oficial BCV Dinámica
         bcv_data = BCVScraperService.get_official_rate()
         current_rate = float(bcv_data.get("rate", 842.21))
 
-        consumed_total_usd = consume.quantity * mat.unit_cost_usd
-        mat.stock_quantity -= consume.quantity
-        mat.total_cost_usd = round(mat.stock_quantity * mat.unit_cost_usd, 2)
-
+        proj = None
         project_name = "Taller Central (Gasto Operativo)"
         if consume.project_id:
             proj = db.query(Project).filter(Project.id == consume.project_id).first()
             if proj:
                 project_name = f"Proyecto {proj.code} - {proj.name}"
 
-        movement = MaterialMovement(
-            material_id=mat.id,
-            movement_type="despacho_obra",
-            quantity=consume.quantity,
-            unit_cost_usd=mat.unit_cost_usd,
-            total_cost_usd=round(consumed_total_usd, 2),
-            project_id=consume.project_id,
-            destination=consume.destination,
-            reference_doc=consume.reference_doc or "Requisicion Interna",
-            notes=f"Destino: {project_name}. {consume.notes or ''}",
-            performed_by=consume.performed_by
-        )
-        db.add(movement)
+        # Si el despacho es para una obra, emitir formalmente la Guía de Despacho (Punto 5)
+        guide = None
+        if proj:
+            current_year = datetime.utcnow().year
+            seq = db.query(DispatchGuide).count() + 1
+            guide_number = f"GD-{current_year}-{seq:03d}"
+            while db.query(DispatchGuide).filter(DispatchGuide.guide_number == guide_number).first():
+                seq += 1
+                guide_number = f"GD-{current_year}-{seq:03d}"
 
-        if consume.project_id:
-            # Validación estricta de categoría contable (Sin comodines ni fallback arbitrario)
-            cat = db.query(ExpenseCategory).filter(
-                (ExpenseCategory.name.ilike("%Insumos%")) | (ExpenseCategory.name.ilike("%Materiales%"))
-            ).first()
-            if not cat:
+            guide = DispatchGuide(
+                guide_number=guide_number,
+                project_id=proj.id,
+                client_id=proj.client_id,
+                recipient_name=proj.client_name,
+                transfer_reason=f"Despacho de Materiales a Obra {proj.code}",
+                destination_address=proj.location or "Frente de Obra Dalor",
+                destination_plant=proj.name,
+                transport_type="propio_dalor",
+                driver_name=consume.driver_name or "Transporte DALOR / Conductor Asignado",
+                driver_id_doc="V-DALOR",
+                vehicle_plate=consume.vehicle_plate or "DALOR-01",
+                status="en_transito",
+                dispatcher_name=consume.performed_by or "Custodio de Almacén Dalor",
+                notes=consume.notes or f"Despacho automático de almacén para {proj.code}"
+            )
+            db.add(guide)
+            db.flush()
+
+        total_consumed_usd = 0.0
+        despachados_summary = []
+
+        for item in raw_items:
+            if item.quantity <= 0:
+                continue
+
+            mat = db.query(Material).filter(Material.id == item.material_id).with_for_update().first()
+            if not mat:
+                raise HTTPException(status_code=404, detail=f"Material #{item.material_id} no encontrado.")
+
+            if item.quantity > mat.stock_quantity:
                 raise HTTPException(
                     status_code=400,
-                    detail="Categoría contable de gasto para materiales e insumos no configurada en el catálogo."
+                    detail=f"Stock insuficiente para {mat.name}: solicitados {item.quantity} {mat.unit_measure}, disponibles {mat.stock_quantity} {mat.unit_measure}."
                 )
 
+            item_cost_usd = item.quantity * mat.unit_cost_usd
+            total_consumed_usd += item_cost_usd
+            mat.stock_quantity -= item.quantity
+            mat.total_cost_usd = round(mat.stock_quantity * mat.unit_cost_usd, 2)
+
+            movement = MaterialMovement(
+                material_id=mat.id,
+                movement_type="despacho_obra",
+                quantity=item.quantity,
+                unit_cost_usd=mat.unit_cost_usd,
+                total_cost_usd=round(item_cost_usd, 2),
+                project_id=consume.project_id,
+                destination=consume.destination or (proj.location if proj else "Taller Central"),
+                reference_doc=guide.guide_number if guide else (consume.reference_doc or "Vale Interno"),
+                notes=f"Destino: {project_name}. {consume.notes or ''}",
+                performed_by=consume.performed_by or "Custodio de Almacén"
+            )
+            db.add(movement)
+
+            # Renglón en la Guía de Despacho si aplica
+            if guide:
+                g_item = DispatchGuideItem(
+                    dispatch_guide_id=guide.id,
+                    description=f"[{mat.code}] {mat.name}",
+                    quantity=item.quantity,
+                    unit=mat.unit_measure,
+                    condition_status="Nuevo / Verificado en Almacén"
+                )
+                db.add(g_item)
+
+            # Si existe una requisición pendiente para este proyecto y material, actualizarla
+            if proj:
+                req_item = db.query(ProjectMaterialRequisition).filter(
+                    ProjectMaterialRequisition.project_id == proj.id,
+                    ProjectMaterialRequisition.material_id == mat.id
+                ).first()
+                if req_item:
+                    req_item.quantity_dispatched = (req_item.quantity_dispatched or 0.0) + item.quantity
+                    if req_item.quantity_dispatched >= req_item.quantity_required:
+                        req_item.status = "despachado_total"
+                    else:
+                        req_item.status = "despachado_parcial"
+
+            despachados_summary.append(f"{item.quantity:g} {mat.unit_measure} de {mat.name}")
+
+        total_consumed_usd = round(total_consumed_usd, 2)
+
+        # Si es para obra, imputar gasto contable
+        if consume.project_id:
+            cat = db.query(ExpenseCategory).filter(
+                (ExpenseCategory.name.ilike("%Insumos%")) | (ExpenseCategory.name.ilike("%Materiales%"))
+            ).first() or db.query(ExpenseCategory).first()
+
+            desc_exp = f"Despacho Insumos ({len(raw_items)} ítems) a {project_name}: " + "; ".join(despachados_summary[:3])
             expense = Expense(
-                category_id=cat.id,
+                category_id=cat.id if cat else 1,
                 project_id=consume.project_id,
                 expense_type="costo_obra",
-                description=f"Consumo de Almacen: {consume.quantity} {mat.unit_measure} {mat.name}",
+                description=desc_exp[:250],
                 supplier_vendor="Almacen Central Dalor",
-                amount_usd=round(consumed_total_usd, 2),
-                amount_bs=round(consumed_total_usd * current_rate, 2),
+                amount_usd=total_consumed_usd,
+                amount_bs=round(total_consumed_usd * current_rate, 2),
                 exchange_rate=current_rate,
                 payment_method="consumo_inventario",
                 status="aprobado",
                 has_receipt=False,
-                alert_notes=f"Requisicion #{consume.reference_doc or 'INTERNA'} (Tasa BCV: {current_rate} Bs/$)"
+                alert_notes=f"Guía de Despacho #{guide.guide_number if guide else 'S/G'}"
             )
             db.add(expense)
 
@@ -317,20 +447,360 @@ def record_material_consumption(consume: MaterialConsumeCreate, db: Session = De
 
         return {
             "success": True,
-            "message": f"Despacho procesado: -{consume.quantity} {mat.unit_measure} imputados a {project_name}.",
-            "new_stock": mat.stock_quantity,
-            "remaining_stock": mat.stock_quantity,
-            "total_cost_imputed_usd": round(consumed_total_usd, 2)
+            "message": f"Despacho procesado exitosamente ({len(raw_items)} renglones imputados a {project_name})." + (f" Guía de Despacho formal #{guide.guide_number} emitida." if guide else ""),
+            "items_count": len(raw_items),
+            "total_cost_imputed_usd": total_consumed_usd,
+            "guide_id": guide.id if guide else None,
+            "guide_number": guide.guide_number if guide else None
         }
     except HTTPException:
         db.rollback()
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Fallo en transacción atómica de consumo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Fallo en transacción atómica de despacho: {str(e)}")
+
 
 # ------------------------------------------------------------------------------
-# 5. HISTORIAL DE MOVIMIENTOS (KARDEX)
+# 5. BANDEJA DE ALMACÉN: REQUISICIONES DE MATERIALES DE PROYECTOS (PREPARACIÓN & PICKING)
+# ------------------------------------------------------------------------------
+@router.get("/project-requisitions")
+def get_project_material_requisitions(
+    project_id: Optional[int] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(ProjectMaterialRequisition)
+    if project_id:
+        query = query.filter(ProjectMaterialRequisition.project_id == project_id)
+    if status and status != "all":
+        query = query.filter(ProjectMaterialRequisition.status == status)
+
+    rows = query.order_by(ProjectMaterialRequisition.created_at.desc()).all()
+
+    # Pre-cargar vehículos y personal por proyecto y flota general
+    project_logistics = {}
+    fleet_assets = db.query(Asset).filter(
+        Asset.asset_type.in_(["vehiculo", "camioneta", "camion", "remolque"]),
+        Asset.is_active == True
+    ).all()
+    all_pers = db.query(Personnel).filter(Personnel.is_active == True).all()
+
+    for r in rows:
+        p_id = r.project_id
+        if p_id and p_id not in project_logistics:
+            p_vehs = [v for v in fleet_assets if v.current_project_id == p_id]
+            p_pers = [p for p in all_pers if p.current_project_id == p_id]
+            project_logistics[p_id] = {
+                "assigned_vehicles": [{
+                    "id": v.id,
+                    "code": v.asset_code,
+                    "name": v.name,
+                    "brand": v.brand or "",
+                    "model": v.model or "",
+                    "plate": v.license_plate or "S/P"
+                } for v in p_vehs],
+                "assigned_personnel": [{
+                    "id": p.id,
+                    "code": p.code,
+                    "name": p.full_name,
+                    "ci": p.identification_id or "V-DALOR",
+                    "role": p.role_title or "Técnico"
+                } for p in p_pers]
+            }
+
+    results = []
+    for r in rows:
+        mat = r.material
+        asset = r.asset
+        res_type = getattr(r, 'resource_type', 'material') or 'material'
+
+        if res_type == 'material':
+            stock_disp = mat.stock_quantity if mat else 0.0
+            unit_m = r.unit_measure or (mat.unit_measure if mat else "UND")
+            m_code = r.material_code or (mat.code if mat else "MAT-REQ")
+            m_name = r.material_name or (mat.name if mat else "Insumo")
+        else:
+            is_avail_for_project = False
+            if asset and asset.is_active:
+                st = (asset.status or '').lower()
+                if st in ['disponible', 'disponible_base'] and (not asset.current_project_id or asset.current_project_id == r.project_id):
+                    is_avail_for_project = True
+                elif asset.current_project_id == r.project_id:
+                    is_avail_for_project = True
+            stock_disp = 1.0 if is_avail_for_project else 0.0
+            unit_m = "UND"
+            m_code = r.material_code or (asset.asset_code if asset else "ACT-REQ")
+            m_name = r.material_name or (asset.name if asset else "Equipo / Recurso")
+
+        rem = max(0.0, (r.quantity_required or 0.0) - (r.quantity_dispatched or 0.0))
+        results.append({
+            "id": r.id,
+            "project_id": r.project_id,
+            "project_code": r.project.code if r.project else "S/P",
+            "project_name": r.project.name if r.project else "Sin Proyecto",
+            "resource_type": res_type,
+            "material_id": r.material_id,
+            "asset_id": getattr(r, 'asset_id', None),
+            "material_code": m_code,
+            "material_name": m_name,
+            "unit_measure": unit_m,
+            "quantity_required": r.quantity_required,
+            "quantity_dispatched": r.quantity_dispatched or 0.0,
+            "quantity_pending": rem,
+            "stock_available": stock_disp,
+            "has_enough_stock": stock_disp >= rem,
+            "status": r.status,
+            "notes": r.notes or "",
+            "project_vehicles": project_logistics.get(r.project_id, {}).get("assigned_vehicles", []),
+            "project_personnel": project_logistics.get(r.project_id, {}).get("assigned_personnel", []),
+            "all_fleet": [{
+                "id": v.id,
+                "code": v.asset_code,
+                "name": v.name,
+                "plate": v.license_plate or "S/P"
+            } for v in fleet_assets],
+            "all_personnel": [{
+                "id": p.id,
+                "name": p.full_name,
+                "ci": p.identification_id or "V-DALOR"
+            } for p in all_pers],
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "-"
+        })
+    return results
+
+
+@router.post("/dispatch-project-requisition")
+def dispatch_project_requisition(req_in: RequisitionDispatchCreate, db: Session = Depends(get_db)):
+    proj = db.query(Project).filter(Project.id == req_in.project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+
+    if not req_in.items:
+        raise HTTPException(status_code=400, detail="Debe incluir al menos un ítem a despachar.")
+
+    try:
+        current_year = datetime.utcnow().year
+        seq = db.query(DispatchGuide).count() + 1
+        guide_number = f"GD-{current_year}-{seq:03d}"
+        # 1. Determinar Conductor y Cédula (C.I.)
+        d_name = (req_in.driver_name or "").strip()
+        d_ci = (req_in.driver_id_doc or "").strip()
+        if not d_name or d_name == "Transporte DALOR / Conductor Asignado" or not d_ci or d_ci == "V-DALOR":
+            pers_assigned = db.query(Personnel).filter(Personnel.current_project_id == proj.id).first()
+            if pers_assigned:
+                if not d_name or d_name == "Transporte DALOR / Conductor Asignado":
+                    d_name = pers_assigned.full_name
+                if not d_ci or d_ci == "V-DALOR":
+                    d_ci = pers_assigned.identification_id or "V-DALOR"
+        if not d_name:
+            d_name = "Transporte DALOR / Conductor Asignado"
+        if not d_ci:
+            d_ci = "V-DALOR"
+
+        # 2. Determinar Vehículo de Transporte y Placa
+        v_plate = (req_in.vehicle_plate or "").strip()
+        v_model = (req_in.vehicle_model or "").strip()
+        v_asset_id = req_in.asset_id
+        if not v_plate or v_plate == "DALOR-01" or not v_model:
+            veh_assigned = db.query(Asset).filter(
+                Asset.current_project_id == proj.id,
+                Asset.asset_type.in_(["vehiculo", "camioneta", "camion", "remolque"])
+            ).first()
+            if veh_assigned:
+                if not v_plate or v_plate == "DALOR-01":
+                    v_plate = veh_assigned.license_plate or "DALOR-01"
+                if not v_model:
+                    v_model = f"{veh_assigned.brand or ''} {veh_assigned.name}".strip()
+                if not v_asset_id:
+                    v_asset_id = veh_assigned.id
+            else:
+                if not v_plate:
+                    v_plate = "DALOR-01"
+                if not v_model:
+                    v_model = "Flota DALOR"
+
+        guide = DispatchGuide(
+            guide_number=guide_number,
+            project_id=proj.id,
+            client_id=proj.client_id,
+            recipient_name=proj.client_name,
+            transfer_reason=f"Despacho de Insumos Armados para {proj.code}",
+            destination_address=proj.location or "Frente de Obra Dalor",
+            destination_plant=proj.name,
+            transport_type="propio_dalor",
+            carrier_company=req_in.carrier_company or "DALOR C.A.",
+            asset_id=v_asset_id,
+            driver_name=d_name,
+            driver_id_doc=d_ci,
+            vehicle_plate=v_plate,
+            vehicle_model=v_model,
+            status="en_transito",
+            dispatcher_name="Custodio de Almacén Dalor",
+            notes=req_in.notes or f"Despacho de lista de armado para {proj.code}"
+        )
+        db.add(guide)
+        db.flush()
+
+        bcv_data = BCVScraperService.get_official_rate()
+        current_rate = float(bcv_data.get("rate", 842.21))
+        total_usd = 0.0
+        guide_items_to_create = []
+
+        for it in req_in.items:
+            req_item = db.query(ProjectMaterialRequisition).filter(
+                ProjectMaterialRequisition.id == it.requisition_id
+            ).first()
+            if not req_item or it.quantity_to_dispatch <= 0:
+                continue
+
+            pending_qty = max(0.0, (req_item.quantity_required or 0.0) - (req_item.quantity_dispatched or 0.0))
+            if it.quantity_to_dispatch > pending_qty + 0.001:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La cantidad a despachar ({it.quantity_to_dispatch}) no puede ser mayor al saldo solicitado/pendiente ({pending_qty}) para '{req_item.material_name}'."
+                )
+
+            res_type = getattr(req_item, 'resource_type', '') or 'material'
+
+            if res_type == 'material':
+                mat = None
+                if req_item.material_id:
+                    mat = db.query(Material).filter(Material.id == req_item.material_id).with_for_update().first()
+
+                unit_cost = mat.unit_cost_usd if mat else (req_item.estimated_cost_usd / max(1.0, req_item.quantity_required))
+                cost_this = it.quantity_to_dispatch * unit_cost
+                total_usd += cost_this
+
+                if mat:
+                    if it.quantity_to_dispatch > mat.stock_quantity:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Stock insuficiente en pañol para {mat.name}: requerido {it.quantity_to_dispatch}, disponible {mat.stock_quantity}."
+                        )
+                    mat.stock_quantity -= it.quantity_to_dispatch
+                    mat.total_cost_usd = round(mat.stock_quantity * mat.unit_cost_usd, 2)
+
+                    movement = MaterialMovement(
+                        material_id=mat.id,
+                        movement_type="despacho_obra",
+                        quantity=it.quantity_to_dispatch,
+                        unit_cost_usd=unit_cost,
+                        total_cost_usd=round(cost_this, 2),
+                        project_id=proj.id,
+                        destination=proj.location or "Obra",
+                        reference_doc=guide.guide_number,
+                        notes=f"Despacho por requisición #{req_item.id} - Guía {guide.guide_number}",
+                        performed_by="Custodio de Almacén"
+                    )
+                    db.add(movement)
+
+            # Asignación de Activo (Herramienta, Maquinaria, Vehículo)
+            elif res_type in ["herramienta", "maquinaria", "vehiculo"] and req_item.asset_id:
+                asset = db.query(Asset).filter(Asset.id == req_item.asset_id).first()
+                is_valid_asset = False
+                if asset and asset.is_active:
+                    st = (asset.status or '').lower()
+                    if st in ['disponible', 'disponible_base'] and (asset.current_project_id is None or asset.current_project_id == proj.id):
+                        is_valid_asset = True
+                    elif asset.current_project_id == proj.id:
+                        is_valid_asset = True
+                if not is_valid_asset:
+                    st_desc = asset.status if asset else "no existe"
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"No se puede despachar {req_item.material_name} ({req_item.material_code}): El equipo no está disponible para esta obra (Estatus: {st_desc})."
+                    )
+                asset.current_project_id = proj.id
+                asset.status = "en_obra"
+                asset.current_location = proj.location
+                hist = ResourceAssignmentHistory(
+                    project_id=proj.id,
+                    resource_type="asset",
+                    resource_id=asset.id,
+                    resource_code=asset.asset_code,
+                    resource_name=asset.name,
+                    destination_location=proj.location,
+                    status="en_obra",
+                    transfer_code=guide.guide_number,
+                    driver_name=guide.driver_name,
+                    notes=f"Despacho y asignación en obra por requisición #{req_item.id} - Guía {guide.guide_number}"
+                )
+                db.add(hist)
+
+            req_item.quantity_dispatched = (req_item.quantity_dispatched or 0.0) + it.quantity_to_dispatch
+            if req_item.quantity_dispatched >= req_item.quantity_required:
+                req_item.status = "despachado_total"
+            else:
+                req_item.status = "despachado_parcial"
+
+            # El vehículo de transporte NO se agrega como ítem de carga en la lista
+            if res_type != 'vehiculo':
+                guide_items_to_create.append({
+                    "resource_type": res_type,
+                    "code": req_item.material_code or "",
+                    "description": f"[{req_item.material_code}] {req_item.material_name}",
+                    "quantity": it.quantity_to_dispatch,
+                    "unit": req_item.unit_measure or "UND"
+                })
+
+        # ORDENAR LA CARGA: 1° Materiales e Insumos, 2° Herramientas y Equipos, 3° Maquinaria Pesada
+        def sort_cargo_items(it_obj):
+            t = it_obj["resource_type"]
+            order_prio = 1 if t == "material" else (2 if t == "herramienta" else (3 if t == "maquinaria" else 4))
+            return (order_prio, it_obj["code"])
+
+        guide_items_to_create.sort(key=sort_cargo_items)
+
+        for seq_idx, it_data in enumerate(guide_items_to_create, 1):
+            g_item = DispatchGuideItem(
+                dispatch_guide_id=guide.id,
+                item_number=seq_idx,
+                description=it_data["description"],
+                quantity=it_data["quantity"],
+                unit=it_data["unit"],
+                condition_status="Preparado y Verificado en Almacén"
+            )
+            db.add(g_item)
+
+        # Imputar costo contable
+        cat = db.query(ExpenseCategory).filter(
+            (ExpenseCategory.name.ilike("%Insumos%")) | (ExpenseCategory.name.ilike("%Materiales%"))
+        ).first() or db.query(ExpenseCategory).first()
+
+        expense = Expense(
+            category_id=cat.id if cat else 1,
+            project_id=proj.id,
+            expense_type="costo_obra",
+            description=f"Despacho de Lista de Armado a {proj.code} (Guía {guide.guide_number})",
+            supplier_vendor="Almacen Central Dalor",
+            amount_usd=round(total_usd, 2),
+            amount_bs=round(total_usd * current_rate, 2),
+            exchange_rate=current_rate,
+            payment_method="consumo_inventario",
+            status="aprobado",
+            has_receipt=False,
+            alert_notes=f"Guía de Despacho #{guide.guide_number}"
+        )
+        db.add(expense)
+
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Lista de insumos despachada con éxito. Se emitió la Guía de Despacho #{guide.guide_number}.",
+            "guide_id": guide.id,
+            "guide_number": guide.guide_number,
+            "total_usd": round(total_usd, 2)
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Fallo al despachar lista de requisición: {str(e)}")
+
+# ------------------------------------------------------------------------------
+# 6. HISTORIAL DE MOVIMIENTOS (KARDEX)
 # ------------------------------------------------------------------------------
 @router.get("/movements")
 def get_material_movements(

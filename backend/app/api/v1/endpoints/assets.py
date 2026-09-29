@@ -6,7 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.models.models import Asset, Expense, Project, Personnel, ResourceAssignmentHistory, AuditLog, User, AssetRentalLoan, DispatchGuide, AssetRentalLoanItem
+from app.models.models import Asset, AssetService, Expense, Project, Personnel, ResourceAssignmentHistory, AuditLog, User, AssetRentalLoan, DispatchGuide, AssetRentalLoanItem
 from app.core.security import verify_password
 
 router = APIRouter()
@@ -15,6 +15,7 @@ class AssetCreate(BaseModel):
     asset_code: str
     name: str
     asset_type: str # vehiculo, camioneta, herramienta, maquinaria, equipo_medicion
+    category: Optional[str] = "General"
     brand: Optional[str] = None
     model: Optional[str] = None
     serial_number: Optional[str] = None
@@ -25,7 +26,7 @@ class AssetCreate(BaseModel):
     external_entity_name: Optional[str] = None
     rental_rate_usd: Optional[float] = 0.0
     return_due_date: Optional[datetime] = None
-    current_location: Optional[str] = "Sede Central"
+    current_location: Optional[str] = "Sede Central Dalor (Guacara)"
     current_custodian_name: Optional[str] = "Disponible en Base"
     is_exclusive: bool = True
     is_active: bool = True
@@ -33,6 +34,7 @@ class AssetCreate(BaseModel):
 class AssetUpdate(BaseModel):
     name: Optional[str] = None
     asset_type: Optional[str] = None
+    category: Optional[str] = None
     brand: Optional[str] = None
     model: Optional[str] = None
     serial_number: Optional[str] = None
@@ -185,6 +187,7 @@ def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
         asset_code=asset_in.asset_code,
         name=asset_in.name,
         asset_type=asset_in.asset_type,
+        category=asset_in.category or "General",
         brand=asset_in.brand,
         model=asset_in.model,
         serial_number=asset_in.serial_number,
@@ -197,7 +200,7 @@ def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
         rental_rate_usd=asset_in.rental_rate_usd or 0.0,
         return_due_date=asset_in.return_due_date,
         status="disponible_base",
-        current_location=asset_in.current_location or "Sede Central",
+        current_location=asset_in.current_location or "Sede Central Dalor (Guacara)",
         current_custodian_name=asset_in.current_custodian_name or "Disponible en Base",
         is_exclusive=asset_in.is_exclusive,
         is_active=asset_in.is_active
@@ -207,13 +210,21 @@ def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
     db.refresh(new_asset)
     return new_asset
 
+@router.get("/categories/list")
+def get_asset_categories(db: Session = Depends(get_db)):
+    cats = db.query(Asset.category).filter(Asset.is_active == True, Asset.category != None).distinct().all()
+    cleaned = sorted(list(set(c[0] for c in cats if c[0])))
+    return cleaned
+
 @router.get("/fleet-summary")
 def get_fleet_summary(db: Session = Depends(get_db)):
     assets = db.query(Asset).filter(Asset.is_active == True).all()
+    projects_map = {p.id: p for p in db.query(Project).all()}
     result = []
     
     for a in assets:
         total_exp = db.query(func.sum(Expense.amount_usd)).filter(Expense.asset_id == a.id).scalar() or 0.0
+        services_count = db.query(func.count(AssetService.id)).filter(AssetService.asset_id == a.id).scalar() or 0
         km_since_service = (a.current_odometer or 0.0) - (a.last_service_odometer or 0.0)
         remaining_km = (a.service_interval_km or 5000.0) - km_since_service
         
@@ -223,21 +234,35 @@ def get_fleet_summary(db: Session = Depends(get_db)):
         elif remaining_km <= 500:
             traffic_light = "AMARILLO_PROXIMO"
             
+        is_in_project = bool(a.current_project_id and a.current_project_id in projects_map)
+        if is_in_project:
+            p = projects_map[a.current_project_id]
+            status_val = "en_obra"
+            loc_val = f"[{p.code}] {p.name}" + (f" ({p.location})" if p.location else "")
+            cust_val = a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else f"Equipo de Obra ({p.code})"
+        else:
+            status_val = "disponible_base"
+            loc_val = a.current_location or "Sede Central Dalor (Guacara)"
+            cust_val = a.current_custodian_name or "Disponible en Base"
+            
         result.append({
             "id": a.id,
             "asset_code": a.asset_code,
             "name": a.name,
             "asset_type": a.asset_type,
+            "category": a.category or "Flota Vehicular",
             "brand": a.brand,
             "model": a.model,
             "serial_number": a.serial_number,
             "license_plate": a.license_plate,
-            "status": "en_obra" if a.current_project_id else "disponible_base",
-            "current_location": a.current_location or "Sede Central",
+            "current_project_id": a.current_project_id,
+            "status": status_val,
+            "current_location": loc_val,
             "current_odometer": a.current_odometer or 0.0,
             "remaining_km_to_service": round(remaining_km, 1),
             "traffic_light": traffic_light,
-            "custodian": a.current_custodian_name or "Disponible en Base",
+            "custodian": cust_val,
+            "services_count": services_count,
             "total_operating_cost_usd": round(total_exp, 2)
         })
     return result
@@ -292,6 +317,7 @@ class ServiceRecordCreate(BaseModel):
     cost_usd: float = 0.0
     performed_by: Optional[str] = "Taller Central / Taller Externo"
     notes: Optional[str] = None
+    reset_oil_interval: Optional[bool] = None
 
 @router.post("/{asset_id}/record-service")
 def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = Depends(get_db)):
@@ -300,7 +326,21 @@ def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = 
         raise HTTPException(status_code=404, detail="Vehículo/Activo no encontrado.")
     
     asset.current_odometer = req.new_odometer
-    asset.last_service_odometer = req.new_odometer
+    
+    # Determinar si reinicia el semáforo del ciclo de lubricación/aceite (5.000 Km)
+    should_reset_oil = req.reset_oil_interval
+    if should_reset_oil is None:
+        # Por defecto solo cambio de aceite y preventivo mayor reinician el ciclo de aceite
+        should_reset_oil = req.service_type in ["cambio_aceite_filtros", "mantenimiento_preventivo_mayor"]
+
+    if should_reset_oil:
+        asset.last_service_odometer = req.new_odometer
+        remaining_km = asset.service_interval_km or 5000.0
+        status_msg = f"Servicio de {req.service_type} registrado. Ciclo de aceite reseteado (5.000 Km restantes - VERDE OK)."
+    else:
+        km_since = (asset.current_odometer or 0.0) - (asset.last_service_odometer or 0.0)
+        remaining_km = max(0.0, (asset.service_interval_km or 5000.0) - km_since)
+        status_msg = f"Servicio de {req.service_type} registrado en bitácora. Odómetro actualizado a {req.new_odometer:,.0f} km. Ciclo de aceite preservado ({remaining_km:,.0f} Km restantes)."
     
     if req.cost_usd > 0:
         from app.models.models import ExpenseCategory
@@ -311,27 +351,78 @@ def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = 
         exp = Expense(
             category_id=cat_id,
             asset_id=asset.id,
-            supplier_vendor=req.notes or "Taller Central",
+            supplier_vendor=req.performed_by or "Taller Central Automotriz",
             amount_usd=req.cost_usd,
-            description=f"Mantenimiento {req.service_type} a {asset.asset_code} ({asset.name}) a los {req.new_odometer} km.",
+            base_amount_usd=req.cost_usd,
+            tax_amount_usd=0.0,
+            is_tax_exempt=True,
+            description=f"Mantenimiento {req.service_type} a {asset.asset_code} ({asset.name}) a los {req.new_odometer} km. {req.notes or ''}".strip(),
             status="aprobado",
             exchange_rate=800.0,
             amount_bs=req.cost_usd * 800.0
         )
         db.add(exp)
         
+    srv = AssetService(
+        asset_id=asset.id,
+        service_date=datetime.utcnow(),
+        service_type=req.service_type,
+        service_odometer=req.new_odometer,
+        technician_workshop=req.performed_by or req.notes or "Taller Central",
+        cost_usd=req.cost_usd,
+        cost_bs=req.cost_usd * 800.0,
+        notes=req.notes or "",
+        performed_by="almacen"
+    )
+    db.add(srv)
+
     log = AuditLog(
         username="almacen",
         module="activos",
         action="mantenimiento_vehiculo",
-        details=f"Servicio de {req.service_type} registrado para {asset.asset_code}. Odómetro reseteado a {req.new_odometer} km."
+        details=f"Servicio de {req.service_type} para {asset.asset_code}. Odómetro: {req.new_odometer} km. Reseteo aceite: {'SÍ' if should_reset_oil else 'NO'}. Costo: ${req.cost_usd:,.2f}"
     )
     db.add(log)
     db.commit()
     return {
         "success": True, 
-        "message": f"Servicio de {req.service_type} registrado. Odómetro actualizado a {req.new_odometer:,.0f} km. Semáforo en VERDE OK (5.000 Km restantes).",
-        "remaining_km": asset.service_interval_km or 5000.0
+        "message": status_msg,
+        "remaining_km": round(remaining_km, 1),
+        "oil_interval_reset": should_reset_oil
+    }
+
+@router.get("/{asset_id}/services")
+def get_asset_services(asset_id: int, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Vehículo/Activo no encontrado.")
+    
+    services = db.query(AssetService).filter(AssetService.asset_id == asset_id).order_by(AssetService.service_date.desc()).all()
+    total_cost = sum(s.cost_usd or 0.0 for s in services)
+    
+    return {
+        "asset": {
+            "id": asset.id,
+            "asset_code": asset.asset_code,
+            "name": asset.name,
+            "brand": asset.brand or "",
+            "model": asset.model or "",
+            "license_plate": asset.license_plate or "-",
+            "current_odometer": asset.current_odometer or 0.0,
+            "status": asset.status,
+            "current_location": asset.current_location or "Sede Central Dalor (Guacara)"
+        },
+        "services_count": len(services),
+        "total_cost_usd": round(total_cost, 2),
+        "services": [{
+            "id": s.id,
+            "service_date": s.service_date.strftime("%Y-%m-%d %H:%M") if s.service_date else "-",
+            "service_type": s.service_type,
+            "service_odometer": s.service_odometer,
+            "technician_workshop": s.technician_workshop or "Taller Central",
+            "cost_usd": s.cost_usd or 0.0,
+            "notes": s.notes or ""
+        } for s in services]
     }
 
 class OdometerUpdate(BaseModel):
@@ -617,6 +708,20 @@ def record_asset_maintenance(
     if maint_in.service_odometer and maint_in.service_odometer > (asset.current_odometer or 0.0):
         asset.current_odometer = maint_in.service_odometer
 
+    # Registrar servicio en tabla de bitácora de servicios
+    srv = AssetService(
+        asset_id=asset.id,
+        service_date=datetime.utcnow(),
+        service_type=maint_in.maintenance_type,
+        service_odometer=current_km,
+        technician_workshop=maint_in.technician_or_workshop,
+        cost_usd=maint_in.cost_usd or 0.0,
+        cost_bs=(maint_in.cost_usd or 0.0) * 800.0,
+        notes=maint_in.description,
+        performed_by="almacen"
+    )
+    db.add(srv)
+
     # Registrar auditoría de mantenimiento
     audit = AuditLog(
         username="almacen",
@@ -737,6 +842,25 @@ def get_asset_movement_history(asset_id: int, db: Session = Depends(get_db)):
                 "status": bi.status or r.status,
                 "notes": f"Lote: {bi.name} | {r.notes or ''} (Tarifa: ${r.rate_usd:.2f}/{r.rate_period})"
             })
+
+    # 4. Servicios y Mantenimientos realizados
+    services = db.query(AssetService).filter(AssetService.asset_id == asset_id).all()
+    for s in services:
+        timeline.append({
+            "id": f"srv-{s.id}",
+            "type": "servicio_mantenimiento",
+            "date": s.service_date.strftime("%Y-%m-%d %H:%M:%S") if s.service_date else s.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "transfer_code": f"SRV-{s.id:04d}",
+            "project_code": "TALLER",
+            "project_name": f"Mantenimiento: {s.service_type.replace('_', ' ').title()}",
+            "origin": "Sede Central Dalor (Guacara)",
+            "destination": s.technician_workshop or "Taller Central",
+            "responsible_person": s.technician_workshop or "Mecánico",
+            "driver_name": s.technician_workshop or "-",
+            "odometer": s.service_odometer,
+            "status": "servicio_realizado",
+            "notes": f"{s.notes or ''} (Costo: ${s.cost_usd:.2f})"
+        })
 
     # Ordenar por fecha descendente
     timeline.sort(key=lambda x: x["date"], reverse=True)

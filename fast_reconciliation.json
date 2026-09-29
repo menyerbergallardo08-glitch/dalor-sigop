@@ -1,0 +1,1994 @@
+{
+  "total_excel_items": 196135,
+  "excel_files": {
+    "EQUIPO ALM. 2 .xlsx": {
+      "ALM.2-A-1": {
+        "count": 16,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-A-1-01",
+            "LAMPARA Q/HUMEDA C/6 BOMB. MEDICO SECADO TURBINA 5001",
+            "1"
+          ],
+          [
+            "1-A-1-02",
+            "POSTE PARA SACAR DISPOSITIVO DE TURBINAS",
+            "1"
+          ]
+        ]
+      },
+      "aALM.A-2": {
+        "count": 11,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-A-2-01",
+            "SACOS OXIDO D/ALUMINIO ELECTROFUNDIDO 5 KILOS",
+            "15"
+          ],
+          [
+            "1-A-2-02",
+            "SACO DE MECATES VARIOS",
+            "1"
+          ]
+        ]
+      },
+      "ALM.": {
+        "count": 25,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-D-1-01",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTOYO",
+            "1",
+            "1"
+          ],
+          [
+            "1-D-1-02",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTUYO",
+            "2",
+            "1"
+          ]
+        ]
+      }
+    },
+    "EQUIPO CAJA D-1.xlsx": {
+      "ALM.1-D-1": {
+        "count": 12,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-D-1-01",
+            "COMPAS PEQUE\u00d1O",
+            "PROTO",
+            "1"
+          ],
+          [
+            "1-D-1-02",
+            "CALCULADORA CIENTIFICA",
+            "CASIO",
+            "SIF-405",
+            "1"
+          ]
+        ]
+      },
+      "ALM-1-C-4": {
+        "count": 41,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-C-4-01",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTOYO",
+            "1",
+            "1"
+          ],
+          [
+            "1-C-4-02",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTUYO",
+            "2",
+            "1"
+          ]
+        ]
+      },
+      "ALM.": {
+        "count": 25,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-D-1-01",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTOYO",
+            "1",
+            "1"
+          ],
+          [
+            "1-D-1-02",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTUYO",
+            "2",
+            "1"
+          ]
+        ]
+      }
+    },
+    "EQUIPO CAJA FUERTE.xlsx": {
+      "EQUI.HERRA.": {
+        "count": 15,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-N-1-01",
+            "ULTRASONIDO PARA MEDIR SOLDADURA KRUST KRALL USM 36L",
+            "G.E.",
+            "20100064",
+            "USM362"
+          ],
+          [
+            "1-N-1-02",
+            "LAMPARA FLORECENTE M. STECTROLINE VISION 365",
+            "SPECTROLINE",
+            "2134631",
+            "UV-365EH"
+          ]
+        ]
+      },
+      "MATERIALES": {
+        "count": 4,
+        "sample": [
+          [
+            "DESTINO:",
+            "FECHA:   /   /"
+          ],
+          [
+            "ITEM",
+            "DESCRIPCCION",
+            "MARCA",
+            "OBSERVACCION",
+            "CANT."
+          ],
+          [
+            "DESTINO:",
+            "FECHA:   /   /"
+          ]
+        ]
+      }
+    },
+    "EQUIPOS D.CAJONES.xlsx": {
+      "ALM-1-C-1": {
+        "count": 16,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "MODELO",
+            "SERIAL"
+          ],
+          [
+            "1-C-1-01",
+            "TESTER (MULTIMETRO) PARA MEDIR VALORES ELECTRICOS",
+            "FLUKE",
+            "FLUKE179",
+            "1"
+          ],
+          [
+            "1-C-1-02",
+            "PINZA AMPERIMETRICA PARA MEDIR MEDICCION DE CORRIENTE",
+            "FLUKE",
+            "FLUKE325",
+            "1"
+          ]
+        ]
+      },
+      "ALM.1-C-2": {
+        "count": 21,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "MODELO",
+            "STOC"
+          ],
+          [
+            "1-C-2-01",
+            "CARTUCHO DE CARBONO (FILTRO)",
+            "NORTH",
+            "N7500",
+            "2"
+          ],
+          [
+            "1-C-2-02",
+            "PRESINTO DE SEGURIDA ROJO",
+            "1"
+          ]
+        ]
+      },
+      "ALM.1-C-3,": {
+        "count": 15,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "MODELO",
+            "STOC"
+          ],
+          [
+            "1-C-3-01",
+            "LENTES DE SEGURIDAD COLOR NEGRO",
+            "SAFE",
+            "P/SOLDAR",
+            "33"
+          ],
+          [
+            "1-C-3-02",
+            "LENTE DE SEGURIDAD OXICORTE",
+            "35"
+          ]
+        ]
+      },
+      "ALM.1-C-4": {
+        "count": 71,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-C-4-01",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTOYO",
+            "N20119283",
+            "N531-128"
+          ],
+          [
+            "1-C-4-02",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTUYO",
+            "20090137",
+            "N531-128"
+          ]
+        ]
+      },
+      "ALM.1-\u00c7-5": {
+        "count": 1,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MODELO",
+            "SERIAL",
+            "MARCA"
+          ],
+          [
+            "EN ESTA AREA ENTAN ARCHIVADOS CARPETAS DE LA EMPRESA  VARIAS",
+            "1"
+          ]
+        ]
+      },
+      "ALM.1-6": {
+        "count": 21,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "MODELO",
+            "STOC"
+          ],
+          [
+            "1-C-6-01",
+            "EQUIPO OXICORTE C/PICO",
+            "HARRIS",
+            "1"
+          ],
+          [
+            "1-C-6-02",
+            "MANOMETRO P/BOMBONA DE OXICORTE",
+            "2"
+          ]
+        ]
+      },
+      "ALM.-C-7": {
+        "count": 49,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "MODELO",
+            "STOC"
+          ],
+          [
+            "1-C-7-01",
+            "MALET. LAINAS (SHIMS) D/CALIB. DESDE 0.05--2.00",
+            "CAJA NEGRA",
+            "1",
+            "ESTA EN LA CAJA 1"
+          ],
+          [
+            "1-C-7-02",
+            "DETECTOR INFRAROJOP/DUAL",
+            "2"
+          ]
+        ]
+      },
+      "ALM.-C-8": {
+        "count": 52,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-C-8-01",
+            "TALADRO NEUMATICO 3/8 REVERSIBLE 1003-097-319",
+            "HUSKY",
+            "210-10-1007",
+            "H4310"
+          ],
+          [
+            "1-C-8-02",
+            "TALADRO NEUMATICO 3/8 REVERSIBLE 1003-097-319",
+            "HUSKY",
+            "210-400-343",
+            "H4310"
+          ]
+        ]
+      },
+      "ALM.1-C-9": {
+        "count": 56,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "MOD./KILOS",
+            "STOC"
+          ],
+          [
+            "1-C-9-01",
+            "DISCO DE CORTE 3\"",
+            "75"
+          ],
+          [
+            "1-C-9-02",
+            "DISCO DE ESMERILAR 2\" X 1 1/16  X 3/8",
+            "80"
+          ]
+        ]
+      },
+      "ALM.3 EQUIPO": {
+        "count": 15,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-N-1-01",
+            "ULTRASONIDO PARA MEDIR SOLDADURA KRUST KRALL USM 36L",
+            "G.E.",
+            "20100064",
+            "USM362"
+          ],
+          [
+            "1-N-1-02",
+            "LAMPARA FLORECENTE M. STECTROLINE VISION 365",
+            "SPECTROLINE",
+            "2134631",
+            "UV-365EH"
+          ]
+        ]
+      }
+    },
+    "EQUIPOS DE PASILLO ALM-1.xlsx": {
+      "P-1 PASILLO": {
+        "count": 17,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-P-1-01",
+            "MAQUINA DE SOLDAR",
+            "MILLER",
+            "165597",
+            "GOLG/-S. 452"
+          ],
+          [
+            "1-P-1-02",
+            "MAQUINA DE SOLDAR MESA",
+            "MILLER",
+            "105UY190381",
+            "1"
+          ]
+        ]
+      },
+      "P-2 PASILLO": {
+        "count": 20,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-P-2-01",
+            "AFILADORA UNIVERSAL DE HERRAMIENTAS",
+            "MRCM",
+            "U-2",
+            "1"
+          ],
+          [
+            "1-P-2-02",
+            "MAQUINA SOLDAR DIESEL RODANTE",
+            "MILLER",
+            "LG1700E",
+            "BIG-BLUE"
+          ]
+        ]
+      },
+      "P-3 MAT.PASILLO": {
+        "count": 17,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "CAN.",
+            "OBSER."
+          ],
+          [
+            "1-P-3-02",
+            "ACEITE HIDRAULICO 68",
+            "16",
+            "P/TORNOS"
+          ],
+          [
+            "1-P-3-03",
+            "GAS OIL",
+            "0",
+            "CAMION NPR"
+          ]
+        ]
+      },
+      "P-4 OFICINA...": {
+        "count": 22,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "STOC",
+            "OBSERVACCION"
+          ],
+          [
+            "1-P-4-01",
+            "ESCRITORIOS",
+            "2",
+            "MADERA"
+          ],
+          [
+            "1-P-4-02",
+            "ARCHIVADORES",
+            "2",
+            "MADERA"
+          ]
+        ]
+      },
+      "P-5 MACHO TORNO": {
+        "count": 25,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "STOC",
+            "UBIC."
+          ],
+          [
+            "1-P-5-01",
+            "MACHO 3 MM UNC",
+            "S/N",
+            "1"
+          ],
+          [
+            "1-P-5-02",
+            "MACHO 6 MM UNC",
+            "S/N",
+            "1"
+          ]
+        ]
+      },
+      "HIST.EQUIPOS": {
+        "count": 4,
+        "sample": [
+          [
+            "ART.",
+            "DESCRIPCCION",
+            "FECHA",
+            "REALIZADO",
+            "HORAS TRABAJO"
+          ],
+          [
+            "1-P-1-01",
+            "MAQUINA DE SOLDAR MILLER 500; ESTA MAQUINA SE LE REALIZO SERVICIO CAMBIO DE FILTRO Y",
+            "2026-08-01 00:00:00",
+            "EN CORO QUIMO"
+          ],
+          [
+            "SE CAMBIA BOMBA DE AGUA POR TENER FUGA DE AGUA",
+            "2026-08-22 00:00:00"
+          ]
+        ]
+      }
+    },
+    "EQUIPOS DEL CONTENEDOR.xlsx": {
+      "3-X-1 L.COMBIN.": {
+        "count": 19,
+        "sample": [
+          [
+            "ITEM",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "CANT."
+          ],
+          [
+            "3-X-1-01",
+            "LLAVES COMBINADAS 1\"",
+            "STANLEY",
+            "86843"
+          ],
+          [
+            "3-X-1-02",
+            "LLAVES COMBINADAS 1-1/16",
+            "STANLEY",
+            "80844"
+          ]
+        ]
+      },
+      "3-X-2ESLINGAS": {
+        "count": 6,
+        "sample": [
+          [
+            "ITEM",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "CANT."
+          ],
+          [
+            "3-X-2-01",
+            "ESLINGA (CINTA) 4\" X 6 MTS. LARGO",
+            "7"
+          ],
+          [
+            "3-X-2-02",
+            "ESLINGA (CINTA) 3\" X 6 MTS. LARGO",
+            "1"
+          ]
+        ]
+      },
+      "3-X-3 L.IMPAC.MANDAR..": {
+        "count": 20,
+        "sample": [
+          [
+            "ITEM",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "CANT."
+          ],
+          [
+            "3-X-3-01",
+            "LLAVES IMPACTO DE GOLPE 2-1/14\"",
+            "CHROM MOLY",
+            "BD",
+            "3"
+          ],
+          [
+            "3-X-3-02",
+            "LLAVES IMPACTO DE GOLPE 1-7/8\"",
+            "CHROM MOLY",
+            "3"
+          ]
+        ]
+      },
+      "3-X-4 EQUIPO": {
+        "count": 32,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "MODELO",
+            "SERIAL"
+          ],
+          [
+            "3-X-4-01",
+            "TORQUIMETRO C.D.I. 250 LIBRAS",
+            "C.D.I.TORQUE",
+            "2503MFRPH",
+            "1111114125"
+          ],
+          [
+            "3-X-4-02",
+            "TORQUIMETRO C.D.I. 250 LIBRAS",
+            "C.D.I.TORQUE",
+            "6004MFR417",
+            "1111602833"
+          ]
+        ]
+      },
+      "3-X-5. HERRAMIENTA": {
+        "count": 53,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "MODELO",
+            "STOC"
+          ],
+          [
+            "3-X-5-01",
+            "MANTOS DE CALOR BOLSA ROJA",
+            "3"
+          ],
+          [
+            "3-X-5-02",
+            "LAMPARA DE ALUMBRADO PUBLICO C/ENCHUFE",
+            "1"
+          ]
+        ]
+      },
+      "3-X-6 CONT.BLACO": {
+        "count": 12,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "3-X-6-01",
+            "DISPOSITIVO (TURBINA 5001) BALANCEO",
+            "1"
+          ],
+          [
+            "3-X-6-02",
+            "DISPOSITIVO DE ARA\u00d1A PARA TURBINA 5001",
+            "1"
+          ]
+        ]
+      },
+      "3-X-7 COMPRESOR": {
+        "count": 10,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "3-X-7-01",
+            "COMPRESOR DE AIRE 2 CABEZOTES",
+            "ATLAS COPCO",
+            "ATLAS COPCO",
+            "1"
+          ],
+          [
+            "3-X-7-02",
+            "BOMBONA DE OXIGENO",
+            "4"
+          ]
+        ]
+      },
+      "3-X-8 Dados": {
+        "count": 53,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "CANT."
+          ],
+          [
+            "3-X-8-01",
+            "DADO 1-13/16\"  C:1\"",
+            "PROTO",
+            "100248",
+            "1"
+          ],
+          [
+            "3-X-8-02",
+            "DADO 1-7/8\" C:1\"",
+            "PROTO",
+            "5760",
+            "1"
+          ]
+        ]
+      },
+      "3-X-9 GRILL. CAMC.GUAYA": {
+        "count": 27,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "CANT."
+          ],
+          [
+            "3-X-9-01",
+            "GRILLETE 1-1/2\"",
+            "4"
+          ],
+          [
+            "3-X-9-02",
+            "GRILLETE 1-3/8\"",
+            "3"
+          ]
+        ]
+      }
+    },
+    "Electrodos stoc .xlsx": {
+      "ELECTRODOS": {
+        "count": 14,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "KILOS",
+            "UBICACCION"
+          ],
+          [
+            "1-S-1-01",
+            "ELECTRODO E-6010",
+            "WEST-ARCO",
+            "135",
+            "CORO"
+          ],
+          [
+            "1-S-1-02",
+            "ELECTRODO E-6013",
+            "WEST-ARCO",
+            "0",
+            "CORO"
+          ]
+        ]
+      },
+      "CONSUMO ELEC.": {
+        "count": 4,
+        "sample": [
+          [
+            "FECHA",
+            "USO",
+            "KILOS",
+            "RESP.",
+            "OBSERVACCION"
+          ],
+          [
+            "2026-02-10 00:00:00",
+            "SOLO SALIO PARA ANACO Y REGRESO",
+            "5",
+            "HERBY",
+            "MATERIAL DEVUELTO COMPLETO"
+          ],
+          [
+            "2026-06-16 00:00:00",
+            "ELECTRODO E-6010",
+            "5",
+            "QUIMO",
+            "MATERIAL PARA CORO"
+          ]
+        ]
+      }
+    },
+    "Equipos Henser .xlsx": {
+      "CASA J-1": {
+        "count": 195210,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-J-1-01",
+            "PISTOLA PARA CARTUCHO DE SILOCON 9\"",
+            "INGCO",
+            "1"
+          ],
+          [
+            "1-J-1-02",
+            "CAJA DADO D/COMPACTO 13--24 MM Y  7/16\"--1\"",
+            "D WAR",
+            "1"
+          ]
+        ]
+      },
+      "CASA J-2": {
+        "count": 13,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "STOC",
+            "CARACTERISTICA"
+          ],
+          [
+            "1-J-2-01",
+            "SILICON PARA BRIDA ROJA 515",
+            "LOCTATI",
+            "3"
+          ],
+          [
+            "1-J-2-02",
+            "SPRAY CINGANE MET E-59A",
+            "E-59A",
+            "1"
+          ]
+        ]
+      },
+      "ALM.": {
+        "count": 25,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "MARCA",
+            "SERIAL",
+            "MODELO"
+          ],
+          [
+            "1-D-1-01",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTOYO",
+            "1",
+            "1"
+          ],
+          [
+            "1-D-1-02",
+            "VERNIER ANALOGICO 150 MM  6\"",
+            "MITUTUYO",
+            "2",
+            "1"
+          ]
+        ]
+      }
+    },
+    "Extintores .xlsx": {
+      "EXTINTORES": {
+        "count": 8,
+        "sample": [
+          [
+            "CODIGO",
+            "DESCRIPCCION",
+            "TIPO EXTINTOR",
+            "FECHA MTTO.",
+            "FECHA VENCIM."
+          ],
+          [
+            "1-E-1-01",
+            "EXTINTOR NUMERO 1 LADO OFICINA",
+            "POLVO QUIMIC. SECO",
+            "2024-05-01 00:00:00",
+            "2025-05-01 00:00:00"
+          ],
+          [
+            "1-E-1-02",
+            "EXTINTOR NUMERO 2 ENTRADAD PRINCIPAL",
+            "POLVO QUIMIC. SECO",
+            "2024-05-01 00:00:00",
+            "2025-05-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "VEHICULOS.xlsx": {
+      "VEHICULOS": {
+        "count": 8,
+        "sample": [
+          [
+            "CODIGO",
+            "VEHICULO",
+            "MARCA",
+            "MODELO",
+            "PLACA"
+          ],
+          [
+            "1-V-1-01",
+            "CAMION NPR TIPO BARANDA 350 COLOR BLANCO A\u00d1O 2013",
+            "CHEVROLET",
+            "NPR-350",
+            "A47CC2V"
+          ],
+          [
+            "1-V-1-02",
+            "CAMIONETA DODGER RAM DOBLR CABINA COLOR GRIS",
+            "DODGER",
+            "DOG-RAM 250",
+            "A31AJ5B"
+          ]
+        ]
+      },
+      "SEGUROS": {
+        "count": 7,
+        "sample": [
+          [
+            "CODIGO",
+            "VEHICULO",
+            "TIPO SEGURO",
+            "FECHA INICIO",
+            "FECHA VENCIMIENTO"
+          ],
+          [
+            "1-V-1-01",
+            "CAMION NPRTIPO BARANDA 350 COLOR BLANCO A\u00d1O 2013",
+            "RC871",
+            "2026-01-23 00:00:00",
+            "2027-01-23 00:00:00"
+          ],
+          [
+            "1-V-1-02",
+            "CAMIONETA DODGER RAM DOBLR CABINA COLOR GRIS",
+            "2026-01-23 00:00:00",
+            "2027-01-23 00:00:00",
+            "2026-04-07 00:00:00"
+          ]
+        ]
+      },
+      "CAMBI ACEITE": {
+        "count": 7,
+        "sample": [
+          [
+            "CODIGO",
+            "VEHICULO",
+            "TIPO ACEITE",
+            "FECHA",
+            "FECHA CAMBIO"
+          ],
+          [
+            "1-V-1-01",
+            "CAMION NPRTIPO BARANDA 350 COLOR BLANCO A\u00d1O 2013",
+            "15/40",
+            "2026-04-01 00:00:00",
+            "2000 km"
+          ],
+          [
+            "1-V-1-02",
+            "CAMIONETA DODGER RAM DOBLR CABINA COLOR GRIS",
+            "HELIX 15/40 MULTIG.",
+            "2026-03-06 00:00:00",
+            "OK"
+          ]
+        ]
+      },
+      "HIST. FIAT": {
+        "count": 3,
+        "sample": [
+          [
+            "HISTORIAL DEL CARRO",
+            "FECHA",
+            "OBSERVACCION",
+            "KILOMETRAJE"
+          ],
+          [
+            "1",
+            "REVISION DEL CARRO Y SE LE VAN CAMBIAR 2 CAUCHOS DELANTEROS",
+            "2026-03-06 00:00:00"
+          ],
+          [
+            "2",
+            "***SE REALIZA BALANCEO Y ALINEACCION CAUCHOS DELANTERO Y",
+            "2026-03-06 00:00:00"
+          ]
+        ]
+      },
+      " HIST.NPR Y BAW": {
+        "count": 11,
+        "sample": [
+          [
+            "HISTORIAL DEL CARRO",
+            "FECHA",
+            "CAMION DOBLE CABINA BLANCO BAW DE NEPTUNIA",
+            "FECHA",
+            "KILOMETRAJE"
+          ],
+          [
+            "1",
+            "EL CAMION FUE LLEVADO AL TALLER PARA HACERLE EL MOTOR",
+            "2025-12-01 00:00:00"
+          ],
+          [
+            "SE  RECIBEEL CAMION CON LOS SIGUIENTES TRABAJO",
+            "2026-04-01 00:00:00",
+            "SE REALIZA EL CAMBIO DE ACEITE POR SUGERENCIA DE PERSONAL DE NEPTUNIA",
+            "2026-08-13 00:00:00",
+            "37347"
+          ]
+        ]
+      },
+      "HIST.PICK AZUL": {
+        "count": 5,
+        "sample": [
+          [
+            "HISTORIAL DEL CARRO",
+            "FECHA"
+          ],
+          [
+            "ESPERANDO LA INPECCION",
+            "FECHA",
+            "OBSERVACCION",
+            "KILOMETRAJE"
+          ],
+          [
+            "1",
+            "26/03/2025   SE MONTAN 4 CAUCHOS 265/70/R16 SE RECOMIENDA",
+            "2025-03-26 00:00:00"
+          ]
+        ]
+      },
+      "DODGER RAM": {
+        "count": 13,
+        "sample": [
+          [
+            "HISTORIAL DEL CARRO",
+            "FECHA",
+            "OBSERVACCION"
+          ],
+          [
+            "1",
+            "SR. QUIMO INFORMO QUE REALIZO ROTACCION DE DE LOS CAUCHOS",
+            "2026-03-06 00:00:00"
+          ],
+          [
+            "2",
+            "EL DIA DE HOY REALIZAR CAMBIO DE ACEITE Y FILTROS 15/40 MULTIGRADO",
+            "2026-03-06 00:00:00"
+          ]
+        ]
+      },
+      "MONTAC": {
+        "count": 2,
+        "sample": [
+          [
+            "HISTORIAL DEL CARRO",
+            "FECHA",
+            "OBSERVACCION"
+          ],
+          [
+            "1",
+            "SE REVISO Y EL ACEITE SE VE TODAVIA CON VISCOSIDAD SE MANDO A",
+            "2026-02-12 00:00:00",
+            "ESTA PEDIDO EL FILTRO DE AIRE"
+          ],
+          [
+            "NOTA  : SR. HENSER VA A MANDAR LA PERSONA ASIGNADA PARA EL TIPO",
+            "2026-04-06 00:00:00"
+          ]
+        ]
+      },
+      "HIST.VOLKWAGUE": {
+        "count": 1,
+        "sample": [
+          [
+            "HISTORIAL DEL CARRO",
+            "FECHA",
+            "OBSERVACCION"
+          ],
+          [
+            "NOTA TODO TIPO DE MANTENIMIENTO LO REALIZA POR VALENCIA",
+            "2026-06-06 00:00:00"
+          ]
+        ]
+      },
+      "HIST.4RUNNER": {
+        "count": 1,
+        "sample": [
+          [
+            "HISTORIAL DEL CARRO",
+            "FECHA",
+            "OBSERVACCION"
+          ],
+          [
+            "NOTA TODO TIPO DE MANTENIMIENTO LO REALIZA POR VALENCIA Y",
+            "2026-06-06 00:00:00"
+          ]
+        ]
+      }
+    }
+  },
+  "db_assets": [
+    {
+      "code": "1-V-1-01",
+      "name": "Cami\u00f3n NPR Tipo Baranda 350 Blanco (2013)",
+      "type": "vehiculo",
+      "brand": "Chevrolet",
+      "model": "NPR-350 Barandas",
+      "serial": null,
+      "plate": "A47CC2V",
+      "custodian": "Henser / Conductor NPR",
+      "location": "Sede Guacara / Operaciones"
+    },
+    {
+      "code": "1-V-1-02",
+      "name": "Camioneta Dodge Ram Doble Cabina Gris",
+      "type": "vehiculo",
+      "brand": "Dodge",
+      "model": "RAM 2500 4x4",
+      "serial": null,
+      "plate": "A31AJ5B",
+      "custodian": "Herby R. / Quimo",
+      "location": "Sede Guacara / Campo"
+    },
+    {
+      "code": "1-V-1-03",
+      "name": "Camioneta Toyota Hilux Kavak Doble Cabina Azul (2009)",
+      "type": "vehiculo",
+      "brand": "Toyota",
+      "model": "Hilux Kavak 4.0 V6",
+      "serial": null,
+      "plate": "A45AC91",
+      "custodian": "Sr. Quimo / Supervisor Campo",
+      "location": "Sede Guacara / Falc\u00f3n"
+    },
+    {
+      "code": "3-V-1-04",
+      "name": "Carro 4P Fiat Palio Gris (2003)",
+      "type": "vehiculo",
+      "brand": "Fiat",
+      "model": "Palio SX 5P 1.3",
+      "serial": null,
+      "plate": "DBP20K",
+      "custodian": "Administraci\u00f3n / Diligencias",
+      "location": "Sede Guacara"
+    },
+    {
+      "code": "3-V-1-05",
+      "name": "Montacargas Industrial Toyota (2005)",
+      "type": "maquinaria",
+      "brand": "Toyota",
+      "model": "7FGCU30 Industrial",
+      "serial": null,
+      "plate": "N/A (Taller)",
+      "custodian": "Coordinador de Taller",
+      "location": "Taller Dalor Guacara"
+    },
+    {
+      "code": "3-V-1-06",
+      "name": "Camioneta Toyota 4Runner Negra",
+      "type": "vehiculo",
+      "brand": "Toyota",
+      "model": "4Runner 4x4 V6",
+      "serial": null,
+      "plate": "AI619DK",
+      "custodian": "Direcci\u00f3n General / Valencia",
+      "location": "Oficinas Valencia"
+    },
+    {
+      "code": "3-V-1-07",
+      "name": "Carro Volkswagen SpaceFox Azul (2011)",
+      "type": "vehiculo",
+      "brand": "Volkswagen",
+      "model": "Space Fox 1.6",
+      "serial": null,
+      "plate": "AA293TD",
+      "custodian": "Log\u00edstica & Compras",
+      "location": "Sede Valencia"
+    },
+    {
+      "code": "3-V-1-08",
+      "name": "Cami\u00f3n Doble Cabina Blanco (Neptunia)",
+      "type": "vehiculo",
+      "brand": "BAW",
+      "model": "Doble Cabina Di\u00e9sel",
+      "serial": null,
+      "plate": "A41AE34",
+      "custodian": "Personal Neptunia / Alianza",
+      "location": "Base Neptunia"
+    },
+    {
+      "code": "1-N-1-01",
+      "name": "Ultrasonido de Medici\u00f3n de Soldadura Krautkramer USM 36L",
+      "type": "herramienta_mayor",
+      "brand": "G.E. Krautkramer",
+      "model": "USM362 / USM 36L",
+      "serial": "20100064",
+      "plate": null,
+      "custodian": "Inspector END / Carlos Hurtado",
+      "location": "Caja Fuerte / Control Calidad"
+    },
+    {
+      "code": "1-N-1-02",
+      "name": "L\u00e1mpara de Luz UV Fluorescente Vision 365",
+      "type": "herramienta_mayor",
+      "brand": "Spectroline",
+      "model": "UV-365EH",
+      "serial": "2134631",
+      "plate": null,
+      "custodian": "Inspector END",
+      "location": "Caja Fuerte / Laboratorio"
+    },
+    {
+      "code": "1-N-1-03",
+      "name": "Pistola de An\u00e1lisis Qu\u00edmico y Materiales (PMI)",
+      "type": "herramienta_mayor",
+      "brand": "Rigaku",
+      "model": "KT100S",
+      "serial": "5002",
+      "plate": null,
+      "custodian": "Control de Calidad / Gerencia",
+      "location": "Caja Fuerte Especial"
+    },
+    {
+      "code": "1-N-1-04",
+      "name": "Medidor de Espesores de Paredes Met\u00e1licas Waygate",
+      "type": "herramienta_mayor",
+      "brand": "Waygate Technologies",
+      "model": "DMS Go Plus",
+      "serial": "GOPL521010108",
+      "plate": null,
+      "custodian": "Inspector de Obra",
+      "location": "Caja Fuerte / Malet\u00edn R\u00edgido"
+    },
+    {
+      "code": "1-N-1-05",
+      "name": "Medidor Multiparam\u00e9trico (pH, ORP, Salinidad, TDS)",
+      "type": "herramienta_mayor",
+      "brand": "Bante",
+      "model": "BANTE902P",
+      "serial": "231207-013",
+      "plate": null,
+      "custodian": "Ingenier\u00eda Qu\u00edmica & Procesos",
+      "location": "Caja Fuerte"
+    },
+    {
+      "code": "VEH-08",
+      "name": "Montacargas Industrial TCM 3.5 Toneladas",
+      "type": "maquinaria",
+      "brand": "TCM",
+      "model": "FD35T",
+      "serial": "TCM-88231",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "VEH-09",
+      "name": "Generador El\u00e9ctrico M\u00f3vil Di\u00e9sel 150 kVA",
+      "type": "maquinaria",
+      "brand": "Cummins",
+      "model": "C150D5",
+      "serial": "CUM-44910",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "1-D-1-04",
+      "name": "Vernier Digital Mitutoyo 450 mm (18 Pulgadas)",
+      "type": "herramienta_mayor",
+      "brand": "Mitutoyo",
+      "model": "CD-18\"C",
+      "serial": "S0014668",
+      "plate": null,
+      "custodian": "Conductor de Carga Pesada y Equipos",
+      "location": "CO2"
+    },
+    {
+      "code": "EQ-SOL-03",
+      "name": "Soldadora Inversora Miller Multiproceso 350A",
+      "type": "herramienta_mayor",
+      "brand": "Miller",
+      "model": "XMT 350 CC/CV",
+      "serial": "MIL-XMT-1",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "1-N-1-06",
+      "name": "Dur\u00f3metro Port\u00e1til Tester de Metales DTH400",
+      "type": "herramienta_mayor",
+      "brand": "Aerdness",
+      "model": "DTH400",
+      "serial": "BTE-0151",
+      "plate": null,
+      "custodian": "Inspector Metal\u00fargico",
+      "location": "Caja Fuerte"
+    },
+    {
+      "code": "1-D-1-05",
+      "name": "Vernier Anal\u00f3gico Mitutoyo 40\" (1000 mm / 1 Metro)",
+      "type": "herramienta_mayor",
+      "brand": "Mitutoyo",
+      "model": "160-155",
+      "serial": "08004190",
+      "plate": null,
+      "custodian": "Taller Mecanizado",
+      "location": "Estante Caja D Almac\u00e9n 1"
+    },
+    {
+      "code": "1-D-1-07",
+      "name": "Taladro Electromagn\u00e9tico Industrial Milwaukee 1-5/8\"",
+      "type": "herramienta_mayor",
+      "brand": "Milwaukee",
+      "model": "Electro-Magnetic 1-5/8",
+      "serial": "GB4AD213500133",
+      "plate": null,
+      "custodian": "Cuadrilla Estructuras",
+      "location": "Caja Roja Almac\u00e9n 1"
+    },
+    {
+      "code": "1-D-1-11",
+      "name": "Micr\u00f3metro de Exteriores Mitutoyo 500 - 575 mm",
+      "type": "herramienta_mayor",
+      "brand": "Mitutoyo",
+      "model": "104-144",
+      "serial": "61066400",
+      "plate": null,
+      "custodian": "Maestranza & Torno",
+      "location": "Caja D Almac\u00e9n 1"
+    },
+    {
+      "code": "EQ-SOL-01",
+      "name": "Soldadora Miller Big Blue 500X Di\u00e9sel",
+      "type": "maquinaria",
+      "brand": "Miller",
+      "model": "Big Blue 500X",
+      "serial": "BB500-D09",
+      "plate": null,
+      "custodian": "Herby Rodriguez",
+      "location": "Taller Dalor Guacara"
+    },
+    {
+      "code": "EQ-SOL-02",
+      "name": "Soldadora Lincoln Ranger 305D",
+      "type": "maquinaria",
+      "brand": "Lincoln Electric",
+      "model": "Ranger 305D",
+      "serial": "LE-R305-14",
+      "plate": null,
+      "custodian": "T\u00e9cnico Soldadura",
+      "location": "Taller Dalor Guacara"
+    },
+    {
+      "code": "1-D-1-10",
+      "name": "Micr\u00f3metro de Exteriores Mitutoyo 1200 - 1400 mm",
+      "type": "herramienta_mayor",
+      "brand": "Mitutoyo",
+      "model": "ON25 Serie 105-419",
+      "serial": "105-419",
+      "plate": null,
+      "custodian": "Conductor de Carga Pesada y Equipos",
+      "location": "CO2"
+    },
+    {
+      "code": "1-J-1-13",
+      "name": "Estaci\u00f3n de Energ\u00eda Port\u00e1til EcoFlow Delta 2",
+      "type": "herramienta_mayor",
+      "brand": "EcoFlow",
+      "model": "Delta 2 (1024Wh)",
+      "serial": "EF-DELTA2-01",
+      "plate": null,
+      "custodian": "Henser / Campo",
+      "location": "los guayos"
+    },
+    {
+      "code": "1-J-1-07",
+      "name": "Arrancador de Bater\u00eda Port\u00e1til NOCO 1500A (12V)",
+      "type": "herramienta_menor",
+      "brand": "NOCO",
+      "model": "Boost Plus GB50",
+      "serial": "GB-5012V",
+      "plate": null,
+      "custodian": "Disponible en Base",
+      "location": "Sede Central"
+    },
+    {
+      "code": "HER-001",
+      "name": "Meg\u00f3hmetro Digital de Aislamiento 10kV Megger",
+      "type": "herramienta_mayor",
+      "brand": "Megger",
+      "model": "MIT515",
+      "serial": "MG-10KV-90823",
+      "plate": null,
+      "custodian": "Conductor de Carga Pesada y Equipos",
+      "location": "Planta San Joaqu\u00edn, Cervecer\u00eda Polar"
+    },
+    {
+      "code": "VEH-05",
+      "name": "Cami\u00f3n 350 Chevrolet C-30 Estacas",
+      "type": "vehiculo",
+      "brand": "Chevrolet",
+      "model": "C-30 Heavy Duty",
+      "serial": null,
+      "plate": "E78IJ90",
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "VEH-06",
+      "name": "Camioneta Pick-up Toyota Hilux 4x4",
+      "type": "vehiculo",
+      "brand": "Toyota",
+      "model": "Hilux Doble Cabina",
+      "serial": null,
+      "plate": "F12KL34",
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "VEH-07",
+      "name": "Camioneta Pick-up Ford Ranger 4x4",
+      "type": "vehiculo",
+      "brand": "Ford",
+      "model": "Ranger XLT",
+      "serial": null,
+      "plate": "G56MN78",
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "VEH-001",
+      "name": "Camioneta Toyota Hilux 4x4 Doble Cabina",
+      "type": "vehiculo",
+      "brand": "Toyota",
+      "model": "Hilux D-4D 3.0",
+      "serial": "8AJBA3CD9E1029384",
+      "plate": "A12BC3D",
+      "custodian": "Supervisor de Campo",
+      "location": "Planta San Joaqu\u00edn (En Obra)"
+    },
+    {
+      "code": "EQ-SOL-04",
+      "name": "Soldadora Inversora Lincoln Invertec V350-Pro",
+      "type": "herramienta_mayor",
+      "brand": "Lincoln Electric",
+      "model": "V350-PRO",
+      "serial": "LNC-INV-1",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "VEH-01",
+      "name": "Cami\u00f3n Chuto Mack Granite",
+      "type": "vehiculo",
+      "brand": "Mack",
+      "model": "Granite 2018",
+      "serial": null,
+      "plate": "A12BC34",
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "VEH-02",
+      "name": "Batea 3 Ejes Plataforma Carga",
+      "type": "vehiculo",
+      "brand": "Randon",
+      "model": "Plataforma 13.5m",
+      "serial": null,
+      "plate": "B56CD78",
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "VEH-03",
+      "name": "Cami\u00f3n Gr\u00faa Ford F-750 Brazo Telesc\u00f3pico",
+      "type": "vehiculo",
+      "brand": "Ford / Hiab",
+      "model": "F-750 12T",
+      "serial": null,
+      "plate": "C90EF12",
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "VEH-04",
+      "name": "Cami\u00f3n 350 Super Duty Plataforma",
+      "type": "vehiculo",
+      "brand": "Ford",
+      "model": "F-350 Trit\u00f3n",
+      "serial": null,
+      "plate": "D34GH56",
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "HR-ESM-01",
+      "name": "Esmeril Angular 9\" Bosch GWS 22-230 Heavy Duty (x4)",
+      "type": "herramienta_mayor",
+      "brand": "Bosch",
+      "model": "GWS 22-230",
+      "serial": "BSH-9-SET1",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "HR-ESM-02",
+      "name": "Esmeril Angular 4-1/2\" DeWalt DWE4020 (x6)",
+      "type": "herramienta_menor",
+      "brand": "DeWalt",
+      "model": "DWE4020",
+      "serial": "DWT-45-SET1",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "HR-ROT-01",
+      "name": "Rotomartillo SDS-Max Bosch GBH 8-45 D",
+      "type": "herramienta_mayor",
+      "brand": "Bosch",
+      "model": "GBH 8-45 D",
+      "serial": "BSH-ROTO-01",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "HR-IZA-01",
+      "name": "Se\u00f1orita / Tecle de Cadena Manual 5 Ton Yale (x2)",
+      "type": "herramienta_mayor",
+      "brand": "Yale",
+      "model": "Yalelift 360 5T",
+      "serial": "YAL-5T-SET1",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "HR-IZA-02",
+      "name": "Se\u00f1orita / Tecle de Palanca (Tirfor / Ratchet) 3 Ton Harrington (x3)",
+      "type": "herramienta_mayor",
+      "brand": "Harrington",
+      "model": "LB 3T",
+      "serial": "HAR-3T-SET1",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "HR-GAT-01",
+      "name": "Gatos Hidr\u00e1ulicos Tipo Botella 20 Toneladas (Juego x4)",
+      "type": "herramienta_mayor",
+      "brand": "Enerpac",
+      "model": "GB-20T",
+      "serial": "ENR-20T-SET",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "HR-TOR-01",
+      "name": "Torqu\u00edmetro Industrial 1\" Proto 100-600 ft-lb con Calibraci\u00f3n",
+      "type": "herramienta_mayor",
+      "brand": "Proto",
+      "model": "J6014C",
+      "serial": "PRT-TORQ-01",
+      "plate": null,
+      "custodian": null,
+      "location": "Sede Central (Almac\u00e9n)"
+    },
+    {
+      "code": "EQ-COR-02",
+      "name": "Equipo de Oxicorte Port\u00e1til con Cilindros",
+      "type": "herramienta_mayor",
+      "brand": "Harris",
+      "model": "Port-A-Torch",
+      "serial": "HAR-OXI-02",
+      "plate": null,
+      "custodian": "Conductor de Carga Pesada y Equipos",
+      "location": "Planta San Joaqu\u00edn, Cervecer\u00eda Polar"
+    },
+    {
+      "code": "HR-TAL-01",
+      "name": "Taladro Magn\u00e9tico Industrial Euroboor ECO 50",
+      "type": "herramienta_mayor",
+      "brand": "Euroboor",
+      "model": "ECO.50+",
+      "serial": "EUR-ECO-50",
+      "plate": null,
+      "custodian": "Conductor de Carga Pesada y Equipos",
+      "location": "Planta San Joaqu\u00edn, Cervecer\u00eda Polar"
+    },
+    {
+      "code": "EQ-CMP-01",
+      "name": "Compresor de Aire Di\u00e9sel Sullair 185 CFM Remolcable",
+      "type": "maquinaria",
+      "brand": "Sullair",
+      "model": "185 T4F",
+      "serial": "SUL-185-22",
+      "plate": null,
+      "custodian": "Conductor de Equipos",
+      "location": "Patio Central Guacara"
+    },
+    {
+      "code": "EQ-AIR-01",
+      "name": "Bomba de Pintura Airless Graco King 60:1 Neum\u00e1tica",
+      "type": "herramienta_mayor",
+      "brand": "Graco",
+      "model": "King Xtreme 60:1",
+      "serial": "GRACO-K60-01",
+      "plate": null,
+      "custodian": "Cuadrilla de Pintura",
+      "location": "Almac\u00e9n 2"
+    },
+    {
+      "code": "EQ-SAN-01",
+      "name": "Tolva de Sandblasting Clemco 600 lbs con Boquilla Venturi",
+      "type": "herramienta_mayor",
+      "brand": "Clemco",
+      "model": "Classic 600",
+      "serial": "CLM-600-08",
+      "plate": null,
+      "custodian": "Cuadrilla Sandblasting",
+      "location": "Almac\u00e9n 2"
+    },
+    {
+      "code": "EQ-COR-01",
+      "name": "Equipo de Oxicorte Industrial Victor con Reguladores",
+      "type": "herramienta_mayor",
+      "brand": "Victor",
+      "model": "Medalist 350",
+      "serial": "VIC-MED-35",
+      "plate": null,
+      "custodian": "T\u00e9cnico Calderer\u00eda",
+      "location": "Almac\u00e9n 1"
+    },
+    {
+      "code": "EQ-COR-03",
+      "name": "Cortadora de Plasma Hypertherm Powermax 85A",
+      "type": "herramienta_mayor",
+      "brand": "Hypertherm",
+      "model": "Powermax 85",
+      "serial": "HYP-PM85-04",
+      "plate": null,
+      "custodian": "Robert Rodriguez",
+      "location": "Taller Mecanizado"
+    },
+    {
+      "code": "HER-002",
+      "name": "Analizador de Calidad de Energ\u00eda y Redes Fluke",
+      "type": "herramienta_mayor",
+      "brand": "Fluke",
+      "model": "435 Series II",
+      "serial": "FLK-435-77491",
+      "plate": null,
+      "custodian": "Conductor de Carga Pesada y Equipos",
+      "location": "Planta San Joaqu\u00edn, Cervecer\u00eda Polar"
+    }
+  ],
+  "db_materials": [
+    {
+      "code": "MAT-SOL-01",
+      "name": "Electrodos de Soldadura E-7018 1/8\" (Caja 20 Kg)",
+      "category": "Soldadura y Gases",
+      "stock": 65.0,
+      "unit": "Cajas",
+      "cost": 55.0,
+      "location": "Almac\u00e9n Central Dalor"
+    },
+    {
+      "code": "MAT-SOL-02",
+      "name": "Electrodos de Soldadura E-6010 / E-6013 1/8\" (Caja 20 Kg)",
+      "category": "Soldadura y Gases",
+      "stock": 40.0,
+      "unit": "Cajas",
+      "cost": 48.0,
+      "location": "Almac\u00e9n Central Dalor"
+    },
+    {
+      "code": "MAT-SOL-03",
+      "name": "Alambre Tubular para Soldadura MIG/FCAW E71T-1 0.045\" (Rollo 15 Kg)",
+      "category": "Soldadura y Gases",
+      "stock": 28.0,
+      "unit": "Rollos",
+      "cost": 62.0,
+      "location": "Almac\u00e9n Central Dalor"
+    },
+    {
+      "code": "MAT-ABR-02",
+      "name": "Discos de Desbaste 7\" x 1/4\" x 7/8\" (Caja 20 Und)",
+      "category": "Abrasivos y Discos",
+      "stock": 25.0,
+      "unit": "Cajas",
+      "cost": 38.0,
+      "location": "Almac\u00e9n Central Dalor"
+    },
+    {
+      "code": "MAT-ABR-01",
+      "name": "Discos de Corte Abrasivo 9\" x 1/8\" x 7/8\" para Acero (Caja 25 Und)",
+      "category": "Abrasivos y Discos",
+      "stock": 84.0,
+      "unit": "Cajas",
+      "cost": 22.9524,
+      "location": "Almac\u00e9n Central Dalor"
+    },
+    {
+      "code": "1-S-1-01",
+      "name": "Electrodos para Soldar E-6010 West-Arco",
+      "category": "Soldadura y Gases",
+      "stock": 135.0,
+      "unit": "KG",
+      "cost": 3.8,
+      "location": "Almac\u00e9n Coro / Guacara"
+    },
+    {
+      "code": "1-S-1-03",
+      "name": "Electrodos para Soldar E-7018 Gris West-Arco",
+      "category": "Soldadura y Gases",
+      "stock": 39.2,
+      "unit": "KG",
+      "cost": 4.2,
+      "location": "Almac\u00e9n Coro / Guacara"
+    },
+    {
+      "code": "1-S-1-04",
+      "name": "Electrodos para Soldar E-7018 Rojo Lincoln Electric",
+      "category": "Soldadura y Gases",
+      "stock": 38.0,
+      "unit": "KG",
+      "cost": 4.5,
+      "location": "Almac\u00e9n Guacara"
+    },
+    {
+      "code": "1-S-1-05",
+      "name": "Electrodos Especiales E-41410 Grico29 Gritec",
+      "category": "Soldadura y Gases",
+      "stock": 20.3,
+      "unit": "KG",
+      "cost": 12.5,
+      "location": "Almac\u00e9n Guacara"
+    },
+    {
+      "code": "1-S-1-06",
+      "name": "Electrodos para Soldar Aluminio E-4043 Hoffman Arc",
+      "category": "Soldadura y Gases",
+      "stock": 1.8,
+      "unit": "KG",
+      "cost": 18.0,
+      "location": "Almac\u00e9n Guacara"
+    },
+    {
+      "code": "1-S-1-07",
+      "name": "Electrodos Arcair 3/8\" para Biselar y Corte",
+      "category": "Soldadura y Gases",
+      "stock": 4.5,
+      "unit": "KG",
+      "cost": 9.5,
+      "location": "Almac\u00e9n Coro"
+    },
+    {
+      "code": "1-S-1-08",
+      "name": "Electrodos Arcair 5/32\" para Corte de Soldadura",
+      "category": "Soldadura y Gases",
+      "stock": 2.5,
+      "unit": "KG",
+      "cost": 10.0,
+      "location": "Almac\u00e9n Guacara"
+    },
+    {
+      "code": "1-S-1-09",
+      "name": "Electrodo N\u00edquel 1/8\" para Fundici\u00f3n / Hierro Colado",
+      "category": "Soldadura y Gases",
+      "stock": 0.95,
+      "unit": "KG",
+      "cost": 35.0,
+      "location": "Almac\u00e9n Guacara"
+    },
+    {
+      "code": "1-P-3-11",
+      "name": "Varillas de Plata para Soldar Harris 8-8",
+      "category": "Soldadura y Gases",
+      "stock": 0.65,
+      "unit": "KG",
+      "cost": 45.0,
+      "location": "Caja Fuerte"
+    },
+    {
+      "code": "1-A-1-05",
+      "name": "Cable El\u00e9ctrico 1/0 Negro Industrial (Carrete 95m)",
+      "category": "Tuber\u00edas y Bridas",
+      "stock": 95.0,
+      "unit": "MTR",
+      "cost": 6.8,
+      "location": "Almac\u00e9n 2"
+    },
+    {
+      "code": "1-A-2-01",
+      "name": "Sacos de \u00d3xido de Aluminio Electrofundido 5 Kg",
+      "category": "Abrasivos y Discos",
+      "stock": 15.0,
+      "unit": "SACO",
+      "cost": 18.0,
+      "location": "Almac\u00e9n A-2"
+    },
+    {
+      "code": "1-J-2-01",
+      "name": "Silic\u00f3n para Bridas Rojas Loctite 515",
+      "category": "Pinturas y Recubrimientos",
+      "stock": 3.0,
+      "unit": "UND",
+      "cost": 22.0,
+      "location": "Caja J-2"
+    },
+    {
+      "code": "1-J-2-03",
+      "name": "Spray Penetrante para Inspecci\u00f3n END VP-31A",
+      "category": "Pinturas y Recubrimientos",
+      "stock": 1.0,
+      "unit": "UND",
+      "cost": 15.0,
+      "location": "Caja J-2"
+    },
+    {
+      "code": "MAT-PLA-01",
+      "name": "Plancha de Acero ASTM A36 12mm x 2.44m x 6.00m",
+      "category": "Planchas de Acero",
+      "stock": 18.0,
+      "unit": "UND",
+      "cost": 480.0,
+      "location": "Patio de Materiales"
+    },
+    {
+      "code": "MAT-PLA-02",
+      "name": "Plancha de Acero ASTM A36 6mm x 2.44m x 6.00m",
+      "category": "Planchas de Acero",
+      "stock": 24.0,
+      "unit": "UND",
+      "cost": 245.0,
+      "location": "Patio de Materiales"
+    },
+    {
+      "code": "MAT-PLA-03",
+      "name": "Plancha Antidesgaste Hardox 450 10mm x 2m x 6m",
+      "category": "Planchas de Acero",
+      "stock": 8.0,
+      "unit": "UND",
+      "cost": 1350.0,
+      "location": "Patio de Materiales"
+    },
+    {
+      "code": "MAT-VIG-01",
+      "name": "Viga Estructural IPE 200 x 12 metros",
+      "category": "Perfiles y Vigas",
+      "stock": 32.0,
+      "unit": "BARRA",
+      "cost": 310.0,
+      "location": "Patio de Vigas"
+    },
+    {
+      "code": "MAT-VIG-02",
+      "name": "Viga Estructural HEA 240 x 12 metros",
+      "category": "Perfiles y Vigas",
+      "stock": 14.0,
+      "unit": "BARRA",
+      "cost": 590.0,
+      "location": "Patio de Vigas"
+    },
+    {
+      "code": "MAT-TUB-01",
+      "name": "Tubo Acero Sin Costura ASTM A106 Gr.B 4\" SCH 40 (6m)",
+      "category": "Tuber\u00edas y Bridas",
+      "stock": 45.0,
+      "unit": "TUBO",
+      "cost": 145.0,
+      "location": "Rack Tuber\u00edas"
+    },
+    {
+      "code": "MAT-TUB-02",
+      "name": "Tubo Acero al Carbono ASTM A53 6\" SCH 80 (6m)",
+      "category": "Tuber\u00edas y Bridas",
+      "stock": 20.0,
+      "unit": "TUBO",
+      "cost": 260.0,
+      "location": "Rack Tuber\u00edas"
+    },
+    {
+      "code": "MAT-REC-01",
+      "name": "Pintura Anticorrosiva Ep\u00f3xica Poliamida Gris (Kit Gal\u00f3n A+B)",
+      "category": "Pinturas y Recubrimientos",
+      "stock": 42.0,
+      "unit": "KIT",
+      "cost": 58.0,
+      "location": "Almac\u00e9n Qu\u00edmicos"
+    },
+    {
+      "code": "MAT-REC-02",
+      "name": "Esmalte Poliuretano Alto Brillo Blanco/Seguridad (Kit Gal\u00f3n)",
+      "category": "Pinturas y Recubrimientos",
+      "stock": 30.0,
+      "unit": "KIT",
+      "cost": 72.0,
+      "location": "Almac\u00e9n Qu\u00edmicos"
+    },
+    {
+      "code": "MAT-ABR-03",
+      "name": "Granalla de Acero / Abrasivo para Sandblasting G-40 (Saco 25 Kg)",
+      "category": "Abrasivos y Discos",
+      "stock": 30.0,
+      "unit": "Sacos",
+      "cost": 28.0,
+      "location": "Almac\u00e9n Central Dalor"
+    }
+  ]
+}

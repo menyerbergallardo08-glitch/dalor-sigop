@@ -33,6 +33,12 @@ def public_bcv_rate(force_refresh: bool = False):
     from app.services.bcv_scraper import BCVExchangeRateService
     return BCVExchangeRateService.get_current_rate(force_refresh=force_refresh)
 
+@api_router.get("/financial/bcv-rates/history", tags=["Financiero Público"])
+@api_router.get("/financial/bcv-rate/history", tags=["Financiero Público"])
+def public_bcv_rate_history(limit: int = 60, db: Session = Depends(get_db)):
+    from app.api.v1.endpoints.financial import get_bcv_rate_history
+    return get_bcv_rate_history(limit=limit, db=db)
+
 api_router.include_router(projects.public_router, prefix="/projects", tags=["Seguimiento Público"])
 
 # 🔒 Rutas Protegidas por Autenticación JWT (SEC-01: Exigen Bearer Token Válido)

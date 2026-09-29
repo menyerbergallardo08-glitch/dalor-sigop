@@ -345,28 +345,21 @@
 
                         <label class="form-label">Nº Factura / Valuación *</label>
 
-                        <input type="text" id="cxc_invoice_number" placeholder="FAC-2026-004" class="form-input" required>
+                        <input type="text" id="cxc_invoice_number" placeholder="FAC-2026-001" class="form-input" readonly style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 800; color: #1e3a8a;" required>
 
                     </div>
 
                     <div>
 
                         <label class="form-label">Cliente *</label>
-
-                        <select id="cxc_client_id" class="form-select" required></select>
-
+                        <select id="cxc_client_id" class="form-select" onchange="onCxcClientChanged()" required></select>
                     </div>
-
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
                     <div>
-
-                        <label class="form-label">Proyecto Imputable</label>
-
-                        <select id="cxc_project_id" class="form-select"></select>
-
+                        <label class="form-label">Proyecto Imputable *</label>
+                        <select id="cxc_project_id" class="form-select" onchange="onCxcProjectChanged()" required></select>
                     </div>
 
                     <div>
@@ -423,26 +416,118 @@
 
     <!-- MODAL: NUEVA CUENTA POR PAGAR (CxP) -->
     <div id="modalPayable" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content" style="max-width: 720px; max-height: 90vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
                 <div>
                     <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
                         <i class="fa-solid fa-file-invoice" style="color: #e11d48;"></i> Registrar Cuenta por Pagar a Proveedor (CxP)
                     </h3>
-                    <span style="font-size: 11px; color: #64748b;">Modalidades: Factura con Retención SENIAT, Factura Contado o Nota de Entrega</span>
+                    <span style="font-size: 11px; color: #64748b;">Modalidades: Factura Fiscal SENIAT, Factura Contado o Nota de Entrega con 3-Way Matching</span>
                 </div>
                 <button onclick="closeModal('modalPayable')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
             </div>
 
             <form id="payableForm" onsubmit="submitCreatePayable(event)" style="display: flex; flex-direction: column; gap: 10px;">
-                <!-- Tipo de Documento -->
-                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 8px 12px;">
-                    <label class="form-label" style="color: #9f1239; font-weight: 700; margin-bottom: 4px;">Tipo de Operación / Documento *</label>
-                    <select id="cxp_doc_type" class="form-select" onchange="onCxpModalDocTypeChange()" style="font-weight: 700;">
-                        <option value="factura">📄 Factura Fiscal SENIAT (Genera Comprobante de Retención IVA 75%/100%)</option>
-                        <option value="factura_sin_retencion">🏪 Factura Contado en Sitio (Con IVA pagado 100%, Sin Retención de DALOR)</option>
-                        <option value="nota_entrega">📦 Nota de Entrega / Recibo Informal (Sin IVA, Costo Directo a Obra)</option>
-                    </select>
+                <!-- Tipo de Documento y Concepto / Imputación -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <!-- Tipo de Documento -->
+                    <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 8px 12px;">
+                        <label class="form-label" style="color: #9f1239; font-weight: 700; margin-bottom: 4px;">Tipo de Operación / Documento *</label>
+                        <select id="cxp_doc_type" class="form-select" onchange="onCxpModalDocTypeChange()" style="font-weight: 700;">
+                            <option value="factura">📄 Factura SENIAT (Con Retención IVA)</option>
+                            <option value="factura_sin_retencion">🏪 Factura Contado en Sitio (Sin Retención)</option>
+                            <option value="nota_entrega">📦 Nota de Entrega / Recibo Informal</option>
+                        </select>
+                    </div>
+
+                    <!-- Tipo de Cuenta por Pagar / Imputación -->
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px;">
+                        <label class="form-label" style="color: #166534; font-weight: 700; margin-bottom: 4px;">Concepto / Tipo de Cuenta por Pagar *</label>
+                        <select id="cxp_payable_type" class="form-select" onchange="onCxpPayableTypeChanged()" style="font-weight: 700;">
+                            <option value="costo_material_obra">🏗️ Materiales / Consumibles Obra (Entrada)</option>
+                            <option value="stock_almacen">🏢 Reposición Stock Almacén (Entrada)</option>
+                            <option value="servicios_honorarios">🤝 Subcontrato / Servicios / Honorarios</option>
+                            <option value="alquiler_maquinaria_ext">🚜 Alquiler Maquinaria / Equipos Externos</option>
+                            <option value="gastos_sede">📂 Gastos Operativos / Administrativos Sede</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- PANEL 3-WAY MATCHING (REQUISITO FÍSICO DE ALMACÉN) -->
+                <div id="cxp_warehouse_matching_panel" style="background: #f8fafc; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-weight: 800; font-size: 12px; color: #166534; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-boxes-packing" style="color: #15803d;"></i> Respaldo Físico de Mercancía en Almacén (3-Way Matching)
+                        </span>
+                        <span style="font-size: 10px; background: #bbf7d0; color: #14532d; font-weight: 800; padding: 2px 6px; border-radius: 4px;">Auditoría DALOR</span>
+                    </div>
+                    <p style="font-size: 11px; color: #475569; margin: 0 0 10px 0; line-height: 1.3;">
+                        Para compras de materiales y consumibles, el sistema exige respaldo de recepción física: vinculando una entrada previa o registrando los ítems recibidos ahora.
+                    </p>
+
+                    <!-- Toggle Selección Opción A / Opción B -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; background: white; padding: 8px 10px; border-radius: 6px; border: 1.5px solid #86efac; cursor: pointer; font-size: 11.5px; font-weight: 700; color: #1e293b;" id="lbl_wh_mode_link">
+                            <input type="radio" name="cxp_wh_mode" value="link" id="cxp_wh_mode_link" checked onchange="onCxpWarehouseModeChange()">
+                            <span>1. Vincular Entrada de Almacén Previa</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; background: white; padding: 8px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; cursor: pointer; font-size: 11.5px; font-weight: 700; color: #1e293b;" id="lbl_wh_mode_new">
+                            <input type="radio" name="cxp_wh_mode" value="new" id="cxp_wh_mode_new" onchange="onCxpWarehouseModeChange()">
+                            <span>2. Cargar Mercancía Recibida Ahora</span>
+                        </label>
+                    </div>
+
+                    <!-- MODO A: Vincular Entrada Previa -->
+                    <div id="cxp_wh_link_view">
+                        <label class="form-label" style="font-size: 11px; color: #166534; font-weight: 700; margin-bottom: 4px;">
+                            Entrada Física sin Facturar (Registrada por Almacén) *
+                        </label>
+                        <select id="cxp_warehouse_entry_id" class="form-select" onchange="onCxpWarehouseEntrySelected()" style="font-size: 12px; font-weight: 600;">
+                            <option value="">-- Seleccionar Entrada de Almacén --</option>
+                        </select>
+                        <div id="cxp_wh_entry_details" class="hidden" style="margin-top: 6px; background: white; border: 1px dashed #86efac; border-radius: 6px; padding: 8px; font-size: 11px; color: #1e293b;"></div>
+                    </div>
+
+                    <!-- MODO B: Carga Directa de Mercancía Recibida -->
+                    <div id="cxp_wh_new_view" class="hidden">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                            <span style="font-size: 11px; font-weight: 700; color: #166534;">Materiales a ingresar automáticamente en stock:</span>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" onclick="openNewMaterialModalFromCxp()" class="btn-secondary" style="font-size: 11px; padding: 3px 8px; background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; font-weight: 800;" title="Crear un nuevo artículo en catálogo si no existe">
+                                    <i class="fa-solid fa-circle-plus"></i> Crear Nuevo Artículo
+                                </button>
+                                <button type="button" onclick="addCxpMaterialRow()" class="btn-secondary" style="font-size: 11px; padding: 3px 8px; background: #dcfce7; border-color: #86efac; color: #15803d; font-weight: 800;">
+                                    <i class="fa-solid fa-plus"></i> Agregar Fila
+                                </button>
+                            </div>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11px; background: white; border-radius: 6px; overflow: hidden; border: 1px solid #cbd5e1;">
+                            <thead style="background: #f1f5f9; border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
+                                <tr>
+                                    <th style="padding: 6px 8px;">Material de Catálogo</th>
+                                    <th style="padding: 6px 8px; width: 85px;">Cantidad</th>
+                                    <th style="padding: 6px 8px; width: 100px;">Costo Unit ($)</th>
+                                    <th style="padding: 6px 8px; width: 90px; text-align: right;">Subtotal ($)</th>
+                                    <th style="padding: 6px 8px; width: 35px; text-align: center;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cxp_materials_tbody">
+                                <!-- Dinámico -->
+                            </tbody>
+                            <tfoot style="background: #f8fafc; border-top: 1px solid #cbd5e1; font-weight: 800;">
+                                <tr>
+                                    <td colspan="3" style="padding: 6px 8px; text-align: right; color: #475569;">Total Mercancía Ingresada:</td>
+                                    <td id="cxp_materials_total_usd" style="padding: 6px 8px; text-align: right; color: #16a34a; font-size: 12px;">$0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                            <button type="button" onclick="applyCxpMaterialsTotalToAmount()" style="background: none; border: none; color: #2563eb; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: underline;">
+                                Copiar este monto al Total Documento ($)
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -779,14 +864,14 @@
                 </div>
 
                 <div>
-                    <label class="form-label">Cuenta Bancaria / Destino de los Fondos *</label>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label class="form-label">Cuenta Bancaria / Destino de los Fondos *</label>
+                        <button type="button" onclick="openManageAccountsModal()" style="border:none; background:transparent; color:#2563eb; font-size:11px; font-weight:800; cursor:pointer; padding:0 0 4px 0;" title="Agregar o editar cuentas bancarias">
+                            <i class="fa-solid fa-plus-circle"></i> Gestionar Cuentas
+                        </button>
+                    </div>
                     <select id="fin_trans_account" class="form-select" onchange="onFinTransAccountChanged()">
-                        <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
-                        <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
-                        <option value="Binance USDT">Binance USDT ($)</option>
-                        <option value="Zelle">Zelle ($)</option>
-                        <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
-                        <option value="Caja Efectivo Bs">Caja Efectivo Bs (Bs)</option>
+                        <option value="">Cargando cuentas...</option>
                     </select>
                 </div>
 
@@ -843,11 +928,7 @@
                 <div>
                     <label class="form-label">Cuenta de Egreso (De dónde sale el dinero) *</label>
                     <select id="refund_source_account" class="form-select">
-                        <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
-                        <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
-                        <option value="Binance USDT">Binance USDT ($)</option>
-                        <option value="Zelle">Zelle ($)</option>
-                        <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
+                        <option value="">Cargando cuentas...</option>
                     </select>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -878,7 +959,7 @@
 
     <!-- MODAL: CAMBIO DE DIVISAS / ARBITRAJE CAMBIARIO / TRANSFERENCIA ENTRE CUENTAS -->
     <div id="modalTreasuryExchange" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 560px;">
+        <div class="modal-content" style="max-width: 580px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
                 <div>
                     <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
@@ -889,6 +970,30 @@
                 <button type="button" onclick="closeModal('modalTreasuryExchange')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
             </div>
             <form id="treasuryExchangeForm" onsubmit="submitTreasuryExchange(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Fecha de Operación y Tasa BCV Oficial -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label" style="font-weight: 700;">Fecha de la Operación *</label>
+                        <input type="date" id="exch_date" onchange="onTreasuryExchangeDateChanged()" class="form-input" required>
+                        <span style="font-size: 10px; color: #64748b;">Permite registros retroactivos</span>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label class="form-label" style="font-weight: 700;">Tasa BCV Aplicada *</label>
+                            <button type="button" onclick="openBcvRateHistoryModal()" style="border: none; background: transparent; color: #2563eb; font-size: 11px; font-weight: 800; cursor: pointer; padding: 0;">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Histórico BCV
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 4px;">
+                            <input type="number" step="0.01" id="exch_bcv_rate_input" oninput="calcTreasuryExchangeDiff()" class="form-input" style="font-weight: 800; color: #0284c7;" required>
+                            <button type="button" onclick="openBcvRateHistoryModal()" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Ver tabla de tasas históricas">
+                                <i class="fa-solid fa-list"></i>
+                            </button>
+                        </div>
+                        <span style="font-size: 10px; color: #059669;" id="exch_bcv_rate_source_lbl">Tasa oficial en vivo</span>
+                    </div>
+                </div>
+
                 <!-- Tipo de Operación -->
                 <div>
                     <label class="form-label" style="font-weight: 700;">Sentido de la Operación *</label>
@@ -898,28 +1003,17 @@
                     </select>
                 </div>
 
-                <!-- Cuentas -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
                         <label class="form-label">Cuenta de Origen (Egreso) *</label>
                         <select id="exch_source_account" class="form-select" onchange="calcTreasuryExchangeDiff()">
-                            <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
-                            <option value="Caja Efectivo Bs">Caja Efectivo Bs (Bs)</option>
-                            <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
-                            <option value="Binance USDT">Binance USDT ($)</option>
-                            <option value="Zelle">Zelle ($)</option>
-                            <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
+                            <option value="">Cargando cuentas...</option>
                         </select>
                     </div>
                     <div>
                         <label class="form-label">Cuenta de Destino (Ingreso) *</label>
                         <select id="exch_target_account" class="form-select" onchange="calcTreasuryExchangeDiff()">
-                            <option value="Binance USDT">Binance USDT ($)</option>
-                            <option value="Banesco Panamá USD">Banesco Panamá USD ($)</option>
-                            <option value="Caja Efectivo USD">Caja Efectivo USD ($)</option>
-                            <option value="Zelle">Zelle ($)</option>
-                            <option value="Banesco Banco Universal (Bs)">Banesco Banco Universal (Bs)</option>
-                            <option value="Caja Efectivo Bs">Caja Efectivo Bs (Bs)</option>
+                            <option value="">Cargando cuentas...</option>
                         </select>
                     </div>
                 </div>
@@ -945,7 +1039,7 @@
                         </div>
                         <div>
                             <span style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Tasa Oficial BCV</span>
-                            <p id="exch_bcv_rate_lbl" style="font-size: 14px; font-weight: 900; color: #0284c7; margin: 2px 0 0 0;">Bs. 850.00</p>
+                            <p id="exch_bcv_rate_lbl" style="font-size: 14px; font-weight: 900; color: #0284c7; margin: 2px 0 0 0;">Bs. 0.00</p>
                         </div>
                         <div>
                             <span style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Diferencial Cambiario</span>
@@ -973,6 +1067,41 @@
                     <i class="fa-solid fa-right-left"></i> Confirmar Operación de Cambio
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL WIDGET: HISTÓRICO DE TASAS BCV -->
+    <div id="modalBcvRateHistory" class="modal-overlay hidden" style="z-index: 1050;">
+        <div class="modal-content" style="max-width: 520px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-building-columns" style="color: #0284c7;"></i> Historial de Tasas Oficiales BCV
+                    </h3>
+                    <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Seleccione la tasa exacta de la fecha requerida para calibrar operaciones.</p>
+                </div>
+                <button type="button" onclick="closeModal('modalBcvRateHistory')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <div style="max-height: 380px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11.5px;">
+                    <thead style="background: #f1f5f9; position: sticky; top: 0; z-index: 2;">
+                        <tr>
+                            <th style="padding: 8px 10px; text-align: left; font-weight: 700; color: #334155;">Fecha</th>
+                            <th style="padding: 8px 10px; text-align: right; font-weight: 700; color: #334155;">Tasa Oficial (Bs/$)</th>
+                            <th style="padding: 8px 10px; text-align: left; font-weight: 700; color: #334155;">Fuente</th>
+                            <th style="padding: 8px 10px; text-align: center; font-weight: 700; color: #334155;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bcvHistoryTableBody">
+                        <tr><td colspan="4" style="text-align: center; padding: 16px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando tasas históricas...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                <button type="button" onclick="closeModal('modalBcvRateHistory')" class="btn-secondary" style="font-size: 12px;">Cerrar</button>
+            </div>
         </div>
     </div>
 
@@ -1112,8 +1241,10 @@
                     <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cobrado Real</span>
                     <p id="detail_proj_collected" style="font-size: 13px; font-weight: 800; color: #059669; margin: 3px 0 0 0;">$0.00</p>
                 </div>
-                <div>
-                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Saldo x Cobrar</span>
+                <div onclick="goToProjectCxC(currentViewingProjectId)" style="cursor: pointer; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 4px 8px; transition: transform 0.15s ease;" title="Haga clic para ver o cobrar las Cuentas por Cobrar de esta obra en Finanzas">
+                    <span style="font-size: 10px; color: #be123c; text-transform: uppercase; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+                        Saldo x Cobrar <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px;"></i>
+                    </span>
                     <p id="detail_proj_receivable_bal" style="font-size: 13px; font-weight: 800; color: #dc2626; margin: 3px 0 0 0;">$0.00</p>
                 </div>
                 <div>
@@ -1157,61 +1288,44 @@
 
 
             <div style="margin-bottom: 14px; background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px;">
-
-                <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 8px;">
-
-                    <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Etapas & Hitos de Obra
-
-                </h4>
-
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                        <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Etapas & Hitos de Obra (EDT / Cronograma)
+                    </h4>
+                    <button type="button" onclick="openAddPhaseModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #0284c7; font-weight: 700; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-plus"></i> + Nueva Etapa
+                    </button>
+                </div>
                 <div id="detail_proj_phases_list" style="display: flex; flex-direction: column; gap: 6px;"></div>
-
             </div>
 
-
-
             <div class="grid-3" style="margin-bottom: 14px;">
-
                 <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
-
-                    <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 6px;">
-
-                        <i class="fa-solid fa-users" style="color: var(--dalor-blue);"></i> Cuadrilla Asignada
-
-                    </h4>
-
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                            <i class="fa-solid fa-users" style="color: var(--dalor-blue);"></i> Cuadrilla Asignada
+                        </h4>
+                    </div>
                     <ul id="detail_proj_personnel" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
-
                 </div>
 
-
-
                 <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
-
-                    <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 6px;">
-
-                        <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Vehículos en Obra
-
-                    </h4>
-
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                            <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Vehículos en Obra
+                        </h4>
+                    </div>
                     <ul id="detail_proj_fleet" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
-
                 </div>
-
-
 
                 <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
-
-                    <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 6px;">
-
-                        <i class="fa-solid fa-toolbox" style="color: #0d9488;"></i> Herramientas en Obra
-
-                    </h4>
-
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                            <i class="fa-solid fa-toolbox" style="color: #0d9488;"></i> Herramientas en Obra
+                        </h4>
+                    </div>
                     <ul id="detail_proj_tools" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
-
                 </div>
-
             </div>
 
 
@@ -1246,6 +1360,45 @@
                 </div>
             </div>
 
+            <!-- SECCIÓN: MATERIALES E INSUMOS SOLICITADOS A ALMACÉN (REQUISICIONES / ARMADO DE OBRA) -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                            <i class="fa-solid fa-boxes-stacked" style="color: #0d9488;"></i> Insumos & Materiales Solicitados a Almacén (Lista de Preparación)
+                        </h4>
+                        <small style="font-size: 10.5px; color: #64748b;">Insumos vinculados al armado del proyecto para que almacén prepare el pedido y emita Guía de Traslado.</small>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span id="detail_proj_materials_count" style="font-size: 11px; font-weight: 700; color: #0d9488; background: #ccfbf1; padding: 2px 8px; border-radius: 4px;">0 insumos listados</span>
+                        <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 3px 8px; background: #0d9488;" title="Solicitar más insumos a almacén">
+                            <i class="fa-solid fa-plus"></i> + Solicitar Insumos
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">Código</th>
+                                <th style="padding: 6px 8px; text-align: left;">Material / Descripción</th>
+                                <th style="padding: 6px 8px; text-align: center;">Unidad</th>
+                                <th style="padding: 6px 8px; text-align: right;">Requerido</th>
+                                <th style="padding: 6px 8px; text-align: right;">Despachado</th>
+                                <th style="padding: 6px 8px; text-align: right;">Pendiente</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estatus Almacén</th>
+                                <th style="padding: 6px 8px; text-align: left;">Notas / Fase</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_materials_body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran materiales solicitados para esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- SECCIÓN: GUÍAS DE DESPACHO & SALIDAS DE ALMACÉN DE LA OBRA -->
             <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
@@ -1254,6 +1407,9 @@
                     </h4>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <span id="detail_proj_dispatch_count" style="font-size: 11px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;">0 guías emitidas</span>
+                        <button type="button" onclick="openProjectRequisitionsInboxModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 3px 10px; background: #059669; font-weight: 700;" title="Despachar insumos y emitir guía de esta obra">
+                            <i class="fa-solid fa-dolly"></i> Despachar Insumos
+                        </button>
                         <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 3px 8px; background: #0284c7;" title="Pedir más insumos">
                             <i class="fa-solid fa-plus"></i> Pedir Insumos
                         </button>
@@ -1281,7 +1437,47 @@
                 </div>
             </div>
 
+            <!-- GASTOS IMPUTADOS A LA OBRA (AUDITORÍA DE FACTURAS Y RECIBOS) -->
+            <div class="card" style="margin-bottom: 14px; border-left: 4px solid #f59e0b; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-receipt" style="color: #f59e0b;"></i> Gastos Imputados a la Obra (Auditoría de Egresos)
+                        </h4>
+                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Facturas, compras y rendiciones de campo cargadas a este centro de costos.</p>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span id="detail_proj_expenses_count_badge" style="font-size: 11px; font-weight: 800; background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px;">0 gastos ($0.00 USD)</span>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">Fecha</th>
+                                <th style="padding: 6px 8px; text-align: left;">Proveedor / Comercio</th>
+                                <th style="padding: 6px 8px; text-align: left;">Concepto / Descripción</th>
+                                <th style="padding: 6px 8px; text-align: left;">Partida / Categoría</th>
+                                <th style="padding: 6px 8px; text-align: right;">Monto ($)</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estado</th>
+                                <th style="padding: 6px 8px; text-align: center;">Comprobante</th>
+                                <th style="padding: 6px 8px; text-align: left;">Registrado Por</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_expenses_body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran gastos imputados a esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+
+                <button type="button" onclick="openProjectRequisitionsInboxModal(currentViewingProjectId)" class="btn-primary" style="background: #0d9488; font-size: 12px; padding: 6px 14px; font-weight: 700;">
+                    <i class="fa-solid fa-dolly"></i> Despachar Insumos de esta Obra
+                </button>
 
                 <button type="button" onclick="openAddendumModal(currentViewingProjectId)" class="btn-primary" style="background: #9333ea; font-size: 12px; padding: 6px 14px; font-weight: 700;">
                     <i class="fa-solid fa-file-circle-plus"></i> + Adenda Contractual
@@ -1291,8 +1487,8 @@
                     <i class="fa-solid fa-truck-ramp-box"></i> Solicitar Recursos y Materiales a Almacén
                 </button>
 
-                <button type="button" onclick="openCreateCxCForProject(currentViewingProjectId)" class="btn-primary" style="background: #059669; font-size: 12px; padding: 6px 14px;">
-                    <i class="fa-solid fa-file-invoice-dollar"></i> Facturar / Emitir CxC
+                <button type="button" id="btn_detail_facturar_cxc" onclick="navigateToProjectCxC(currentViewingProjectId)" class="btn-primary" style="background: #059669; font-size: 12px; padding: 6px 14px;" title="Ver y gestionar valuaciones en Cuentas por Cobrar">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Valuaciones & CxC
                 </button>
 
                 <button type="button" onclick="closeModal('modalProjectDetail')" class="btn-secondary">Cerrar Ficha</button>
@@ -1357,34 +1553,72 @@
                         <textarea id="addendum_scope" rows="2" placeholder="Especificaciones de las nuevas capas, metraje extra o trabajos requeridos por el cliente..." style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; resize: vertical;"></textarea>
                     </div>
 
-                    <!-- Desplegable Opcional: Presupuesto Interno y Cronograma -->
-                    <details style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 11px;">
-                        <summary style="cursor: pointer; font-weight: 700; color: #2563eb;">
-                            <i class="fa-solid fa-sliders"></i> Asignar Presupuesto Interno & Nueva Etapa (Opcional)
-                        </summary>
-                        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-                            <div class="grid-2" style="gap: 10px;">
-                                <div>
-                                    <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Materiales Extra (USD):</label>
-                                    <input type="number" id="addendum_mat_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Mano de Obra Extra (USD):</label>
-                                    <input type="number" id="addendum_labor_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                                </div>
+                    <!-- Cronograma EDT y Presupuesto de la Adenda -->
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 11px;">
+                        <div style="font-weight: 800; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-list-check" style="color: #9333ea;"></i> Programación de la Obra Extra en Cronograma (EDT/WBS)
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-size: 10.5px; color: #475569; font-weight: 700; display: block; margin-bottom: 3px;">Nombre de la Nueva Etapa en Cronograma:</label>
+                            <input type="text" id="addendum_new_phase" placeholder="Ej: Adenda N° X: Ejecución de Capas Epóxicas Adicionales" style="width: 100%; padding: 7px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; background: white;">
+                            <span style="font-size: 10px; color: #64748b;">(Si se deja vacío, el sistema creará automáticamente la etapa vinculada a esta adenda para evitar tareas huérfanas)</span>
+                        </div>
+                        <div class="grid-2" style="gap: 10px;">
+                            <div>
+                                <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Materiales Extra (USD):</label>
+                                <input type="number" id="addendum_mat_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; background: white;">
                             </div>
                             <div>
-                                <label style="font-size: 10px; color: #64748b; font-weight: 600;">Crear Nueva Etapa en Cronograma de Obra:</label>
-                                <input type="text" id="addendum_new_phase" placeholder="Ej: Etapa 5: Aplicación de Capas Epóxicas" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Mano de Obra Extra (USD):</label>
+                                <input type="number" id="addendum_labor_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; background: white;">
                             </div>
                         </div>
-                    </details>
+                    </div>
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
                     <button type="button" onclick="closeModal('modalProjectAddendum')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
                     <button type="submit" class="btn-primary" style="font-size: 12px; padding: 7px 16px; background: #9333ea; border-color: #9333ea; font-weight: 700; display: flex; align-items: center; gap: 6px;">
                         <i class="fa-solid fa-check"></i> Aplicar Adenda Contractual
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: AGREGAR NUEVA ETAPA AL PROYECTO -->
+    <div id="modalAddProjectPhase" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-layer-group" style="color: var(--dalor-blue);"></i> Nueva Etapa en Cronograma
+                </h3>
+                <button type="button" onclick="closeModal('modalAddProjectPhase')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+            <form id="formAddProjectPhase" onsubmit="submitAddProjectPhase(event)">
+                <input type="hidden" id="add_phase_project_id">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Nombre de la Etapa / Hito: *</label>
+                    <input type="text" id="add_phase_name" class="form-control" placeholder="Ej: Montaje Mecánico Estructura Central" required style="width: 100%; font-size: 12px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Duración Estimada (días):</label>
+                        <input type="number" id="add_phase_days" class="form-control" value="7" min="1" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Costo Estimado ($ USD):</label>
+                        <input type="number" id="add_phase_cost" class="form-control" value="0" min="0" step="0.01" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Responsable / Cuadrilla a Cargo:</label>
+                    <input type="text" id="add_phase_responsible" class="form-control" placeholder="Ej: Ing. Residente / Cuadrilla Mecánica" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <button type="button" onclick="closeModal('modalAddProjectPhase')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="font-size: 12px; padding: 7px 16px; background: var(--dalor-navy); font-weight: 700;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Etapa
                     </button>
                 </div>
             </form>
@@ -1412,8 +1646,8 @@
 
                 <div class="grid-2">
                     <div>
-                        <label class="form-label">Destino / Ubicación de Entrega *</label>
-                        <input type="text" id="req_proj_destination" class="form-input" required placeholder="Planta Cliente / Obra">
+                        <label class="form-label">Destino / Obra de Entrega (Bloqueado) *</label>
+                        <input type="text" id="req_proj_destination" class="form-input" required readonly style="background-color: #f1f5f9; font-weight: 700; cursor: not-allowed; color: #1e293b;" placeholder="Planta Cliente / Obra">
                     </div>
                     <div>
                         <label class="form-label">Notas / Instrucciones Especiales</label>
@@ -1885,9 +2119,9 @@
 
                 <div>
 
-                    <label class="form-label">Código de Partida *</label>
+                    <label class="form-label">Código de Partida (Correlativo Automático) *</label>
 
-                    <input type="text" id="srv_code" placeholder="Ej: SER-ELEC-03" class="form-input" autocomplete="off" required>
+                    <input type="text" id="srv_code" placeholder="Generando..." class="form-input" readonly style="background-color: #f1f5f9; color: var(--dalor-navy); font-weight: 700; cursor: not-allowed; border: 1px solid #cbd5e1;" required title="El correlativo es asignado automáticamente por el sistema">
 
                 </div>
 
@@ -1895,54 +2129,43 @@
 
                     <label class="form-label">Nombre del Servicio *</label>
 
-                    <input type="text" id="srv_name" placeholder="Ej: Calibración y Pruebas de Relés" class="form-input" autocomplete="off" required>
+                    <input type="text" id="srv_name" placeholder="Ej: Fabricación de Estructura de Tolva" class="form-input" autocomplete="off" required>
 
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
                     <div>
-
-                        <label class="form-label">Categoría</label>
-
-                        <select id="srv_category" class="form-select" onchange="onServiceCategoryChanged(this.value)">
-
-                            <option value="Electricidad">Electricidad</option>
-
-                            <option value="Mantenimiento Industrial">Mantenimiento Industrial</option>
-
-                            <option value="Montaje Industrial">Montaje Industrial</option>
-
-                            <option value="Obra Civil">Obra Civil</option>
-
-                            <option value="Telecomunicaciones">Telecomunicaciones</option>
-
+                        <label class="form-label">Categoría *</label>
+                        <select id="srv_category" class="form-select" onchange="onServiceCategoryChanged(this.value)" required>
+                            <option value="Fabricación Metalmecánica">Fabricación Metalmecánica</option>
+                            <option value="Montaje e Instalación en Sitio">Montaje e Instalación en Sitio</option>
+                            <option value="Mantenimiento Industrial & Paradas">Mantenimiento Industrial & Paradas</option>
+                            <option value="Soldadura Especializada & Pailería">Soldadura Especializada & Pailería</option>
+                            <option value="Mecanizado & Torno">Mecanizado & Torno</option>
+                            <option value="Arenado y Pintura Industrial">Arenado y Pintura Industrial</option>
+                            <option value="Obras Civiles & Eléctricas Asociadas">Obras Civiles & Eléctricas Asociadas</option>
                             <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Categoría...</option>
-
                         </select>
-
                         <input type="text" id="srv_new_category" placeholder="Escribe el nombre de la nueva categoría..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
-
                     </div>
 
                     <div>
-                        <label class="form-label">Unidad de Medida</label>
-                        <select id="srv_unit" class="form-select" onchange="onServiceUnitChanged(this.value)">
-                            <option value="Global">Global</option>
+                        <label class="form-label">Unidad de Medida *</label>
+                        <select id="srv_unit" class="form-select" onchange="onServiceUnitChanged(this.value)" required>
+                            <option value="Kilogramo (kg)">Kilogramo (kg)</option>
+                            <option value="Tonelada (ton)">Tonelada (ton)</option>
                             <option value="Metro (m)">Metro (m)</option>
                             <option value="Metro Cuadrado (m²)">Metro Cuadrado (m²)</option>
                             <option value="Metro Cúbico (m³)">Metro Cúbico (m³)</option>
-                            <option value="Pieza (Pza)">Pieza (Pza)</option>
-                            <option value="Hora-Hombre (HH)">Hora-Hombre (HH)</option>
-                            <option value="Punto">Punto</option>
-                            <option value="Kilogramo (Kg)">Kilogramo (Kg)</option>
-                            <option value="Tonelada (Ton)">Tonelada (Ton)</option>
-                            <option value="Litro (L)">Litro (L)</option>
+                            <option value="Pieza (und)">Pieza (und)</option>
+                            <option value="Global (gl)">Global (gl)</option>
+                            <option value="Hora-Hombre (hh)">Hora-Hombre (hh)</option>
+                            <option value="Día (dia)">Día (dia)</option>
+                            <option value="Pulgada-Diámetro (pulg-diam)">Pulgada-Diámetro (pulg-diam)</option>
                             <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Unidad...</option>
                         </select>
-                        <input type="text" id="srv_new_unit" placeholder="Escribe la unidad (ej: Kg, Galón, Pulg-Diam)..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+                        <input type="text" id="srv_new_unit" placeholder="Escribe la unidad (ej: Galón, Paquete, etc.)..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
                     </div>
-
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -1973,6 +2196,72 @@
 
     </div>
 
+    <!-- MODAL: EDITAR SERVICIO / PARTIDA -->
+    <div id="modalEditService" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Editar Partida de Servicio</h3>
+                <button onclick="closeModal('modalEditService')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editServiceForm" onsubmit="submitEditService(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_srv_id">
+                <div>
+                    <label class="form-label">Código (Inmutable)</label>
+                    <input type="text" id="edit_srv_code" class="form-input" readonly style="background-color: #f1f5f9; color: var(--dalor-navy); font-weight: 700; cursor: not-allowed; border: 1px solid #cbd5e1;">
+                </div>
+                <div>
+                    <label class="form-label">Nombre del Servicio *</label>
+                    <input type="text" id="edit_srv_name" class="form-input" autocomplete="off" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Categoría *</label>
+                        <select id="edit_srv_category" class="form-select" onchange="onEditServiceCategoryChanged(this.value)" required>
+                            <option value="Fabricación Metalmecánica">Fabricación Metalmecánica</option>
+                            <option value="Montaje e Instalación en Sitio">Montaje e Instalación en Sitio</option>
+                            <option value="Mantenimiento Industrial & Paradas">Mantenimiento Industrial & Paradas</option>
+                            <option value="Soldadura Especializada & Pailería">Soldadura Especializada & Pailería</option>
+                            <option value="Mecanizado & Torno">Mecanizado & Torno</option>
+                            <option value="Arenado y Pintura Industrial">Arenado y Pintura Industrial</option>
+                            <option value="Obras Civiles & Eléctricas Asociadas">Obras Civiles & Eléctricas Asociadas</option>
+                            <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Categoría...</option>
+                        </select>
+                        <input type="text" id="edit_srv_new_category" placeholder="Escribe el nombre de la nueva categoría..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+                    </div>
+                    <div>
+                        <label class="form-label">Unidad de Medida *</label>
+                        <select id="edit_srv_unit" class="form-select" onchange="onEditServiceUnitChanged(this.value)" required>
+                            <option value="Kilogramo (kg)">Kilogramo (kg)</option>
+                            <option value="Tonelada (ton)">Tonelada (ton)</option>
+                            <option value="Metro (m)">Metro (m)</option>
+                            <option value="Metro Cuadrado (m²)">Metro Cuadrado (m²)</option>
+                            <option value="Metro Cúbico (m³)">Metro Cúbico (m³)</option>
+                            <option value="Pieza (und)">Pieza (und)</option>
+                            <option value="Global (gl)">Global (gl)</option>
+                            <option value="Hora-Hombre (hh)">Hora-Hombre (hh)</option>
+                            <option value="Día (dia)">Día (dia)</option>
+                            <option value="Pulgada-Diámetro (pulg-diam)">Pulgada-Diámetro (pulg-diam)</option>
+                            <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Unidad...</option>
+                        </select>
+                        <input type="text" id="edit_srv_new_unit" placeholder="Escribe la nueva unidad..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Costo Base ($)</label>
+                        <input type="number" step="0.01" id="edit_srv_cost" class="form-input" autocomplete="off" required oninput="calcEditServiceMargin()">
+                    </div>
+                    <div>
+                        <label class="form-label">Precio de Venta ($) *</label>
+                        <input type="number" step="0.01" id="edit_srv_price" class="form-input" autocomplete="off" style="font-weight: 800; color: var(--dalor-blue);" required oninput="calcEditServiceMargin()">
+                    </div>
+                </div>
+                <div id="editSrvMarginBadge" style="margin-top: 6px; font-size: 12px; font-weight: 700; min-height: 20px;"></div>
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
 
 
     <!-- MODAL: NUEVO CLIENTE -->
@@ -1995,9 +2284,9 @@
 
                     <div>
 
-                        <label class="form-label">Código *</label>
+                        <label class="form-label">Código (Correlativo Obligatorio) *</label>
 
-                        <input type="text" id="cli_code" placeholder="CLI-004" class="form-input" required>
+                        <input type="text" id="cli_code" placeholder="Generando..." class="form-input" readonly style="background-color: #f1f5f9; color: var(--dalor-navy); font-weight: 700; cursor: not-allowed; border: 1px solid #cbd5e1;" required title="El correlativo es asignado automáticamente para preservar el orden y no puede modificarse">
 
                     </div>
 
@@ -2073,6 +2362,76 @@
 
         </div>
 
+    </div>
+
+    <!-- MODAL: EDITAR CLIENTE -->
+    <div id="modalEditClient" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Editar Cliente</h3>
+                <button onclick="closeModal('modalEditClient')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editClientForm" onsubmit="submitEditClient(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_cli_id">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Código (Inmutable)</label>
+                        <input type="text" id="edit_cli_code" class="form-input" readonly style="background-color: #f1f5f9; color: var(--dalor-navy); font-weight: 700; cursor: not-allowed; border: 1px solid #cbd5e1;">
+                    </div>
+                    <div>
+                        <label class="form-label">Razón Social / Empresa *</label>
+                        <input type="text" id="edit_cli_name" class="form-input" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">RIF / Identificación Fiscal</label>
+                        <input type="text" id="edit_cli_rif" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Sector / Industria</label>
+                        <input type="text" id="edit_cli_industry" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Persona de Contacto</label>
+                        <input type="text" id="edit_cli_contact" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Teléfono</label>
+                        <input type="text" id="edit_cli_phone" class="form-input">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Correo Electrónico</label>
+                    <input type="email" id="edit_cli_email" class="form-input">
+                </div>
+                <div>
+                    <label class="form-label">Dirección / Planta</label>
+                    <input type="text" id="edit_cli_address" class="form-input">
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: FICHA HISTÓRICA DEL CLIENTE (LAZY LOAD) -->
+    <div id="modalClientHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 780px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <h3 id="clientHistoryTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Ficha Histórica del Cliente</h3>
+                    <p id="clientHistorySubtitle" style="font-size: 11px; color: #64748b; margin-top: 2px;">Cargando historial...</p>
+                </div>
+                <button onclick="closeModal('modalClientHistory')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div id="clientHistoryBody" style="max-height: 70vh; overflow-y: auto;">
+                <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px;"></i> Cargando obras y cotizaciones...
+                </div>
+            </div>
+        </div>
     </div>
 
 
@@ -2180,79 +2539,50 @@
                     <div>
 
                         <label class="form-label">Cliente Pagador *</label>
-
-                        <select id="rcp_client_id" class="form-select" required></select>
-
+                        <select id="rcp_client_id" class="form-select" required onchange="onRcpClientChanged()"></select>
                     </div>
-
                     <div>
-
                         <label class="form-label">Proyecto Asociado</label>
-
-                        <select id="rcp_project_id" class="form-select"></select>
-
+                        <select id="rcp_project_id" class="form-select">
+                            <option value="">-- Sin Proyecto Específico (Anticipo a Cuenta) --</option>
+                        </select>
                     </div>
-
                 </div>
-
-
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
                     <div>
-
                         <label class="form-label">Monto Recibido ($ USD) *</label>
-
                         <input type="number" step="0.01" id="rcp_amount_usd" placeholder="0.00" class="form-input" style="font-weight: 800; color: #059669; font-size: 15px;" required oninput="calcClientPaymentBs()">
-
                     </div>
-
                     <div>
-
                         <label class="form-label">Tasa de Cambio (Bs/$)</label>
-
                         <input type="number" step="0.01" id="rcp_rate" class="form-input" oninput="calcClientPaymentBs()">
-
                     </div>
-
                 </div>
-
-
 
                 <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-
                     <span style="font-size: 11px; color: #065f46; font-weight: 700;">Equivalente en Bolívares:</span>
-
                     <b id="rcp_total_bs_preview" style="font-size: 14px; color: #047857;">Bs. 0,00</b>
-
                 </div>
 
-
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                     <div>
-
                         <label class="form-label">Método de Cobro *</label>
-
                         <select id="rcp_method" class="form-select">
-
                             <option value="transferencia">Transferencia Bancaria (Bs/USD)</option>
-
                             <option value="efectivo_divisa">Efectivo Divisa ($)</option>
-
                             <option value="zelle">Zelle / Wire Transfer</option>
-
                             <option value="pago_movil">Pago Móvil</option>
-
                             <option value="cheque">Cheque Bancario</option>
-
                         </select>
-
                     </div>
-
                     <div>
-
+                        <label class="form-label">Cuenta / Caja Destino</label>
+                        <select id="rcp_financial_account_id" class="form-select">
+                            <option value="">-- Por Defecto según Método --</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="form-label">Nº Referencia / Depósito</label>
 
                         <input type="text" id="rcp_ref" placeholder="Ej: REF-881293" class="form-input">
@@ -2300,95 +2630,80 @@
     <!-- MODAL: ENTRADA DE MATERIAL (COMPRA / INGRESO) -->
 
     <div id="modalMaterialEntry" class="modal-overlay hidden">
-
-        <div class="modal-content" style="max-width: 520px;">
-
+        <div class="modal-content" style="max-width: 820px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
-
-                <h3 style="font-size: 15px; font-weight: 800; color: #059669;">
-
-                    <i class="fa-solid fa-cart-plus"></i> + Registrar Entrada de Material a Almacén
-
-                </h3>
-
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 800; color: #059669; margin: 0;">
+                        <i class="fa-solid fa-cart-plus"></i> + Registrar Entrada de Material a Almacén (Factura / Guía Multi-Renglón)
+                    </h3>
+                    <p style="font-size: 11.5px; color: #64748b; margin: 3px 0 0 0;">Carga masiva de ítems recibidos en almacén central con actualización automática de stock y costos</p>
+                </div>
                 <button onclick="closeModal('modalMaterialEntry')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-
             </div>
 
-            <form id="materialEntryForm" onsubmit="submitMaterialEntry(event); return false;" style="display: flex; flex-direction: column; gap: 10px;">
-
-                <div>
-
-                    <label class="form-label">Material / Consumible *</label>
-
-                    <select id="me_material_id" class="form-select" required></select>
-
+            <form id="materialEntryForm" onsubmit="submitMaterialEntry(event); return false;" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Datos Generales de la Compra -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                    <div>
+                        <label class="form-label">Proveedor / Vendedor *</label>
+                        <input type="text" id="me_supplier" placeholder="Ej: Hierros Guayana C.A." class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Nº Factura / Guía Proveedor *</label>
+                        <input type="text" id="me_doc" placeholder="FAC-00123 / G-9821" class="form-input" required>
+                    </div>
                 </div>
 
-
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
-                        <label class="form-label">Cantidad a Ingresar *</label>
-
-                        <input type="number" step="0.01" id="me_quantity" placeholder="0.00" class="form-input" required oninput="calcMaterialEntryTotal()">
-
+                <!-- Tabla Dinámica Multi-Renglón -->
+                <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-layer-group" style="color: #059669;"></i> Renglones de la Factura / Guía de Entrada:
+                        </span>
+                        <button type="button" onclick="addMaterialEntryRow()" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669; font-weight: 700;">
+                            <i class="fa-solid fa-plus"></i> Añadir Renglón
+                        </button>
                     </div>
 
-                    <div>
-
-                        <label class="form-label">Costo Unitario Compra ($ USD) *</label>
-
-                        <input type="number" step="0.01" id="me_unit_cost" placeholder="0.00" class="form-input" required oninput="calcMaterialEntryTotal()">
-
+                    <div style="max-height: 260px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <table id="me_materials_table" style="width: 100%; border-collapse: collapse; font-size: 11.5px;">
+                            <thead>
+                                <tr style="background: #f1f5f9; text-align: left; color: #475569; position: sticky; top: 0; z-index: 1;">
+                                    <th style="padding: 6px 8px;">Material / Consumible (Búsqueda Predictiva)</th>
+                                    <th style="padding: 6px 8px; width: 110px; text-align: right;">Cantidad</th>
+                                    <th style="padding: 6px 8px; width: 130px; text-align: right;">Costo Unit. ($)</th>
+                                    <th style="padding: 6px 8px; width: 120px; text-align: right;">Subtotal ($)</th>
+                                    <th style="padding: 6px 8px; width: 36px; text-align: center;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="me_materials_tbody">
+                                <!-- Renglones dinámicos multi-ítem -->
+                            </tbody>
+                        </table>
                     </div>
 
+                    <!-- Total Inversión Factura -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 2px dashed #e2e8f0;">
+                        <span style="font-size: 12px; font-weight: 700; color: #64748b;">Total Factura / Inversión de Entrada:</span>
+                        <div style="text-align: right;">
+                            <b id="me_total_usd_preview" style="font-size: 16px; font-weight: 900; color: #059669;">$0.00 USD</b>
+                            <span id="me_total_bs_preview" style="font-size: 11px; color: #64748b; display: block;">≈ Bs 0.00</span>
+                        </div>
+                    </div>
                 </div>
 
-
-
-                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-
-                    <span style="font-size: 11px; color: #64748b;">Total Inversión Material:</span>
-
-                    <b id="me_total_usd_preview" style="font-size: 14px; color: var(--dalor-navy);">$0.00 USD</b>
-
-                </div>
-
-
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
-                        <label class="form-label">Proveedor / Vendedor</label>
-
-                        <input type="text" id="me_supplier" placeholder="Ej: Hierros Guayana C.A." class="form-input">
-
-                    </div>
-
-                    <div>
-
-                        <label class="form-label">Nº Factura / Guía Proveedor</label>
-
-                        <input type="text" id="me_doc" placeholder="FAC-00123" class="form-input">
-
-                    </div>
-
-                </div>
-
-
-
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px;">
+                <!-- Opciones Financieras (CxP a Crédito vs Contado) -->
+                <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px 12px;">
                     <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #166534; cursor: pointer;">
-                        <input type="checkbox" id="me_register_cxp" onchange="toggleMaterialEntryPaymentBox()" style="width: 16px; height: 16px;">
+                        <input type="checkbox" id="me_register_cxp" onchange="toggleMaterialEntryPaymentBox()" style="width: 17px; height: 17px; accent-color: #059669;">
                         <span>Registrar como Deuda Pendiente en Cuentas por Pagar (CxP a Crédito)</span>
                     </label>
+                    <span style="font-size: 10.5px; color: #15803d; margin-top: 2px; display: block; margin-left: 25px;">
+                        Al marcar esta opción, se creará automáticamente la cuenta por pagar en el módulo de CxP vinculada a esta factura de entrada.
+                    </span>
                 </div>
 
-                <!-- Pago de Contado: Se descuenta inmediatamente de la Caja/Banco seleccionada -->
+                <!-- Pago de Contado: Egreso Inmediato de Caja/Banco -->
                 <div id="me_cash_payment_box" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px;">
                     <span style="font-size: 11px; font-weight: 700; color: #1e40af; display: block; margin-bottom: 6px;">
                         <i class="fa-solid fa-money-bill-wave"></i> Compra de Contado: Egreso Inmediato de Caja / Banco
@@ -2410,28 +2725,19 @@
                     </div>
                 </div>
 
-
-
                 <div>
-
                     <label class="form-label">Notas / Ubicación en Galpón</label>
-
                     <input type="text" id="me_notes" placeholder="Rack 3, Sector Planchas..." class="form-input">
-
                 </div>
 
-
-
-                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #059669;">
-
-                    <i class="fa-solid fa-floppy-disk"></i> Confirmar Ingreso a Almacén
-
-                </button>
-
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+                    <button type="button" onclick="closeModal('modalMaterialEntry')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #059669; font-weight: 800; font-size: 12.5px; padding: 7px 18px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Confirmar Ingreso a Almacén
+                    </button>
+                </div>
             </form>
-
         </div>
-
     </div>
 
 
@@ -2457,103 +2763,131 @@
             <form id="materialConsumeForm" onsubmit="submitMaterialConsume(event)" style="display: flex; flex-direction: column; gap: 10px;">
 
                 <div>
-
                     <label class="form-label">Material a Despachar *</label>
-
+                    <input type="text" id="mc_material_search" oninput="filterConsumeMaterialDropdown(this.value)" placeholder="🔍 Escribe para filtrar material por código o nombre..." class="form-input" style="font-size: 11.5px; padding: 5px 8px; margin-bottom: 6px; background: white; border: 1.5px solid #bae6fd;">
                     <select id="mc_material_id" class="form-select" required onchange="onConsumeMaterialSelected()"></select>
-
                 </div>
-
-
 
                 <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-
                     <span style="font-size: 11px; color: #0369a1;">Stock Disponible en Almacén:</span>
-
                     <b id="mc_stock_available_label" style="font-size: 14px; color: #0284c7;">0.00 UND</b>
-
                 </div>
 
-
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
                     <div>
-
                         <label class="form-label">Cantidad a Despachar *</label>
-
                         <input type="number" step="0.01" id="mc_quantity" placeholder="0.00" class="form-input" required oninput="calcMaterialConsumeTotal()">
-
                     </div>
-
                     <div>
-
                         <label class="form-label">Costo Imputado Estimado</label>
-
                         <input type="text" id="mc_cost_preview" class="form-input" readonly style="background: #f1f5f9; font-weight: 700;">
-
                     </div>
-
                 </div>
-
-
 
                 <div>
-
                     <label class="form-label">Destino / Imputación *</label>
-
-                    <select id="mc_project_id" class="form-select" required>
-
+                    <select id="mc_project_id" class="form-select" required onchange="onConsumeProjectChanged()">
                         <option value="">-- Consumo Interno Taller Central (Gasto Sede) --</option>
-
                     </select>
-
                 </div>
 
-
+                <!-- Banner Informativo de Guía de Despacho (Punto 5) -->
+                <div id="mc_guide_banner" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 10px; display: none;">
+                    <span style="font-size: 11px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-file-circle-check"></i> Al despachar a obra se emitirá automáticamente la Guía de Despacho formal (GD-XXXX)
+                    </span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                        <div>
+                            <label style="font-size: 10px; font-weight: 700; color: #166534;">Conductor / Chofer</label>
+                            <input type="text" id="mc_driver_name" placeholder="Transporte DALOR / Conductor" class="form-input" style="font-size: 11px; padding: 4px 6px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; font-weight: 700; color: #166534;">Placa de Vehículo</label>
+                            <input type="text" id="mc_vehicle_plate" placeholder="Ej: DALOR-01 / 3-V-1-01" class="form-input" style="font-size: 11px; padding: 4px 6px;">
+                        </div>
+                    </div>
+                </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
                     <div>
-
                         <label class="form-label">Nº Requisición / Vale de Salida</label>
-
                         <input type="text" id="mc_doc" placeholder="VALE-042" class="form-input">
-
                     </div>
-
                     <div>
-
                         <label class="form-label">Entregado Por (Custodio)</label>
-
                         <input type="text" id="mc_performed_by" value="Custodio de Almacén Central" class="form-input">
-
                     </div>
-
                 </div>
-
-
 
                 <div>
-
                     <label class="form-label">Notas / Justificación Técnica</label>
-
-                    <input type="text" id="mc_notes" placeholder="Ej: Corte para fabricación de bridas de calderas" class="form-input">
-
+                    <input type="text" id="mc_notes" placeholder="Ej: Material verificado en pañol y despachado" class="form-input">
                 </div>
 
-
-
-                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #0284c7;">
-
-                    <i class="fa-solid fa-check"></i> Confirmar Despacho e Imputar Costo
-
+                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #0284c7; font-weight: 800;">
+                    <i class="fa-solid fa-truck-arrow-right"></i> Confirmar Despacho & Emitir Guía
                 </button>
-
             </form>
-
         </div>
 
+    </div>
+
+    <!-- MODAL: BANDEJA DE REQUISICIONES DE OBRAS (PREPARACIÓN & DESPACHO ALMACÉN) -->
+    <div id="modalProjectRequisitionsInbox" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 1100px; width: 95%; max-height: 92vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i class="fa-solid fa-boxes-packing" style="color: #0284c7;"></i> Bandeja de Requisiciones de Obras (Preparación & Picking Almacén)
+                    </h3>
+                    <p style="font-size: 11.5px; color: #64748b; margin: 2px 0 0 0;">
+                        Requerimientos de insumos solicitados para Obras por Ingeniería/Proyectos. Almacén verifica stock, arma la carga y genera la Guía de Despacho formal.
+                    </p>
+                </div>
+                <button onclick="closeModal('modalProjectRequisitionsInbox')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b; padding: 4px 8px;">&times;</button>
+            </div>
+
+            <!-- Barra de Filtros -->
+            <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="flex: 1; min-width: 220px; position: relative;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 10px; color: #94a3b8; font-size: 12px;"></i>
+                    <input type="text" id="reqInboxSearch" oninput="filterProjectRequisitionsView()" placeholder="Buscar por material, código u obra..." class="form-input" style="padding-left: 28px; font-size: 12px;">
+                </div>
+                <div style="min-width: 240px;">
+                    <select id="reqInboxProjectFilter" onchange="filterProjectRequisitionsView()" class="form-select" style="font-size: 12px;">
+                        <option value="">-- Todas las Obras / Proyectos --</option>
+                    </select>
+                </div>
+                <div style="min-width: 170px;">
+                    <select id="reqInboxStatusFilter" onchange="filterProjectRequisitionsView()" class="form-select" style="font-size: 12px;">
+                        <option value="pending">Solo Pendientes / Parciales</option>
+                        <option value="all">Ver Todos (Incl. Despachados)</option>
+                    </select>
+                </div>
+                <button type="button" onclick="loadProjectRequisitionsInbox()" class="btn-secondary" style="font-size: 12px; padding: 7px 12px;" title="Actualizar lista">
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                </button>
+            </div>
+
+            <!-- Contenedor dinámico de Requisiciones agrupadas por Obra -->
+            <div id="reqInboxContainer" style="overflow-y: auto; flex: 1; padding-right: 6px; display: flex; flex-direction: column; gap: 16px;">
+                <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 20px;"></i> Cargando pedidos de obras...
+                </div>
+            </div>
+
+            <!-- Footer con Leyenda -->
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="font-size: 11px; color: #64748b; display: flex; gap: 14px; align-items: center;">
+                    <span><span style="display:inline-block; width:10px; height:10px; background:#10b981; border-radius:50%; margin-right:4px;"></span> Stock suficiente en Almacén</span>
+                    <span><span style="display:inline-block; width:10px; height:10px; background:#ef4444; border-radius:50%; margin-right:4px;"></span> Stock insuficiente o agotado</span>
+                    <span><i class="fa-solid fa-truck-fast" style="color: #0284c7;"></i> Generación automática de Guía Oficial (GD-XXXX)</span>
+                </div>
+                <button type="button" onclick="closeModal('modalProjectRequisitionsInbox')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;">
+                    Cerrar Bandeja
+                </button>
+            </div>
+        </div>
     </div>
 
 
@@ -2843,13 +3177,145 @@
 
     </div>
 
+    <!-- MODAL: HISTORIAL DE SERVICIOS Y MANTENIMIENTOS DE VEHÍCULO -->
+    <div id="modalVehicleServices" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 820px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="vehServicesModalTitle" style="font-size: 16px; font-weight: 800; color: #ea580c; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i class="fa-solid fa-wrench"></i> Historial de Mantenimientos & Servicios
+                    </h3>
+                    <p id="vehServicesModalSubtitle" style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Control de cambios de aceite, filtros, frenos y reparaciones preventivas/correctivas.</p>
+                </div>
+                <button onclick="closeModal('modalVehicleServices')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
 
+            <!-- Ficha Resumen del Vehículo -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #9a3412;">PLACA / SERIAL</div>
+                    <div id="vehSrvPlate" style="font-weight: 800; color: #1e293b; font-size: 13px;">-</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #9a3412;">ODÓMETRO ACTUAL</div>
+                    <div id="vehSrvOdometer" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px;">0 Km</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #9a3412;">TOTAL SERVICIOS</div>
+                    <div id="vehSrvCount" style="font-weight: 800; color: #c2410c; font-size: 13px;">0 Realizados</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #9a3412;">INVERSIÓN TOTAL</div>
+                    <div id="vehSrvTotalCost" style="font-weight: 800; color: #059669; font-size: 13px;">$0.00 USD</div>
+                </div>
+            </div>
+
+            <!-- Botón acción registrar nuevo servicio -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                <button type="button" id="btnOpenNewServiceFromHistory" class="btn-primary" style="background: #ea580c; font-size: 12px; font-weight: 800;">
+                    <i class="fa-solid fa-plus"></i> + Registrar Nuevo Servicio
+                </button>
+            </div>
+
+            <!-- Tabla de Servicios -->
+            <div class="table-wrapper" style="max-height: 340px; overflow-y: auto;">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                            <th style="padding: 6px 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 6px 8px; text-align: left;">Tipo de Servicio</th>
+                            <th style="padding: 6px 8px; text-align: right;">Odómetro (Km)</th>
+                            <th style="padding: 6px 8px; text-align: left;">Taller / Responsable</th>
+                            <th style="padding: 6px 8px; text-align: right;">Costo ($)</th>
+                            <th style="padding: 6px 8px; text-align: left;">Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vehServicesTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Servicios -->
+            <div id="vehServicesPagination"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                <button type="button" onclick="closeModal('modalVehicleServices')" class="btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTRAR MANTENIMIENTO / SERVICIO A VEHÍCULO O MAQUINARIA -->
+    <div id="modalRecordService" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 16px; font-weight: 800; color: #ea580c; display: flex; align-items: center; gap: 8px; margin: 0;">
+                    <i class="fa-solid fa-wrench"></i> Registrar Mantenimiento / Servicio
+                </h3>
+                <button onclick="closeModal('modalRecordService')" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <form id="formRecordService" onsubmit="submitRecordService(event)">
+                <input type="hidden" id="srv_asset_id">
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Vehículo / Equipo:</label>
+                    <div id="srv_veh_label" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px; padding: 8px 12px; background: #f1f5f9; border-radius: 6px; border: 1px solid #e2e8f0;"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Tipo de Servicio *</label>
+                    <select id="srv_type" class="form-select" onchange="onRecordServiceTypeChange()" required style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                        <option value="cambio_aceite_filtros">Cambio de Aceite y Filtros (5.000 Km)</option>
+                        <option value="mantenimiento_preventivo_mayor">Mantenimiento Preventivo Mayor (Frenos / Tren / Correas)</option>
+                        <option value="reparacion_correctiva">Reparación Mecánica Correctiva</option>
+                        <option value="cambio_cauchos_alineacion">Cambio de Cauchos y Alineación</option>
+                        <option value="sistema_electrico">Sistema Eléctrico / Batería</option>
+                        <option value="otro_servicio">Otro Mantenimiento</option>
+                    </select>
+                </div>
+
+                <!-- Checkbox condicional: ¿Reinicia semáforo de aceite? -->
+                <div class="form-group" style="margin-bottom: 12px; background: #fff7ed; padding: 10px 12px; border-radius: 6px; border: 1px solid #fed7aa;">
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 11.5px; font-weight: 700; color: #9a3412; margin: 0;">
+                        <input type="checkbox" id="srv_reset_oil" checked style="width: 16px; height: 16px; margin-top: 1px; accent-color: #ea580c; cursor: pointer;">
+                        <div>
+                            <span>¿Reiniciar semáforo de cambio de aceite a 5.000 Km?</span>
+                            <span id="srv_reset_oil_desc" style="display: block; font-size: 10.5px; font-weight: 500; color: #c2410c; margin-top: 2px;">
+                                Marcado: Este servicio incluye cambio de lubricante y reinicia el intervalo a 5.000 Km (Verde OK).
+                            </span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Odómetro al momento del Servicio (Km) *</label>
+                    <input type="number" step="1" id="srv_odometer" class="form-input" required style="width: 100%; font-size: 12px; font-weight: 700;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Costo Total del Servicio (USD)</label>
+                    <input type="number" step="0.01" id="srv_cost" class="form-input" value="0.00" style="width: 100%; font-size: 12px; font-weight: 700; color: #059669;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Taller / Responsable / Notas</label>
+                    <textarea id="srv_notes" class="form-input" rows="2" placeholder="Ej: Taller Central Guacara - Aceite 15W40 Mineral, cambio de filtro primario." style="width: 100%; font-size: 12px; resize: none;"></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalRecordService')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="font-size: 12px; padding: 6px 14px; background: #ea580c; font-weight: 800;">
+                        <i class="fa-solid fa-check"></i> Guardar en Bitácora
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- MODAL: NUEVO ACTIVO / EQUIPO / VEHÍCULO / HERRAMIENTA / MAQUINARIA -->
 
     <div id="modalNewAsset" class="modal-overlay hidden">
 
-        <div class="modal-content" style="max-width: 580px;">
+        <div class="modal-content" style="max-width: 620px;">
 
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
 
@@ -2891,15 +3357,40 @@
 
                         <label class="form-label">Código de Activo *</label>
 
-                        <input type="text" id="nass_code" placeholder="Ej: EQ-SOL-05 / VEH-10" class="form-input" required>
+                        <input type="text" id="nass_code" placeholder="Ej: HERR-0908 / FLT-009" class="form-input" required>
 
                     </div>
 
                 </div>
 
-
+                <!-- Banner Guía de Nomenclatura Dinámica -->
+                <div id="nass_nomenclature_guide" style="font-size: 11px; padding: 6px 10px; border-radius: 6px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span id="nass_nomenclature_text">Nomenclatura Dalor recomendada: Prefijo HERR- o código de pañol.</span>
+                </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Categoría *</label>
+
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <select id="nass_category" class="form-select" onchange="onAssetCategorySelected()">
+                                <option value="Herramientas Manuales">Herramientas Manuales</option>
+                                <option value="Herramientas Eléctricas">Herramientas Eléctricas</option>
+                                <option value="Equipos de Medición">Equipos de Medición</option>
+                                <option value="Seguridad Industrial">Seguridad Industrial</option>
+                                <option value="Consumibles de Taller">Consumibles de Taller</option>
+                                <option value="Flota Vehicular">Flota Vehicular</option>
+                                <option value="Maquinaria Pesada">Maquinaria Pesada</option>
+                                <option value="Herramientas Generales">Herramientas Generales</option>
+                                <option value="__NEW__" style="font-weight: 800; color: #2563eb;">+ Crear Nueva Categoría...</option>
+                            </select>
+                            <input type="text" id="nass_new_category" class="form-input hidden" placeholder="Escribe el nombre de la nueva categoría...">
+                        </div>
+
+                    </div>
 
                     <div>
 
@@ -2921,27 +3412,27 @@
 
                     </div>
 
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
                     <div>
 
-                        <label class="form-label">Empresa / Propietario / Cliente</label>
+                        <label class="form-label">Nombre / Denominación del Equipo *</label>
 
-                        <input type="text" id="nass_entity_name" placeholder="Ej: Arrendadora X / Aliado Y" class="form-input">
+                        <input type="text" id="nass_name" placeholder="Ej: Máquina de Soldar Miller Big Blue 500X..." class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Empresa / Propietario / Arrendador</label>
+
+                        <input type="text" id="nass_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
 
                     </div>
 
                 </div>
-
-
-
-                <div>
-
-                    <label class="form-label">Nombre / Denominación del Equipo *</label>
-
-                    <input type="text" id="nass_name" placeholder="Ej: Máquina de Soldar Miller Big Blue 500X..." class="form-input" required>
-
-                </div>
-
-
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
@@ -2963,8 +3454,6 @@
 
                 </div>
 
-
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
@@ -2985,15 +3474,13 @@
 
                 </div>
 
-
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
 
                         <label class="form-label">Ubicación Inicial *</label>
 
-                        <input type="text" id="nass_location" value="Sede Central" class="form-input" required>
+                        <input type="text" id="nass_location" value="Sede Central Dalor (Guacara)" class="form-input" required>
 
                     </div>
 
@@ -3055,7 +3542,7 @@
 
                         <label class="form-label">Código de Ficha *</label>
 
-                        <input type="text" id="npers_code" placeholder="PER-005" class="form-input" required>
+                        <input type="text" id="npers_code" placeholder="PERS-019" class="form-input" required>
 
                     </div>
 
@@ -3069,7 +3556,11 @@
 
                 </div>
 
-
+                <!-- Banner Guía de Nomenclatura Personal -->
+                <div id="npers_nomenclature_guide" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Nomenclatura Dalor: Prefijo <b>PERS-</b> correlativo (ej: PERS-019).</span>
+                </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
@@ -3091,13 +3582,11 @@
 
                 </div>
 
-
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
 
-                        <label class="form-label">Cargo / Especialidad (Opcional)</label>
+                        <label class="form-label">Cargo / Especialidad</label>
 
                         <select id="npers_role" class="form-select">
 
@@ -3147,8 +3636,6 @@
 
                 </div>
 
-
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
@@ -3163,7 +3650,7 @@
 
                         <label class="form-label">Ubicación Inicial</label>
 
-                        <input type="text" id="npers_location" value="Sede Central" class="form-input">
+                        <input type="text" id="npers_location" value="Sede Central Dalor (Guacara)" class="form-input">
 
                     </div>
 
@@ -3219,6 +3706,10 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Controles de Paginación de Traza de Herramientas -->
+            <div id="toolHistoryPagination"></div>
+
             <div style="margin-top: 14px; text-align: right;">
                 <button type="button" onclick="closeModal('modalToolHistory')" class="btn-secondary">Cerrar</button>
             </div>
@@ -3434,41 +3925,118 @@
 
 
                 <div>
-
-                    <label class="form-label">Rol y Permisos de Acceso *</label>
-
-                    <select id="nusr_role" class="form-select" required>
-
+                    <label class="form-label">Rol Base / Cargo Operacional *</label>
+                    <select id="nusr_role" class="form-select" required onchange="onNewUserRoleChanged()">
                         <option value="director_general">Director General / Socio (Acceso Total & BI)</option>
-
                         <option value="administrador_financiero">Administración & Finanzas (CxC, CxP, Bancos, Facturas)</option>
-
                         <option value="ingeniero_obra">Ingeniero Residente de Obra (Proyectos, APU, Materiales)</option>
-
                         <option value="supervisor_campo">Supervisor de Campo / Faena (Captura Móvil, Recursos)</option>
-
                     </select>
-
                 </div>
 
-
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="form-label" style="margin: 0; font-size: 11.5px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-sliders"></i> Permisos Asignados al Usuario (Personalizables)
+                        </label>
+                        <span style="font-size: 10px; color: #64748b;">Heredados del rol seleccionado</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="nusr_perm_comercial" checked> 🏢 Comercial
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="nusr_perm_proyectos" checked> 🏗️ Proyectos & Obras
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="nusr_perm_finanzas"> 💼 Finanzas (CxC/CxP)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="nusr_perm_recursos" checked> 🚛 Recursos / Flota
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="nusr_perm_gastos" checked> 🧾 Gastos de Obra
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="nusr_perm_bi"> 👑 Panel Ejecutivo / BI
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0; grid-column: span 2;">
+                            <input type="checkbox" id="nusr_perm_mantenimiento"> ⚙️ Mantenimiento y Configuración
+                        </label>
+                    </div>
+                </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-
                     <button type="button" onclick="closeModal('modalNewUser')" class="btn-secondary">Cancelar</button>
-
                     <button type="submit" class="btn-primary" style="background: var(--dalor-navy);">
-
                         <i class="fa-solid fa-floppy-disk"></i> Crear Usuario
-
                     </button>
-
                 </div>
-
             </form>
-
         </div>
+    </div>
 
+    <!-- MODAL: CREAR / EDITAR ROL DE SEGURIDAD (PROFIT PLUS) -->
+    <div id="modalRoleForm" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 540px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-shield-halved" style="color: #d97706;"></i> <span id="roleModalTitle">Crear Rol de Seguridad</span>
+                </h3>
+                <button onclick="closeModal('modalRoleForm')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="roleForm" onsubmit="submitRoleForm(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="role_form_id" value="">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Nombre Visible del Rol *</label>
+                        <input type="text" id="role_display_name" placeholder="Ej: Auditor de Costos" class="form-input" required oninput="autoGenerateRoleSlug()">
+                    </div>
+                    <div>
+                        <label class="form-label">Identificador Único *</label>
+                        <input type="text" id="role_name" placeholder="auditor_costos" class="form-input" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Descripción Funcional</label>
+                    <input type="text" id="role_description" placeholder="Responsable de supervisión presupuestaria..." class="form-input">
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy); display: block; margin-bottom: 8px;">
+                        Módulos y Permisos Habilitados para este Rol:
+                    </span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="role_perm_comercial"> 🏢 Comercial
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="role_perm_proyectos"> 🏗️ Proyectos & Obras
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="role_perm_finanzas"> 💼 Finanzas & CxC/CxP
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="role_perm_recursos"> 🚛 Maquinaria & Flota
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="role_perm_gastos"> 🧾 Gastos de Operación
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="role_perm_bi"> 👑 Panel Ejecutivo / BI
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0; grid-column: span 2;">
+                            <input type="checkbox" id="role_perm_mantenimiento"> ⚙️ Configuración & Auditoría
+                        </label>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalRoleForm')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #d97706; font-weight: 800;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Rol
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
 
@@ -3908,7 +4476,7 @@
 
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size: 12px; color: #475569;">
 
-                <p style="margin: 0 0 6px 0;"><b>Cotización BCV Actual:</b> <span id="modalBcvCurrentRate" style="color: var(--dalor-blue); font-weight: 800;">848.55 Bs/$</span></p>
+                <p style="margin: 0 0 6px 0;"><b>Cotización BCV Actual:</b> <span id="modalBcvCurrentRate" style="color: var(--dalor-blue); font-weight: 800;">859.06 Bs/$</span></p>
 
                 <p style="margin: 0 0 6px 0;"><b>Fecha Valor Oficial:</b> <span id="modalBcvDateValue" style="color: #0f172a; font-weight: 700;">-</span></p>
 
@@ -3926,9 +4494,15 @@
 
                 </div>
 
-                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
 
                     <button type="button" onclick="closeModal('modalManualTasa')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+
+                    <button type="button" onclick="closeModal('modalManualTasa'); openBcvRateHistoryModal();" class="btn-secondary" style="font-size: 12px; color: #2563eb;">
+
+                        <i class="fa-solid fa-clock-rotate-left"></i> Histórico BCV
+
+                    </button>
 
                     <button type="button" onclick="syncBcvRateFromBtn(event); closeModal('modalManualTasa');" class="btn-secondary" style="font-size: 12px; color: #0284c7;">
 
@@ -4382,10 +4956,16 @@
 
                 <!-- External Entity Details -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px;">
-                    <div>
+                    <div style="position: relative;">
                         <label class="form-label" id="lblRentalExternalEntity">Empresa / Cliente / Destinatario *</label>
-                        <input type="text" id="rentalExternalEntity" list="rentalClientsDatalist" class="form-input" required placeholder="Selecciona o escribe el cliente..." oninput="onRentalClientSelected(this.value)">
-                        <datalist id="rentalClientsDatalist"></datalist>
+                        <div style="position: relative;">
+                            <input type="text" id="rentalExternalEntity" list="rentalClientsDatalist" class="form-input" required placeholder="🔍 Escribe o busca el cliente registrado..." oninput="onRentalClientInput(this.value)" autocomplete="off">
+                            <datalist id="rentalClientsDatalist"></datalist>
+                            <button type="button" onclick="toggleRentalClientsDropdown()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; padding: 4px;" title="Ver lista completa de clientes">
+                                <i class="fa-solid fa-chevron-down" style="font-size: 11px;"></i>
+                            </button>
+                        </div>
+                        <div id="rentalClientsPredictiveList" style="display: none; position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: white; border: 1.5px solid #0284c7; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); max-height: 220px; overflow-y: auto; z-index: 10001; padding: 4px;"></div>
                         <!-- Banner de Alerta de Riesgo Crediticio en Alquileres -->
                         <div id="rentalClientRiskAlert" style="display: none; margin-top: 8px; padding: 10px 12px; background: #fff1f2; border: 1.5px solid #f43f5e; border-radius: 8px; box-shadow: 0 2px 6px rgba(244, 63, 94, 0.15);">
                             <div style="display: flex; align-items: flex-start; gap: 8px;">
@@ -4652,8 +5232,214 @@
                 </table>
             </div>
 
+            <!-- Controles de Paginación de Bitácora de Activo -->
+            <div id="assetHistoryPagination"></div>
+
             <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
                 <button type="button" onclick="closeModal('modalAssetHistory')" class="btn-secondary">Cerrar Bitácora</button>
             </div>
         </div>
     </div>
+
+    <!-- MODAL: BITÁCORA Y TRAZABILIDAD INTEGRAL DE COLABORADOR / PERSONAL (PUNTO 6) -->
+    <div id="modalPersonnelHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 920px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="personnelHistoryTitle" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-user-clock" style="color: #2563eb;"></i> Bitácora & Trazabilidad de Colaborador
+                    </h3>
+                    <p id="personnelHistorySubtitle" style="font-size: 12px; color: #64748b; margin: 3px 0 0 0;">Cargando historial del colaborador...</p>
+                </div>
+                <button onclick="closeModal('modalPersonnelHistory')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Personnel KPI Card -->
+            <div id="personnelHistoryKpiCard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Ubicación / Obra Actual</span>
+                    <p id="persHistCurrentLoc" style="font-size: 12px; font-weight: 800; color: #1e293b; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cargo / Rol</span>
+                    <p id="persHistRole" style="font-size: 12px; font-weight: 800; color: #2563eb; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Asignaciones a Obras</span>
+                    <p id="persHistTotalProjects" style="font-size: 13px; font-weight: 800; color: #059669; margin: 2px 0 0 0;">0 obras</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Estatus Operativo</span>
+                    <p id="persHistStatusBadge" style="margin: 2px 0 0 0;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #dcfce7; color: #166534;">DISPONIBLE</span></p>
+                </div>
+            </div>
+
+            <!-- Timeline Table -->
+            <div class="table-wrapper">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px; text-align: left;">Fecha & Hora</th>
+                            <th style="padding: 8px; text-align: left;">Tipo Evento</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Rol / Función</th>
+                            <th style="padding: 8px; text-align: left;">Observaciones / Guía de Despacho</th>
+                        </tr>
+                    </thead>
+                    <tbody id="personnelHistoryTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">Cargando bitácora del colaborador...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Bitácora de Colaborador -->
+            <div id="personnelHistoryPagination"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalPersonnelHistory')" class="btn-secondary">Cerrar Bitácora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: BITÁCORA HISTÓRICA DE PARTIDA CONTABLE -->
+    <div id="modalCategoryHistory" class="modal-overlay hidden" style="z-index: 100000;">
+        <div class="modal-content" style="max-width: 950px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="background: var(--dalor-navy); color: white; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <div>
+                        <h3 id="catHistTitle" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">Bitácora de Partida Contable</h3>
+                        <p id="catHistSubtitle" style="font-size: 12px; color: #64748b; margin: 2px 0 0 0;">Histórico de comprobantes y egresos imputados</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal('modalCategoryHistory')" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Resumen Superior / KPIs de Partida -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Gasto Real Acumulado</span>
+                    <p id="catHistTotalSpent" style="font-size: 17px; font-weight: 900; color: #e11d48; margin: 2px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Equivalente Oficial (Bs)</span>
+                    <p id="catHistTotalBs" style="font-size: 15px; font-weight: 800; color: #334155; margin: 2px 0 0 0;">0.00 Bs</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Comprobantes Registrados</span>
+                    <p id="catHistCountBadge" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 2px 0 0 0;">0 registros</p>
+                </div>
+            </div>
+
+            <!-- Barra de Filtro Predictivo en Modal -->
+            <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                    <input type="text" id="catHistSearchInput" placeholder="Buscar por comercio, proyecto, descripción..." class="form-input" style="font-size: 12px; padding: 6px 10px;" oninput="debouncedFilterCategoryHistory()">
+                </div>
+                <div style="width: 180px;">
+                    <select id="catHistStatusFilter" class="form-select" style="font-size: 12px; padding: 6px 10px;" onchange="filterCategoryHistory()">
+                        <option value="">-- Todos los Estados --</option>
+                        <option value="aprobado">Aprobado / Validado</option>
+                        <option value="pendiente">Pendiente Validación</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tabla de Historial -->
+            <div class="table-wrapper">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 8px; text-align: left;">Comercio / Proveedor</th>
+                            <th style="padding: 8px; text-align: left;">Destino / Proyecto</th>
+                            <th style="padding: 8px; text-align: left;">Tipo de Gasto</th>
+                            <th style="padding: 8px; text-align: right;">Monto ($)</th>
+                            <th style="padding: 8px; text-align: right;">Monto (Bs)</th>
+                            <th style="padding: 8px; text-align: center;">Estado</th>
+                            <th style="padding: 8px; text-align: center;">Adjunto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catHistTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #64748b; padding: 20px;">Cargando historial de la partida...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación -->
+            <div id="catHistPagination" style="margin-top: 10px;"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalCategoryHistory')" class="btn-secondary">Cerrar Bitácora</button>
+            </div>
+        </div>
+    </div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     MODAL: GESTIÓN DE CUENTAS BANCARIAS Y CAJAS
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<div id="modalManageAccounts" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 680px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+            <div>
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-building-columns" style="color: #2563eb;"></i> Gestión de Cuentas Bancarias y Cajas
+                </h3>
+                <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">Agrega, edita o desactiva las cuentas que aparecen en los módulos financieros.</p>
+            </div>
+            <button type="button" onclick="closeModal('modalManageAccounts')" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">&times;</button>
+        </div>
+
+        <!-- Formulario nueva cuenta -->
+        <div style="background:#f1f5f9; border-radius:8px; padding:14px; margin-bottom:14px;">
+            <h4 style="font-size:13px; font-weight:700; color:#1e293b; margin:0 0 10px 0;"><i class="fa-solid fa-plus"></i> Nueva Cuenta / Caja</h4>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                    <label class="form-label">Nombre de la Cuenta *</label>
+                    <input type="text" id="new_acc_name" class="form-input" placeholder="Ej: Mercantil USD, Caja Caracas">
+                </div>
+                <div>
+                    <label class="form-label">Tipo de Moneda *</label>
+                    <select id="new_acc_type" class="form-select">
+                        <option value="usd">💵 USD / Dólares</option>
+                        <option value="bs">🇻🇪 Bolívares (Bs)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Banco / Proveedor</label>
+                    <input type="text" id="new_acc_bank" class="form-input" placeholder="Ej: Mercantil, Bancamiga, Zelle">
+                </div>
+                <div>
+                    <label class="form-label">Últimos 4 dígitos / Alias</label>
+                    <input type="text" id="new_acc_number" class="form-input" placeholder="Ej: **5678 o N/A">
+                </div>
+                <div>
+                    <label class="form-label">Notas</label>
+                    <input type="text" id="new_acc_notes" class="form-input" placeholder="Opcional">
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                    <button type="button" onclick="submitNewFinancialAccount()" class="btn-primary" style="width:100%; background:#2563eb;">
+                        <i class="fa-solid fa-plus"></i> Crear Cuenta
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de cuentas existentes -->
+        <div id="manageAccountsList" style="max-height:320px; overflow-y:auto;">
+            <p style="text-align:center; color:#64748b; font-size:13px;">Cargando cuentas...</p>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px;">
+            <button type="button" onclick="closeModal('modalManageAccounts')" class="btn-secondary">Cerrar</button>
+        </div>
+    </div>
+</div>
+

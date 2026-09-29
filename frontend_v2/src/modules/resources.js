@@ -25,7 +25,12 @@ function authFetch(url, options = {}) {
     const t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     const h = { ...(options.headers || {}) };
     if (t) h['Authorization'] = 'Bearer ' + t;
-    if (options.body && !h['Content-Type']) h['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !h['Content-Type']) {
+        h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete h['Content-Type'];
+    }
     return window.fetch(url, { ...options, headers: h });
 }
 
@@ -106,42 +111,117 @@ async function loadResourceDashboard() {
 
 
 
-        // 1. Tarjetas de Resumen KPI por Categoría Real
+        // 1. Tarjetas de Resumen General KPI por Categoría Real (Flota, Maquinaria, Herramientas, Personal)
+        const vTot = data.summary.vehicles_total ?? ((data.summary.vehicles_available_base || 0) + (data.summary.vehicles_in_operation || 0));
+        const mTot = data.summary.machinery_total ?? ((data.summary.machinery_available_base || 0) + (data.summary.machinery_in_operation || 0));
+        const tTot = data.summary.tools_total ?? ((data.summary.tools_available_base || 0) + (data.summary.tools_in_operation || 0));
+        const pTot = data.summary.total_personnel ?? ((data.summary.personnel_available_base || 0) + (data.summary.personnel_in_operation || 0));
+
         document.getElementById("matrixCountersContainer").innerHTML = `
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Vehículos en Base</span>
-                <p style="font-size: 18px; font-weight: 900; color: #059669;">${data.summary.vehicles_available_base ?? (data.summary.assets_available_base || 0)}</p>
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 10.5px; text-transform: uppercase; color: #1e293b; font-weight: 800;">
+                        <i class="fa-solid fa-truck-front" style="color: #0284c7;"></i> Flota Vehicular
+                    </span>
+                    <span style="font-size: 10px; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-weight: 800; color: #475569;">Total: ${vTot}</span>
+                </div>
+                <div style="display: flex; justify-content: space-around; align-items: baseline; margin-top: 6px;">
+                    <div style="text-align: center;">
+                        <span style="font-size: 9px; color: #0284c7; font-weight: 700; text-transform: uppercase;">En Obra</span>
+                        <p style="font-size: 16px; font-weight: 900; color: #0284c7; margin: 0;">${data.summary.vehicles_in_operation ?? 0}</p>
+                    </div>
+                    <div style="border-left: 1px solid #e2e8f0; height: 24px;"></div>
+                    <div style="text-align: center;">
+                        <span style="font-size: 9px; color: #166534; font-weight: 700; text-transform: uppercase;">En Base</span>
+                        <p style="font-size: 16px; font-weight: 900; color: #16a34a; margin: 0;">${data.summary.vehicles_available_base ?? 0}</p>
+                    </div>
+                </div>
             </div>
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Maquinaria en Base</span>
-                <p style="font-size: 18px; font-weight: 900; color: #ea580c;">${data.summary.machinery_available_base ?? 1}</p>
+
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 10.5px; text-transform: uppercase; color: #1e293b; font-weight: 800;">
+                        <i class="fa-solid fa-tractor" style="color: #ea580c;"></i> Maquinaria Pesada
+                    </span>
+                    <span style="font-size: 10px; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-weight: 800; color: #475569;">Total: ${mTot}</span>
+                </div>
+                <div style="display: flex; justify-content: space-around; align-items: baseline; margin-top: 6px;">
+                    <div style="text-align: center;">
+                        <span style="font-size: 9px; color: #0284c7; font-weight: 700; text-transform: uppercase;">En Obra</span>
+                        <p style="font-size: 16px; font-weight: 900; color: #0284c7; margin: 0;">${data.summary.machinery_in_operation ?? 0}</p>
+                    </div>
+                    <div style="border-left: 1px solid #e2e8f0; height: 24px;"></div>
+                    <div style="text-align: center;">
+                        <span style="font-size: 9px; color: #c2410c; font-weight: 700; text-transform: uppercase;">En Base</span>
+                        <p style="font-size: 16px; font-weight: 900; color: #ea580c; margin: 0;">${data.summary.machinery_available_base ?? 0}</p>
+                    </div>
+                </div>
             </div>
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Herramientas en Base</span>
-                <p style="font-size: 18px; font-weight: 900; color: #0284c7;">${data.summary.tools_available_base ?? 890}</p>
+
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 10.5px; text-transform: uppercase; color: #1e293b; font-weight: 800;">
+                        <i class="fa-solid fa-wrench" style="color: #4f46e5;"></i> Herramientas Stock
+                    </span>
+                    <span style="font-size: 10px; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-weight: 800; color: #475569;">Total: ${tTot}</span>
+                </div>
+                <div style="display: flex; justify-content: space-around; align-items: baseline; margin-top: 6px;">
+                    <div style="text-align: center;">
+                        <span style="font-size: 9px; color: #0284c7; font-weight: 700; text-transform: uppercase;">En Obra</span>
+                        <p style="font-size: 16px; font-weight: 900; color: #0284c7; margin: 0;">${data.summary.tools_in_operation ?? 0}</p>
+                    </div>
+                    <div style="border-left: 1px solid #e2e8f0; height: 24px;"></div>
+                    <div style="text-align: center;">
+                        <span style="font-size: 9px; color: #166534; font-weight: 700; text-transform: uppercase;">En Base</span>
+                        <p style="font-size: 16px; font-weight: 900; color: #16a34a; margin: 0;">${data.summary.tools_available_base ?? 0}</p>
+                    </div>
+                </div>
             </div>
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-                <span style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700;">Personal en Base</span>
-                <p style="font-size: 18px; font-weight: 900; color: #059669;">${data.summary.personnel_available_base}</p>
+
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 10.5px; text-transform: uppercase; color: #1e293b; font-weight: 800;">
+                        <i class="fa-solid fa-users" style="color: #059669;"></i> Nómina / Personal
+                    </span>
+                    <span style="font-size: 10px; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-weight: 800; color: #475569;">Total: ${pTot}</span>
+                </div>
+                <div style="display: flex; justify-content: space-around; align-items: baseline; margin-top: 6px;">
+                    <div style="text-align: center;">
+                        <span style="font-size: 9px; color: #0284c7; font-weight: 700; text-transform: uppercase;">En Obra</span>
+                        <p style="font-size: 16px; font-weight: 900; color: #0284c7; margin: 0;">${data.summary.personnel_in_operation ?? 0}</p>
+                    </div>
+                    <div style="border-left: 1px solid #e2e8f0; height: 24px;"></div>
+                    <div style="text-align: center;">
+                        <span style="font-size: 9px; color: #166534; font-weight: 700; text-transform: uppercase;">En Base</span>
+                        <p style="font-size: 16px; font-weight: 900; color: #16a34a; margin: 0;">${data.summary.personnel_available_base ?? 0}</p>
+                    </div>
+                </div>
             </div>
         `;
 
 
 
         // 2. Distribución por Ubicación
+        const normalizeLoc = (item) => {
+            if (item.project_id && item.project_name) {
+                const code = item.project_code || `PRJ-${item.project_id}`;
+                const locSuffix = item.project_location ? ` (${item.project_location})` : '';
+                return `Obra [${code}] - ${item.project_name}${locSuffix}`;
+            }
+            const l = item.location || '';
+            const s = l.trim().toLowerCase();
+            if (!s || s.includes('sede') || s.includes('base') || s.includes('guacara') || s.includes('taller')) {
+                return 'Sede Central Dalor (Guacara)';
+            }
+            return l.trim();
+        };
 
         const locMap = {};
-
         [...data.assets, ...data.personnel].forEach(item => {
-
-            const loc = item.location || 'Sede Central';
-
+            const loc = normalizeLoc(item);
             if (!locMap[loc]) locMap[loc] = { assets: 0, personnel: 0 };
-
             if (item.type) locMap[loc].assets++;
-
             else locMap[loc].personnel++;
-
         });
 
 
@@ -180,21 +260,20 @@ async function loadResourceDashboard() {
 
         // 3. Resumen de Movimientos
 
-        document.getElementById("recentMovementsContainer").innerHTML = data.assets.slice(0, 5).map(a => `
-
+        document.getElementById("recentMovementsContainer").innerHTML = data.assets.slice(0, 5).map(a => {
+            const inProject = a.status === 'en_obra' || a.project_id;
+            const custLabel = inProject
+                ? ((a.custodian && !a.custodian.toLowerCase().includes('base')) ? a.custodian : 'En Operación de Obra')
+                : (a.custodian || 'Disponible en Base');
+            return `
             <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 11px;">
-
                 <span><b>${a.code}</b> - ${a.name}</span>
-
-                <span style="font-weight: 700; color: ${a.status === 'disponible_base' ? '#059669' : '#0284c7'};">
-
-                    ${a.location} (${a.custodian})
-
+                <span style="font-weight: 700; color: ${inProject ? '#0284c7' : '#059669'};">
+                    ${a.location} (${custLabel})
                 </span>
-
             </div>
-
-        `).join('');
+        `;
+        }).join('');
 
 
 
@@ -232,271 +311,376 @@ async function loadFleetList() {
             return;
         }
 
-        const vehicles = fleet.filter(a => a && (
+        rawFleetList = fleet.filter(a => a && (
             a.asset_type === 'vehiculo' || 
             a.asset_type === 'camioneta' || 
             (typeof a.asset_code === 'string' && (a.asset_code.includes('-V-') || a.asset_code.startsWith('FLT-'))) ||
             (typeof a.category === 'string' && a.category.toLowerCase().includes('flota'))
         ));
 
-        if (vehicles.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No hay vehículos registrados en la flota.</td></tr>`;
-            return;
-        }
+        filterFleetList();
 
-        tbody.innerHTML = vehicles.map(v => {
-            if (!v) return '';
-            let semColor = '#166534';
-            let semBg = '#dcfce7';
-            const light = String(v?.traffic_light ?? 'VERDE_OK');
-            if (light === 'ROJO_VENCIDO') {
-                semColor = '#991b1b';
-                semBg = '#fee2e2';
-            } else if (light === 'AMARILLO_PROXIMO') {
-                semColor = '#92400e';
-                semBg = '#fef3c7';
-            }
-
-            const inBase = (v?.status === 'disponible_base') || !v?.current_project_id;
-            const curOdo = Number(v?.current_odometer ?? 0);
-            const remKm = Number(v?.remaining_km_to_service ?? 0);
-            const plateStr = v?.license_plate || '-';
-            const locStr = v?.current_location || 'Sede Central Dalor';
-            const custStr = v?.custodian || 'Disponible en Base';
-            const vName = v?.name || 'Vehículo';
-            const safeName = String(vName).replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            const safeCode = v?.asset_code || 'FLT';
-            const vId = v?.id ?? 0;
-            const vBrand = v?.brand ? `(${v.brand})` : '';
-
-            return `
-            <tr>
-                <td style="font-weight: 800; color: var(--dalor-blue);">${safeCode}</td>
-                <td style="font-weight: 700; color: var(--dalor-navy);">${vName} ${vBrand}</td>
-                <td style="font-weight: 800; font-family: monospace;">${plateStr}</td>
-                <td style="font-weight: 800;">${curOdo.toLocaleString()} Km</td>
-                <td>En ${remKm.toLocaleString()} Km</td>
-                <td>
-                    <span style="font-size: 10px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${semBg}; color: ${semColor};">
-                        ${light.replace(/_/g, ' ')}
-                    </span>
-                </td>
-                <td>
-                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
-                        ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA'}
-                    </span>
-                </td>
-                <td>${locStr}</td>
-                <td>${custStr}</td>
-                <td style="text-align: center; white-space: nowrap;">
-                    <button onclick="openAssetHistoryModal(${vId}, '${safeCode}', '${safeName}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora y Trazabilidad de Uso">
-                        <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
-                    </button>
-                    <button onclick="openOdometerOcrModal(${vId}, '${safeCode}', '${safeName}', '${plateStr}', ${curOdo})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
-                        <i class="fa-solid fa-camera"></i> Odómetro
-                    </button>
-                    <button onclick="openCalibrateOdometerModal(${vId}, '${safeCode}', '${safeName}', ${curOdo})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Resetear Odómetro con Clave de Director">
-                        <i class="fa-solid fa-key"></i> Calibrar
-                    </button>
-                    <button onclick="openRecordServiceModal(${vId}, '${safeCode}', '${safeName}', ${curOdo})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #ea580c; border-color: #fdba74;" title="Registrar Mantenimiento / Cambio de Aceite">
-                        <i class="fa-solid fa-wrench"></i> Servicio
-                    </button>
-                    ${inBase ? `
-                        <button onclick="openAssignModal('asset', ${vId}, '${safeName}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
-                            Asignar a Obra
-                        </button>
-                    ` : `
-                        <button onclick="openAssignModal('asset', ${vId}, '${safeName}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
-                            <i class="fa-solid fa-arrows-split-up-and-left"></i>
-                        </button>
-                        <button onclick="returnResourceToBase('asset', ${vId})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
-                            <i class="fa-solid fa-warehouse"></i>
-                        </button>
-                    `}
-                    <button onclick="deleteAssetItem(${vId})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Vehículo">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-            </tr>`;
-        }).join('');
     } catch (e) {
         console.error("[FLEET ERROR]", e);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar flota: ${e?.message || e}</td></tr>`;
+        const tbody = document.getElementById("fleetTableBody");
+        if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #e11d48;">Error al cargar flota: ${e?.message || e}</td></tr>`;
     }
 }
 
+let rawFleetList = [];
 
+function filterFleetList() {
+    const q = (document.getElementById("fleetSearchInput")?.value || '').trim().toLowerCase();
+    const status = document.getElementById("fleetStatusFilter")?.value || 'all';
+    const maint = document.getElementById("fleetMaintFilter")?.value || 'all';
+    const tbody = document.getElementById("fleetTableBody");
+    const countBadge = document.getElementById("fleetCountBadge");
 
-function openRecordServiceModal(assetId, code, name, currentKm) {
+    let filtered = (rawFleetList || []).filter(v => {
+        const safeCode = (v?.asset_code || '').toLowerCase();
+        const safeName = (v?.name || '').toLowerCase();
+        const safeBrand = (v?.brand || '').toLowerCase();
+        const safePlate = (v?.license_plate || '').toLowerCase();
+        const matchText = !q || safeCode.includes(q) || safeName.includes(q) || safeBrand.includes(q) || safePlate.includes(q);
 
-    let modal = document.getElementById("modalRecordService");
+        const inBase = (v?.status === 'disponible_base') && !v?.current_project_id;
+        let matchStatus = true;
+        if (status === 'en_obra') matchStatus = !inBase;
+        if (status === 'disponible_base') matchStatus = inBase;
 
-    if (!modal) {
+        let matchMaint = true;
+        if (maint !== 'all') matchMaint = String(v?.traffic_light || '') === maint;
 
-        const div = document.createElement("div");
+        return matchText && matchStatus && matchMaint;
+    });
 
-        div.id = "modalRecordService";
+    if (countBadge) countBadge.innerText = `${filtered.length} de ${rawFleetList.length} vehículos`;
 
-        div.className = "modal-overlay hidden";
+    if (!tbody) return;
 
-        div.innerHTML = `
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 20px; color: #94a3b8;">No hay vehículos que coincidan con la búsqueda o filtros aplicados.</td></tr>`;
+        return;
+    }
 
-        <div class="modal-card" style="max-width: 460px;">
+    tbody.innerHTML = filtered.map(v => {
+        if (!v) return '';
+        let semColor = '#166534';
+        let semBg = '#dcfce7';
+        const light = String(v?.traffic_light ?? 'VERDE_OK');
+        if (light === 'ROJO_VENCIDO') {
+            semColor = '#991b1b';
+            semBg = '#fee2e2';
+        } else if (light === 'AMARILLO_PROXIMO') {
+            semColor = '#92400e';
+            semBg = '#fef3c7';
+        }
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        const inBase = (v?.status === 'disponible_base') && !v?.current_project_id;
+        const curOdo = Number(v?.current_odometer ?? 0);
+        const remKm = Number(v?.remaining_km_to_service ?? 0);
+        const plateStr = v?.license_plate || '-';
+        const locStr = inBase 
+            ? (v?.current_location || 'Sede Central Dalor (Guacara)')
+            : (v?.current_location && !v.current_location.includes('Sede') ? v.current_location : 'En Operación / Obra');
+        const custStr = inBase 
+            ? 'Disponible en Base'
+            : (v?.custodian && !v.custodian.toLowerCase().includes('base') ? v.custodian : 'Equipo de Obra');
+        const vName = v?.name || 'Vehículo';
+        const safeName = String(vName).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        const safeCode = v?.asset_code || 'FLT';
+        const vId = v?.id ?? 0;
+        const vBrand = v?.brand ? `(${v.brand})` : '';
+        const srvCount = v?.services_count ?? 0;
 
-                <h3 style="font-size: 16px; font-weight: 800; color: #ea580c; display: flex; align-items: center; gap: 8px;">
-
-                    <i class="fa-solid fa-wrench"></i> Registrar Mantenimiento / Servicio
-
-                </h3>
-
-                <button onclick="closeModal('modalRecordService')" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">&times;</button>
-
-            </div>
-
-            <form id="formRecordService" onsubmit="submitRecordService(event)">
-
-                <input type="hidden" id="srv_asset_id">
-
-                <div class="form-group" style="margin-bottom: 12px;">
-
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Vehículo / Equipo:</label>
-
-                    <div id="srv_veh_label" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px; padding: 8px; background: #f1f5f9; border-radius: 6px;"></div>
-
-                </div>
-
-                <div class="form-group" style="margin-bottom: 12px;">
-
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Tipo de Servicio *</label>
-
-                    <select id="srv_type" class="form-control" required>
-
-                        <option value="cambio_aceite_filtros">Cambio de Aceite y Filtros (5.000 Km)</option>
-
-                        <option value="mantenimiento_preventivo_mayor">Mantenimiento Preventivo Mayor (Frenos/Tren/Correas)</option>
-
-                        <option value="reparacion_correctiva">Reparación Mecánica Correctiva</option>
-
-                        <option value="cambio_cauchos_alineacion">Cambio de Cauchos y Alineación</option>
-
-                    </select>
-
-                </div>
-
-                <div class="form-group" style="margin-bottom: 12px;">
-
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Nuevo Odómetro al momento del Servicio (Km) *</label>
-
-                    <input type="number" step="1" id="srv_odometer" class="form-control" required>
-
-                </div>
-
-                <div class="form-group" style="margin-bottom: 12px;">
-
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Costo Total del Servicio (USD)</label>
-
-                    <input type="number" step="0.01" id="srv_cost" class="form-control" value="0.00">
-
-                </div>
-
-                <div class="form-group" style="margin-bottom: 16px;">
-
-                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Taller / Observaciones</label>
-
-                    <textarea id="srv_notes" class="form-control" rows="2" placeholder="Ej: Taller Central - Aceite 15W40 mineral"></textarea>
-
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 8px;">
-
-                    <button type="button" onclick="closeModal('modalRecordService')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
-
-                    <button type="submit" class="btn-primary" style="font-size: 12px; background: #ea580c;">
-
-                        <i class="fa-solid fa-check"></i> Guardar Servicio y Resetear Semáforo
-
+        return `
+        <tr>
+            <td style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">${safeCode}</td>
+            <td style="font-weight: 700; color: var(--dalor-navy);">${vName} ${vBrand}</td>
+            <td style="font-weight: 800; font-family: monospace;">${plateStr}</td>
+            <td style="font-weight: 800;">${curOdo.toLocaleString()} Km</td>
+            <td>En ${remKm.toLocaleString()} Km</td>
+            <td>
+                <span style="font-size: 10px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${semBg}; color: ${semColor};">
+                    ${light.replace(/_/g, ' ')}
+                </span>
+            </td>
+            <td style="text-align: center;">
+                <button onclick="openVehicleServicesModal(${vId}, '${safeCode}', '${safeName}')" class="btn-secondary" style="padding: 3px 8px; border-radius: 9999px; font-weight: 800; font-size: 11px; background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Ver bitácora de mantenimientos y servicios de esta unidad">
+                    <i class="fa-solid fa-wrench"></i> ${srvCount} Servicios
+                </button>
+            </td>
+            <td>
+                <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
+                    <i class="fa-solid ${inBase ? 'fa-warehouse' : 'fa-truck-front'}"></i> ${inBase ? 'DISPONIBLE EN BASE' : 'EN OPERACIÓN / OBRA'}
+                </span>
+            </td>
+            <td>${locStr}</td>
+            <td>${custStr}</td>
+            <td style="text-align: center; white-space: nowrap;">
+                <button onclick="openAssetHistoryModal(${vId}, '${safeCode}', '${safeName}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; background: #2563eb;" title="Ver Bitácora Integral y Trazabilidad">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
+                </button>
+                <button onclick="openOdometerOcrModal(${vId}, '${safeCode}', '${safeName}', '${plateStr}', ${curOdo})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; background: #0284c7; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);" title="Capturar Odómetro por Foto (OCR)">
+                    <i class="fa-solid fa-camera"></i> Odómetro
+                </button>
+                <button onclick="openCalibrateOdometerModal(${vId}, '${safeCode}', '${safeName}', ${curOdo})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Resetear Odómetro con Clave de Director">
+                    <i class="fa-solid fa-key"></i> Calibrar
+                </button>
+                ${inBase ? `
+                    <button onclick="openAssignModal('asset', ${vId}, '${safeName}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
+                        Asignar a Obra
                     </button>
-
-                </div>
-
-            </form>
-
-        </div>`;
-
-        document.body.appendChild(div);
-
-    }
-
-    document.getElementById("srv_asset_id").value = assetId;
-
-    document.getElementById("srv_veh_label").innerText = `[${code}] ${name}`;
-
-    document.getElementById("srv_odometer").value = currentKm;
-
-    openModal("modalRecordService");
-
+                ` : `
+                    <button onclick="openAssignModal('asset', ${vId}, '${safeName}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
+                        <i class="fa-solid fa-arrows-split-up-and-left"></i>
+                    </button>
+                    <button onclick="returnResourceToBase('asset', ${vId})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
+                        <i class="fa-solid fa-warehouse"></i>
+                    </button>
+                `}
+                <button onclick="deleteAssetItem(${vId})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Vehículo">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
+let currentVehServicesList = [];
+let currentVehServicesPage = 1;
+let currentVehServicesPageSize = 5;
 
+function goToVehServicesPage(page) {
+    currentVehServicesPage = page;
+    renderVehServicesTablePaginated();
+}
 
-async function submitRecordService(event) {
+function changeVehServicesPageSize(size) {
+    currentVehServicesPageSize = parseInt(size) || 5;
+    currentVehServicesPage = 1;
+    renderVehServicesTablePaginated();
+}
 
-    event.preventDefault();
+function renderVehServicesTablePaginated() {
+    const tbody = document.getElementById("vehServicesTableBody");
+    const container = document.getElementById("vehServicesPagination");
+    if (!tbody) return;
 
-    const assetId = document.getElementById("srv_asset_id").value;
+    if (!currentVehServicesList || currentVehServicesList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #94a3b8;">No se registran servicios de taller ni cambios de aceite para este vehículo aún. Usa el botón superior para registrar uno.</td></tr>`;
+        if (container) container.innerHTML = '';
+        return;
+    }
 
-    const payload = {
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: currentVehServicesList.length }));
 
-        new_odometer: parseFloat(document.getElementById("srv_odometer").value),
+    const { startIndex, endIndex } = paginateFn({
+        containerId: "vehServicesPagination",
+        totalItems: currentVehServicesList.length,
+        currentPage: currentVehServicesPage,
+        pageSize: currentVehServicesPageSize,
+        onPageChange: "goToVehServicesPage",
+        onPageSizeChange: "changeVehServicesPageSize",
+        itemLabel: "servicio(s) realizado(s)",
+        pageSizeOptions: [5, 10, 20],
+        allowAll: true
+    });
 
-        service_type: document.getElementById("srv_type").value,
+    const pageItems = currentVehServicesList.slice(startIndex, endIndex);
 
-        cost_usd: parseFloat(document.getElementById("srv_cost").value) || 0.0,
+    tbody.innerHTML = pageItems.map(s => {
+        const sType = (s.service_type || '').replace(/_/g, ' ').toUpperCase();
+        return `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px; font-weight: 600; color: #475569; white-space: nowrap;">${s.service_date}</td>
+            <td style="padding: 8px; font-weight: 700; color: #1e293b;">
+                <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5;">
+                    <i class="fa-solid fa-wrench"></i> ${sType}
+                </span>
+            </td>
+            <td style="padding: 8px; text-align: right; font-weight: 800; color: var(--dalor-navy);">${Number(s.service_odometer || 0).toLocaleString()} Km</td>
+            <td style="padding: 8px; color: #334155; font-weight: 600;">${s.technician_workshop || 'Taller Central'}</td>
+            <td style="padding: 8px; text-align: right; font-weight: 800; color: #059669;">$${Number(s.cost_usd || 0).toFixed(2)}</td>
+            <td style="padding: 8px; color: #64748b; font-size: 11px;">${s.notes || '-'}</td>
+        </tr>`;
+    }).join('');
+}
 
-        notes: document.getElementById("srv_notes").value
+async function openVehicleServicesModal(assetId, code = null, name = null) {
+    const titleEl = document.getElementById("vehServicesModalTitle");
+    const subEl = document.getElementById("vehServicesModalSubtitle");
+    const plateEl = document.getElementById("vehSrvPlate");
+    const odoEl = document.getElementById("vehSrvOdometer");
+    const countEl = document.getElementById("vehSrvCount");
+    const costEl = document.getElementById("vehSrvTotalCost");
+    const tbody = document.getElementById("vehServicesTableBody");
+    const btnNew = document.getElementById("btnOpenNewServiceFromHistory");
 
-    };
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-wrench"></i> Historial de Servicios: [${code || '...'} ${name || ''}]`;
+    if (subEl) subEl.innerText = `Cargando bitácora de mantenimientos preventivos y correctivos...`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Consultando registros...</td></tr>`;
 
-
+    openModal("modalVehicleServices");
 
     try {
+        const res = await authFetch(`${API_BASE}/assets/${assetId}/services`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const a = data.asset || {};
+        const services = data.services || [];
 
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-wrench"></i> Historial de Servicios: [${a.asset_code || code || ''}] ${a.name || name || ''}`;
+        if (subEl) subEl.innerText = `${a.brand ? a.brand + ' ' : ''}${a.model || ''} | Placa: ${a.license_plate || '-'} | Ubicación: ${a.current_location || 'Base'}`;
+        if (plateEl) plateEl.innerText = a.license_plate || '-';
+        if (odoEl) odoEl.innerText = `${Number(a.current_odometer || 0).toLocaleString()} Km`;
+        if (countEl) countEl.innerText = `${data.services_count || 0} Realizados`;
+        if (costEl) costEl.innerText = `$${Number(data.total_cost_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`;
+
+        if (btnNew) {
+            btnNew.onclick = () => {
+                closeModal("modalVehicleServices");
+                openRecordServiceModal(a.id, a.asset_code, a.name, a.current_odometer || 0);
+            };
+        }
+
+        currentVehServicesList = services;
+        currentVehServicesPage = 1;
+        renderVehServicesTablePaginated();
+
+    } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar servicios: ${e.message}</td></tr>`;
+    }
+}
+
+
+
+function onRecordServiceTypeChange() {
+    const type = document.getElementById("srv_type")?.value;
+    const chk = document.getElementById("srv_reset_oil");
+    const desc = document.getElementById("srv_reset_oil_desc");
+    if (!chk) return;
+    if (type === 'cambio_aceite_filtros' || type === 'mantenimiento_preventivo_mayor') {
+        chk.checked = true;
+        if (desc) desc.innerText = "Marcado: Este servicio incluye cambio de lubricante y reinicia el intervalo a 5.000 Km (Verde OK).";
+    } else {
+        chk.checked = false;
+        if (desc) desc.innerText = "Desmarcado: Solo registra la reparación/cauchos en bitácora. El semáforo de aceite conserva su conteo de kilómetros.";
+    }
+}
+
+function openRecordServiceModal(assetId, code, name, currentKm) {
+    let modal = document.getElementById("modalRecordService");
+    if (!modal) {
+        const div = document.createElement("div");
+        div.id = "modalRecordService";
+        div.className = "modal-overlay hidden";
+        div.innerHTML = `
+        <div class="modal-card" style="max-width: 460px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 800; color: #ea580c; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-wrench"></i> Registrar Mantenimiento / Servicio
+                </h3>
+                <button onclick="closeModal('modalRecordService')" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+            <form id="formRecordService" onsubmit="submitRecordService(event)">
+                <input type="hidden" id="srv_asset_id">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Vehículo / Equipo:</label>
+                    <div id="srv_veh_label" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px; padding: 8px; background: #f1f5f9; border-radius: 6px;"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Tipo de Servicio *</label>
+                    <select id="srv_type" class="form-control" onchange="onRecordServiceTypeChange()" required>
+                        <option value="cambio_aceite_filtros">Cambio de Aceite y Filtros (5.000 Km)</option>
+                        <option value="mantenimiento_preventivo_mayor">Mantenimiento Preventivo Mayor (Frenos/Tren/Correas)</option>
+                        <option value="reparacion_correctiva">Reparación Mecánica Correctiva</option>
+                        <option value="cambio_cauchos_alineacion">Cambio de Cauchos y Alineación</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px; background: #fff7ed; padding: 10px; border-radius: 6px; border: 1px solid #fed7aa;">
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 11px; font-weight: 700; color: #9a3412;">
+                        <input type="checkbox" id="srv_reset_oil" checked style="width: 16px; height: 16px; accent-color: #ea580c;">
+                        <div>
+                            <span>¿Reiniciar semáforo de cambio de aceite a 5.000 Km?</span>
+                            <span id="srv_reset_oil_desc" style="display: block; font-size: 10px; font-weight: 500; color: #c2410c;">Marcado: Incluye cambio de lubricante y reinicia a 5.000 Km.</span>
+                        </div>
+                    </label>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Nuevo Odómetro al momento del Servicio (Km) *</label>
+                    <input type="number" step="1" id="srv_odometer" class="form-control" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Costo Total del Servicio (USD)</label>
+                    <input type="number" step="0.01" id="srv_cost" class="form-control" value="0.00">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155;">Taller / Observaciones</label>
+                    <textarea id="srv_notes" class="form-control" rows="2" placeholder="Ej: Taller Central - Aceite 15W40 mineral"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalRecordService')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="font-size: 12px; background: #ea580c;">
+                        <i class="fa-solid fa-check"></i> Guardar en Bitácora
+                    </button>
+                </div>
+            </form>
+        </div>`;
+        document.body.appendChild(div);
+    }
+
+    const idEl = document.getElementById("srv_asset_id");
+    const labelEl = document.getElementById("srv_veh_label");
+    const odoEl = document.getElementById("srv_odometer");
+    const typeEl = document.getElementById("srv_type");
+
+    if (idEl) idEl.value = assetId;
+    if (labelEl) labelEl.innerText = `[${code}] ${name}`;
+    if (odoEl) odoEl.value = currentKm;
+    if (typeEl) {
+        typeEl.value = "cambio_aceite_filtros";
+        onRecordServiceTypeChange();
+    }
+
+    openModal("modalRecordService");
+}
+
+async function submitRecordService(event) {
+    event.preventDefault();
+    const assetId = document.getElementById("srv_asset_id").value;
+    const resetOilEl = document.getElementById("srv_reset_oil");
+
+    const payload = {
+        new_odometer: parseFloat(document.getElementById("srv_odometer").value),
+        service_type: document.getElementById("srv_type").value,
+        cost_usd: parseFloat(document.getElementById("srv_cost").value) || 0.0,
+        notes: document.getElementById("srv_notes").value,
+        reset_oil_interval: resetOilEl ? resetOilEl.checked : undefined
+    };
+
+    try {
         const res = await authFetch(`${API_BASE}/assets/${assetId}/record-service`, {
-
             method: "POST",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify(payload)
-
         });
 
         if (res.ok) {
-
             const data = await res.json();
-
             alert(data.message || "Servicio registrado exitosamente.");
-
             closeModal("modalRecordService");
-
             await loadFleetList();
-
+            await openVehicleServicesModal(assetId);
         } else {
-
             const err = await res.json();
-
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
-
         alert("Error al conectar con el servidor.");
-
     }
-
 }
 
 
@@ -1164,6 +1348,7 @@ async function loadToolsList() {
                 groups[key] = {
                     name: t.name.trim(),
                     asset_type: t.asset_type || 'herramienta',
+                    category: t.category || 'General',
                     items: [],
                     total: 0,
                     available: 0,
@@ -1186,6 +1371,15 @@ async function loadToolsList() {
             ...g,
             locations: Array.from(g.locations)
         }));
+
+        // Poblar selector dinámico de categorías de herramientas
+        const catSelect = document.getElementById("toolCategoryFilter");
+        if (catSelect) {
+            const currentVal = catSelect.value || 'all';
+            const categories = Array.from(new Set(rawToolsList.map(t => t.category).filter(Boolean))).sort();
+            catSelect.innerHTML = `<option value="all">Todas las Categorías (${categories.length})</option>` +
+                categories.map(c => `<option value="${c}" ${c === currentVal ? 'selected' : ''}>${c}</option>`).join('');
+        }
 
         renderGroupedTools(groupedToolsList);
 
@@ -1231,7 +1425,11 @@ function renderGroupedToolsPaginated() {
         return;
     }
 
-    const { startIndex, endIndex } = (window.renderPaginationControls || renderPaginationControls)({
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: list.length }));
+
+    const { startIndex, endIndex } = paginateFn({
         containerId: "toolsPaginationContainer",
         totalItems: list.length,
         currentPage: toolsCurrentPage,
@@ -1368,13 +1566,18 @@ window.toggleToolUnitsBreakdown = toggleToolUnitsBreakdown;
 function filterToolsList() {
     const q = (document.getElementById("toolSearchInput")?.value || '').trim().toLowerCase();
     const status = document.getElementById("toolStatusFilter")?.value || 'all';
+    const cat = document.getElementById("toolCategoryFilter")?.value || 'all';
 
     let filtered = groupedToolsList.filter(g => {
-        const matchText = !q || g.name.toLowerCase().includes(q) || g.asset_type.toLowerCase().includes(q);
+        const matchText = !q || g.name.toLowerCase().includes(q) || (g.asset_type && g.asset_type.toLowerCase().includes(q)) || (g.category && g.category.toLowerCase().includes(q));
         let matchStatus = true;
         if (status === 'disponible') matchStatus = g.available > 0;
         if (status === 'en_obra') matchStatus = g.in_use > 0;
-        return matchText && matchStatus;
+        let matchCat = true;
+        if (cat !== 'all') {
+            matchCat = g.category === cat || (g.items && g.items.some(it => it.category === cat));
+        }
+        return matchText && matchStatus && matchCat;
     });
 
     renderGroupedTools(filtered);
@@ -1388,6 +1591,65 @@ function assignAvailableToolFromGroup(encodedName) {
         return;
     }
     openAssignModal('asset', unit.id, unit.name, 'assign');
+}
+
+let currentToolHistoryList = [];
+let currentToolHistoryPage = 1;
+let currentToolHistoryPageSize = 6;
+
+function goToToolHistoryPage(page) {
+    currentToolHistoryPage = page;
+    renderToolHistoryTablePaginated();
+}
+
+function changeToolHistoryPageSize(size) {
+    currentToolHistoryPageSize = parseInt(size) || 6;
+    currentToolHistoryPage = 1;
+    renderToolHistoryTablePaginated();
+}
+
+function renderToolHistoryTablePaginated() {
+    const tbody = document.getElementById("toolHistoryTableBody");
+    const container = document.getElementById("toolHistoryPagination");
+    if (!tbody) return;
+
+    if (!currentToolHistoryList || currentToolHistoryList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">No se registran movimientos para esta herramienta (permanece en Base Central).</td></tr>`;
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: currentToolHistoryList.length }));
+
+    const { startIndex, endIndex } = paginateFn({
+        containerId: "toolHistoryPagination",
+        totalItems: currentToolHistoryList.length,
+        currentPage: currentToolHistoryPage,
+        pageSize: currentToolHistoryPageSize,
+        onPageChange: "goToToolHistoryPage",
+        onPageSizeChange: "changeToolHistoryPageSize",
+        itemLabel: "movimiento(s) en traza",
+        pageSizeOptions: [6, 12, 25],
+        allowAll: true
+    });
+
+    const pageItems = currentToolHistoryList.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageItems.map(h => `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px; font-weight: 700; color: #64748b; font-size: 10px;">${h.assigned_at}</td>
+            <td style="padding: 8px; font-weight: 800; color: var(--dalor-navy); font-family: monospace;">${h.resource_code}</td>
+            <td style="padding: 8px;">
+                <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; ${h.status === 'en_obra' ? 'background: #e0f2fe; color: #0369a1;' : 'background: #dcfce7; color: #166534;'}">
+                    ${h.status === 'en_obra' ? 'Despacho a Obra' : 'Retorno a Base'}
+                </span>
+            </td>
+            <td style="padding: 8px; font-weight: 600;">${h.destination_location} (${h.project_name})</td>
+            <td style="padding: 8px;">${h.custodian_name || h.driver_name || '-'}</td>
+        </tr>
+    `).join('');
 }
 
 async function openToolHistoryModal(encodedName) {
@@ -1407,27 +1669,12 @@ async function openToolHistoryModal(encodedName) {
         if (!res.ok) throw new Error("Error en servidor");
         const history = await res.json();
 
-        if (history.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">No se registran movimientos para esta herramienta (permanece en Base Central).</td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = history.map(h => `
-            <tr>
-                <td style="font-weight: 700; color: #64748b; font-size: 10px;">${h.assigned_at}</td>
-                <td style="font-weight: 800; color: var(--dalor-navy); font-family: monospace;">${h.resource_code}</td>
-                <td>
-                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; ${h.status === 'en_obra' ? 'background: #e0f2fe; color: #0369a1;' : 'background: #dcfce7; color: #166534;'}">
-                        ${h.status === 'en_obra' ? 'Despacho a Obra' : 'Retorno a Base'}
-                    </span>
-                </td>
-                <td style="font-weight: 600;">${h.destination_location} (${h.project_name})</td>
-                <td>${h.custodian_name || h.driver_name || '-'}</td>
-            </tr>
-        `).join('');
+        currentToolHistoryList = history || [];
+        currentToolHistoryPage = 1;
+        renderToolHistoryTablePaginated();
 
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar la traza de movimientos.</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar la traza de movimientos.</td></tr>`;
     }
 }
 
@@ -1539,88 +1786,104 @@ async function deleteAssetItem(assetId) {
 
 // ----------------------------------------------------
 
+let rawPersonnelList = [];
+
 async function loadPersonnelTableList() {
-
     const tbody = document.getElementById("matrixPersonnelTableBody");
-
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando personal...</td></tr>`;
-
-
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando personal...</td></tr>`;
 
     try {
-
         const res = await authFetch(`${API_BASE}/personnel/`);
-
         allPersonnel = await res.json();
+        rawPersonnelList = Array.isArray(allPersonnel) ? allPersonnel : [];
 
+        // Poblar selector dinámico de roles de personal
+        const roleSelect = document.getElementById("personnelRoleFilter");
+        if (roleSelect) {
+            const currentVal = roleSelect.value || 'all';
+            const roles = Array.from(new Set(rawPersonnelList.map(p => (p.role_title || '').trim()).filter(Boolean))).sort();
+            roleSelect.innerHTML = `<option value="all">Todos los Cargos / Roles (${roles.length})</option>` +
+                roles.map(r => `<option value="${r}" ${r === currentVal ? 'selected' : ''}>${r}</option>`).join('');
+        }
 
-
-        tbody.innerHTML = allPersonnel.map(p => {
-
-            const inBase = p.status === 'disponible_base' || !p.current_project_id;
-
-            return `
-
-            <tr>
-
-                <td style="font-weight: 800; color: var(--dalor-blue);">${p.code}</td>
-
-                <td style="font-weight: 700; color: var(--dalor-navy);">${p.full_name}</td>
-
-                <td><span style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${p.role_title || '-'}</span></td>
-
-                <td>${p.phone || '-'}</td>
-
-                <td>
-
-                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
-
-                        ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA'}
-
-                    </span>
-
-                </td>
-
-                <td>${p.current_location || 'Sede Central'}</td>
-
-                <td style="text-align: center; white-space: nowrap;">
-
-                    ${inBase ? `
-
-                        <button onclick="openAssignModal('personnel', ${p.id}, '${p.full_name}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
-
-                            Asignar a Obra
-
-                        </button>
-
-                    ` : `
-
-                        <button onclick="openAssignModal('personnel', ${p.id}, '${p.full_name}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
-
-                            <i class="fa-solid fa-arrows-split-up-and-left"></i>
-
-                        </button>
-
-                        <button onclick="returnResourceToBase('personnel', ${p.id})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
-
-                            <i class="fa-solid fa-warehouse"></i>
-
-                        </button>
-
-                    `}
-
-                </td>
-
-            </tr>`;
-
-        }).join('');
+        filterPersonnelList();
 
     } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48;">Error al cargar personal: ${e?.message || e}</td></tr>`;
+    }
+}
 
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48;">Error al cargar personal.</td></tr>`;
+function filterPersonnelList() {
+    const q = (document.getElementById("personnelSearchInput")?.value || '').trim().toLowerCase();
+    const role = document.getElementById("personnelRoleFilter")?.value || 'all';
+    const status = document.getElementById("personnelStatusFilter")?.value || 'all';
+    const countBadge = document.getElementById("personnelCountBadge");
+    const tbody = document.getElementById("matrixPersonnelTableBody");
 
+    let filtered = (rawPersonnelList || []).filter(p => {
+        const safeCode = (p?.code || '').toLowerCase();
+        const safeName = (p?.full_name || '').toLowerCase();
+        const safePhone = (p?.phone || '').toLowerCase();
+        const safeRole = (p?.role_title || '').toLowerCase();
+        const matchText = !q || safeCode.includes(q) || safeName.includes(q) || safePhone.includes(q) || safeRole.includes(q);
+
+        let matchRole = true;
+        if (role !== 'all') matchRole = (p?.role_title || '').trim() === role;
+
+        const inBase = p?.status === 'disponible_base' || !p?.current_project_id;
+        let matchStatus = true;
+        if (status === 'disponible_base') matchStatus = inBase;
+        if (status === 'en_obra') matchStatus = !inBase;
+
+        return matchText && matchRole && matchStatus;
+    });
+
+    if (countBadge) countBadge.innerText = `${filtered.length} de ${rawPersonnelList.length} empleados`;
+
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">No se encontraron empleados con los criterios de búsqueda.</td></tr>`;
+        return;
     }
 
+    tbody.innerHTML = filtered.map(p => {
+        const inBase = p?.status === 'disponible_base' || !p?.current_project_id;
+        const locStr = p?.current_location || (inBase ? 'Sede Central Dalor (Guacara)' : 'En Obra / Proyecto');
+        const safeName = (p?.full_name || '').replace(/'/g, "\\'");
+        const pId = p?.id ?? 0;
+
+        return `
+        <tr>
+            <td style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">${p?.code || '-'}</td>
+            <td style="font-weight: 700; color: var(--dalor-navy);">${p?.full_name || '-'}</td>
+            <td><span style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${p?.role_title || '-'}</span></td>
+            <td>${p?.phone || '-'}</td>
+            <td>
+                <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">
+                    <i class="fa-solid ${inBase ? 'fa-warehouse' : 'fa-helmet-safety'}"></i> ${inBase ? 'DISPONIBLE EN BASE' : 'EN OBRA'}
+                </span>
+            </td>
+            <td>${locStr}</td>
+            <td style="text-align: center; white-space: nowrap;">
+                <button onclick="openPersonnelHistoryModal(${pId}, '${p?.code || ''}', '${safeName}')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #2563eb; border-color: #93c5fd;" title="Ver Bitácora & Trazabilidad de Asignaciones (Punto 6)">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Bitácora
+                </button>
+                ${inBase ? `
+                    <button onclick="openAssignModal('personnel', ${pId}, '${safeName}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
+                        Asignar a Obra
+                    </button>
+                ` : `
+                    <button onclick="openAssignModal('personnel', ${pId}, '${safeName}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra">
+                        <i class="fa-solid fa-arrows-split-up-and-left"></i>
+                    </button>
+                    <button onclick="returnResourceToBase('personnel', ${pId})" class="btn-primary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
+                        <i class="fa-solid fa-warehouse"></i>
+                    </button>
+                `}
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 
@@ -1643,13 +1906,18 @@ function openAssignModal(type, id, name, action) {
 
 
 
-    // Poblar dinámicamente proyectos si está vacío o desactualizado
+    // Poblar dinámicamente proyectos si está vacío o desactualizado (Solo Obras Abiertas)
     const projSelect = document.getElementById("modal_target_project_id");
     if (projSelect) {
-        const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
-        if (safeProjects.length > 0) {
-            projSelect.innerHTML = `<option value="">-- Seleccione Proyecto Destino --</option>` +
-                safeProjects.map(p => `<option value="${p.id}" data-loc="${p.location || 'Sede Central'}">${p.code} - ${p.name} (${p.location || 'Sede Central'})</option>`).join('');
+        let safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+        const openProjects = (safeProjects || []).filter(p => {
+            const st = (p.status || '').toLowerCase().trim();
+            return !['culminado', 'completado', 'cerrado', 'cancelado', 'finalizado', 'inactivo'].includes(st);
+        });
+
+        if (openProjects.length > 0) {
+            projSelect.innerHTML = `<option value="">-- Seleccione Proyecto Destino Activo --</option>` +
+                openProjects.map(p => `<option value="${p.id}" data-loc="${p.location || 'Sede Central'}">[${p.code}] ${p.name} (${p.location || 'Sede Central'})</option>`).join('');
             
             projSelect.onchange = function() {
                 const opt = this.options[this.selectedIndex];
@@ -1657,8 +1925,11 @@ function openAssignModal(type, id, name, action) {
                 const locInput = document.getElementById("modal_res_location");
                 if (locInput && loc) locInput.value = loc;
             };
+        } else {
+            projSelect.innerHTML = `<option value="">⚠️ No hay obras abiertas disponibles</option>`;
         }
     }
+
 
     document.getElementById("assignModalTitle").innerText = action === 'assign' ? `Asignar ${name} a Obra` : `Transferir ${name} a Nueva Obra`;
     document.getElementById("btnConfirmResourceAction").innerText = action === 'assign' ? 'Confirmar Asignación' : 'Confirmar Transferencia Directa';
@@ -1836,301 +2107,316 @@ async function returnResourceToBase(type, id) {
 // ==============================================================================
 
 function openNewAssetModal(presetType = 'herramienta_mayor') {
-
     const form = document.getElementById("newAssetForm");
-
     if (form) form.reset();
 
-    
-
     const typeSelect = document.getElementById("nass_type");
-
     if (typeSelect) {
-
         typeSelect.value = presetType;
-
     }
+
+    // Poblar categorías dinámicamente desde activos existentes
+    const catSelect = document.getElementById("nass_category");
+    const newCatInput = document.getElementById("nass_new_category");
+    if (newCatInput) {
+        newCatInput.classList.add('hidden');
+        newCatInput.value = '';
+    }
+
+    if (catSelect) {
+        const existingCats = Array.from(new Set((allAssets || []).map(a => a.category).filter(Boolean))).sort();
+        const baseCats = ["Herramientas Manuales", "Herramientas Eléctricas", "Equipos de Medición", "Seguridad Industrial", "Consumibles de Taller", "Flota Vehicular", "Maquinaria Pesada", "Herramientas Generales"];
+        const combined = Array.from(new Set([...baseCats, ...existingCats]));
+
+        catSelect.innerHTML = combined.map(c => `<option value="${c}">${c}</option>`).join('') +
+            `<option value="__NEW__" style="font-weight: 800; color: #2563eb;">+ Crear Nueva Categoría...</option>`;
+    }
+
+    const locInput = document.getElementById("nass_location");
+    if (locInput) locInput.value = "Sede Central Dalor (Guacara)";
 
     onAssetTypeChanged();
-
     openModal("modalNewAsset");
-
 }
 
-
+function onAssetCategorySelected() {
+    const sel = document.getElementById("nass_category");
+    const input = document.getElementById("nass_new_category");
+    if (!sel || !input) return;
+    if (sel.value === '__NEW__') {
+        input.classList.remove('hidden');
+        input.required = true;
+        input.focus();
+    } else {
+        input.classList.add('hidden');
+        input.required = false;
+    }
+}
 
 function openNewToolModal_v2() {
-
     openNewAssetModal('herramienta_mayor');
-
 }
-
-
 
 function openNewVehicleModal_v2() {
-
     openNewAssetModal('vehiculo');
-
 }
-
-
 
 function onAssetTypeChanged() {
-
-    const type = document.getElementById("nass_type").value;
-
+    const type = document.getElementById("nass_type")?.value || 'herramienta_mayor';
     const title = document.getElementById("newAssetModalTitle");
-
     const serialLabel = document.getElementById("nass_serial_label");
-
     const odometerLabel = document.getElementById("nass_odometer_label");
+    const guideText = document.getElementById("nass_nomenclature_text");
+    const codeInput = document.getElementById("nass_code");
+    const catSelect = document.getElementById("nass_category");
 
-
+    const assets = allAssets || [];
 
     if (type === 'vehiculo') {
-
         if (title) title.innerHTML = '<i class="fa-solid fa-truck" style="color: #6366f1;"></i> Registrar Nuevo Vehículo de Flota / Carga';
-
         if (serialLabel) serialLabel.textContent = "Placa del Vehículo *";
-
         if (odometerLabel) odometerLabel.textContent = "Kilometraje Inicial (Km)";
+        if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Flota: <b>[Piso]-[Tipo V]-[Área]-[Correlativo]</b> (Ej: <code>1-V-1-09</code>) o <b>FLT-XXX</b> (Ej: <code>FLT-009</code>).';
+        if (catSelect) catSelect.value = "Flota Vehicular";
 
+        const fltVehs = assets.filter(a => a.asset_type === 'vehiculo' || (a.asset_code && a.asset_code.includes('-V-')));
+        const nextNum = fltVehs.length + 1;
+        if (codeInput) codeInput.value = `3-V-1-${String(nextNum).padStart(2, '0')}`;
     } else if (type === 'maquinaria') {
-
         if (title) title.innerHTML = '<i class="fa-solid fa-gears" style="color: #d97706;"></i> Registrar Nueva Maquinaria Pesada / Planta / Compresor';
-
         if (serialLabel) serialLabel.textContent = "Serial del Fabricante";
-
         if (odometerLabel) odometerLabel.textContent = "Horómetro Inicial (Horas)";
+        if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Maquinaria: Prefijo <b>MAQ-</b> o <b>EQ-</b> (Ej: <code>MAQ-002</code> o <code>EQ-PLANTA-01</code>).';
+        if (catSelect) catSelect.value = "Maquinaria Pesada";
 
+        const maqs = assets.filter(a => a.asset_type === 'maquinaria' || (a.asset_code && a.asset_code.startsWith('MAQ-')));
+        const nextNum = maqs.length + 1;
+        if (codeInput) codeInput.value = `MAQ-${String(nextNum).padStart(3, '0')}`;
     } else if (type === 'equipo_medicion') {
-
         if (title) title.innerHTML = '<i class="fa-solid fa-scale-unbalanced" style="color: #8b5cf6;"></i> Registrar Nuevo Equipo de Medición / Calibración';
-
         if (serialLabel) serialLabel.textContent = "Serial / Certificado Calibración";
-
         if (odometerLabel) odometerLabel.textContent = "Usos / Horómetro";
+        if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Medición: Prefijo <b>MED-</b> o código Pañol <b>1-D-X-XX</b> (Ej: <code>MED-002</code> o <code>1-D-1-26-3</code>).';
+        if (catSelect) catSelect.value = "Equipos de Medición";
 
+        const meds = assets.filter(a => a.asset_type === 'equipo_medicion' || (a.asset_code && a.asset_code.startsWith('MED-')));
+        const nextNum = meds.length + 1;
+        if (codeInput) codeInput.value = `MED-${String(nextNum).padStart(3, '0')}`;
     } else {
-
         if (title) title.innerHTML = '<i class="fa-solid fa-toolbox" style="color: var(--dalor-blue);"></i> Registrar Nueva Herramienta / Equipo';
-
         if (serialLabel) serialLabel.textContent = "Serial / Identificador";
-
         if (odometerLabel) odometerLabel.textContent = "Horómetro / Contador";
+        if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Herramientas: Prefijo <b>HERR-</b> (Ej: <code>HERR-0908</code>) o Código Pañol <b>[Gaveta]-[Letra]-[Nivel]-[Ítem]</b> (Ej: <code>1-J-1-28</code>).';
+        if (catSelect && (catSelect.value === 'Flota Vehicular' || catSelect.value === 'Maquinaria Pesada')) {
+            catSelect.value = "Herramientas Manuales";
+        }
 
+        const herrCodes = assets.map(a => a.asset_code).filter(c => c && c.startsWith('HERR-')).map(c => parseInt(c.replace('HERR-', '')) || 0);
+        const maxHerr = herrCodes.length > 0 ? Math.max(...herrCodes) : 907;
+        if (codeInput) codeInput.value = `HERR-${String(maxHerr + 1).padStart(4, '0')}`;
     }
-
 }
 
-
-
 async function submitCreateAsset(e) {
-
     e.preventDefault();
 
     const type = document.getElementById("nass_type").value;
-
     const code = document.getElementById("nass_code").value.trim();
-
     const name = document.getElementById("nass_name").value.trim();
-
     const brand = document.getElementById("nass_brand").value.trim();
-
     const model = document.getElementById("nass_model").value.trim();
-
     const serial = document.getElementById("nass_serial").value.trim();
-
     const odometer = parseFloat(document.getElementById("nass_odometer").value) || 0.0;
-
-    const location = document.getElementById("nass_location").value.trim() || "Sede Central";
-
+    const location = document.getElementById("nass_location").value.trim() || "Sede Central Dalor (Guacara)";
     const custodian = document.getElementById("nass_custodian").value.trim() || "Disponible en Base";
 
-
-
-    const payload = {
-
-        asset_code: code,
-
-        name: name,
-
-        asset_type: type,
-
-        brand: brand,
-
-        model: model,
-
-        serial_number: type !== 'vehiculo' ? serial : null,
-
-        license_plate: type === 'vehiculo' ? serial : null,
-
-        current_odometer: odometer,
-
-        service_interval_km: type === 'vehiculo' ? 5000 : 250,
-
-        current_location: location,
-
-        current_custodian_name: custodian,
-
-        is_exclusive: true
-
-    };
-
-
-
-    try {
-
-        const res = await authFetch(`${API_BASE}/assets/`, {
-
-            method: "POST",
-
-            headers: { "Content-Type": "application/json" },
-
-            body: JSON.stringify(payload)
-
-        });
-
-
-
-        if (!res.ok) {
-
-            const err = await res.json();
-
-            throw new Error(err.detail || "Error al crear activo");
-
-        }
-
-
-
-        closeModal("modalNewAsset");
-
-        alert(`✅ Activo ${code} (${name}) registrado exitosamente.`);
-
-        await loadInitialMasterData();
-
-        loadFleetList();
-
-        loadToolsList();
-
-    } catch (err) {
-
-        alert(`❌ Error: ${err.message}`);
-
+    let category = document.getElementById("nass_category")?.value || "General";
+    if (category === '__NEW__') {
+        category = (document.getElementById("nass_new_category")?.value || '').trim() || "General";
     }
 
+    const payload = {
+        asset_code: code,
+        name: name,
+        asset_type: type,
+        category: category,
+        brand: brand,
+        model: model,
+        serial_number: type !== 'vehiculo' ? serial : null,
+        license_plate: type === 'vehiculo' ? serial : null,
+        current_odometer: odometer,
+        service_interval_km: type === 'vehiculo' ? 5000 : 250,
+        current_location: location,
+        current_custodian_name: custodian,
+        is_exclusive: true
+    };
+
+    try {
+        const res = await authFetch(`${API_BASE}/assets/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al crear activo");
+        }
+
+        closeModal("modalNewAsset");
+        alert(`✅ Activo ${code} (${name}) registrado exitosamente en categoría "${category}".`);
+
+        await loadInitialMasterData();
+        loadFleetList();
+        loadToolsList();
+        if (typeof loadMachineryList === "function") loadMachineryList();
+
+    } catch (err) {
+        alert(`❌ Error: ${err.message}`);
+    }
 }
 
-
-
 // ==============================================================================
-
 // 👷 CREACIÓN DE NUEVOS EMPLEADOS / PERSONAL
-
 // ==============================================================================
 
 function openNewPersonnelModal() {
-
     const form = document.getElementById("newPersonnelForm");
-
     if (form) form.reset();
 
-    openModal("modalNewPersonnel");
+    // Auto-sugerir siguiente correlativo PERS-XXX
+    const persList = allPersonnel || [];
+    const nums = persList.map(p => {
+        const m = (p.code || '').match(/(\d+)/);
+        return m ? parseInt(m[1]) : 0;
+    });
+    const maxNum = nums.length > 0 ? Math.max(...nums) : 18;
+    const nextCode = `PERS-${String(maxNum + 1).padStart(3, '0')}`;
+    const codeInput = document.getElementById("npers_code");
+    if (codeInput) codeInput.value = nextCode;
 
+    const locInput = document.getElementById("npers_location");
+    if (locInput) locInput.value = "Sede Central Dalor (Guacara)";
+
+    openModal("modalNewPersonnel");
 }
 
-
-
 async function submitCreatePersonnel(e) {
-
     e.preventDefault();
 
     const code = document.getElementById("npers_code").value.trim();
-
     const fullName = document.getElementById("npers_name").value.trim();
-
     const idNum = document.getElementById("npers_id").value.trim();
-
     const role = document.getElementById("npers_role").value;
-
     const phone = document.getElementById("npers_phone").value.trim();
-
     const roster = document.getElementById("npers_roster").value;
-
     const salary = parseFloat(document.getElementById("npers_salary").value) || 0.0;
-
-    const location = document.getElementById("npers_location").value.trim() || "Sede Central";
-
-
+    const location = document.getElementById("npers_location").value.trim() || "Sede Central Dalor (Guacara)";
 
     const payload = {
-
         code: code,
-
         full_name: fullName,
-
         identification_id: idNum,
-
         role_title: role,
-
         phone: phone,
-
         roster_type: roster,
-
         monthly_salary_usd: salary,
-
         current_location: location,
-
         status: "disponible_base"
-
     };
 
-
-
     try {
-
         const res = await authFetch(`${API_BASE}/personnel/`, {
-
             method: "POST",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify(payload)
-
         });
 
-
-
         if (!res.ok) {
-
             const err = await res.json();
-
             throw new Error(err.detail || "Error al registrar empleado");
-
         }
 
-
-
         closeModal("modalNewPersonnel");
-
-        alert(`✅ Empleado ${fullName} (${role}) registrado exitosamente.`);
+        alert(`✅ Empleado ${fullName} (${role || 'Personal'}) registrado exitosamente.`);
 
         await loadInitialMasterData();
-
         loadPersonnelTableList();
 
     } catch (err) {
-
         alert(`❌ Error: ${err.message}`);
-
     }
-
 }
 
 
 
 
 
+
+let currentAssetTimelineList = [];
+let currentAssetTimelinePage = 1;
+let currentAssetTimelinePageSize = 6;
+
+function goToAssetHistoryPage(page) {
+    currentAssetTimelinePage = page;
+    renderAssetHistoryTablePaginated();
+}
+
+function changeAssetHistoryPageSize(size) {
+    currentAssetTimelinePageSize = parseInt(size) || 6;
+    currentAssetTimelinePage = 1;
+    renderAssetHistoryTablePaginated();
+}
+
+function renderAssetHistoryTablePaginated() {
+    const tbody = document.getElementById("assetHistoryTableBody");
+    const container = document.getElementById("assetHistoryPagination");
+    if (!tbody) return;
+
+    if (!currentAssetTimelineList || currentAssetTimelineList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">No se registran salidas ni movimientos históricos para este activo (Permanece en Base Central).</td></tr>`;
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: currentAssetTimelineList.length }));
+
+    const { startIndex, endIndex } = paginateFn({
+        containerId: "assetHistoryPagination",
+        totalItems: currentAssetTimelineList.length,
+        currentPage: currentAssetTimelinePage,
+        pageSize: currentAssetTimelinePageSize,
+        onPageChange: "goToAssetHistoryPage",
+        onPageSizeChange: "changeAssetHistoryPageSize",
+        itemLabel: "registro(s) en bitácora",
+        pageSizeOptions: [6, 12, 25],
+        allowAll: true
+    });
+
+    const pageItems = currentAssetTimelineList.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageItems.map(t => {
+        let badgeBg = '#f1f5f9', badgeColor = '#475569', typeLabel = 'Movimiento';
+        if (t.type === 'guia_despacho') { badgeBg = '#dbeafe'; badgeColor = '#1d4ed8'; typeLabel = 'Guía Despacho'; }
+        else if (t.type === 'alquiler_prestamo') { badgeBg = '#fef3c7'; badgeColor = '#b45309'; typeLabel = 'Alquiler/Préstamo'; }
+        else if (t.status === 'disponible_base') { badgeBg = '#dcfce7'; badgeColor = '#15803d'; typeLabel = 'Retorno a Base'; }
+        else { badgeBg = '#e0e7ff'; badgeColor = '#4338ca'; typeLabel = 'Asignación Obra'; }
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px; font-weight: 600; color: #475569; white-space: nowrap;">${t.date}</td>
+                <td style="padding: 8px;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor};">${typeLabel}</span></td>
+                <td style="padding: 8px; font-family: monospace; font-weight: 800; color: var(--dalor-navy);">${t.transfer_code || '-'}</td>
+                <td style="padding: 8px;"><span style="font-weight: 700; color: #1e293b;">${t.project_code ? `[${t.project_code}] ` : ''}${t.destination || t.project_name}</span></td>
+                <td style="padding: 8px; font-weight: 700; color: #2563eb;">${t.driver_name || t.responsible_person || '-'}</td>
+                <td style="padding: 8px; text-align: right; font-weight: 800; color: #059669;">${t.odometer != null ? Number(t.odometer).toLocaleString() + ' Km' : '-'}</td>
+                <td style="padding: 8px; color: #64748b; font-size: 11px;">${t.notes || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+}
 
 async function openAssetHistoryModal(assetId, assetCode = null, assetName = null) {
     const titleEl = document.getElementById("assetHistoryTitle");
@@ -2169,32 +2455,135 @@ async function openAssetHistoryModal(assetId, assetCode = null, assetName = null
             statusEl.innerHTML = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">${(a.status || 'DISPONIBLE').toUpperCase().replace(/_/g, ' ')}</span>`;
         }
 
-        if (timeline.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">No se registran salidas ni movimientos históricos para este activo (Permanece en Base Central).</td></tr>`;
-            return;
+        currentAssetTimelineList = timeline;
+        currentAssetTimelinePage = 1;
+        renderAssetHistoryTablePaginated();
+
+    } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar bitácora del activo: ${e.message}</td></tr>`;
+    }
+}
+
+let currentPersonnelTimelineList = [];
+let currentPersonnelTimelinePage = 1;
+let currentPersonnelTimelinePageSize = 6;
+let currentPersonnelItem = null;
+
+function goToPersonnelHistoryPage(page) {
+    currentPersonnelTimelinePage = page;
+    renderPersonnelHistoryTablePaginated();
+}
+
+function changePersonnelHistoryPageSize(size) {
+    currentPersonnelTimelinePageSize = parseInt(size) || 6;
+    currentPersonnelTimelinePage = 1;
+    renderPersonnelHistoryTablePaginated();
+}
+
+function renderPersonnelHistoryTablePaginated() {
+    const tbody = document.getElementById("personnelHistoryTableBody");
+    const container = document.getElementById("personnelHistoryPagination");
+    if (!tbody) return;
+
+    if (!currentPersonnelTimelineList || currentPersonnelTimelineList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;">No se registran asignaciones ni traslados históricos para este colaborador (Permanece en Base Central).</td></tr>`;
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: currentPersonnelTimelineList.length }));
+
+    const { startIndex, endIndex } = paginateFn({
+        containerId: "personnelHistoryPagination",
+        totalItems: currentPersonnelTimelineList.length,
+        currentPage: currentPersonnelTimelinePage,
+        pageSize: currentPersonnelTimelinePageSize,
+        onPageChange: "goToPersonnelHistoryPage",
+        onPageSizeChange: "changePersonnelHistoryPageSize",
+        itemLabel: "registro(s) en bitácora",
+        pageSizeOptions: [6, 12, 25],
+        allowAll: true
+    });
+
+    const pageItems = currentPersonnelTimelineList.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageItems.map(t => {
+        let badgeBg = '#f1f5f9', badgeColor = '#475569', typeLabel = 'Movimiento';
+        if (t.type === 'chofer_despacho') {
+            badgeBg = '#dbeafe'; badgeColor = '#1d4ed8'; typeLabel = '🚛 Conductor Guía';
+        } else if (t.type === 'receptor_guia' || t.type === 'guia_despacho') {
+            badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; typeLabel = '📦 Receptor en Obra';
+        } else if (t.type === 'retorno_base' || t.status === 'disponible_base') {
+            badgeBg = '#dcfce7'; badgeColor = '#15803d'; typeLabel = '🏠 Retorno a Base';
+        } else if (t.type === 'transferencia_obra') {
+            badgeBg = '#ffedd5'; badgeColor = '#c2410c'; typeLabel = '🔄 Transferencia Obra';
+        } else {
+            badgeBg = '#e0e7ff'; badgeColor = '#4338ca'; typeLabel = '🏗️ Asignación a Obra';
         }
 
-        tbody.innerHTML = timeline.map(t => {
-            let badgeBg = '#f1f5f9', badgeColor = '#475569', typeLabel = 'Movimiento';
-            if (t.type === 'guia_despacho') { badgeBg = '#dbeafe'; badgeColor = '#1d4ed8'; typeLabel = 'Guía Despacho'; }
-            else if (t.type === 'alquiler_prestamo') { badgeBg = '#fef3c7'; badgeColor = '#b45309'; typeLabel = 'Alquiler/Préstamo'; }
-            else if (t.status === 'disponible_base') { badgeBg = '#dcfce7'; badgeColor = '#15803d'; typeLabel = 'Retorno a Base'; }
-            else { badgeBg = '#e0e7ff'; badgeColor = '#4338ca'; typeLabel = 'Asignación Obra'; }
+        const roleText = t.role_in_project || t.role || (currentPersonnelItem && currentPersonnelItem.role_title) || '-';
 
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 8px; font-weight: 600; color: #475569; white-space: nowrap;">${t.date}</td>
-                    <td style="padding: 8px;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor};">${typeLabel}</span></td>
-                    <td style="padding: 8px; font-family: monospace; font-weight: 800; color: var(--dalor-navy);">${t.transfer_code || '-'}</td>
-                    <td style="padding: 8px;"><span style="font-weight: 700; color: #1e293b;">${t.project_code ? `[${t.project_code}] ` : ''}${t.destination || t.project_name}</span></td>
-                    <td style="padding: 8px; font-weight: 700; color: #2563eb;">${t.driver_name || t.responsible_person || '-'}</td>
-                    <td style="padding: 8px; text-align: right; font-weight: 800; color: #059669;">${t.odometer != null ? Number(t.odometer).toLocaleString() + ' Km' : '-'}</td>
-                    <td style="padding: 8px; color: #64748b; font-size: 11px;">${t.notes || '-'}</td>
-                </tr>
-            `;
-        }).join('');
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px; font-weight: 600; color: #475569; white-space: nowrap;">${t.date}</td>
+                <td style="padding: 8px;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor};">${typeLabel}</span></td>
+                <td style="padding: 8px;"><span style="font-weight: 700; color: #1e293b;">${t.project_code ? `[${t.project_code}] ` : ''}${t.destination || t.project_name || '-'}</span></td>
+                <td style="padding: 8px; font-weight: 600; color: #2563eb;">${roleText}</td>
+                <td style="padding: 8px; color: #64748b; font-size: 11px;">
+                    ${t.transfer_code ? `<b style="color: var(--dalor-navy); font-family: monospace;">[${t.transfer_code}]</b> ` : ''}${t.notes || '-'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function openPersonnelHistoryModal(personnelId, personnelCode = null, personnelName = null) {
+    const titleEl = document.getElementById("personnelHistoryTitle");
+    const subEl = document.getElementById("personnelHistorySubtitle");
+    const locEl = document.getElementById("persHistCurrentLoc");
+    const roleEl = document.getElementById("persHistRole");
+    const prjEl = document.getElementById("persHistTotalProjects");
+    const statusEl = document.getElementById("persHistStatusBadge");
+    const tbody = document.getElementById("personnelHistoryTableBody");
+
+    const safePersonnel = (window.allPersonnel && window.allPersonnel.length > 0) ? window.allPersonnel : (allPersonnel || []);
+    const matched = safePersonnel.find(p => p.id === personnelId) || {};
+    const code = personnelCode || matched.code || `EMP-${personnelId}`;
+    const name = personnelName || matched.full_name || 'Personal / Colaborador';
+
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-clock" style="color: #2563eb;"></i> Bitácora & Trazabilidad: [${code}] ${name}`;
+    if (subEl) subEl.innerText = `Cargando historial cronológico de obras, roles y guías de despacho...`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Consultando bitácora del colaborador...</td></tr>`;
+
+    openModal("modalPersonnelHistory");
+
+    try {
+        const token = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await authFetch(`${API_BASE}/personnel/${personnelId}/history`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const p = data.personnel || {};
+        const timeline = data.timeline || [];
+
+        if (subEl) subEl.innerText = `Cédula: ${p.identification_id || p.dni || '-'} | Cargo: ${p.role_title || 'Colaborador'} | Teléfono: ${p.phone || '-'}`;
+        if (locEl) locEl.innerText = p.current_location || "Sede Central Dalor (Guacara)";
+        if (roleEl) roleEl.innerText = p.role_title || "Colaborador";
+        if (prjEl) prjEl.innerText = `${p.total_projects_assigned || timeline.length} registro(s)`;
+        if (statusEl) {
+            const inBase = p.status === 'disponible_base' || !p.current_project_id;
+            statusEl.innerHTML = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inBase ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;'}">${(p.status || 'DISPONIBLE').toUpperCase().replace(/_/g, ' ')}</span>`;
+        }
+
+        currentPersonnelItem = p;
+        currentPersonnelTimelineList = timeline;
+        currentPersonnelTimelinePage = 1;
+        renderPersonnelHistoryTablePaginated();
+
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar bitácora del activo: ${e.message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar bitácora del colaborador: ${e.message}</td></tr>`;
     }
 }
 
@@ -2236,9 +2625,48 @@ if (typeof window !== 'undefined') {
     window.assignAvailableToolFromGroup = assignAvailableToolFromGroup;
     window.openToolHistoryModal = openToolHistoryModal;
     window.openAssetHistoryModal = openAssetHistoryModal;
+    window.openPersonnelHistoryModal = openPersonnelHistoryModal;
     window.goToToolsPage = goToToolsPage;
     window.changeToolsPageSize = changeToolsPageSize;
     window.renderGroupedToolsPaginated = renderGroupedToolsPaginated;
+    window.openVehicleServicesModal = openVehicleServicesModal;
+    window.filterFleetList = filterFleetList;
+    window.filterPersonnelList = filterPersonnelList;
+    window.onAssetCategorySelected = onAssetCategorySelected;
+
+    // Paginación en Bitácoras
+    window.goToVehServicesPage = goToVehServicesPage;
+    window.changeVehServicesPageSize = changeVehServicesPageSize;
+    window.renderVehServicesTablePaginated = renderVehServicesTablePaginated;
+    window.goToToolHistoryPage = goToToolHistoryPage;
+    window.changeToolHistoryPageSize = changeToolHistoryPageSize;
+    window.renderToolHistoryTablePaginated = renderToolHistoryTablePaginated;
+    window.goToAssetHistoryPage = goToAssetHistoryPage;
+    window.changeAssetHistoryPageSize = changeAssetHistoryPageSize;
+    window.renderAssetHistoryTablePaginated = renderAssetHistoryTablePaginated;
+    window.goToPersonnelHistoryPage = goToPersonnelHistoryPage;
+    window.changePersonnelHistoryPageSize = changePersonnelHistoryPageSize;
+    window.renderPersonnelHistoryTablePaginated = renderPersonnelHistoryTablePaginated;
+    window.onRecordServiceTypeChange = onRecordServiceTypeChange;
 }
 
-export { deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, submitCalibrateAllOdometers, filterToolsList, assignAvailableToolFromGroup, openToolHistoryModal, openAssetHistoryModal, goToToolsPage, changeToolsPageSize, renderGroupedToolsPaginated };
+export { 
+    onRecordServiceTypeChange,
+    deleteAssetItem, handleOdometerImageSelected, loadFleetList, loadMachineryList, loadPersonnelTableList, 
+    loadResourceDashboard, loadToolsList, onAssetTypeChanged, openAssignModal, openNewAssetModal, 
+    openNewPersonnelModal, openNewToolModal, openNewToolModal_v2, openNewVehicleModal, openNewVehicleModal_v2, 
+    openOdometerOcrModal, openRecordServiceModal, openResourceSubtab, returnResourceToBase, 
+    submitConfirmOdometer, submitCreateAsset, submitCreatePersonnel, submitCreateTool, 
+    submitCreateVehicle, submitRecordService, submitResourceAction, switchResourceSubtab, 
+    openCalibrateOdometerModal, submitCalibrateOdometer, openCalibrateAllOdometersModal, 
+    submitCalibrateAllOdometers, filterToolsList, assignAvailableToolFromGroup, 
+    openToolHistoryModal, openAssetHistoryModal, openPersonnelHistoryModal, 
+    goToToolsPage, changeToolsPageSize, renderGroupedToolsPaginated, 
+    openVehicleServicesModal, filterFleetList, filterPersonnelList, onAssetCategorySelected,
+    goToVehServicesPage, changeVehServicesPageSize, renderVehServicesTablePaginated,
+    goToToolHistoryPage, changeToolHistoryPageSize, renderToolHistoryTablePaginated,
+    goToAssetHistoryPage, changeAssetHistoryPageSize, renderAssetHistoryTablePaginated,
+    goToPersonnelHistoryPage, changePersonnelHistoryPageSize, renderPersonnelHistoryTablePaginated
+};
+
+

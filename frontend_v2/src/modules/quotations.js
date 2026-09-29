@@ -1,7 +1,9 @@
-/**
+﻿/**
  * DALOR SIGO-P | Módulo: QUOTATIONS.JS
  * Extraído y desacoplado del monolito de producción (v94)
  */
+
+import { renderPaginationControls, populateSelectDropdowns, openModal, closeModal, loadInitialMasterData } from './core.js';
 
 var API_BASE = window.API_BASE || (window.location.origin + "/api/v1");
 var allClients = window.allClients = window.allClients || [];
@@ -19,12 +21,31 @@ var EXCHANGE_RATE = window.EXCHANGE_RATE = window.EXCHANGE_RATE || 850.0;
 var BCV_DATA = window.BCV_DATA = window.BCV_DATA || { rate: 850.0, source: 'BCV Oficial' };
 var currentUser = window.currentUser || null;
 var authToken = window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+
+const OFFICIAL_DALOR_APU_CATEGORIES = [
+    "Fabricación Metalmecánica",
+    "Montaje e Instalación en Sitio",
+    "Mantenimiento Industrial & Paradas",
+    "Soldadura Especializada & Pailería",
+    "Mecanizado & Torno",
+    "Arenado y Pintura Industrial",
+    "Obras Civiles & Eléctricas Asociadas"
+];
+if (typeof window !== 'undefined') {
+    window.OFFICIAL_DALOR_APU_CATEGORIES = OFFICIAL_DALOR_APU_CATEGORIES;
+}
+
 /** authFetch - inyecta token en cada request usando window.fetch nativo */
 function authFetch(url, options = {}) {
     var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     var _h = Object.assign({}, options.headers || {});
     if (_t) _h['Authorization'] = 'Bearer ' + _t;
-    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !_h['Content-Type']) {
+        _h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete _h['Content-Type'];
+    }
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 }
 
@@ -39,6 +60,10 @@ function authFetch(url, options = {}) {
 let lastQuotationsList = [];
 let quotationsCurrentPage = 1;
 let quotationsPageSize = 10;
+let quoteFilterSearch = "";
+let quoteFilterStatus = "";
+let quoteFilterDateFrom = "";
+let quoteFilterDateTo = "";
 
 function goToQuotationsPage(page) {
     quotationsCurrentPage = page;
@@ -53,19 +78,83 @@ function changeQuotationsPageSize(size) {
     renderQuotationsPaginated();
 }
 
+function onQuotationSearchInput(val) {
+    quoteFilterSearch = (val || "").trim().toLowerCase();
+    quotationsCurrentPage = 1;
+    renderQuotationsPaginated();
+}
+
+function onQuotationStatusFilterChange(val) {
+    quoteFilterStatus = (val || "").trim().toLowerCase();
+    quotationsCurrentPage = 1;
+    renderQuotationsPaginated();
+}
+
+function onQuotationDateFilterChange() {
+    quoteFilterDateFrom = document.getElementById("quoteFilterDateFrom")?.value || "";
+    quoteFilterDateTo = document.getElementById("quoteFilterDateTo")?.value || "";
+    quotationsCurrentPage = 1;
+    renderQuotationsPaginated();
+}
+
+function clearQuotationFilters() {
+    quoteFilterSearch = "";
+    quoteFilterStatus = "";
+    quoteFilterDateFrom = "";
+    quoteFilterDateTo = "";
+    const sInp = document.getElementById("quoteSearchInput");
+    if (sInp) sInp.value = "";
+    const stSel = document.getElementById("quoteStatusFilter");
+    if (stSel) stSel.value = "";
+    const dfInp = document.getElementById("quoteFilterDateFrom");
+    if (dfInp) dfInp.value = "";
+    const dtInp = document.getElementById("quoteFilterDateTo");
+    if (dtInp) dtInp.value = "";
+    quotationsCurrentPage = 1;
+    renderQuotationsPaginated();
+}
+
 function renderQuotationsPaginated() {
     const tbody = document.getElementById("quotationsTableBody");
     if (!tbody) return;
 
-    const quotes = lastQuotationsList;
+    let quotes = lastQuotationsList || [];
+
+    // Filtro por texto (búsqueda inteligente por número, cliente o título)
+    if (quoteFilterSearch) {
+        const q = quoteFilterSearch;
+        quotes = quotes.filter(item => 
+            (item.quote_number && item.quote_number.toLowerCase().includes(q)) ||
+            (item.client && item.client.name && item.client.name.toLowerCase().includes(q)) ||
+            (item.project_title && item.project_title.toLowerCase().includes(q))
+        );
+    }
+
+    // Filtro por estatus
+    if (quoteFilterStatus) {
+        quotes = quotes.filter(item => (item.status || "").toLowerCase() === quoteFilterStatus);
+    }
+
+    // Filtro por fechas
+    if (quoteFilterDateFrom) {
+        quotes = quotes.filter(item => item.created_at && item.created_at.substring(0, 10) >= quoteFilterDateFrom);
+    }
+    if (quoteFilterDateTo) {
+        quotes = quotes.filter(item => item.created_at && item.created_at.substring(0, 10) <= quoteFilterDateTo);
+    }
+
     if (quotes.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;">No hay cotizaciones emitidas. Haz clic en '+ Nueva Cotización' para armar una.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;">No se encontraron cotizaciones con los criterios seleccionados.</td></tr>`;
         const container = document.getElementById("quotationsPaginationContainer");
         if (container) container.innerHTML = "";
         return;
     }
 
-    const { startIndex, endIndex } = (window.renderPaginationControls || renderPaginationControls)({
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: quotes.length }));
+
+    const { startIndex, endIndex } = paginateFn({
         containerId: "quotationsPaginationContainer",
         totalItems: quotes.length,
         currentPage: quotationsCurrentPage,
@@ -81,19 +170,22 @@ function renderQuotationsPaginated() {
     tbody.innerHTML = pageItems.map(q => {
         const clientName = q.client ? q.client.name : 'Cliente General';
         const isApproved = q.status === 'aprobado';
+        const subtotal = Number(q.subtotal_usd || 0);
+        const tax = Number(q.tax_usd || 0);
+        const total = Number(q.total_usd || 0);
         return `
         <tr>
             <td style="font-weight: 800; color: var(--dalor-blue);">${q.quote_number}</td>
             <td style="font-weight: 600;">${clientName}</td>
             <td>${q.project_title}</td>
-            <td style="font-weight: 700;">$${q.subtotal_usd.toLocaleString()}</td>
-            <td style="color: ${q.tax_usd === 0 ? '#10b981' : '#64748b'}; font-weight: 700;">
-                ${q.tax_usd === 0 ? 'EXENTO (0%)' : `$${q.tax_usd.toLocaleString()}`}
+            <td style="font-weight: 700;">$${subtotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="color: ${tax === 0 ? '#10b981' : '#64748b'}; font-weight: 700;">
+                ${tax === 0 ? 'EXENTO (0%)' : `$${tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
             </td>
-            <td style="font-weight: 800; color: var(--dalor-navy);">$${q.total_usd.toLocaleString()}</td>
+            <td style="font-weight: 800; color: var(--dalor-navy);">$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td>
                 <span style="font-size: 10px; padding: 3px 8px; border-radius: 9999px; font-weight: 800; ${isApproved ? 'background: #dcfce7; color: #166534;' : 'background: #f1f5f9; color: #475569;'}">
-                    ${q.status.toUpperCase()}
+                    ${(q.status || 'borrador').toUpperCase()}
                 </span>
             </td>
             <td style="text-align: center; white-space: nowrap;">
@@ -135,7 +227,15 @@ async function loadQuotations() {
             allServices = Array.isArray(sData) ? sData : [];
         }
 
-        populateSelectDropdowns();
+        try {
+            if (typeof window.populateSelectDropdowns === 'function') {
+                window.populateSelectDropdowns();
+            } else if (typeof populateSelectDropdowns === 'function') {
+                populateSelectDropdowns();
+            }
+        } catch (dropErr) {
+            console.warn("Aviso al poblar dropdowns de cotizaciones:", dropErr);
+        }
 
         if (!resQuotes.ok) throw new Error("Error HTTP " + resQuotes.status);
         const quotesData = await resQuotes.json();
@@ -144,7 +244,8 @@ async function loadQuotations() {
         renderQuotationsPaginated();
 
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48;">Error al cargar cotizaciones.</td></tr>`;
+        console.error("Error al cargar cotizaciones:", e);
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar cotizaciones: ${e.message || 'Error de conexión'}</td></tr>`;
     }
 }
 
@@ -670,6 +771,7 @@ function cancelQuotationConversion() {
     const convInput = document.getElementById("converting_quotation_id");
 
     if (convInput) convInput.value = "";
+    sessionStorage.removeItem('dalor_active_converting_quote_id');
 
     const banner = document.getElementById("quote_conversion_banner");
 
@@ -689,6 +791,7 @@ function cancelQuotationConversion() {
 
 async function convertQuoteToProject(quoteId) {
     try {
+        sessionStorage.setItem('dalor_active_converting_quote_id', String(quoteId));
         if (!allClients || allClients.length === 0) {
             try {
                 const resCli = await authFetch(`${API_BASE}/clients/`);
@@ -717,10 +820,25 @@ async function convertQuoteToProject(quoteId) {
             bannerText.innerText = `Presupuesto [${q.quote_number}] para ${clientNameStr}. Monto: $${q.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}. Revisa y completa los campos a continuación:`;
         }
 
-        // 3. Generar código correlativo de proyecto
-        const projNum = (allProjects ? allProjects.length : 0) + 1;
+        // 3. Generar código correlativo de proyecto oficial desde backend (Solo Lectura)
         const codeInput = document.getElementById("new_proj_code");
-        if (codeInput) codeInput.value = `PRJ-2026-${String(projNum).padStart(3, '0')}`;
+        if (codeInput) {
+            codeInput.readOnly = true;
+            codeInput.style.backgroundColor = '#f1f5f9';
+            codeInput.style.cursor = 'not-allowed';
+            authFetch(`${API_BASE}/projects/next-code`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d && d.next_code && codeInput) {
+                        codeInput.value = d.next_code;
+                    }
+                })
+                .catch(err => {
+                    console.warn("Fallback cálculo código proyecto:", err);
+                    const projNum = (allProjects ? allProjects.length : 0) + 1;
+                    if (codeInput) codeInput.value = `PRJ-2026-${String(projNum).padStart(3, '0')}`;
+                });
+        }
 
         // 4. Pre-llenar datos principales y seleccionar cliente dinámicamente
         if (document.getElementById("new_proj_name")) document.getElementById("new_proj_name").value = q.project_title || "";
@@ -959,21 +1077,21 @@ async function printQuotation(quoteId) {
 
             // EUR
 
-            currSymbol = '€';
+            currSymbol = 'â‚¬';
 
             currLabel = 'EUR';
 
-            tablePriceHeader = 'P. Unit (€ EUR)';
+            tablePriceHeader = 'P. Unit (â‚¬ EUR)';
 
-            tableTotalHeader = 'Total (€ EUR)';
+            tableTotalHeader = 'Total (â‚¬ EUR)';
 
 
 
-            const subtotalFormatted = `€ ${q.subtotal_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const subtotalFormatted = `â‚¬ ${q.subtotal_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-            const taxFormatted = q.tax_usd === 0 ? 'EXENTO (0%)' : `€ ${q.tax_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const taxFormatted = q.tax_usd === 0 ? 'EXENTO (0%)' : `â‚¬ ${q.tax_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-            const totalFormatted = `€ ${q.total_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const totalFormatted = `â‚¬ ${q.total_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 
 
@@ -1037,9 +1155,9 @@ async function printQuotation(quoteId) {
 
             } else if (curr === 'EUR') {
 
-                unitPriceDisplay = `€ ${item.unit_price_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                unitPriceDisplay = `â‚¬ ${item.unit_price_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-                totalLineDisplay = `€ ${item.total_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                totalLineDisplay = `â‚¬ ${item.total_usd.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             }
 
@@ -1131,7 +1249,7 @@ async function printQuotation(quoteId) {
 
                     <p style="font-size: 10.5px; color: #0284c7; margin: 2px 0 0 0;">Tiempo de Ejecución: <b>${q.execution_time || '15 días hábiles a partir del anticipo'}</b></p>
 
-                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Moneda de Emisión: <b>${curr === 'USD' ? 'Dólares Americanos (USD $)' : (curr === 'VES' ? 'Bolívares (VES Bs.)' : 'Euros (EUR €)')}</b></p>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Moneda de Emisión: <b>${curr === 'USD' ? 'Dólares Americanos (USD $)' : (curr === 'VES' ? 'Bolívares (VES Bs.)' : 'Euros (EUR â‚¬)')}</b></p>
 
                 </div>
 
@@ -1257,143 +1375,317 @@ function triggerPrintFromModal() {
 
 
 
-async function loadServices() {
+let servicesCurrentPage = 1;
+let servicesPageSize = 10;
+let lastServicesList = [];
+let serviceSearchTerm = '';
+let serviceCategoryFilterVal = '';
 
+function goToServicesPage(page) {
+    servicesCurrentPage = page;
+    renderServicesPaginated();
+    const tableEl = document.getElementById("servicesTableBody");
+    if (tableEl) tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function changeServicesPageSize(size) {
+    servicesPageSize = parseInt(size) || 10;
+    servicesCurrentPage = 1;
+    renderServicesPaginated();
+}
+
+function onServiceSearchInput(val) {
+    serviceSearchTerm = (val || '').toLowerCase().trim();
+    filterAndPaginateServices();
+}
+
+function onServiceCategoryFilterChange(val) {
+    serviceCategoryFilterVal = (val || '').trim();
+    filterAndPaginateServices();
+}
+
+function filterAndPaginateServices() {
+    lastServicesList = (allServices || []).filter(s => {
+        const matchesSearch = !serviceSearchTerm || 
+            (s.name && s.name.toLowerCase().includes(serviceSearchTerm)) ||
+            (s.code && s.code.toLowerCase().includes(serviceSearchTerm)) ||
+            (s.unit_measure && s.unit_measure.toLowerCase().includes(serviceSearchTerm));
+        const matchesCategory = !serviceCategoryFilterVal || s.category === serviceCategoryFilterVal;
+        return matchesSearch && matchesCategory;
+    });
+    servicesCurrentPage = 1;
+    renderServicesPaginated();
+}
+
+function renderServicesPaginated() {
     const tbody = document.getElementById("servicesTableBody");
+    if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando partidas...</td></tr>`;
+    const items = lastServicesList;
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 25px; color: #64748b; font-weight: 500;">
+            <i class="fa-solid fa-folder-open" style="font-size: 24px; color: #94a3b8; margin-bottom: 8px; display: block;"></i>
+            No se encontraron partidas que coincidan con los filtros.
+        </td></tr>`;
+        const container = document.getElementById("servicesPaginationContainer");
+        if (container) container.innerHTML = "";
+        return;
+    }
 
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: items.length }));
 
+    const { startIndex, endIndex } = paginateFn({
+        containerId: "servicesPaginationContainer",
+        totalItems: items.length,
+        currentPage: servicesCurrentPage,
+        pageSize: servicesPageSize,
+        onPageChange: "goToServicesPage",
+        onPageSizeChange: "changeServicesPageSize",
+        itemLabel: "partida(s)",
+        pageSizeOptions: [10, 25, 50, 100]
+    });
+
+    const pageItems = items.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageItems.map(s => {
+        const margin = (s.unit_price_usd || 0) - (s.base_cost_usd || 0);
+        return `
+        <tr>
+            <td style="font-weight: 800; color: var(--dalor-blue);">${s.code}</td>
+            <td style="font-weight: 600; color: var(--dalor-navy);">${s.name}</td>
+            <td><span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 6px; font-weight: 700;">${s.category}</span></td>
+            <td>${s.unit_measure}</td>
+            <td>$${Number(s.base_cost_usd || 0).toFixed(2)}</td>
+            <td style="font-weight: 800; color: var(--dalor-navy);">$${Number(s.unit_price_usd || 0).toFixed(2)}</td>
+            <td style="color: #059669; font-weight: 700;">+$${margin.toFixed(2)}</td>
+            <td style="text-align: center; white-space: nowrap;">
+                <button onclick="openEditServiceModal(${s.id})" class="btn-secondary" style="padding: 4px 8px; color: var(--dalor-blue); margin-right: 4px;" title="Editar Partida">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="deleteService(${s.id})" class="btn-secondary" style="padding: 4px 8px; color: #ef4444;" title="Inactivar Partida">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function loadServices() {
+    const tbody = document.getElementById("servicesTableBody");
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando partidas...</td></tr>`;
+    }
 
     try {
         const res = await authFetch(`${API_BASE}/services/`);
         if (!res.ok) throw new Error("Error HTTP " + res.status);
         const srvData = await res.json();
         allServices = Array.isArray(srvData) ? srvData : [];
-
-        if (allServices.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: #64748b; font-weight: 500;">
-                <i class="fa-solid fa-folder-open" style="font-size: 26px; color: #94a3b8; margin-bottom: 10px; display: block;"></i>
-                <span style="font-size: 13px; font-weight: 700; color: #475569;">No hay partidas registradas en el catálogo (Catálogo en blanco).</span><br>
-                <span style="font-size: 11px; color: #94a3b8;">Usa el botón "+ Nueva Partida" para registrar partidas oficiales de Metalmecánica Dalor.</span>
-            </td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = allServices.map(s => {
-
-            const margin = s.unit_price_usd - s.base_cost_usd;
-
-            return `
-
-            <tr>
-
-                <td style="font-weight: 800; color: var(--dalor-blue);">${s.code}</td>
-
-                <td style="font-weight: 600;">${s.name}</td>
-
-                <td><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${s.category}</span></td>
-
-                <td>${s.unit_measure}</td>
-
-                <td>$${s.base_cost_usd.toFixed(2)}</td>
-
-                <td style="font-weight: 800; color: var(--dalor-navy);">$${s.unit_price_usd.toFixed(2)}</td>
-
-                <td style="color: #059669; font-weight: 700;">+$${margin.toFixed(2)}</td>
-
-                <td style="text-align: center;">
-
-                    <button onclick="deleteService(${s.id})" class="btn-secondary" style="padding: 4px 8px; color: #ef4444;" title="Inactivar Partida">
-
-                        <i class="fa-solid fa-trash"></i>
-
-                    </button>
-
-                </td>
-
-            </tr>`;
-
-        }).join('');
-
+        lastServicesList = allServices;
+        servicesCurrentPage = 1;
+        renderServicesPaginated();
     } catch (e) {
-
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48;">Error al cargar servicios.</td></tr>`;
-
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48;">Error al cargar servicios.</td></tr>`;
     }
-
 }
 
 
 
-function populateServiceCategoriesAndUnits() {
-    const catSelect = document.getElementById("srv_category");
-    const unitSelect = document.getElementById("srv_unit");
+function getCustomCategories() {
+    try {
+        return JSON.parse(localStorage.getItem('dalor_custom_apu_categories') || '[]');
+    } catch(e) {
+        return [];
+    }
+}
 
-    const baseCategories = [
-        "Electricidad",
-        "Mantenimiento Industrial",
-        "Montaje Industrial",
-        "Obra Civil",
-        "Telecomunicaciones"
-    ];
-    const existingCats = new Set(baseCategories);
+function getCustomUnits() {
+    try {
+        return JSON.parse(localStorage.getItem('dalor_custom_apu_units') || '[]');
+    } catch(e) {
+        return [];
+    }
+}
+
+function registerCustomCategory(cat) {
+    if (!cat || typeof cat !== 'string') return;
+    const trimmed = cat.trim();
+    if (!trimmed || trimmed === '__NEW__') return;
+    try {
+        const stored = getCustomCategories();
+        if (!stored.includes(trimmed)) {
+            stored.push(trimmed);
+            localStorage.setItem('dalor_custom_apu_categories', JSON.stringify(stored));
+        }
+    } catch(e) {}
+}
+
+function registerCustomUnit(unit) {
+    if (!unit || typeof unit !== 'string') return;
+    const trimmed = unit.trim();
+    if (!trimmed || trimmed === '__NEW__') return;
+    try {
+        const stored = getCustomUnits();
+        if (!stored.includes(trimmed)) {
+            stored.push(trimmed);
+            localStorage.setItem('dalor_custom_apu_units', JSON.stringify(stored));
+        }
+    } catch(e) {}
+}
+
+function getAllServiceCategories() {
+    const catSet = new Set(OFFICIAL_DALOR_APU_CATEGORIES);
+    getCustomCategories().forEach(c => c && catSet.add(c.trim()));
     (window.allServices || allServices || []).forEach(s => {
         if (s.category && typeof s.category === 'string' && s.category.trim() && s.category !== '__NEW__') {
-            existingCats.add(s.category.trim());
+            catSet.add(s.category.trim());
         }
     });
-    (window.allCategories || []).forEach(c => {
-        if (c.name && typeof c.name === 'string' && c.name.trim()) {
-            existingCats.add(c.name.trim());
-        }
-    });
+    return Array.from(catSet);
+}
 
-    if (catSelect) {
-        const prevCat = catSelect.value;
-        const sortedCats = Array.from(existingCats).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-        catSelect.innerHTML = sortedCats.map(cat => `<option value="${cat}">${cat}</option>`).join('') +
-            `<option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Categoría...</option>`;
-        if (prevCat && existingCats.has(prevCat)) {
-            catSelect.value = prevCat;
-        } else if (sortedCats.length > 0 && prevCat !== '__NEW__') {
-            catSelect.value = sortedCats[0];
-        }
-    }
-
+function getAllServiceUnits() {
     const baseUnits = [
-        "Global",
+        "Kilogramo (kg)",
+        "Tonelada (ton)",
         "Metro (m)",
         "Metro Cuadrado (m²)",
         "Metro Cúbico (m³)",
-        "Pieza (Pza)",
-        "Hora-Hombre (HH)",
-        "Punto",
-        "Kilogramo (Kg)",
-        "Tonelada (Ton)",
-        "Litro (L)"
+        "Pieza (und)",
+        "Global (gl)",
+        "Hora-Hombre (hh)",
+        "Día (dia)",
+        "Pulgada-Diámetro (pulg-diam)",
+        "Litro (L)",
+        "Galón (gal)"
     ];
-    const existingUnits = new Set(baseUnits);
+    const unitSet = new Set(baseUnits);
+    getCustomUnits().forEach(u => u && unitSet.add(u.trim()));
     (window.allServices || allServices || []).forEach(s => {
         if (s.unit_measure && typeof s.unit_measure === 'string' && s.unit_measure.trim() && s.unit_measure !== '__NEW__') {
-            existingUnits.add(s.unit_measure.trim());
+            unitSet.add(s.unit_measure.trim());
         }
     });
+    return Array.from(unitSet);
+}
 
+function populateServiceCategoriesAndUnits() {
+    const categories = getAllServiceCategories();
+    const units = getAllServiceUnits();
+
+    const catOptions = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('') +
+        `<option value="__NEW__" style="color: #0284c7; font-weight: 800;">âž• Escribir Nueva Categoría...</option>`;
+
+    const unitOptions = units.map(u => `<option value="${u}">${u}</option>`).join('') +
+        `<option value="__NEW__" style="color: #0284c7; font-weight: 800;">âž• Escribir Nueva Unidad...</option>`;
+
+    // 1. Selector de categoría en Modal Nuevo Servicio
+    const catSelect = document.getElementById("srv_category");
+    if (catSelect) {
+        const prev = catSelect.value;
+        catSelect.innerHTML = catOptions;
+        if (prev && prev !== '__NEW__' && categories.includes(prev)) {
+            catSelect.value = prev;
+        } else if (categories.length > 0 && prev !== '__NEW__') {
+            catSelect.value = categories[0];
+        }
+    }
+
+    // 2. Selector de unidad en Modal Nuevo Servicio
+    const unitSelect = document.getElementById("srv_unit");
     if (unitSelect) {
-        const prevUnit = unitSelect.value;
-        const sortedUnits = Array.from(existingUnits).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-        unitSelect.innerHTML = sortedUnits.map(u => `<option value="${u}">${u}</option>`).join('') +
-            `<option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Unidad...</option>`;
-        if (prevUnit && existingUnits.has(prevUnit)) {
-            unitSelect.value = prevUnit;
-        } else if (sortedUnits.length > 0 && prevUnit !== '__NEW__') {
-            unitSelect.value = sortedUnits[0];
+        const prev = unitSelect.value;
+        unitSelect.innerHTML = unitOptions;
+        if (prev && prev !== '__NEW__' && units.includes(prev)) {
+            unitSelect.value = prev;
+        } else if (units.length > 0 && prev !== '__NEW__') {
+            unitSelect.value = units[0];
+        }
+    }
+
+    // 3. Selector de categoría en Modal Editar Servicio
+    const editCatSelect = document.getElementById("edit_srv_category");
+    if (editCatSelect) {
+        const prev = editCatSelect.value;
+        editCatSelect.innerHTML = catOptions;
+        if (prev && prev !== '__NEW__' && categories.includes(prev)) {
+            editCatSelect.value = prev;
+        }
+    }
+
+    // 4. Selector de unidad en Modal Editar Servicio
+    const editUnitSelect = document.getElementById("edit_srv_unit");
+    if (editUnitSelect) {
+        const prev = editUnitSelect.value;
+        editUnitSelect.innerHTML = unitOptions;
+        if (prev && prev !== '__NEW__' && units.includes(prev)) {
+            editUnitSelect.value = prev;
+        }
+    }
+
+    // 5. Filtro de categorías en la tabla de catálogo de servicios
+    const filterCatSelect = document.getElementById("serviceCategoryFilter");
+    if (filterCatSelect) {
+        const prev = filterCatSelect.value;
+        filterCatSelect.innerHTML = `<option value="">Todas las Categorías</option>` +
+            categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        if (prev && categories.includes(prev)) {
+            filterCatSelect.value = prev;
         }
     }
 }
 
-function openNewServiceModal() {
+function onServiceCategoryChanged(val) {
+    const input = document.getElementById("srv_new_category");
+    if (!input) return;
+    if (val === '__NEW__') {
+        input.classList.remove("hidden");
+        input.focus();
+    } else {
+        input.classList.add("hidden");
+        input.value = "";
+    }
+}
+
+function onServiceUnitChanged(val) {
+    const input = document.getElementById("srv_new_unit");
+    if (!input) return;
+    if (val === '__NEW__') {
+        input.classList.remove("hidden");
+        input.focus();
+    } else {
+        input.classList.add("hidden");
+        input.value = "";
+    }
+}
+
+function onEditServiceCategoryChanged(val) {
+    const input = document.getElementById("edit_srv_new_category");
+    if (!input) return;
+    if (val === '__NEW__') {
+        input.classList.remove("hidden");
+        input.focus();
+    } else {
+        input.classList.add("hidden");
+        input.value = "";
+    }
+}
+
+function onEditServiceUnitChanged(val) {
+    const input = document.getElementById("edit_srv_new_unit");
+    if (!input) return;
+    if (val === '__NEW__') {
+        input.classList.remove("hidden");
+        input.focus();
+    } else {
+        input.classList.add("hidden");
+        input.value = "";
+    }
+}
+
+async function openNewServiceModal() {
     const form = document.getElementById("serviceForm");
     if (form) form.reset();
 
@@ -1409,54 +1701,64 @@ function openNewServiceModal() {
         newUnitInput.classList.add("hidden");
     }
 
+    const codeInput = document.getElementById("srv_code");
+    if (codeInput) {
+        codeInput.value = "Generando correlativo...";
+        codeInput.setAttribute("readonly", "true");
+        codeInput.style.backgroundColor = "#f1f5f9";
+        codeInput.style.cursor = "not-allowed";
+        codeInput.style.fontWeight = "700";
+    }
+
     populateServiceCategoriesAndUnits();
     openModal("modalService");
-}
 
-function onServiceCategoryChanged(val) {
-    const newCatInput = document.getElementById("srv_new_category");
-    if (!newCatInput) return;
-    if (val === '__NEW__') {
-        newCatInput.classList.remove("hidden");
-        newCatInput.focus();
-    } else {
-        newCatInput.classList.add("hidden");
-        newCatInput.value = "";
-    }
-}
-
-function onServiceUnitChanged(val) {
-    const newUnitInput = document.getElementById("srv_new_unit");
-    if (!newUnitInput) return;
-    if (val === '__NEW__') {
-        newUnitInput.classList.remove("hidden");
-        newUnitInput.focus();
-    } else {
-        newUnitInput.classList.add("hidden");
-        newUnitInput.value = "";
+    try {
+        const res = await authFetch(`${API_BASE}/services/next-code`);
+        if (res.ok) {
+            const data = await res.json();
+            if (codeInput && data && data.next_code) {
+                codeInput.value = data.next_code;
+            }
+        } else {
+            if (codeInput) {
+                const count = (allServices ? allServices.length : 0) + 1;
+                codeInput.value = `APU-${String(count).padStart(3, '0')}`;
+            }
+        }
+    } catch (e) {
+        console.warn("No se pudo obtener correlativo de APU:", e);
+        if (codeInput && codeInput.value.includes("Generando")) {
+            codeInput.value = "APU-001";
+        }
     }
 }
 
 async function submitCreateService(event) {
     if (event && event.preventDefault) event.preventDefault();
-    let selectedCat = document.getElementById("srv_category").value;
+
+    let selectedCat = document.getElementById("srv_category")?.value;
     if (selectedCat === '__NEW__') {
         const customCat = (document.getElementById("srv_new_category")?.value || "").trim();
         if (!customCat) {
             alert("Por favor escribe el nombre de la nueva categoría.");
+            document.getElementById("srv_new_category")?.focus();
             return;
         }
         selectedCat = customCat;
+        registerCustomCategory(selectedCat);
     }
 
-    let selectedUnit = document.getElementById("srv_unit").value;
+    let selectedUnit = document.getElementById("srv_unit")?.value;
     if (selectedUnit === '__NEW__') {
         const customUnit = (document.getElementById("srv_new_unit")?.value || "").trim();
         if (!customUnit) {
-            alert("Por favor escribe la unidad de medida (ej: Kg, Ton, Pulg-Diam).");
+            alert("Por favor escribe la unidad de medida (ej: Kg, Ton, Galón, etc.).");
+            document.getElementById("srv_new_unit")?.focus();
             return;
         }
         selectedUnit = customUnit;
+        registerCustomUnit(selectedUnit);
     }
 
     const payload = {
@@ -1468,6 +1770,20 @@ async function submitCreateService(event) {
         unit_price_usd: parseFloat(document.getElementById("srv_price").value) || 0.0
     };
 
+    if (!payload.name) {
+        alert("El nombre de la partida es obligatorio.");
+        return;
+    }
+
+    // ðŸ”´ VALIDACIÓN DE MARGEN COMERCIAL
+    if (payload.unit_price_usd < payload.base_cost_usd) {
+        const margen = (payload.unit_price_usd - payload.base_cost_usd).toFixed(2);
+        alert(`âš ï¸ PRECIO INVÁLIDO\n\nEl Precio de Venta ($${payload.unit_price_usd.toFixed(2)}) no puede ser menor al Costo Base ($${payload.base_cost_usd.toFixed(2)}).\n\nMargen actual: $${margen} (pérdida).\n\nAjusta el precio antes de guardar.`);
+        document.getElementById("srv_price")?.focus();
+        return;
+    }
+
+
     try {
         const res = await authFetch(`${API_BASE}/services/`, {
             method: "POST",
@@ -1475,9 +1791,20 @@ async function submitCreateService(event) {
             body: JSON.stringify(payload)
         });
 
+
         if (res.ok) {
-            alert("Partida de servicio creada exitosamente.");
+            const created = await res.json();
             closeModal("modalService");
+            if (typeof showToastNotification === 'function') {
+                showToastNotification(`Partida ${created.code} registrada exitosamente`, "success");
+            } else if (typeof showToast === 'function') {
+                showToast(`Partida ${created.code} registrada exitosamente`, "success");
+            } else {
+                alert(`Partida ${created.code} registrada exitosamente.`);
+            }
+            registerCustomCategory(created.category || selectedCat);
+            registerCustomUnit(created.unit_measure || selectedUnit);
+
             await loadInitialMasterData();
             await loadServices();
             populateServiceCategoriesAndUnits();
@@ -1486,12 +1813,143 @@ async function submitCreateService(event) {
             alert("Error: " + (err.detail || JSON.stringify(err)));
         }
     } catch (e) {
-        alert("Error al guardar servicio.");
+        console.error("Error al guardar servicio:", e);
+        alert("Error de conexión al guardar servicio.");
     }
 }
 
+function openEditServiceModal(serviceId) {
+    const s = (allServices || []).find(item => item.id === serviceId);
+    if (!s) {
+        alert("Partida no encontrada.");
+        return;
+    }
+    populateServiceCategoriesAndUnits();
 
+    const newCatInput = document.getElementById("edit_srv_new_category");
+    if (newCatInput) {
+        newCatInput.value = "";
+        newCatInput.classList.add("hidden");
+    }
 
+    const newUnitInput = document.getElementById("edit_srv_new_unit");
+    if (newUnitInput) {
+        newUnitInput.value = "";
+        newUnitInput.classList.add("hidden");
+    }
+
+    document.getElementById("edit_srv_id").value = s.id;
+    document.getElementById("edit_srv_code").value = s.code;
+    document.getElementById("edit_srv_name").value = s.name;
+
+    const catSelect = document.getElementById("edit_srv_category");
+    if (catSelect) {
+        if (s.category && !Array.from(catSelect.options).some(o => o.value === s.category)) {
+            const opt = document.createElement("option");
+            opt.value = s.category;
+            opt.textContent = s.category;
+            catSelect.insertBefore(opt, catSelect.lastElementChild);
+        }
+        catSelect.value = s.category;
+    }
+
+    const unitSelect = document.getElementById("edit_srv_unit");
+    if (unitSelect) {
+        if (s.unit_measure && !Array.from(unitSelect.options).some(o => o.value === s.unit_measure)) {
+            const opt = document.createElement("option");
+            opt.value = s.unit_measure;
+            opt.textContent = s.unit_measure;
+            unitSelect.insertBefore(opt, unitSelect.lastElementChild);
+        }
+        unitSelect.value = s.unit_measure;
+    }
+
+    document.getElementById("edit_srv_cost").value = s.base_cost_usd;
+    document.getElementById("edit_srv_price").value = s.unit_price_usd;
+    openModal("modalEditService");
+}
+
+async function submitEditService(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    const serviceId = document.getElementById("edit_srv_id").value;
+
+    let selectedCat = document.getElementById("edit_srv_category")?.value;
+    if (selectedCat === '__NEW__') {
+        const customCat = (document.getElementById("edit_srv_new_category")?.value || "").trim();
+        if (!customCat) {
+            alert("Por favor escribe el nombre de la nueva categoría.");
+            document.getElementById("edit_srv_new_category")?.focus();
+            return;
+        }
+        selectedCat = customCat;
+        registerCustomCategory(selectedCat);
+    }
+
+    let selectedUnit = document.getElementById("edit_srv_unit")?.value;
+    if (selectedUnit === '__NEW__') {
+        const customUnit = (document.getElementById("edit_srv_new_unit")?.value || "").trim();
+        if (!customUnit) {
+            alert("Por favor escribe la unidad de medida.");
+            document.getElementById("edit_srv_new_unit")?.focus();
+            return;
+        }
+        selectedUnit = customUnit;
+        registerCustomUnit(selectedUnit);
+    }
+
+    const payload = {
+        name: document.getElementById("edit_srv_name").value.trim(),
+        category: selectedCat,
+        unit_measure: selectedUnit,
+        base_cost_usd: parseFloat(document.getElementById("edit_srv_cost").value) || 0.0,
+        unit_price_usd: parseFloat(document.getElementById("edit_srv_price").value) || 0.0
+    };
+
+    if (!payload.name) {
+        alert("El nombre de la partida es obligatorio.");
+        return;
+    }
+
+    // ðŸ”´ VALIDACIÓN DE MARGEN COMERCIAL
+    if (payload.unit_price_usd < payload.base_cost_usd) {
+        const margen = (payload.unit_price_usd - payload.base_cost_usd).toFixed(2);
+        alert(`âš ï¸ PRECIO INVÁLIDO\n\nEl Precio de Venta ($${payload.unit_price_usd.toFixed(2)}) no puede ser menor al Costo Base ($${payload.base_cost_usd.toFixed(2)}).\n\nMargen actual: $${margen} (pérdida).\n\nAjusta el precio antes de guardar.`);
+        document.getElementById("edit_srv_price")?.focus();
+        return;
+    }
+
+    try {
+
+        const res = await authFetch(`${API_BASE}/services/${serviceId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            closeModal("modalEditService");
+            if (typeof showToastNotification === 'function') {
+                showToastNotification("Partida actualizada exitosamente", "success");
+            } else if (typeof showToast === 'function') {
+                showToast("Partida actualizada exitosamente", "success");
+            } else {
+                alert("Partida actualizada exitosamente.");
+            }
+            registerCustomCategory(payload.category);
+            registerCustomUnit(payload.unit_measure);
+
+            await loadInitialMasterData();
+            await loadServices();
+            populateServiceCategoriesAndUnits();
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        console.error("Error al actualizar servicio:", e);
+        alert("Error de conexión al actualizar servicio.");
+    }
+}
 
 async function deleteService(serviceId) {
 
@@ -1536,10 +1994,7 @@ async function checkQuoteClientCreditRisk(clientId) {
     }
 
     try {
-        const token = window.authToken || localStorage.getItem('dalor_token') || null;
-        const res = await fetch(`${API_BASE}/clients/${clientId}/credit-risk`, {
-            headers: token ? { "Authorization": `Bearer ${token}` } : {}
-        });
+        const res = await authFetch(`${API_BASE}/clients/${clientId}/credit-risk`);
         if (!res.ok) {
             alertBox.style.display = "none";
             return;
@@ -1547,7 +2002,7 @@ async function checkQuoteClientCreditRisk(clientId) {
 
         const data = await res.json();
         if (data && data.has_risk) {
-            let debtList = (data.bad_debts || []).map(b => `• <strong>${b.invoice_number || 'Doc'}</strong>: $${(b.amount_usd || 0).toFixed(2)} USD <em>(${b.reason || 'Sin motivo'})</em>`).join("<br>");
+            let debtList = (data.bad_debts || []).map(b => `"¢ <strong>${b.invoice_number || 'Doc'}</strong>: $${(b.amount_usd || 0).toFixed(2)} USD <em>(${b.reason || 'Sin motivo'})</em>`).join("<br>");
             if (detailsBox) {
                 detailsBox.innerHTML = `
                     Este cliente posee antecedentes de <strong>cuenta incobrable / castigada</strong> por un total de <strong>$${(data.total_bad_debt_usd || 0).toFixed(2)} USD</strong>.<br>
@@ -1607,8 +2062,6 @@ if (typeof window !== 'undefined') {
     window.loadQuotations = loadQuotations;
     window.loadServices = loadServices;
     window.onQuotationCurrencyChanged = onQuotationCurrencyChanged;
-    window.onServiceCategoryChanged = onServiceCategoryChanged;
-    window.onServiceUnitChanged = onServiceUnitChanged;
     window.onServiceSelected = onServiceSelected;
     window.onTaxTypeChanged = onTaxTypeChanged;
     window.openNewQuotationModal = openNewQuotationModal;
@@ -1627,16 +2080,80 @@ if (typeof window !== 'undefined') {
     window.goToQuotationsPage = goToQuotationsPage;
     window.changeQuotationsPageSize = changeQuotationsPageSize;
     window.renderQuotationsPaginated = renderQuotationsPaginated;
+    window.onQuotationSearchInput = onQuotationSearchInput;
+    window.onQuotationStatusFilterChange = onQuotationStatusFilterChange;
+    window.onQuotationDateFilterChange = onQuotationDateFilterChange;
+    window.clearQuotationFilters = clearQuotationFilters;
+    window.goToServicesPage = goToServicesPage;
+    window.changeServicesPageSize = changeServicesPageSize;
+    window.renderServicesPaginated = renderServicesPaginated;
+    window.onServiceSearchInput = onServiceSearchInput;
+    window.onServiceCategoryFilterChange = onServiceCategoryFilterChange;
+    window.openEditServiceModal = openEditServiceModal;
+    window.submitEditService = submitEditService;
+    window.onServiceCategoryChanged = onServiceCategoryChanged;
+    window.onServiceUnitChanged = onServiceUnitChanged;
+    window.onEditServiceCategoryChanged = onEditServiceCategoryChanged;
+    window.onEditServiceUnitChanged = onEditServiceUnitChanged;
+    window.registerCustomCategory = registerCustomCategory;
+    window.registerCustomUnit = registerCustomUnit;
+    window.getAllServiceCategories = getAllServiceCategories;
+    window.getAllServiceUnits = getAllServiceUnits;
 }
 
 export { 
     addQuotationRow, cancelQuotationConversion, convertQuoteToProject, deleteService, 
     editQuotation, loadQuotations, loadServices, onQuotationCurrencyChanged, 
-    onServiceCategoryChanged, onServiceUnitChanged, onServiceSelected, onTaxTypeChanged, 
+    onServiceSelected, onTaxTypeChanged, 
     openNewQuotationModal, openNewServiceModal, printQuotation, recalcQuotationTotals, 
     removeQuotationRow, submitCreateQuotation, submitCreateService, triggerPrintFromModal, 
     populateServiceCategoriesAndUnits, checkQuoteClientCreditRisk, onQuoteClientChanged,
     confirmQuoteClientRisk, cancelQuoteClientRisk,
-    goToQuotationsPage, changeQuotationsPageSize, renderQuotationsPaginated
+    goToQuotationsPage, changeQuotationsPageSize, renderQuotationsPaginated,
+    onQuotationSearchInput, onQuotationStatusFilterChange, onQuotationDateFilterChange, clearQuotationFilters,
+    goToServicesPage, changeServicesPageSize, renderServicesPaginated,
+    onServiceSearchInput, onServiceCategoryFilterChange, openEditServiceModal, submitEditService,
+    onServiceCategoryChanged, onServiceUnitChanged, onEditServiceCategoryChanged, onEditServiceUnitChanged,
+    registerCustomCategory, registerCustomUnit, getAllServiceCategories, getAllServiceUnits,
+    OFFICIAL_DALOR_APU_CATEGORIES
 };
 
+// â”€â”€ Indicadores de Margen en Tiempo Real â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// ── Indicadores de Margen en Tiempo Real ────────────────────────────────────
+function calcEditServiceMargin() {
+    const cost = parseFloat(document.getElementById('edit_srv_cost')?.value) || 0;
+    const price = parseFloat(document.getElementById('edit_srv_price')?.value) || 0;
+    const badge = document.getElementById('editSrvMarginBadge');
+    if (!badge) return;
+    if (!cost && !price) { badge.innerHTML = ''; return; }
+    const margin = price - cost;
+    const pct = cost > 0 ? ((margin / cost) * 100).toFixed(1) : 'N/A';
+    if (margin < 0) {
+        badge.innerHTML = '<span style="color:#e11d48;background:#fff1f2;padding:3px 10px;border-radius:6px;border:1px solid #fecdd3;">ERROR: Precio de venta menor al costo — Perdida de $' + Math.abs(margin).toFixed(2) + ' (' + Math.abs(pct) + '%) — Ajusta el precio</span>';
+    } else if (margin === 0) {
+        badge.innerHTML = '<span style="color:#b45309;background:#fffbeb;padding:3px 10px;border-radius:6px;border:1px solid #fde68a;">Margen Cero: Precio igual al costo, sin ganancia</span>';
+    } else {
+        badge.innerHTML = '<span style="color:#059669;background:#ecfdf5;padding:3px 10px;border-radius:6px;border:1px solid #a7f3d0;">OK Ganancia: +$' + margin.toFixed(2) + ' (' + pct + '% sobre costo)</span>';
+    }
+}
+
+function calcNewServiceMargin() {
+    const cost = parseFloat(document.getElementById('srv_cost')?.value) || 0;
+    const price = parseFloat(document.getElementById('srv_price')?.value) || 0;
+    const badge = document.getElementById('newSrvMarginBadge');
+    if (!badge) return;
+    if (!cost && !price) { badge.innerHTML = ''; return; }
+    const margin = price - cost;
+    const pct = cost > 0 ? ((margin / cost) * 100).toFixed(1) : 'N/A';
+    if (margin < 0) {
+        badge.innerHTML = '<span style="color:#e11d48;background:#fff1f2;padding:3px 10px;border-radius:6px;border:1px solid #fecdd3;">ERROR: Precio de venta menor al costo — Perdida de $' + Math.abs(margin).toFixed(2) + ' (' + Math.abs(pct) + '%) — Ajusta el precio</span>';
+    } else if (margin === 0) {
+        badge.innerHTML = '<span style="color:#b45309;background:#fffbeb;padding:3px 10px;border-radius:6px;border:1px solid #fde68a;">Margen Cero: Precio igual al costo, sin ganancia</span>';
+    } else {
+        badge.innerHTML = '<span style="color:#059669;background:#ecfdf5;padding:3px 10px;border-radius:6px;border:1px solid #a7f3d0;">OK Ganancia: +$' + margin.toFixed(2) + ' (' + pct + '% sobre costo)</span>';
+    }
+}
+
+window.calcEditServiceMargin = calcEditServiceMargin;
+window.calcNewServiceMargin = calcNewServiceMargin;

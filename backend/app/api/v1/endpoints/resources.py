@@ -20,25 +20,28 @@ def get_resource_matrix_status(db: Session = Depends(get_db)):
     machinery = [a for a in assets if a.asset_type in ["maquinaria", "generador", "compresor", "planta"]]
     tools = [a for a in assets if a.asset_type not in ["vehiculo", "camioneta", "camion", "remolque", "maquinaria", "generador", "compresor", "planta"]]
 
-    veh_in_base = [v for v in vehicles if not v.current_project_id or v.status == "disponible_base"]
-    veh_in_project = [v for v in vehicles if v.current_project_id and v.status == "en_obra"]
+    veh_in_base = [v for v in vehicles if not v.current_project_id and v.status == "disponible_base"]
+    veh_in_project = [v for v in vehicles if v.current_project_id or v.status in ["en_obra", "en_operacion", "asignado"]]
 
-    mach_in_base = [m for m in machinery if not m.current_project_id or m.status == "disponible_base"]
-    mach_in_project = [m for m in machinery if m.current_project_id and m.status == "en_obra"]
+    mach_in_base = [m for m in machinery if not m.current_project_id and m.status == "disponible_base"]
+    mach_in_project = [m for m in machinery if m.current_project_id or m.status in ["en_obra", "en_operacion", "asignado"]]
 
-    tools_in_base = [t for t in tools if not t.current_project_id or t.status == "disponible_base"]
-    tools_in_project = [t for t in tools if t.current_project_id and t.status == "en_obra"]
+    tools_in_base = [t for t in tools if not t.current_project_id and t.status == "disponible_base"]
+    tools_in_project = [t for t in tools if t.current_project_id or t.status in ["en_obra", "en_operacion", "asignado"]]
 
-    personnel_in_base = [p for p in personnel if not p.current_project_id or p.status == "disponible_base"]
-    personnel_in_project = [p for p in personnel if p.current_project_id and p.status == "en_obra"]
+    personnel_in_base = [p for p in personnel if not p.current_project_id and p.status == "disponible_base"]
+    personnel_in_project = [p for p in personnel if p.current_project_id or p.status in ["en_obra", "en_operacion", "asignado"]]
 
     return {
         "summary": {
             "total_assets": len(assets),
+            "vehicles_total": len(vehicles),
             "vehicles_available_base": len(veh_in_base),
             "vehicles_in_operation": len(veh_in_project),
+            "machinery_total": len(machinery),
             "machinery_available_base": len(mach_in_base),
             "machinery_in_operation": len(mach_in_project),
+            "tools_total": len(tools),
             "tools_available_base": len(tools_in_base),
             "tools_in_operation": len(tools_in_project),
             "total_personnel": len(personnel),
@@ -52,10 +55,16 @@ def get_resource_matrix_status(db: Session = Depends(get_db)):
                 "name": a.name,
                 "type": a.asset_type,
                 "status": "en_obra" if a.current_project_id else "disponible_base",
-                "location": a.current_location or "Sede Central",
+                "location": (
+                    f"Obra [{a.current_project.code}] - {a.current_project.name}" + (f" ({a.current_project.location})" if a.current_project.location else "")
+                ) if (a.current_project_id and a.current_project) else "Sede Central Dalor (Guacara)",
                 "project_id": a.current_project_id,
-                "project_name": a.current_project.name if a.current_project else None,
-                "custodian": a.current_custodian_name or "Sin Asignar",
+                "project_code": a.current_project.code if a.current_project else None,
+                "custodian": (
+                    (a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else "En Operación de Obra")
+                    if a.current_project_id
+                    else (a.current_custodian_name or "Disponible en Base")
+                ),
                 "odometer": a.current_odometer or 0.0,
                 "is_exclusive": a.is_exclusive
             } for a in assets
@@ -67,9 +76,13 @@ def get_resource_matrix_status(db: Session = Depends(get_db)):
                 "name": p.full_name,
                 "role": p.role_title,
                 "status": "en_obra" if p.current_project_id else "disponible_base",
-                "location": p.current_location or "Sede Central",
+                "location": (
+                    f"Obra [{p.current_project.code}] - {p.current_project.name}" + (f" ({p.current_project.location})" if p.current_project.location else "")
+                ) if (p.current_project_id and p.current_project) else "Sede Central Dalor (Guacara)",
                 "project_id": p.current_project_id,
-                "project_name": p.current_project.name if p.current_project else None
+                "project_code": p.current_project.code if p.current_project else None,
+                "project_name": p.current_project.name if p.current_project else None,
+                "project_location": p.current_project.location if p.current_project else None,
             } for p in personnel
         ]
     }
@@ -80,7 +93,15 @@ def assign_resource(req: ResourceAssignRequest, db: Session = Depends(get_db)):
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
 
+    st = (project.status or "").lower().strip()
+    if st in ["culminado", "completado", "cerrado", "cancelado", "finalizado", "inactivo"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Operación rechazada: La obra [{project.code}] '{project.name}' se encuentra {st.upper()} y no admite asignación de recursos."
+        )
+
     resource_name = ""
+
     resource_code = ""
 
     if req.resource_type == "asset":
@@ -90,8 +111,10 @@ def assign_resource(req: ResourceAssignRequest, db: Session = Depends(get_db)):
         asset.status = "en_obra"
         asset.current_project_id = project.id
         asset.current_location = req.destination_location or project.location
-        if req.custodian_name:
-            asset.current_custodian_name = req.custodian_name
+        if req.custodian_name and req.custodian_name.strip() and "base" not in req.custodian_name.lower():
+            asset.current_custodian_name = req.custodian_name.strip()
+        else:
+            asset.current_custodian_name = "En Operación de Obra"
         if req.start_odometer:
             asset.current_odometer = req.start_odometer
         resource_name = asset.name
@@ -132,7 +155,15 @@ def transfer_resource(req: ResourceTransferRequest, db: Session = Depends(get_db
     if not target_project:
         raise HTTPException(status_code=404, detail="Proyecto destino no encontrado.")
 
+    st = (target_project.status or "").lower().strip()
+    if st in ["culminado", "completado", "cerrado", "cancelado", "finalizado", "inactivo"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Operación rechazada: La obra destino [{target_project.code}] '{target_project.name}' se encuentra {st.upper()} y no admite transferencia de recursos."
+        )
+
     resource_name = ""
+
     resource_code = ""
     prev_location = "Sede Central"
 
@@ -191,7 +222,7 @@ def return_resource_to_base(req: ResourceReturnRequest, db: Session = Depends(ge
         last_proj_id = asset.current_project_id or 1
         asset.status = "disponible_base"
         asset.current_project_id = None
-        asset.current_location = req.return_location or "Sede Central Dalor"
+        asset.current_location = req.return_location or "Sede Central Dalor (Guacara)"
         asset.current_custodian_name = "Disponible en Base"
         if req.end_odometer:
             asset.current_odometer = req.end_odometer
@@ -205,7 +236,7 @@ def return_resource_to_base(req: ResourceReturnRequest, db: Session = Depends(ge
         last_proj_id = person.current_project_id or 1
         person.status = "disponible_base"
         person.current_project_id = None
-        person.current_location = req.return_location or "Sede Central Dalor"
+        person.current_location = req.return_location or "Sede Central Dalor (Guacara)"
         resource_name = person.full_name
         resource_code = person.code
 
@@ -219,13 +250,13 @@ def return_resource_to_base(req: ResourceReturnRequest, db: Session = Depends(ge
         custodian_name="Custodio Base",
         start_odometer=req.end_odometer,
         origin_location="Planta / Obra",
-        destination_location=req.return_location or "Sede Central Dalor",
+        destination_location=req.return_location or "Sede Central Dalor (Guacara)",
         status="disponible_base",
         notes="Desmovilización y retorno conforme a Base Central"
     )
     db.add(history)
     db.commit()
-    return {"success": True, "message": f"{resource_name} retornado exitosamente a {req.return_location or 'Sede Central Dalor'} (Disponible)."}
+    return {"success": True, "message": f"{resource_name} retornado exitosamente a {req.return_location or 'Sede Central Dalor (Guacara)'} (Disponible)."}
 
 @router.get("/history")
 def get_resource_history(name: str = None, query: str = None, resource_id: int = None, db: Session = Depends(get_db)):

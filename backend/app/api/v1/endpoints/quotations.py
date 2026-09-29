@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
+import re
 from app.core.database import get_db
-from app.models.models import Quotation, QuotationItem, Client, ServiceItem, Project
+from app.models.models import Quotation, QuotationItem, Client, ServiceItem, Project, Material, ProjectMaterialRequisition
 from app.schemas.schemas import QuotationCreate, QuotationUpdate, QuotationOut
 
 router = APIRouter()
@@ -170,13 +171,22 @@ def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db
             detail=f"La cotización {quote.quote_number} ya fue aprobada previamente y no puede duplicarse."
         )
 
-    # Generar código de proyecto correlativo garantizando unicidad
+    # Generar código de proyecto correlativo garantizando unicidad y formato estricto
     current_year = datetime.utcnow().year
-    seq = db.query(Project).count() + 1
-    proj_code = f"PRJ-{current_year}-{seq:03d}"
-    while db.query(Project).filter(Project.code == proj_code).first():
-        seq += 1
-        proj_code = f"PRJ-{current_year}-{seq:03d}"
+    projects = db.query(Project.code).all()
+    max_seq = 0
+    pattern = re.compile(rf"PRJ-{current_year}-(\d+)", re.IGNORECASE)
+    for (p_code,) in projects:
+        if p_code:
+            m = pattern.search(p_code)
+            if m:
+                try:
+                    num = int(m.group(1))
+                    if num > max_seq:
+                        max_seq = num
+                except ValueError:
+                    pass
+    proj_code = f"PRJ-{current_year}-{(max_seq + 1):03d}"
 
     # Estimar bolsas iniciales a partir del subtotal cotizado (65% costo base estimado, 35% margen)
     est_labor = round(quote.subtotal_usd * 0.30, 2)
@@ -206,6 +216,29 @@ def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db
 
     quote.status = "aprobado"
     db.add(new_project)
+    db.flush()
+
+    # Explosión de Insumos del Presupuesto a Requisición de Almacén para el Proyecto
+    for q_item in (quote.items or []):
+        mat = db.query(Material).filter(
+            (Material.code == q_item.item_code) |
+            (Material.name.ilike(f"%{q_item.description[:30]}%"))
+        ).first()
+
+        req = ProjectMaterialRequisition(
+            project_id=new_project.id,
+            material_id=mat.id if mat else None,
+            material_code=mat.code if mat else (q_item.item_code or "APU-MAT"),
+            material_name=q_item.description,
+            unit_measure=q_item.unit_measure or "UND",
+            quantity_required=q_item.quantity or 1.0,
+            quantity_dispatched=0.0,
+            estimated_cost_usd=q_item.total_usd or 0.0,
+            status="pendiente",
+            notes=f"Partida presupuestada en {quote.quote_number}"
+        )
+        db.add(req)
+
     db.commit()
     db.refresh(new_project)
 

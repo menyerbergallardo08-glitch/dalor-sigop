@@ -1,0 +1,43 @@
+{
+  "timestamp": "20260919_181815",
+  "database_url_masked": "sqlite:///./dalor_sigop.db",
+  "backup_method": "BackupService_SQLAlchemy_JSON",
+  "files": [
+    {
+      "filename": "dalor_backup_20260919_181816.json",
+      "filepath": "C:\\Users\\GATEWAY\\.gemini\\antigravity\\scratch\\dalor-sigop\\backups\\production\\dalor_backup_20260919_181816.json",
+      "size_bytes": 989669,
+      "size_kb": 966.47,
+      "sha256": "4bb17c803e2baf76b9611c10f2a316d687a116a52de87c92fc67b8ba75332894"
+    }
+  ],
+  "success": true,
+  "database_engine": "sqlite",
+  "total_tables": 24,
+  "tables": [
+    "accounts_payable",
+    "accounts_receivable",
+    "asset_rentals_loans",
+    "assets",
+    "audit_logs",
+    "clients",
+    "cost_centers",
+    "dispatch_guide_items",
+    "dispatch_guides",
+    "expense_categories",
+    "expenses",
+    "financial_payments",
+    "fixed_expense_settings",
+    "material_movements",
+    "materials",
+    "partner_withdrawals",
+    "personnel",
+    "project_phases",
+    "projects",
+    "quotation_items",
+    "quotations",
+    "resource_assignment_history",
+    "service_items",
+    "users"
+  ]
+}

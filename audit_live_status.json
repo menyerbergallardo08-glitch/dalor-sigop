@@ -1,0 +1,170 @@
+{
+  "total_endpoints": 14,
+  "healthy_endpoints": 9,
+  "total_users": 6,
+  "healthy_users": 6,
+  "results": [
+    {
+      "component": "Frontend Principal (SPA)",
+      "url": "https://dalor-sigop.onrender.com/",
+      "status": "ERROR",
+      "ok": false,
+      "latency_ms": 0,
+      "info": "HTTPSConnectionPool(host='dalor-sigop.onrender.com', port=443): Read timed out. (read timeout=15)"
+    },
+    {
+      "component": "Presentaci\u00f3n Ejecutiva / Smart TV",
+      "url": "https://dalor-sigop.onrender.com/presentacion",
+      "status": "ERROR",
+      "ok": false,
+      "latency_ms": 0,
+      "info": "HTTPSConnectionPool(host='dalor-sigop.onrender.com', port=443): Read timed out. (read timeout=15)"
+    },
+    {
+      "component": "Manuales de Usuario & Glosario",
+      "url": "https://dalor-sigop.onrender.com/manual",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 1913.6,
+      "info": "(71114 bytes HTML)"
+    },
+    {
+      "component": "API Docs / OpenAPI",
+      "url": "https://dalor-sigop.onrender.com/docs",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 590.5,
+      "info": "(1069 bytes HTML)"
+    },
+    {
+      "component": "Tasa Oficial BCV Automatizada",
+      "url": "https://dalor-sigop.onrender.com/api/v1/financial/bcv-rate",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 1749.8,
+      "info": "(Tasa: 842.21 Bs/$, Fuente: BCV Oficial (bcv.org.ve))"
+    },
+    {
+      "component": "Cat\u00e1logo de Clientes",
+      "url": "https://dalor-sigop.onrender.com/api/v1/clients/",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 603.5,
+      "info": "(4 registros)"
+    },
+    {
+      "component": "Cat\u00e1logo de Servicios & APU",
+      "url": "https://dalor-sigop.onrender.com/api/v1/services/",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 521.0,
+      "info": "(2 registros)"
+    },
+    {
+      "component": "Proyectos & Obras WBS",
+      "url": "https://dalor-sigop.onrender.com/api/v1/projects/",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 525.4,
+      "info": "(3 registros)"
+    },
+    {
+      "component": "Activos & Recursos (Flota/Maquinaria)",
+      "url": "https://dalor-sigop.onrender.com/api/v1/resources/all",
+      "status": 404,
+      "ok": false,
+      "latency_ms": 496.5,
+      "info": ""
+    },
+    {
+      "component": "Inventario de Materiales",
+      "url": "https://dalor-sigop.onrender.com/api/v1/materials/",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 497.5,
+      "info": ""
+    },
+    {
+      "component": "Partidas de Gasto & Presupuesto",
+      "url": "https://dalor-sigop.onrender.com/api/v1/expenses/categories",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 499.7,
+      "info": "(43 registros)"
+    },
+    {
+      "component": "Hist\u00f3rico de Gastos",
+      "url": "https://dalor-sigop.onrender.com/api/v1/expenses/",
+      "status": 200,
+      "ok": true,
+      "latency_ms": 503.0,
+      "info": "(2 registros)"
+    },
+    {
+      "component": "Cuentas por Cobrar (CxC)",
+      "url": "https://dalor-sigop.onrender.com/api/v1/financial/receivables",
+      "status": 404,
+      "ok": false,
+      "latency_ms": 510.4,
+      "info": ""
+    },
+    {
+      "component": "Cuentas por Pagar (CxP)",
+      "url": "https://dalor-sigop.onrender.com/api/v1/financial/payables",
+      "status": 404,
+      "ok": false,
+      "latency_ms": 484.8,
+      "info": ""
+    }
+  ],
+  "auth_results": [
+    {
+      "username": "director",
+      "title": "Director General / Socio",
+      "ok": true,
+      "status": 200,
+      "latency_ms": 829.2,
+      "role": "Rol DB: director_general"
+    },
+    {
+      "username": "ingeniero",
+      "title": "Ingeniero Residente de Obra",
+      "ok": true,
+      "status": 200,
+      "latency_ms": 587.7,
+      "role": "Rol DB: ingeniero_obra"
+    },
+    {
+      "username": "administracion",
+      "title": "Administraci\u00f3n & Finanzas",
+      "ok": true,
+      "status": 200,
+      "latency_ms": 601.7,
+      "role": "Rol DB: administrador_financiero"
+    },
+    {
+      "username": "almacen",
+      "title": "Jefe de Almac\u00e9n & Pa\u00f1ol",
+      "ok": true,
+      "status": 200,
+      "latency_ms": 602.0,
+      "role": "Rol DB: almacenista"
+    },
+    {
+      "username": "campo",
+      "title": "Supervisor de Campo / Faena",
+      "ok": true,
+      "status": 200,
+      "latency_ms": 592.8,
+      "role": "Rol DB: supervisor_campo"
+    },
+    {
+      "username": "admin",
+      "title": "Superuser Admin",
+      "ok": true,
+      "status": 200,
+      "latency_ms": 599.7,
+      "role": "Rol DB: director_general"
+    }
+  ]
+}

@@ -24,7 +24,12 @@ function authFetch(url, options = {}) {
     var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
     var _h = Object.assign({}, options.headers || {});
     if (_t) _h['Authorization'] = 'Bearer ' + _t;
-    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    if (options.body && !(options.body instanceof FormData) && !_h['Content-Type']) {
+        _h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete _h['Content-Type'];
+    }
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 }
 
@@ -224,211 +229,133 @@ function handleFileSelected(event) {
 
 
 async function processOCRFile(rawFile) {
-
     const badge = document.getElementById("ocrStatusBadge");
-
     const btnSubmit = document.getElementById("btnSubmitExpense");
+    const procBar = document.getElementById("ocrProcessingBar");
+    const infoCard = document.getElementById("ocrExtractedInfoCard");
+
+    if (procBar) procBar.classList.remove("hidden");
+    if (infoCard) infoCard.classList.add("hidden");
 
     if (badge) {
-
         badge.style.background = "#fef3c7";
-
         badge.style.color = "#92400e";
-
         badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Leyendo con Gemini IA...';
-
     }
 
-
-
     // Compresión instantánea en el navegador (<100ms, reduce foto de 15MB a ~200KB)
-
     const file = await compressImageForOCR(rawFile);
 
-
-
     const formData = new FormData();
-
     formData.append("file", file, file.name);
-
     formData.append("exchange_rate", EXCHANGE_RATE || 800.0);
 
-
-
     try {
-
         // Asegurar que las categorías y proyectos estén cargados
-
         if (!allCategories || allCategories.length === 0) {
-
             try {
-
                 const resCat = await authFetch(`${API_BASE}/expenses/categories`);
-
                 allCategories = await resCat.json();
-
                 populateSelectDropdowns();
-
             } catch (err) {
-
                 console.warn("No se pudieron cargar categorías:", err);
-
             }
-
         }
-
-
 
         const res = await authFetch(`${API_BASE}/ocr/scan-ticket`, {
-
             method: "POST",
-
             body: formData
-
         });
-
         
-
         if (!res.ok) {
-
             throw new Error("Respuesta no exitosa del servidor OCR");
-
         }
-
-
 
         const data = await res.json();
-
         
-
         if (data.image_url && document.getElementById("field_receipt_image_path")) {
-
             document.getElementById("field_receipt_image_path").value = data.image_url;
-
         }
-
         if (data.detected_vendor && document.getElementById("field_vendor")) {
-
             document.getElementById("field_vendor").value = data.detected_vendor;
-
         }
-
         if (data.detected_amount_usd !== undefined && data.detected_amount_usd !== null && document.getElementById("field_amount_usd")) {
-
             document.getElementById("field_amount_usd").value = Number(data.detected_amount_usd).toFixed(2);
-
         }
-
         if (data.detected_amount_bs !== undefined && data.detected_amount_bs !== null && document.getElementById("field_amount_bs")) {
-
             document.getElementById("field_amount_bs").value = Number(data.detected_amount_bs).toFixed(2);
-
         }
-
         if (document.getElementById("field_is_tax_exempt")) {
-
             document.getElementById("field_is_tax_exempt").value = data.is_tax_exempt ? "true" : "false";
-
         }
-
         updateFieldTaxDisplays();
 
         if (data.fuel_liters && document.getElementById("field_fuel_liters")) {
-
             document.getElementById("field_fuel_liters").value = data.fuel_liters;
-
         }
 
-
-
-        if (allCategories && allCategories.length > 0 && document.getElementById("field_category_id")) {
-
-            const catMatch = allCategories.find(c => c.code === data.suggested_category_code) || allCategories[0];
-
+        const cats = (window.allCategories && window.allCategories.length > 0) ? window.allCategories : allCategories;
+        if (cats && cats.length > 0 && document.getElementById("field_category_id")) {
+            const catMatch = cats.find(c => c.code === data.suggested_category_code) || 
+                             cats.find(c => String(c.code).startsWith(String(data.suggested_category_code).split('.')[0])) ||
+                             cats[0];
             if (catMatch) {
-
                 document.getElementById("field_category_id").value = catMatch.id;
-
             }
-
         }
-
-
 
         // Asegurar que 'Reportado Por' tenga un valor seleccionado
-
         const repSelect = document.getElementById("field_reported_by");
-
         if (repSelect && (!repSelect.value || repSelect.value === "")) {
-
             repSelect.selectedIndex = 0;
-
         }
-
-
 
         if (document.getElementById("field_description")) {
-
             let desc = `Consumo / Factura en ${data.detected_vendor || 'Comercio'}`;
-
             if (data.detected_tax_usd && data.detected_tax_usd > 0) {
-
-                desc += ` (Base: $${data.detected_base_usd.toFixed(2)} + IVA: $${data.detected_tax_usd.toFixed(2)})`;
-
+                desc += ` (Base: $${Number(data.detected_base_usd || 0).toFixed(2)} + IVA: $${Number(data.detected_tax_usd || 0).toFixed(2)})`;
             }
-
             document.getElementById("field_description").value = desc;
-
         }
-
-
 
         if (badge) {
-
             badge.style.background = "#dcfce7";
-
             badge.style.color = "#166534";
-
-            badge.innerHTML = `<i class="fa-solid fa-check"></i> Datos Extraídos con Gemini IA`;
-
+            const isGemini = data.raw_text && (data.raw_text.includes("GEMINI") || data.raw_text.includes("VISION"));
+            badge.innerHTML = `<i class="fa-solid fa-check"></i> ${isGemini ? 'Datos Extraídos con Gemini IA' : 'Datos Extraídos con OCR'}`;
         }
 
-
+        if (procBar) procBar.classList.add("hidden");
+        if (infoCard) {
+            infoCard.classList.remove("hidden");
+            const vBadge = document.getElementById("ocrVendorBadge");
+            const txtPrev = document.getElementById("ocrExtractedTextPreview");
+            if (vBadge) vBadge.innerText = data.detected_vendor || "Detectado";
+            const usdVal = Number(data.detected_amount_usd || 0).toFixed(2);
+            const bsVal = Number(data.detected_amount_bs || 0).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (txtPrev) {
+                txtPrev.innerHTML = `<strong>Total Extraído:</strong> $${usdVal} USD / Bs. ${bsVal}<br><span style="color: #065f46; font-size: 11px;">${data.raw_text ? data.raw_text.split('\n')[0] : ''}</span>`;
+            }
+        }
 
         const noticeBox = document.getElementById("ocrNoticeBox");
-
         if (noticeBox) {
-
             noticeBox.classList.remove("hidden");
-
         }
-
-
 
         if (btnSubmit) {
-
             btnSubmit.disabled = false;
-
             btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Registrar y Enviar a Administración';
-
             btnSubmit.style.background = "#059669";
-
             btnSubmit.style.color = "#ffffff";
-
         }
-
     } catch (e) {
-
         console.error("Error en lectura OCR:", e);
-
+        if (procBar) procBar.classList.add("hidden");
         if (badge) {
-
-            badge.style.background = "#e0f2fe";
-
-            badge.style.color = "#0369a1";
-
-            badge.innerText = "Foto adjunta lista para enviar";
-
+            badge.style.background = "#fef3c7";
+            badge.style.color = "#92400e";
+            badge.innerHTML = '<i class="fa-solid fa-circle-info"></i> Foto adjunta (completar datos manualmente)';
         }
 
         if (btnSubmit) {
@@ -1204,161 +1131,116 @@ async function openValidateExpenseModal(expenseId) {
 
 
 function onValExpenseTypeChanged() {
-
     const type = document.getElementById("val_expense_type").value;
-
     const projContainer = document.getElementById("val_proj_container");
-
     const partnerContainer = document.getElementById("val_partner_container");
-
-
+    const projSelect = document.getElementById("val_project_id");
+    const partnerInput = document.getElementById("val_partner_name");
 
     if (type === "costo_obra") {
-
         if (projContainer) projContainer.classList.remove("hidden");
-
         if (partnerContainer) partnerContainer.classList.add("hidden");
-
+        if (projSelect) projSelect.required = true;
+        if (partnerInput) partnerInput.required = false;
     } else if (type === "retiro_socio") {
-
         if (projContainer) projContainer.classList.add("hidden");
-
         if (partnerContainer) partnerContainer.classList.remove("hidden");
-
+        if (projSelect) { projSelect.required = false; projSelect.value = ""; }
+        if (partnerInput) partnerInput.required = true;
     } else {
-
         if (projContainer) projContainer.classList.add("hidden");
-
         if (partnerContainer) partnerContainer.classList.add("hidden");
-
+        if (projSelect) { projSelect.required = false; projSelect.value = ""; }
+        if (partnerInput) { partnerInput.required = false; partnerInput.value = ""; }
     }
-
 }
-
-
 
 function calcValBs() {
-
     const usd = parseFloat(document.getElementById("val_amount_usd").value) || 0;
-
     const bsInput = document.getElementById("val_amount_bs");
-
     if (bsInput) bsInput.value = (usd * EXCHANGE_RATE).toFixed(2);
-
 }
-
-
 
 function calcValUsd() {
-
     const bs = parseFloat(document.getElementById("val_amount_bs").value) || 0;
-
     const usdInput = document.getElementById("val_amount_usd");
-
     if (usdInput && EXCHANGE_RATE > 0) usdInput.value = (bs / EXCHANGE_RATE).toFixed(2);
-
 }
 
-
-
 async function submitValidateExpense(event) {
-
     event.preventDefault();
-
     const expId = document.getElementById("val_expense_id").value;
-
     const usd = parseFloat(document.getElementById("val_amount_usd").value) || 0;
 
-
-
     if (usd <= 0) {
-
         alert("Por favor ingresa un monto válido en USD.");
-
         return;
-
     }
 
+    const expType = document.getElementById("val_expense_type").value;
+    const catVal = document.getElementById("val_category_id").value;
+    const catId = parseInt(catVal);
+    if (!catId || isNaN(catId)) {
+        alert("Por favor selecciona una Partida Contable Dalor obligatoria para imputar el gasto.");
+        return;
+    }
 
+    const projVal = document.getElementById("val_project_id")?.value;
+    const projId = projVal ? parseInt(projVal) : null;
+    if (expType === "costo_obra" && !projId) {
+        alert("Para imputar como 'Costo Directo de Obra', debes seleccionar el Proyecto correspondiente.");
+        return;
+    }
+
+    const partnerName = document.getElementById("val_partner_name")?.value?.trim() || null;
+    if (expType === "retiro_socio" && !partnerName) {
+        alert("Para imputar como 'Retiro Personal de Socio', debes indicar el nombre del Socio.");
+        return;
+    }
 
     const isExempt = document.getElementById("val_is_tax_exempt")?.value === "true";
-
     const baseUsd = parseFloat(document.getElementById("val_base_usd")?.value) || (isExempt ? usd : +(usd / 1.16).toFixed(2));
-
     const taxUsd = parseFloat(document.getElementById("val_tax_usd")?.value) || (isExempt ? 0.0 : +(usd - baseUsd).toFixed(2));
 
-
-
     const payload = {
-
-        expense_type: document.getElementById("val_expense_type").value,
-
-        category_id: parseInt(document.getElementById("val_category_id").value) || (allCategories[0]?.id || 1),
-
-        project_id: document.getElementById("val_project_id").value ? parseInt(document.getElementById("val_project_id").value) : null,
-
-        partner_name: document.getElementById("val_partner_name").value || null,
-
+        expense_type: expType,
+        category_id: catId,
+        project_id: expType === "costo_obra" ? projId : null,
+        partner_name: expType === "retiro_socio" ? partnerName : null,
         supplier_vendor: document.getElementById("val_supplier_vendor").value,
-
         description: document.getElementById("val_description").value,
-
         amount_usd: usd,
-
         exchange_rate: EXCHANGE_RATE,
-
         payment_method: "caja_chica",
-
         has_fiscal_invoice: !isExempt,
-
         is_tax_exempt: isExempt,
-
         base_amount_usd: Math.round(baseUsd * 100) / 100,
-
         tax_amount_usd: Math.round(taxUsd * 100) / 100
-
     };
 
-
-
     try {
-
         const res = await authFetch(`${API_BASE}/expenses/inbox/${expId}/validate-impute`, {
-
             method: "PUT",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify(payload)
-
         });
 
-
-
         if (res.ok) {
-
             alert("¡Comprobante auditado, imputado y aprobado exitosamente!");
-
             closeModal("modalValidateExpense");
-
             loadPendingExpensesInbox();
-
+            if (typeof loadExpensesLog === 'function') loadExpensesLog();
             if (typeof loadComparisonDashboard === 'function') loadComparisonDashboard();
-
+            if (typeof window.loadProjects === 'function') window.loadProjects();
+            if (typeof window.loadFinancialData === 'function') window.loadFinancialData();
+            if (typeof window.loadCashFlowMatrix === 'function') window.loadCashFlowMatrix();
         } else {
-
             const err = await res.json();
-
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
-
         alert("Error de conexión al aprobar comprobante.");
-
     }
-
 }
 
 
@@ -1423,382 +1305,327 @@ async function rejectExpense(expenseId) {
 // ==============================================================================
 
 let allExpensesCache = [];
+let currentFilteredExpenses = [];
+let currentExpensesLogPage = 1;
+let expensesLogPageSize = 15;
+let expensesLogSearchTimer = null;
 
-
+function debouncedFilterExpensesLog() {
+    clearTimeout(expensesLogSearchTimer);
+    expensesLogSearchTimer = setTimeout(() => {
+        filterExpensesLog();
+    }, 250);
+}
+window.debouncedFilterExpensesLog = debouncedFilterExpensesLog;
 
 async function loadExpensesLog() {
-
     const tbody = document.getElementById("expensesLogTableBody");
-
     if (!tbody) return;
-
     tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando histórico consolidado de gastos...</td></tr>`;
 
-
-
     try {
+        let projectsList = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+        let categoriesList = (window.allCategories && window.allCategories.length > 0) ? window.allCategories : (allCategories || []);
 
-        const res = await authFetch(`${API_BASE}/expenses/`);
+        const fetches = [authFetch(`${API_BASE}/expenses/`)];
+        if (projectsList.length === 0) fetches.push(authFetch(`${API_BASE}/projects/`));
+        if (categoriesList.length === 0) fetches.push(authFetch(`${API_BASE}/expenses/categories`));
 
-        allExpensesCache = await res.json();
+        const responses = await Promise.all(fetches);
+        allExpensesCache = await responses[0].json();
 
-
+        let rIdx = 1;
+        if (projectsList.length === 0 && responses[rIdx]) {
+            projectsList = await responses[rIdx++].json();
+            window.allProjects = allProjects = projectsList;
+        }
+        if (categoriesList.length === 0 && responses[rIdx]) {
+            categoriesList = await responses[rIdx++].json();
+            window.allCategories = allCategories = categoriesList;
+        }
 
         populateExpensesLogFilters();
-
+        currentExpensesLogPage = 1;
         filterExpensesLog();
-
     } catch (e) {
-
+        console.error("[EXPENSES] Error loading expenses log:", e);
         tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#e11d48;">Error al cargar histórico de gastos.</td></tr>`;
-
     }
-
 }
-
-
 
 function populateExpensesLogFilters() {
-
-    populateSelect("log_filter_project", [{id: '', code: '-- Todos los Proyectos --'}, {id: 'sede_central', code: '🏢 Sede Central / Gastos Fijos (Sin Proyecto)'}, ...allProjects], p => `<option value="${p.id || ''}">${p.code ? p.code + ' - ' + (p.name || '') : p.name}</option>`);
-
-    const sortedCats = sortCategoriesNumerically(allCategories || []);
-
-    populateSelect("log_filter_category", [{id: '', code: '', name: '-- Todas las Partidas --'}, ...sortedCats], c => `<option value="${c.id || ''}">${c.code ? '[' + c.code + '] ' + c.name : c.name}</option>`);
-
-}
-
-
-
-function filterExpensesLog() {
-
-    const projId = document.getElementById("log_filter_project")?.value;
-
-    const catId = document.getElementById("log_filter_category")?.value;
-
-    const fiscal = document.getElementById("log_filter_fiscal")?.value;
-
-    const fromDate = document.getElementById("log_filter_date_from")?.value;
-
-    const toDate = document.getElementById("log_filter_date_to")?.value;
-
-    const search = (document.getElementById("log_filter_search")?.value || "").toLowerCase().trim();
-
-
-
-    let filtered = allExpensesCache.filter(e => {
-
-        if (projId && String(e.project_id) !== String(projId)) return false;
-
-        if (catId && String(e.category_id) !== String(catId)) return false;
-
-        if (fiscal === 'con_iva' && (e.is_tax_exempt || (e.tax_amount_usd || 0) <= 0)) return false;
-
-        if (fiscal === 'sin_iva' && (!e.is_tax_exempt && (e.tax_amount_usd || 0) > 0)) return false;
-
-        
-
-        if (fromDate) {
-
-            const expDate = (e.expense_date || '').split('T')[0];
-
-            if (expDate && expDate < fromDate) return false;
-
-        }
-
-        if (toDate) {
-
-            const expDate = (e.expense_date || '').split('T')[0];
-
-            if (expDate && expDate > toDate) return false;
-
-        }
-
-
-
-        if (search) {
-
-            const matchText = `${e.vendor || ''} ${e.invoice_number || ''} ${e.description || ''} ${e.reported_by || ''}`.toLowerCase();
-
-            if (!matchText.includes(search)) return false;
-
-        }
-
-
-
-        return true;
-
-    });
-
-
-
-    renderExpensesLogTable(filtered);
-
-    updateExpensesLogKPIs(filtered);
-
-}
-
-
-
-function updateExpensesLogKPIs(list) {
-
-    let totalUsd = 0;
-
-    let totalBs = 0;
-
-    let fiscalUsd = 0;
-
-    let fiscalCount = 0;
-
-    let nonFiscalUsd = 0;
-
-    let nonFiscalCount = 0;
-
-    let totalTaxUsd = 0;
-
-
-
-    list.forEach(e => {
-
-        const usd = e.amount_usd || 0;
-
-        const bs = e.amount_bs || 0;
-
-        const tax = e.tax_amount_usd || 0;
-
-        totalUsd += usd;
-
-        totalBs += bs;
-
-        totalTaxUsd += tax;
-
-
-
-        if (!e.is_tax_exempt && tax > 0) {
-
-            fiscalUsd += usd;
-
-            fiscalCount++;
-
-        } else {
-
-            nonFiscalUsd += usd;
-
-            nonFiscalCount++;
-
-        }
-
-    });
-
-
-
-    const elTotalUsd = document.getElementById("log_kpi_total_usd");
-
-    const elTotalBs = document.getElementById("log_kpi_total_bs");
-
-    const elFiscalUsd = document.getElementById("log_kpi_fiscal_usd");
-
-    const elFiscalCount = document.getElementById("log_kpi_fiscal_count");
-
-    const elNonFiscalUsd = document.getElementById("log_kpi_nonfiscal_usd");
-
-    const elNonFiscalCount = document.getElementById("log_kpi_nonfiscal_count");
-
-    const elTaxUsd = document.getElementById("log_kpi_tax_usd");
-
-    const elCountTotal = document.getElementById("log_kpi_count_total");
-
-
-
-    if (elTotalUsd) elTotalUsd.innerText = `$${totalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-    if (elTotalBs) elTotalBs.innerText = `Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-    if (elFiscalUsd) elFiscalUsd.innerText = `$${fiscalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-    if (elFiscalCount) elFiscalCount.innerText = `${fiscalCount} facturas fiscales con IVA`;
-
-    if (elNonFiscalUsd) elNonFiscalUsd.innerText = `$${nonFiscalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-    if (elNonFiscalCount) elNonFiscalCount.innerText = `${nonFiscalCount} notas / compras sin IVA`;
-
-    if (elTaxUsd) elTaxUsd.innerText = `$${totalTaxUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-    if (elCountTotal) elCountTotal.innerText = `${list.length} registros listados`;
-
-}
-
-
-
-function renderExpensesLogTable(list) {
-
-    const tbody = document.getElementById("expensesLogTableBody");
-
-    if (!tbody) return;
-
-
-
-    if (list.length === 0) {
-
-        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:24px; color:#94a3b8;">No se encontraron gastos que coincidan con los filtros seleccionados.</td></tr>`;
-
-        const tfoot = document.getElementById("expensesLogTableFoot");
-
-        if (tfoot) tfoot.innerHTML = "";
-
-        return;
-
+    const projectsList = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+    const categoriesList = (window.allCategories && window.allCategories.length > 0) ? window.allCategories : (allCategories || []);
+
+    const projectSelect = document.getElementById("log_filter_project");
+    if (projectSelect) {
+        projectSelect.innerHTML = `<option value="">-- Todos los Proyectos --</option>` +
+            `<option value="sede_central">🏢 Sede Central / Gastos Fijos (Sin Proyecto)</option>` +
+            projectsList.map(p => `<option value="${p.id}">[${p.code || 'PRJ'}] ${p.name}</option>`).join('');
     }
 
+    const sortedCats = typeof sortCategoriesNumerically === 'function' ? sortCategoriesNumerically(categoriesList) : categoriesList;
+    const catSelect = document.getElementById("log_filter_category");
+    if (catSelect) {
+        catSelect.innerHTML = `<option value="">-- Todas las Partidas --</option>` +
+            sortedCats.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
+    }
+}
 
+function filterExpensesLog() {
+    const projId = document.getElementById("log_filter_project")?.value;
+    const catId = document.getElementById("log_filter_category")?.value;
+    const fiscal = document.getElementById("log_filter_fiscal")?.value;
+    const fromDate = document.getElementById("log_filter_date_from")?.value;
+    const toDate = document.getElementById("log_filter_date_to")?.value;
+    const search = (document.getElementById("log_filter_search")?.value || "").toLowerCase().trim();
 
-    let totBase = 0, totTax = 0, totUsd = 0, totBs = 0;
+    currentFilteredExpenses = allExpensesCache.filter(e => {
+        if (projId === 'sede_central') {
+            if (e.project_id) return false;
+        } else if (projId) {
+            if (String(e.project_id) !== String(projId)) return false;
+        }
 
-
-
-    tbody.innerHTML = list.map((e, idx) => {
-
-        const dateStr = (e.expense_date || '').split('T')[0] || '-';
-
-        const proj = allProjects.find(p => p.id === e.project_id);
-
-        const projLabel = proj ? `[${proj.code}] ${proj.name}` : (e.project_id ? `Proyecto #${e.project_id}` : 'Gasto General Sede');
-
-        const cat = (allCategories || []).find(c => c.id === e.category_id);
-
-        const catLabel = cat ? `${cat.code} ${cat.name}` : (e.category_code || '10.0 General');
+        if (catId) {
+            if (String(e.category_id) !== String(catId)) {
+                const catObj = (window.allCategories || []).find(c => String(c.id) === String(catId));
+                if (!catObj || !e.category_code || !e.category_code.startsWith(catObj.code)) {
+                    return false;
+                }
+            }
+        }
 
         const isFiscal = !e.is_tax_exempt && (e.tax_amount_usd || 0) > 0;
+        if (fiscal === 'con_iva' && !isFiscal) return false;
+        if (fiscal === 'sin_iva' && isFiscal) return false;
 
+        if (fromDate) {
+            const expDate = (e.expense_date || '').split('T')[0];
+            if (expDate && expDate < fromDate) return false;
+        }
+        if (toDate) {
+            const expDate = (e.expense_date || '').split('T')[0];
+            if (expDate && expDate > toDate) return false;
+        }
+
+        if (search) {
+            const matchText = `${e.supplier_vendor || ''} ${e.vendor || ''} ${e.invoice_number || ''} ${e.description || ''} ${e.reported_by || ''} ${e.reported_by_name || ''} ${e.category_name || ''} ${e.category_code || ''} ${e.project_name || ''} ${e.project_code || ''}`.toLowerCase();
+            if (!matchText.includes(search)) return false;
+        }
+
+        return true;
+    });
+
+    currentExpensesLogPage = 1;
+    renderExpensesLogTable(currentFilteredExpenses);
+    updateExpensesLogKPIs(currentFilteredExpenses);
+}
+
+function updateExpensesLogKPIs(list) {
+    let totalUsd = 0;
+    let totalBs = 0;
+    let fiscalUsd = 0;
+    let fiscalCount = 0;
+    let nonFiscalUsd = 0;
+    let nonFiscalCount = 0;
+    let totalTaxUsd = 0;
+
+    list.forEach(e => {
+        const usd = e.amount_usd || 0;
+        const bs = e.amount_bs || 0;
+        const tax = e.tax_amount_usd || 0;
+        totalUsd += usd;
+        totalBs += bs;
+        totalTaxUsd += tax;
+
+        if (!e.is_tax_exempt && tax > 0) {
+            fiscalUsd += usd;
+            fiscalCount++;
+        } else {
+            nonFiscalUsd += usd;
+            nonFiscalCount++;
+        }
+    });
+
+    const elTotalUsd = document.getElementById("log_kpi_total_usd");
+    const elTotalBs = document.getElementById("log_kpi_total_bs");
+    const elFiscalUsd = document.getElementById("log_kpi_fiscal_usd");
+    const elFiscalCount = document.getElementById("log_kpi_fiscal_count");
+    const elNonFiscalUsd = document.getElementById("log_kpi_nonfiscal_usd");
+    const elNonFiscalCount = document.getElementById("log_kpi_nonfiscal_count");
+    const elTaxUsd = document.getElementById("log_kpi_tax_usd");
+    const elCountTotal = document.getElementById("log_kpi_count_total");
+
+    if (elTotalUsd) elTotalUsd.innerText = `$${totalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elTotalBs) elTotalBs.innerText = `Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elFiscalUsd) elFiscalUsd.innerText = `$${fiscalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elFiscalCount) elFiscalCount.innerText = `${fiscalCount} facturas fiscales con IVA`;
+    if (elNonFiscalUsd) elNonFiscalUsd.innerText = `$${nonFiscalUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elNonFiscalCount) elNonFiscalCount.innerText = `${nonFiscalCount} notas / compras sin IVA`;
+    if (elTaxUsd) elTaxUsd.innerText = `$${totalTaxUsd.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (elCountTotal) elCountTotal.innerText = `${list.length} registros listados`;
+}
+
+function renderExpensesLogTable(list) {
+    const tbody = document.getElementById("expensesLogTableBody");
+    if (!tbody) return;
+
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:24px; color:#94a3b8;">No se encontraron gastos que coincidan con los filtros seleccionados.</td></tr>`;
+        const tfoot = document.getElementById("expensesLogTableFoot");
+        if (tfoot) tfoot.innerHTML = "";
+        const pagContainer = document.getElementById("expensesLogPagination");
+        if (pagContainer) pagContainer.innerHTML = "";
+        return;
+    }
+
+    let totBase = 0, totTax = 0, totUsd = 0, totBs = 0;
+    list.forEach(e => {
+        const uAmount = e.amount_usd || 0;
+        const bsAmount = e.amount_bs || 0;
+        const tAmount = e.tax_amount_usd || 0;
+        const bAmount = (e.base_amount_usd !== undefined && e.base_amount_usd !== null && e.base_amount_usd > 0)
+            ? e.base_amount_usd
+            : (e.is_tax_exempt ? uAmount : (tAmount > 0 ? (uAmount - tAmount) : uAmount));
+
+        totBase += bAmount;
+        totTax += tAmount;
+        totUsd += uAmount;
+        totBs += bsAmount;
+    });
+
+    const paginateFn = typeof window.renderPaginationControls === 'function' 
+        ? window.renderPaginationControls 
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : null);
+
+    let pageItems = list;
+    if (paginateFn) {
+        const { startIndex, endIndex } = paginateFn({
+            containerId: "expensesLogPagination",
+            totalItems: list.length,
+            currentPage: currentExpensesLogPage,
+            pageSize: expensesLogPageSize,
+            onPageChange: "goToExpensesLogPage",
+            onPageSizeChange: "changeExpensesLogPageSize",
+            itemLabel: "gasto(s) registrado(s)",
+            pageSizeOptions: [10, 15, 25, 50, 100],
+            allowAll: true
+        });
+        pageItems = list.slice(startIndex, endIndex);
+    } else {
+        const totalPages = Math.ceil(list.length / expensesLogPageSize) || 1;
+        if (currentExpensesLogPage > totalPages) currentExpensesLogPage = totalPages;
+        if (currentExpensesLogPage < 1) currentExpensesLogPage = 1;
+        const startIdx = (currentExpensesLogPage - 1) * expensesLogPageSize;
+        const endIdx = startIdx + expensesLogPageSize;
+        pageItems = list.slice(startIdx, endIdx);
+        const pagContainer = document.getElementById("expensesLogPagination");
+        if (pagContainer) {
+            pagContainer.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; font-size:12px; color:#64748b;">
+                    <span>Mostrando ${startIdx + 1}-${Math.min(endIdx, list.length)} de ${list.length} gastos</span>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="goToExpensesLogPage(${currentExpensesLogPage - 1})" ${currentExpensesLogPage <= 1 ? 'disabled' : ''}>Anterior</button>
+                        <span style="padding:4px 8px; font-weight:700;">${currentExpensesLogPage} / ${totalPages}</span>
+                        <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="goToExpensesLogPage(${currentExpensesLogPage + 1})" ${currentExpensesLogPage >= totalPages ? 'disabled' : ''}>Siguiente</button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    const projectsList = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
+    const categoriesList = (window.allCategories && window.allCategories.length > 0) ? window.allCategories : (allCategories || []);
+
+    tbody.innerHTML = pageItems.map((e) => {
+        const dateStr = (e.expense_date || '').split('T')[0] || '-';
+        const proj = projectsList.find(p => p.id === e.project_id);
+        const projLabel = e.project_name ? `[${e.project_code || 'PRJ'}] ${e.project_name}` : (proj ? `[${proj.code}] ${proj.name}` : (e.project_id ? `Proyecto #${e.project_id}` : 'Gasto General Sede'));
+
+        const cat = categoriesList.find(c => c.id === e.category_id);
+        const catLabel = e.category_name ? `[${e.category_code || 'CAT'}] ${e.category_name}` : (cat ? `[${cat.code}] ${cat.name}` : (e.category_code || '10.0 General'));
+
+        const isFiscal = !e.is_tax_exempt && (e.tax_amount_usd || 0) > 0;
         const fiscalBadge = isFiscal 
-
             ? `<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Fiscal IVA</span>`
-
             : `<span style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px;">Sin IVA</span>`;
 
         const statusBadge = e.status === 'aprobado'
-
             ? `<span style="background:#d1fae5; color:#065f46; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Aprobado</span>`
-
             : `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">Pendiente</span>`;
 
-
-
-        const bAmount = (e.base_amount_usd !== undefined && e.base_amount_usd !== null) ? e.base_amount_usd : (e.is_tax_exempt ? e.amount_usd : (e.amount_usd - (e.tax_amount_usd||0)));
-
-        const tAmount = e.tax_amount_usd || 0;
-
         const uAmount = e.amount_usd || 0;
-
         const bsAmount = e.amount_bs || 0;
+        const tAmount = e.tax_amount_usd || 0;
+        const bAmount = (e.base_amount_usd !== undefined && e.base_amount_usd !== null && e.base_amount_usd > 0)
+            ? e.base_amount_usd
+            : (e.is_tax_exempt ? uAmount : (tAmount > 0 ? (uAmount - tAmount) : uAmount));
 
-
-
-        totBase += bAmount;
-
-        totTax += tAmount;
-
-        totUsd += uAmount;
-
-        totBs += bsAmount;
-
-
+        const repName = e.reported_by_name || e.reported_by || '-';
+        const vendorName = e.supplier_vendor || e.vendor || 'Comercio';
 
         const viewBtn = e.receipt_image_path
-
             ? `<button onclick="viewReceiptImageById(${e.id})" class="btn-primary" style="padding:3px 8px; font-size:11px; background:#0284c7; cursor:pointer;" title="Ver Comprobante Digital"><i class="fa-solid fa-eye"></i></button>`
-
             : `<span style="color:#cbd5e1; font-size:11px;">-</span>`;
 
-
-
         return `
-
             <tr>
-
                 <td style="font-size:11px; color:#64748b;">${dateStr}</td>
-
                 <td style="font-weight:700; font-size:11px; color:var(--dalor-navy);">${projLabel}</td>
-
                 <td style="font-size:11px;"><span style="background:#f0f9ff; color:#0369a1; padding:2px 5px; border-radius:4px; font-weight:700;">${catLabel}</span></td>
-
-                <td style="font-weight:600; font-size:11px;">${e.vendor || e.supplier_vendor || 'Comercio'}</td>
-
+                <td style="font-weight:600; font-size:11px;">${vendorName}</td>
                 <td style="font-family:monospace; font-size:11px;">${e.invoice_number || '-'}</td>
-
                 <td style="text-align:center;">${fiscalBadge}</td>
-
                 <td style="text-align:right; font-size:11px;">$${bAmount.toFixed(2)}</td>
-
                 <td style="text-align:right; font-size:11px; color:#8b5cf6;">$${tAmount.toFixed(2)}</td>
-
                 <td style="text-align:right; font-weight:800; font-size:12px; color:var(--dalor-navy);">$${uAmount.toFixed(2)}</td>
-
                 <td style="text-align:right; font-weight:700; font-size:11px; color:#0284c7;">Bs. ${bsAmount.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-
-                <td style="font-size:11px; color:#475569;">${e.reported_by || '-'}</td>
-
+                <td style="font-size:11px; color:#475569;">${repName}</td>
                 <td style="text-align:center;">${statusBadge}</td>
-
                 <td style="text-align:center;">${viewBtn}</td>
-
             </tr>
-
         `;
-
     }).join('');
 
-
-
     // RENDERIZAR FILA TOTALIZADORA FIJA (TFOOT)
-
     let tfoot = document.getElementById("expensesLogTableFoot");
-
     if (!tfoot) {
-
         const table = tbody.closest("table");
-
         if (table) {
-
             tfoot = document.createElement("tfoot");
-
             tfoot.id = "expensesLogTableFoot";
-
             table.appendChild(tfoot);
-
         }
-
     }
-
     if (tfoot) {
-
         tfoot.innerHTML = `
-
             <tr style="background: var(--dalor-navy); color: white; font-weight: 800; font-size: 11px; border-top: 2px solid var(--dalor-gold);">
-
                 <td colspan="6" style="padding: 10px 12px; text-align: left; text-transform: uppercase; letter-spacing: 0.5px;">
-
                     <i class="fa-solid fa-calculator" style="color: var(--dalor-gold); margin-right: 6px;"></i> TOTALIZADO AUDITORÍA (${list.length} Registros)
-
                 </td>
-
                 <td style="padding: 10px 8px; text-align: right; color: #93c5fd;">$${totBase.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-
                 <td style="padding: 10px 8px; text-align: right; color: #c4b5fd;">$${totTax.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-
                 <td style="padding: 10px 8px; text-align: right; color: var(--dalor-gold); font-size: 13px;">$${totUsd.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-
                 <td style="padding: 10px 8px; text-align: right; color: #38bdf8; font-size: 12px;">Bs. ${totBs.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-
                 <td colspan="3" style="padding: 10px 8px; text-align: center; color: #94a3b8; font-size: 10px;">Sincronizado con Tesorería</td>
-
             </tr>
-
         `;
-
     }
-
 }
+
+function goToExpensesLogPage(page) {
+    currentExpensesLogPage = page;
+    renderExpensesLogTable(currentFilteredExpenses);
+}
+window.goToExpensesLogPage = goToExpensesLogPage;
+
+function changeExpensesLogPageSize(size) {
+    expensesLogPageSize = parseInt(size) || 15;
+    currentExpensesLogPage = 1;
+    renderExpensesLogTable(currentFilteredExpenses);
+}
+window.changeExpensesLogPageSize = changeExpensesLogPageSize;
 
 
 
@@ -2027,6 +1854,9 @@ if (typeof window !== 'undefined') {
     window.updateExpensesLogKPIs = updateExpensesLogKPIs;
     window.updateSplitBalance = updateSplitBalance;
     window.viewReceiptImage = viewReceiptImage;
+    window.debouncedFilterExpensesLog = debouncedFilterExpensesLog;
+    window.goToExpensesLogPage = goToExpensesLogPage;
+    window.changeExpensesLogPageSize = changeExpensesLogPageSize;
 }
 
-export { addSplitRow, calcManualBs, calcManualUsd, calcValBs, calcValUsd, compressImageForOCR, exportExpensesLogExcel, filterExpensesLog, handleFileSelected, loadExpensesLog, loadPendingExpensesInbox, onValExpenseTypeChanged, openValidateExpenseModal, populateExpensesLogFilters, processOCRFile, rejectCurrentExpense, rejectExpense, removeSplitRow, renderExpensesLogTable, submitFieldExpense, submitManualExpense, submitResetToCleanSlate, submitValidateExpense, toggleSplitMode, triggerFileSelect, updateExpensesLogKPIs, updateSplitBalance, viewReceiptImage };
+export { addSplitRow, calcManualBs, calcManualUsd, calcValBs, calcValUsd, compressImageForOCR, exportExpensesLogExcel, filterExpensesLog, debouncedFilterExpensesLog, goToExpensesLogPage, changeExpensesLogPageSize, handleFileSelected, loadExpensesLog, loadPendingExpensesInbox, onValExpenseTypeChanged, openValidateExpenseModal, populateExpensesLogFilters, processOCRFile, rejectCurrentExpense, rejectExpense, removeSplitRow, renderExpensesLogTable, submitFieldExpense, submitManualExpense, submitResetToCleanSlate, submitValidateExpense, toggleSplitMode, triggerFileSelect, updateExpensesLogKPIs, updateSplitBalance, viewReceiptImage };

@@ -1,0 +1,645 @@
+{
+  "version": "2.0",
+  "system": "DALOR SIGO-P",
+  "exported_at": "2026-09-16T20:32:05.208359",
+  "initiator": "auditor_v2",
+  "database_engine": "sqlite",
+  "tables": {
+    "accounts_payable": {
+      "columns": [
+        "id",
+        "invoice_number",
+        "supplier_name",
+        "project_id",
+        "category_id",
+        "payable_type",
+        "description",
+        "issue_date",
+        "due_date",
+        "taxable_base_usd",
+        "tax_amount_usd",
+        "tax_withholding_rate",
+        "tax_withholding_usd",
+        "islr_rate",
+        "islr_withholding_usd",
+        "net_amount_usd",
+        "amount_usd",
+        "amount_bs",
+        "exchange_rate",
+        "paid_amount_usd",
+        "balance_usd",
+        "status",
+        "notes",
+        "created_at"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "accounts_receivable": {
+      "columns": [
+        "id",
+        "invoice_number",
+        "client_id",
+        "project_id",
+        "description",
+        "issue_date",
+        "due_date",
+        "taxable_base_usd",
+        "tax_amount_usd",
+        "tax_withholding_rate",
+        "tax_withholding_usd",
+        "islr_rate",
+        "islr_withholding_usd",
+        "net_amount_usd",
+        "amount_usd",
+        "amount_bs",
+        "exchange_rate",
+        "tax_retained_usd",
+        "paid_amount_usd",
+        "balance_usd",
+        "status",
+        "notes",
+        "created_at",
+        "is_bad_debt",
+        "bad_debt_amount_usd",
+        "bad_debt_reason",
+        "bad_debt_date"
+      ],
+      "row_count": 1,
+      "rows": [
+        {
+          "id": 1,
+          "invoice_number": "AUDIT-INV-1789590682",
+          "client_id": 1,
+          "project_id": null,
+          "description": "Factura Auditoria Integridad",
+          "issue_date": "2026-09-16 20:31:22.403049",
+          "due_date": "2026-10-01 16:31:22.400880",
+          "taxable_base_usd": 0.0,
+          "tax_amount_usd": 0.0,
+          "tax_withholding_rate": 75.0,
+          "tax_withholding_usd": 0.0,
+          "islr_rate": 2.0,
+          "islr_withholding_usd": 0.0,
+          "net_amount_usd": 0.0,
+          "amount_usd": 500.0,
+          "amount_bs": 0.0,
+          "exchange_rate": 800.0,
+          "tax_retained_usd": 0.0,
+          "paid_amount_usd": 400.0,
+          "balance_usd": 100.0,
+          "status": "abono_parcial",
+          "notes": null,
+          "created_at": "2026-09-16 20:31:22.403049",
+          "is_bad_debt": 0,
+          "bad_debt_amount_usd": 0.0,
+          "bad_debt_reason": null,
+          "bad_debt_date": null
+        }
+      ]
+    },
+    "assets": {
+      "columns": [
+        "id",
+        "asset_code",
+        "name",
+        "asset_type",
+        "brand",
+        "model",
+        "serial_number",
+        "license_plate",
+        "current_odometer",
+        "service_interval_km",
+        "last_service_odometer",
+        "ownership_type",
+        "external_entity_name",
+        "rental_rate_usd",
+        "return_due_date",
+        "status",
+        "current_location",
+        "current_project_id",
+        "current_custodian_name",
+        "is_exclusive",
+        "is_active"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "audit_logs": {
+      "columns": [
+        "id",
+        "user_id",
+        "username",
+        "module",
+        "action",
+        "details",
+        "created_at"
+      ],
+      "row_count": 5,
+      "rows": [
+        {
+          "id": 1,
+          "user_id": null,
+          "username": "admin",
+          "module": "mantenimiento",
+          "action": "crear_respaldo_bd",
+          "details": "Respaldo multi-tabla generado con éxito: dalor_backup_20260916_163007.json (11.68 KB, 23 tablas respaldadas).",
+          "created_at": "2026-09-16 20:30:07.678815"
+        },
+        {
+          "id": 2,
+          "user_id": null,
+          "username": "auditor_v2",
+          "module": "mantenimiento",
+          "action": "crear_respaldo_bd",
+          "details": "Respaldo multi-tabla generado con éxito: dalor_backup_20260916_163007.json (12.06 KB, 23 tablas respaldadas).",
+          "created_at": "2026-09-16 20:30:07.758471"
+        },
+        {
+          "id": 3,
+          "user_id": null,
+          "username": "admin",
+          "module": "mantenimiento",
+          "action": "crear_respaldo_bd",
+          "details": "Respaldo multi-tabla generado con éxito: dalor_backup_20260916_163120.json (12.42 KB, 23 tablas respaldadas).",
+          "created_at": "2026-09-16 20:31:20.761850"
+        },
+        {
+          "id": 4,
+          "user_id": null,
+          "username": "auditor_v2",
+          "module": "mantenimiento",
+          "action": "crear_respaldo_bd",
+          "details": "Respaldo multi-tabla generado con éxito: dalor_backup_20260916_163120.json (12.79 KB, 23 tablas respaldadas).",
+          "created_at": "2026-09-16 20:31:20.840389"
+        },
+        {
+          "id": 5,
+          "user_id": null,
+          "username": "admin",
+          "module": "mantenimiento",
+          "action": "crear_respaldo_bd",
+          "details": "Respaldo multi-tabla generado con éxito: dalor_backup_20260916_163205.json (15.46 KB, 23 tablas respaldadas).",
+          "created_at": "2026-09-16 20:32:05.147259"
+        }
+      ]
+    },
+    "clients": {
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "rif",
+        "contact_name",
+        "contact_phone",
+        "contact_email",
+        "address",
+        "industry",
+        "is_active",
+        "created_at"
+      ],
+      "row_count": 1,
+      "rows": [
+        {
+          "id": 1,
+          "code": null,
+          "name": "Cliente Auditoria",
+          "rif": "J-12345678-0",
+          "contact_name": null,
+          "contact_phone": "123",
+          "contact_email": null,
+          "address": null,
+          "industry": null,
+          "is_active": 1,
+          "created_at": "2026-09-16 20:31:22.386051"
+        }
+      ]
+    },
+    "cost_centers": {
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "description",
+        "is_active"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "dispatch_guide_items": {
+      "columns": [
+        "id",
+        "dispatch_guide_id",
+        "item_number",
+        "description",
+        "quantity",
+        "unit",
+        "condition_status",
+        "approx_weight_kg"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "dispatch_guides": {
+      "columns": [
+        "id",
+        "guide_number",
+        "project_id",
+        "client_id",
+        "dispatch_date",
+        "destination_address",
+        "destination_plant",
+        "transport_type",
+        "asset_id",
+        "carrier_company",
+        "driver_name",
+        "driver_id_doc",
+        "driver_phone",
+        "vehicle_model",
+        "vehicle_plate",
+        "freight_cost_usd",
+        "freight_price_charged_usd",
+        "payable_id",
+        "receivable_id",
+        "status",
+        "quality_inspector",
+        "dispatcher_name",
+        "received_by_client_name",
+        "received_by_client_id_doc",
+        "reception_date",
+        "notes",
+        "created_at"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "expense_categories": {
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "parent_id",
+        "group_type",
+        "monthly_budget_usd"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "expenses": {
+      "columns": [
+        "id",
+        "category_id",
+        "project_id",
+        "cost_center_id",
+        "asset_id",
+        "reported_by_id",
+        "expense_type",
+        "partner_name",
+        "expense_date",
+        "description",
+        "supplier_vendor",
+        "amount_bs",
+        "exchange_rate",
+        "amount_usd",
+        "base_amount_usd",
+        "tax_amount_usd",
+        "is_tax_exempt",
+        "fuel_liters",
+        "price_per_liter_usd",
+        "odometer_at_fueling",
+        "payment_method",
+        "status",
+        "has_receipt",
+        "receipt_image_path",
+        "alert_flag",
+        "alert_notes"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "financial_payments": {
+      "columns": [
+        "id",
+        "payment_type",
+        "voucher_number",
+        "receivable_id",
+        "payable_id",
+        "payment_date",
+        "payment_method",
+        "reference_number",
+        "amount_usd",
+        "amount_bs",
+        "exchange_rate",
+        "notes"
+      ],
+      "row_count": 2,
+      "rows": [
+        {
+          "id": 1,
+          "payment_type": "cxc_cobro",
+          "voucher_number": "REF-PAY-01",
+          "receivable_id": 1,
+          "payable_id": null,
+          "payment_date": "2026-09-16 20:31:22.461158",
+          "payment_method": "transferencia",
+          "reference_number": "REF-PAY-01",
+          "amount_usd": 200.0,
+          "amount_bs": 160000.0,
+          "exchange_rate": 800.0,
+          "notes": null
+        },
+        {
+          "id": 2,
+          "payment_type": "cxc_cobro",
+          "voucher_number": "REF-PAY-01",
+          "receivable_id": 1,
+          "payable_id": null,
+          "payment_date": "2026-09-16 20:31:22.482067",
+          "payment_method": "transferencia",
+          "reference_number": "REF-PAY-01",
+          "amount_usd": 200.0,
+          "amount_bs": 160000.0,
+          "exchange_rate": 800.0,
+          "notes": null
+        }
+      ]
+    },
+    "fixed_expense_settings": {
+      "columns": [
+        "id",
+        "name",
+        "category_type",
+        "monthly_amount_usd",
+        "is_active"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "material_movements": {
+      "columns": [
+        "id",
+        "material_id",
+        "movement_type",
+        "quantity",
+        "unit_cost_usd",
+        "total_cost_usd",
+        "project_id",
+        "destination",
+        "reference_doc",
+        "notes",
+        "performed_by",
+        "movement_date"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "materials": {
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "category",
+        "unit_measure",
+        "stock_quantity",
+        "min_stock_alert",
+        "unit_cost_usd",
+        "total_cost_usd",
+        "location",
+        "is_active",
+        "created_at"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "partner_withdrawals": {
+      "columns": [
+        "id",
+        "partner_name",
+        "withdrawal_date",
+        "concept",
+        "amount_usd",
+        "amount_bs",
+        "exchange_rate",
+        "payment_method",
+        "reference_number",
+        "notes",
+        "created_at"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "personnel": {
+      "columns": [
+        "id",
+        "code",
+        "full_name",
+        "identification_id",
+        "role_title",
+        "phone",
+        "status",
+        "current_location",
+        "current_project_id",
+        "roster_type",
+        "monthly_salary_usd",
+        "daily_rate_usd",
+        "is_approver",
+        "is_active"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "project_phases": {
+      "columns": [
+        "id",
+        "project_id",
+        "phase_number",
+        "name",
+        "description",
+        "duration_days",
+        "estimated_cost_usd",
+        "status",
+        "is_bad_debt",
+        "bad_debt_amount_usd",
+        "bad_debt_reason",
+        "bad_debt_date",
+        "responsible_person"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "projects": {
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "client_id",
+        "client_name",
+        "location",
+        "status",
+        "scope_of_work",
+        "start_date",
+        "end_date",
+        "duration_days",
+        "execution_time",
+        "tracking_token",
+        "contract_amount_usd",
+        "estimated_labor_usd",
+        "estimated_fuel_usd",
+        "estimated_materials_usd",
+        "estimated_tools_usd",
+        "estimated_services_usd",
+        "budget_limit_usd",
+        "is_active",
+        "created_at"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "quotation_items": {
+      "columns": [
+        "id",
+        "quotation_id",
+        "service_id",
+        "item_code",
+        "description",
+        "unit_measure",
+        "quantity",
+        "unit_price_usd",
+        "total_usd"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "quotations": {
+      "columns": [
+        "id",
+        "quote_number",
+        "client_id",
+        "project_title",
+        "location",
+        "execution_time",
+        "currency",
+        "validity_days",
+        "exchange_rate",
+        "subtotal_usd",
+        "tax_percent",
+        "tax_usd",
+        "total_usd",
+        "status",
+        "notes",
+        "created_at"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "resource_assignment_history": {
+      "columns": [
+        "id",
+        "project_id",
+        "transfer_code",
+        "resource_type",
+        "resource_id",
+        "resource_code",
+        "resource_name",
+        "custodian_name",
+        "driver_name",
+        "start_odometer",
+        "origin_location",
+        "destination_location",
+        "freight_cost_usd",
+        "fuel_cost_usd",
+        "status",
+        "notes",
+        "assigned_at"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "service_items": {
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "description",
+        "unit_measure",
+        "category",
+        "base_cost_usd",
+        "unit_price_usd",
+        "is_active",
+        "created_at"
+      ],
+      "row_count": 0,
+      "rows": []
+    },
+    "users": {
+      "columns": [
+        "id",
+        "username",
+        "full_name",
+        "email",
+        "hashed_password",
+        "role_name",
+        "permissions_json",
+        "is_active",
+        "is_superuser",
+        "last_login",
+        "created_at"
+      ],
+      "row_count": 4,
+      "rows": [
+        {
+          "id": 1,
+          "username": "admin",
+          "full_name": "Administrador",
+          "email": null,
+          "hashed_password": "x",
+          "role_name": "administracion",
+          "permissions_json": null,
+          "is_active": 1,
+          "is_superuser": 0,
+          "last_login": null,
+          "created_at": "2026-09-16 20:12:11.569312"
+        },
+        {
+          "id": 2,
+          "username": "director",
+          "full_name": "Director General",
+          "email": null,
+          "hashed_password": "x",
+          "role_name": "director_general",
+          "permissions_json": null,
+          "is_active": 1,
+          "is_superuser": 1,
+          "last_login": null,
+          "created_at": "2026-09-16 20:12:11.575660"
+        },
+        {
+          "id": 3,
+          "username": "operario1",
+          "full_name": "Operario Taller",
+          "email": null,
+          "hashed_password": "x",
+          "role_name": "operario",
+          "permissions_json": null,
+          "is_active": 1,
+          "is_superuser": 0,
+          "last_login": null,
+          "created_at": "2026-09-16 20:12:11.575660"
+        },
+        {
+          "id": 4,
+          "username": "inactivo1",
+          "full_name": "Usuario Inactivo",
+          "email": null,
+          "hashed_password": "x",
+          "role_name": "operario",
+          "permissions_json": null,
+          "is_active": 0,
+          "is_superuser": 0,
+          "last_login": null,
+          "created_at": "2026-09-16 20:30:07.063310"
+        }
+      ]
+    }
+  }
+}

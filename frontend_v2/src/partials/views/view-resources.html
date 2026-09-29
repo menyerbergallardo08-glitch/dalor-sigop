@@ -14,6 +14,11 @@
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
 
+                    <button type="button" onclick="openProjectRequisitionsInboxModal()" class="btn-primary" style="background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%); color: #ffffff; font-size: 12.5px; font-weight: 800; border: 1.5px solid #38bdf8; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35); padding: 7px 16px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-clipboard-list" style="color: #38bdf8;"></i> 📦 Bandeja Requisiciones de Obra
+                        <span id="badgePendingRequisitionsBanner" style="background: #ef4444; color: white; padding: 2px 7px; border-radius: 12px; font-size: 11px; margin-left: 6px; font-weight: 800; display: none;">0</span>
+                    </button>
+
                     <button onclick="openAssignModal('asset', null, 'Recurso', 'transfer')" class="btn-primary" style="background-color: #4f46e5; color: #ffffff; font-size: 12px; font-weight: 800;">
                         <i class="fa-solid fa-right-left"></i> 🔄 Transferir entre Obras
                     </button>
@@ -189,6 +194,27 @@
 
                     </div>
 
+                    <!-- Filtros y Búsqueda en Tiempo Real Flota -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <input type="text" id="fleetSearchInput" oninput="filterFleetList()" placeholder="🔍 Buscar vehículo por código, marca, modelo o placa..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="fleetStatusFilter" onchange="filterFleetList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
+                                <option value="all">Todos los Estados</option>
+                                <option value="en_obra">En Obra / Operación</option>
+                                <option value="disponible_base">Disponibles en Base</option>
+                            </select>
+                            <select id="fleetMaintFilter" onchange="filterFleetList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
+                                <option value="all">Semáforo Servicio (Todos)</option>
+                                <option value="VERDE_OK">🟢 Al Día (Verde)</option>
+                                <option value="AMARILLO_PROXIMO">🟡 Próximo (Amarillo)</option>
+                                <option value="ROJO_VENCIDO">🔴 Vencido (Rojo)</option>
+                            </select>
+                            <span id="fleetCountBadge" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 6px 10px; border-radius: 6px;">0 vehículos</span>
+                        </div>
+                    </div>
+
                     <div class="table-wrapper">
 
                         <table>
@@ -208,6 +234,8 @@
                                     <th>Próx. Servicio</th>
 
                                     <th>Estado Mantenimiento</th>
+
+                                    <th style="text-align: center;">Servicios Realizados</th>
 
                                     <th>Estado Obra</th>
 
@@ -345,6 +373,9 @@
                             <input type="text" id="toolSearchInput" oninput="debouncedFilterToolsList()" placeholder="🔍 Buscar herramienta por nombre, modelo o tipo..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="toolCategoryFilter" onchange="filterToolsList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto; max-width: 200px;">
+                                <option value="all">Todas las Categorías</option>
+                            </select>
                             <select id="toolStatusFilter" onchange="filterToolsList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
                                 <option value="all">Todas las Disponibilidades</option>
                                 <option value="disponible">Con Disponibles en Base</option>
@@ -423,6 +454,11 @@
 
                                 <i class="fa-solid fa-truck-arrow-right"></i> - Despachar a Obra / Taller
 
+                            </button>
+
+                            <button onclick="openProjectRequisitionsInboxModal()" class="btn-primary" style="background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%); font-size: 12px; font-weight: 700; border-radius: 6px; box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25);">
+                                <i class="fa-solid fa-clipboard-list"></i> Bandeja Requisiciones de Obra
+                                <span id="badgePendingRequisitions" style="background: #ef4444; color: white; padding: 2px 7px; border-radius: 12px; font-size: 11px; margin-left: 4px; font-weight: 800; display: none;">0</span>
                             </button>
 
                             <button onclick="openNewMaterialModal()" class="btn-secondary" style="font-size: 12px;">
@@ -548,6 +584,24 @@
 
                     </div>
 
+                    <!-- Filtros y Búsqueda en Tiempo Real Personal -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <input type="text" id="personnelSearchInput" oninput="filterPersonnelList()" placeholder="🔍 Buscar trabajador por nombre, código o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="personnelRoleFilter" onchange="filterPersonnelList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto; max-width: 220px;">
+                                <option value="all">Todos los Cargos / Roles</option>
+                            </select>
+                            <select id="personnelStatusFilter" onchange="filterPersonnelList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
+                                <option value="all">Todos los Estados</option>
+                                <option value="en_obra">Asignado a Obra</option>
+                                <option value="disponible_base">Disponible en Base</option>
+                            </select>
+                            <span id="personnelCountBadge" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 6px 10px; border-radius: 6px;">0 empleados</span>
+                        </div>
+                    </div>
+
                     <div class="table-wrapper">
 
                         <table>
@@ -639,6 +693,9 @@
                         <div style="flex: 1; min-width: 200px;">
                             <input type="text" id="rentalFilterSearch" placeholder="Buscar por equipo, entidad, contacto o código..." class="form-input" style="width: 100%; padding: 6px 12px; font-size: 12px;" oninput="debouncedApplyRentalsFilter()">
                         </div>
+                        <select id="rentalFilterClient" class="form-input" style="width: auto; max-width: 220px; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
+                            <option value="">Todos los Clientes / Contrapartes</option>
+                        </select>
                         <select id="rentalFilterDirection" class="form-input" style="width: auto; padding: 6px 10px; font-size: 12px;" onchange="applyRentalsFilter()">
                             <option value="">Todas las direcciones</option>
                             <option value="dalor_a_tercero">DALOR hacia Tercero</option>

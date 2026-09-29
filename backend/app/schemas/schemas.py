@@ -19,7 +19,7 @@ class ClientCreate(ClientBase):
 class ClientOut(ClientBase):
     id: int
     is_active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -40,7 +40,7 @@ class ServiceItemCreate(ServiceItemBase):
 class ServiceItemOut(ServiceItemBase):
     id: int
     is_active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -137,6 +137,34 @@ class ProjectPhaseOut(BaseModel):
     class Config:
         from_attributes = True
 
+class ProjectAddendumCreate(BaseModel):
+    title: str
+    scope_description: Optional[str] = None
+    additional_contract_usd: float
+    additional_materials_usd: Optional[float] = 0.0
+    additional_labor_usd: Optional[float] = 0.0
+    additional_services_usd: Optional[float] = 0.0
+    authorized_by: Optional[str] = "Dirección General"
+    new_phase_name: Optional[str] = None
+    new_phase_duration_days: Optional[int] = 7
+
+class ProjectAddendumOut(BaseModel):
+    id: int
+    project_id: int
+    addendum_number: int
+    title: str
+    scope_description: Optional[str] = None
+    additional_contract_usd: float
+    additional_materials_usd: float = 0.0
+    additional_labor_usd: float = 0.0
+    additional_services_usd: float = 0.0
+    authorized_by: str
+    approval_date: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
 # --- PROYECTOS & PLANIFICACIÓN INTEGRAL ---
 class ProjectCreate(BaseModel):
     code: str
@@ -158,6 +186,7 @@ class ProjectCreate(BaseModel):
     assigned_personnel_ids: Optional[List[int]] = []
     assigned_vehicle_ids: Optional[List[int]] = []
     assigned_tool_ids: Optional[List[int]] = []
+    assigned_material_items: Optional[List[dict]] = []
     origin_quotation_id: Optional[int] = None
 
 class ProjectOut(BaseModel):
@@ -281,6 +310,12 @@ class ExpenseOut(BaseModel):
     receipt_image_path: Optional[str]
     alert_flag: bool
     alert_notes: Optional[str]
+    category_code: Optional[str] = None
+    category_name: Optional[str] = None
+    project_name: Optional[str] = None
+    project_code: Optional[str] = None
+    reported_by_name: Optional[str] = None
+    expense_type: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -373,3 +408,33 @@ class FixedExpenseSettingCreate(BaseModel):
     category_id: Optional[int] = None
     monthly_amount_usd: float
     is_active: bool = True
+
+# ─── Cuentas Bancarias / Cajas ────────────────────────────────────────────────
+class FinancialAccountBase(BaseModel):
+    name: str
+    account_type: str  # "usd" o "bs"
+    bank_or_provider: Optional[str] = None
+    account_number: Optional[str] = None
+    is_active: bool = True
+    is_default: bool = False
+    sort_order: int = 0
+    notes: Optional[str] = None
+
+class FinancialAccountCreate(FinancialAccountBase):
+    pass
+
+class FinancialAccountUpdate(BaseModel):
+    name: Optional[str] = None
+    account_type: Optional[str] = None
+    bank_or_provider: Optional[str] = None
+    account_number: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
+    sort_order: Optional[int] = None
+    notes: Optional[str] = None
+
+class FinancialAccountOut(FinancialAccountBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True

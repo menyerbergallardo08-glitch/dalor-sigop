@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>TEST</title></head>
+<body>
+<script>
+    window.API_BASE = 'http://test-api';
+</script>
+<script type="module">
+    try {
+        document.title = "RESOLVED: " + API_BASE;
+    } catch(e) {
+        document.title = "ERROR: " + e.message;
+    }
+</script>
+</body>
+</html>

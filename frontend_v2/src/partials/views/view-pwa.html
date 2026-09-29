@@ -1,4 +1,4 @@
-<section id="view-pwa" class="hidden">
+        <section id="view-pwa" class="hidden">
 
             <div class="banner-dalor">
 
@@ -19,47 +19,59 @@
             <div class="grid-2">
 
                 <div class="card">
-
                     <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 12px;">
-
                         <i class="fa-solid fa-camera" style="color: var(--dalor-blue);"></i> 1. Cargar Foto o PDF
-
                     </h3>
 
-                    <div class="dropzone-box" onclick="triggerFileSelect()">
+                    <!-- Inputs Ocultos de Cámara y Archivo -->
+                    <input type="file" id="ticketCameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleFileSelected(event)">
+                    <input type="file" id="ticketFileInput" class="hidden" accept="image/*,application/pdf" onchange="handleFileSelected(event)">
 
-                        <input type="file" id="ticketFileInput" class="hidden" accept="image/*,application/pdf" onchange="handleFileSelected(event)">
+                    <!-- Botones de Acción Táctil Rápida para Celular -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <button type="button" onclick="document.getElementById('ticketCameraInput').click()"
+                            style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; border: none; padding: 14px 10px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);">
+                            <i class="fa-solid fa-camera" style="font-size: 24px; color: var(--dalor-gold);"></i>
+                            <span>Tomar Foto (Cámara)</span>
+                        </button>
+                        <button type="button" onclick="document.getElementById('ticketFileInput').click()"
+                            style="background: #ffffff; color: var(--dalor-navy); border: 2px solid #cbd5e1; padding: 14px 10px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-images" style="font-size: 24px; color: #64748b;"></i>
+                            <span>Galería / PDF</span>
+                        </button>
+                    </div>
 
+                    <!-- Dropzone de Arrastre para PC o Vista Previa -->
+                    <div class="dropzone-box" onclick="triggerFileSelect()" style="min-height: 120px;">
                         <div id="dropzoneContent">
-
-                            <i class="fa-solid fa-cloud-arrow-up" style="font-size: 38px; color: var(--dalor-blue); margin-bottom: 8px;"></i>
-
-                            <p style="font-size: 13px; font-weight: 700; color: #334155;">Toca para tomar foto o subir PDF / Imagen</p>
-
-                            <p style="font-size: 11px; color: #64748b; margin-top: 4px;">Soporta JPG, PNG y documentos PDF</p>
-
+                            <i class="fa-solid fa-cloud-arrow-up" style="font-size: 28px; color: #94a3b8; margin-bottom: 4px;"></i>
+                            <p style="font-size: 12px; font-weight: 700; color: #475569;">O arrastra y suelta tu archivo aquí</p>
                         </div>
 
                         <div id="imagePreviewContainer" class="hidden">
-
-                            <img id="imagePreview" src="" class="hidden" style="max-height: 180px; margin: 0 auto; border-radius: 8px; border: 1px solid #cbd5e1;">
-
+                            <img id="imagePreview" src="" class="hidden" style="max-height: 200px; max-width: 100%; margin: 0 auto; border-radius: 10px; border: 1px solid #cbd5e1; display: block; object-fit: contain;">
                             <div id="pdfPreview" class="hidden" style="padding: 16px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; text-align: center;">
-
-                                <i class="fa-solid fa-file-pdf" style="font-size: 48px; color: #e11d48; margin-bottom: 6px;"></i>
-
+                                <i class="fa-solid fa-file-pdf" style="font-size: 42px; color: #e11d48; margin-bottom: 6px;"></i>
                                 <p id="pdfFileName" style="font-size: 12px; font-weight: 800; color: #881337;">factura.pdf</p>
-
-                                <p style="font-size: 10px; color: #be123c; font-weight: 600;">Documento PDF analizado</p>
-
                             </div>
-
-                            <p style="font-size: 12px; color: #059669; font-weight: 700; margin-top: 8px;"><i class="fa-solid fa-check-circle"></i> Comprobante cargado exitosamente</p>
-
+                            <p style="font-size: 12px; color: #059669; font-weight: 700; margin-top: 8px;"><i class="fa-solid fa-check-circle"></i> Comprobante adjuntado</p>
                         </div>
-
                     </div>
 
+                    <!-- Estado de Lectura IA -->
+                    <div id="ocrProcessingBar" class="hidden" style="margin-top: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px; text-align: center;">
+                        <i class="fa-solid fa-wand-magic-sparkles fa-spin" style="color: #2563eb; font-size: 20px;"></i>
+                        <p style="font-size: 13px; font-weight: 800; color: #1e40af; margin-top: 6px;">Analizando comprobante con Inteligencia Artificial...</p>
+                        <p style="font-size: 11px; color: #3b82f6;">Extrayendo comercio, montos en $ y Bs, y partida</p>
+                    </div>
+
+                    <div id="ocrExtractedInfoCard" class="hidden" style="margin-top: 10px; background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 10px; padding: 12px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #065f46;"><i class="fa-solid fa-circle-check"></i> Extracción Exitosa</span>
+                            <span id="ocrVendorBadge" style="font-size: 11px; background: #10b981; color: white; padding: 2px 8px; border-radius: 6px; font-weight: 800;">-</span>
+                        </div>
+                        <div style="font-size: 12px; color: #047857; line-height: 1.3;" id="ocrExtractedTextPreview"></div>
+                    </div>
                 </div>
 
 
@@ -359,11 +371,3 @@
             </div>
 
         </section>
-
-
-
-        <!-- ====================================================================
-
-             10. VISTA: CARGA OFICINA & TRANSFERENCIAS
-
-             ==================================================================== -->

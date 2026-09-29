@@ -15,7 +15,8 @@ from app.models.models import (
     AccountReceivable,
     Expense,
     ExpenseCategory,
-    AuditLog
+    AuditLog,
+    ProjectAddendum
 )
 
 router = APIRouter()
@@ -223,12 +224,43 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     if g_in.client_id:
         client = db.query(Client).filter(Client.id == g_in.client_id).first()
     
-    is_free = bool(g_in.is_freeform or (g_in.recipient_name and not g_in.client_id))
+    if g_in.is_freeform is not None:
+        is_free = bool(g_in.is_freeform)
+    else:
+        is_free = bool(g_in.recipient_name and not g_in.client_id and not g_in.project_id)
     recipient = (g_in.recipient_name or "").strip()
     if not recipient and client:
         recipient = client.name
     elif not recipient and not client:
         recipient = "Destinatario Libre / Particular"
+
+    if g_in.project_id:
+        proj = db.query(Project).filter(Project.id == g_in.project_id).first()
+        if proj:
+            proj_st = (proj.status or "").lower().strip()
+            if proj_st in ["culminado", "completado", "cerrado", "cancelado", "finalizado", "inactivo"]:
+                has_addendum = db.query(ProjectAddendum).filter(ProjectAddendum.project_id == proj.id).first()
+                if not has_addendum:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"La obra [{proj.code}] '{proj.name}' se encuentra {proj_st.upper()} y cerrada. No se permite despachar insumos a obras cerradas sin una adenda contractual aprobada."
+                    )
+
+            if g_in.client_id and proj.client_id and proj.client_id != g_in.client_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Inconsistencia: El proyecto [{proj.code}] pertenece a otro cliente y no puede cruzarse."
+                )
+
+    if g_in.asset_id:
+        veh_asset = db.query(Asset).filter(Asset.id == g_in.asset_id).first()
+        if veh_asset:
+            st = (veh_asset.status or "").lower()
+            if not veh_asset.is_active or st in ["en_mantenimiento", "mantenimiento", "en_reparacion", "reparacion", "inactivo", "desincorporado", "no_disponible"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El vehículo de flota [{veh_asset.asset_code}] '{veh_asset.name}' no está disponible para despacho (Estatus actual: {veh_asset.status})."
+                )
 
     client_id_val = client.id if client else None
 
@@ -322,11 +354,29 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     # 2. Si se cobra flete al cliente: Generar Cuenta por Cobrar (CxC) de flete/logística
     if (g_in.freight_price_charged_usd or 0.0) > 0:
         f_price = float(g_in.freight_price_charged_usd)
+        c_id = g_in.client_id or client_id_val
+        if not c_id:
+            rec_client = db.query(Client).filter(Client.name == recipient).first()
+            if not rec_client:
+                rec_client = Client(
+                    name=recipient or "Destinatario Eventual",
+                    code=f"CLI-EVT-{int(datetime.utcnow().timestamp())}",
+                    rif="J-00000000-0",
+                    contact_name=recipient or "Destinatario Libre",
+                    contact_phone="0412-0000000",
+                    contact_email="contacto@cliente.com",
+                    address=g_in.destination_address or "Venezuela"
+                )
+                db.add(rec_client)
+                db.flush()
+            c_id = rec_client.id
+            new_guide.client_id = c_id
+
         new_cxc = AccountReceivable(
             invoice_number=f"FLT-CLI-{guide_num}",
-            client_id=g_in.client_id,
+            client_id=c_id,
             project_id=g_in.project_id,
-            description=f"Servicio de Flete / Logística de Entrega ({guide_num})",
+            description=f"Servicio de Flete / Logística de Entrega ({guide_num}) para {recipient}",
             due_date=datetime.utcnow(),
             amount_usd=f_price,
             balance_usd=f_price,
@@ -350,7 +400,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
                 resource_code=veh.asset_code,
                 resource_name=veh.name,
                 project_id=g_in.project_id,
-                origin_location="Sede Central Dalor",
+                origin_location="Sede Central Dalor (Guacara)",
                 destination_location=dest,
                 custodian_name=g_in.driver_name,
                 driver_name=g_in.driver_name,
@@ -373,6 +423,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
         "success": True,
         "id": new_guide.id,
         "guide_number": guide_num,
+        "is_freeform": new_guide.is_freeform,
         "message": f"Guía de Despacho {guide_num} emitida exitosamente."
     }
 

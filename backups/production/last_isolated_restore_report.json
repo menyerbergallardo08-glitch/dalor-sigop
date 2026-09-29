@@ -1,0 +1,33 @@
+{
+  "isolated_db_url": "sqlite:///./isolated_test_restore.db",
+  "backup_source": "dalor_backup_20260919_181816.json",
+  "table_counts": {
+    "clients": 3,
+    "cost_centers": 0,
+    "expense_categories": 43,
+    "fixed_expense_settings": 0,
+    "materials": 16,
+    "partner_withdrawals": 8,
+    "service_items": 8,
+    "users": 9,
+    "audit_logs": 307,
+    "projects": 7,
+    "quotations": 8,
+    "accounts_payable": 11,
+    "accounts_receivable": 10,
+    "assets": 907,
+    "material_movements": 6,
+    "personnel": 16,
+    "project_phases": 3,
+    "quotation_items": 10,
+    "resource_assignment_history": 17,
+    "asset_rentals_loans": 11,
+    "dispatch_guides": 13,
+    "expenses": 6,
+    "financial_payments": 26,
+    "dispatch_guide_items": 25
+  },
+  "total_rows": 1470,
+  "status": "PASSED",
+  "errors": []
+}

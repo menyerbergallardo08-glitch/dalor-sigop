@@ -1,4 +1,4 @@
-<section id="view-services" class="hidden">
+        <section id="view-services" class="hidden">
 
             <div class="banner-dalor">
 
@@ -24,11 +24,28 @@
 
             <div class="card">
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
 
-                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">Catálogo de Partidas Activas</h3>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
 
-                    <button onclick="loadServices()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        <input type="text" id="serviceSearchInput" placeholder="🔍 Buscar partida por código, nombre o unidad..." class="form-input" style="max-width: 320px;" oninput="onServiceSearchInput(this.value)">
+
+                        <select id="serviceCategoryFilter" class="form-select" style="max-width: 260px;" onchange="onServiceCategoryFilterChange(this.value)">
+                            <option value="">Todas las Categorías</option>
+                            <option value="Fabricación Metalmecánica">Fabricación Metalmecánica</option>
+                            <option value="Montaje e Instalación en Sitio">Montaje e Instalación en Sitio</option>
+                            <option value="Mantenimiento Industrial & Paradas">Mantenimiento Industrial & Paradas</option>
+                            <option value="Soldadura Especializada & Pailería">Soldadura Especializada & Pailería</option>
+                            <option value="Mecanizado & Torno">Mecanizado & Torno</option>
+                            <option value="Arenado y Pintura Industrial">Arenado y Pintura Industrial</option>
+                            <option value="Obras Civiles & Eléctricas Asociadas">Obras Civiles & Eléctricas Asociadas</option>
+                        </select>
+
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button onclick="loadServices()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                    </div>
 
                 </div>
 
@@ -66,14 +83,8 @@
 
                 </div>
 
+                <div id="servicesPaginationContainer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px;"></div>
+
             </div>
 
         </section>
-
-
-
-        <!-- ====================================================================
-
-             6. VISTA: CLIENTES
-
-             ==================================================================== -->

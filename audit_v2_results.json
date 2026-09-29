@@ -1,0 +1,329 @@
+{
+  "unauth": [
+    [
+      "GET",
+      "/api/v1/financial/summary",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "GET",
+      "/api/v1/financial/cxc",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "POST",
+      "/api/v1/financial/cxc/1/payment",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "POST",
+      "/api/v1/financial/partners/withdrawals",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "GET",
+      "/api/v1/materials/",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "POST",
+      "/api/v1/materials/consume",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "GET",
+      "/api/v1/expenses/",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "POST",
+      "/api/v1/expenses/manual",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "GET",
+      "/api/v1/projects/",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "POST",
+      "/api/v1/projects/",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "PUT",
+      "/api/v1/projects/1",
+      405,
+      {
+        "detail": "Method Not Allowed"
+      }
+    ],
+    [
+      "DELETE",
+      "/api/v1/projects/9999",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "GET",
+      "/api/v1/resources/matrix",
+      200,
+      "<!DOCTYPE html>\r\n\r\n<html lang=\"es\">\r\n\r\n<head>\r\n\r\n    <meta c"
+    ],
+    [
+      "GET",
+      "/api/v1/maintenance/users",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "POST",
+      "/api/v1/maintenance/users",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "PUT",
+      "/api/v1/maintenance/users/1/permissions",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "GET",
+      "/api/v1/maintenance/backups",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "POST",
+      "/api/v1/maintenance/backups/create",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "GET",
+      "/api/v1/maintenance/backups/download/test.json",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ],
+    [
+      "POST",
+      "/api/v1/maintenance/backups/restore/test.json",
+      401,
+      {
+        "detail": "No autenticado. Token de acceso requerido en encabezado Authorization."
+      }
+    ]
+  ],
+  "jwt": [
+    [
+      "1. Sin token",
+      401,
+      401,
+      "No autenticado. Token de acceso requerido en encabezado Auth"
+    ],
+    [
+      "2. Token inv\u00e1lido",
+      401,
+      401,
+      "Token de acceso inv\u00e1lido, manipulado o expirado."
+    ],
+    [
+      "3. Token manipulado",
+      401,
+      401,
+      "Token de acceso inv\u00e1lido, manipulado o expirado."
+    ],
+    [
+      "4. Token expirado",
+      401,
+      401,
+      "Token de acceso inv\u00e1lido, manipulado o expirado."
+    ],
+    [
+      "5. Token usuario inexistente",
+      401,
+      401,
+      "El usuario asociado a este token no existe."
+    ],
+    [
+      "6. Token usuario inactivo",
+      403,
+      403,
+      "Cuenta de usuario desactivada o suspendida por la Gerencia."
+    ],
+    [
+      "7. Token v\u00e1lido",
+      200,
+      200,
+      "{'total_contracted_usd': 0.0, 'total_invoiced_cxc_usd': 500."
+    ]
+  ],
+  "rbac": [
+    [
+      "Operario intenta listar backups",
+      403,
+      403,
+      "Acceso denegado. Se requiere uno de los siguientes roles: di"
+    ],
+    [
+      "Admin intenta listar backups",
+      200,
+      200,
+      "[{\"filename\":\"dalor_backup_20260916_163120.db\",\"file_type\":\""
+    ],
+    [
+      "Director intenta listar backups",
+      200,
+      200,
+      "[{\"filename\":\"dalor_backup_20260916_163120.db\",\"file_type\":\""
+    ],
+    [
+      "Operario intenta restaurar backup",
+      403,
+      403,
+      "Acceso denegado. Se requiere uno de los siguientes roles: di"
+    ],
+    [
+      "Admin intenta restaurar backup",
+      403,
+      403,
+      "Acceso denegado. Se requiere uno de los siguientes roles: di"
+    ],
+    [
+      "Director intenta restaurar backup",
+      404,
+      404,
+      "El archivo de respaldo 'dalor_backup_dummy.json' no existe."
+    ],
+    [
+      "Operario intenta descargar backup",
+      403,
+      403,
+      "Acceso denegado. Se requiere uno de los siguientes roles: di"
+    ],
+    [
+      "Admin intenta crear backup",
+      200,
+      200,
+      "{'success': True, 'primary_file': 'dalor_backup_20260916_163"
+    ]
+  ],
+  "traversal": [
+    [
+      "Traversal b\u00e1sico ../",
+      "../../../../etc/passwd",
+      200,
+      400,
+      "<!DOCTYPE html>\r\n\r\n<html lang=\"es\">\r\n\r\n<head>\r\n\r\n    <meta c"
+    ],
+    [
+      "Traversal Windows ..\\",
+      "..\\..\\dalor_sigop.db",
+      400,
+      400,
+      "Nombre de archivo inv\u00e1lido. Intento de evasi\u00f3n o path traver"
+    ],
+    [
+      "Inyecci\u00f3n extensi\u00f3n script .sh",
+      "malicious.sh",
+      400,
+      400,
+      "Tipo de archivo no permitido. Solo se admiten archivos de re"
+    ],
+    [
+      "Inyecci\u00f3n archivo py fuera de backups",
+      "dalor_backup_test.json/../../main.py",
+      200,
+      400,
+      "<!DOCTYPE html>\r\n\r\n<html lang=\"es\">\r\n\r\n<head>\r\n\r\n    <meta c"
+    ],
+    [
+      "Nombre no conforme a prefijo dalor_backup_",
+      "otro_archivo.json",
+      400,
+      400,
+      "Tipo de archivo no permitido. Solo se admiten archivos de re"
+    ]
+  ],
+  "restore": {
+    "backup_file": "dalor_backup_20260916_163205.json",
+    "success": true,
+    "tables_restored": 23,
+    "users": 4,
+    "materials": 0,
+    "projects": 0,
+    "cxc": 1
+  },
+  "secrets": {
+    "has_hardcoded_key": false,
+    "uses_env": true,
+    "old_key_revocation": "ACTIVE_KEY_WARNING"
+  },
+  "cors": {
+    "allowed": 200,
+    "evil": 400
+  },
+  "docs": {
+    "local": 200,
+    "live": 200
+  },
+  "financial": {
+    "negative": 400,
+    "zero": 400,
+    "overpay": 400,
+    "valid": 200,
+    "dup_pay": 200
+  },
+  "perf": {
+    "total": 50,
+    "errors": 0,
+    "avg_ms": 115.31,
+    "p95_ms": 136.56,
+    "p99_ms": 151.9
+  }
+}

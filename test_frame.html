@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html>
+<body>
+<iframe id="f" src="https://dalor-sigop.onrender.com" style="width:390px;height:844px;"></iframe>
+<script>
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const frame = document.getElementById('f').contentWindow;
+        console.log('IFRAME LOADED');
+        const u = frame.document.getElementById('portal_username');
+        const p = frame.document.getElementById('portal_password');
+        const btn = frame.document.getElementById('btnSubmitPortalLogin');
+        
+        console.log('FOUND ELEMENTS:', { u: !!u, p: !!p, btn: !!btn });
+        if (u && p && btn) {
+            u.value = 'campo';
+            p.value = 'campo2026';
+            console.log('CLICKING BUTTON...');
+            btn.click();
+            setTimeout(() => {
+                console.log('AFTER CLICK - body class:', frame.document.body.className);
+                console.log('AFTER CLICK - login screen display:', frame.document.getElementById('app-login-screen').style.display);
+                console.log('AFTER CLICK - auth shell display:', frame.document.getElementById('app-authenticated-shell').style.display);
+                console.log('AFTER CLICK - currentUser:', frame.currentUser);
+            }, 3000);
+        }
+    }, 2000);
+});
+</script>
+</body>
+</html>

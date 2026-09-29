@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>STARTING COMBINED</title>
+    <script>
+        window.combinedErrors = [];
+        window.addEventListener('error', function(e) {
+            window.combinedErrors.push({
+                msg: e.message,
+                filename: e.filename,
+                lineno: e.lineno
+            });
+            document.title = "ERR: " + e.message + " in " + e.filename + ":" + e.lineno;
+        });
+    </script>
+    <script type="module" src="/src/main.js"></script>
+    <script>
+        setTimeout(() => {
+            if (window.combinedErrors.length > 0) {
+                const e = window.combinedErrors[0];
+                document.title = "ERR: " + e.msg + " AT " + e.filename + ":" + e.lineno;
+            } else {
+                const fns = [
+                    'roundNumber', 'parseLocalizedNumber', 'switchView', 'openModal', 'closeModal',
+                    'fetchAndApplyBcvRate', 'openManualTasaModal',
+                    'initProjectPlanningView', 'switchProjectSubtab', 'setProjectType',
+                    'openResourceSubtab', 'loadFleetList', 'loadMachineryList', 'loadToolsList', 'loadPersonnelTableList',
+                    'loadQuotations', 'openNewQuotationModal', 'addQuotationRow',
+                    'triggerFileSelect', 'processOCRFile', 'loadPendingExpensesInbox', 'loadExpensesLog',
+                    'openFinancialSubtab', 'loadReceivablesList', 'loadPayablesList', 'loadTreasurySummary', 'openQuickFlowModal',
+                    'loadMaterialsList', 'renderMaterialsTable', 'openTransferGuideModal', 'openMaterialDeliveryModal', 'initDispatchView',
+                    'loadClients', 'loadExecutiveDashboard', 'loadBackupsList', 'checkAuthStatus'
+                ];
+                const missing = fns.filter(f => typeof window[f] !== 'function');
+                if (missing.length === 0) {
+                    document.title = "SUCCESS: ALL 36 CORE FUNCTIONS OPERATIONAL ON WINDOW";
+                } else {
+                    document.title = "MISSING (" + missing.length + "): " + missing.slice(0, 5).join(',');
+                }
+            }
+        }, 1500);
+    </script>
+</head>
+<body>
+    <h1>DALOR MODULAR TEST</h1>
+</body>
+</html>

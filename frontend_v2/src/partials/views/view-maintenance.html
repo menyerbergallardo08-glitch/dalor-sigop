@@ -1,4 +1,4 @@
-<section id="view-maintenance" class="hidden">
+        <section id="view-maintenance" class="hidden">
 
             <div class="banner-dalor" style="background: linear-gradient(135deg, #78350f 0%, #b45309 100%);">
 
@@ -29,6 +29,12 @@
                 <button class="subtab-btn active" id="tabbtn-maint-users" onclick="switchMaintenanceSubtab('users')">
 
                     <i class="fa-solid fa-users-gear" style="color: #0284c7;"></i> Gestión de Usuarios & Cuentas
+
+                </button>
+
+                <button class="subtab-btn" id="tabbtn-maint-roles" onclick="switchMaintenanceSubtab('roles')">
+
+                    <i class="fa-solid fa-shield-halved" style="color: #d97706;"></i> Roles y Perfiles de Acceso
 
                 </button>
 
@@ -102,7 +108,38 @@
 
             </div>
 
-
+            <!-- SUBTAB ROLES Y PERFILES (PROFIT PLUS) -->
+            <div id="subtab-maint-roles" class="hidden">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+                                <i class="fa-solid fa-shield-halved" style="color: #d97706;"></i> Matriz de Roles y Niveles de Seguridad (Estilo Profit Plus)
+                            </h3>
+                            <p style="font-size: 11px; color: #64748b; margin-top: 2px;">Crea plantillas de permisos reutilizables por cargo operacional para blindar la data de la empresa.</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="loadMaintenanceRolesList()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                            <button onclick="openNewRoleModal()" class="btn-primary" style="background: #d97706; font-size: 12px; font-weight: 800;"><i class="fa-solid fa-plus"></i> + Crear Rol de Seguridad</button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre del Rol</th>
+                                    <th>Identificador</th>
+                                    <th>Descripción</th>
+                                    <th>Permisos Modulares</th>
+                                    <th>Tipo</th>
+                                    <th style="text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="maintenanceRolesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
             <!-- SUBTAB 2: BITÁCORA DE AUDITORÍA -->
 
@@ -305,7 +342,6 @@
 
             </div>
 
-            </div>
 
 
 
@@ -386,11 +422,3 @@
 
 
         </section>
-
-
-
-        <!-- ====================================================================
-
-             3. VISTA: FINANZAS, CxC & CxP
-
-             ==================================================================== -->

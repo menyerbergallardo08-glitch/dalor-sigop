@@ -1,4 +1,4 @@
-<section id="view-clients" class="hidden">
+        <section id="view-clients" class="hidden">
 
             <div class="banner-dalor">
 
@@ -24,11 +24,19 @@
 
             <div class="card">
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
 
-                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">Listado de Clientes</h3>
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
 
-                    <button onclick="loadClients()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                        <input type="text" id="clientSearchInput" placeholder="🔍 Buscar cliente por nombre, RIF, código o contacto..." class="form-input" style="max-width: 340px;" oninput="onClientSearchInput(this.value)">
+
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px;">
+
+                        <button onclick="loadClients()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+
+                    </div>
 
                 </div>
 
@@ -63,15 +71,8 @@
                     </table>
 
                 </div>
+                <div id="clientsPaginationContainer"></div>
 
             </div>
 
         </section>
-
-
-
-        <!-- ====================================================================
-
-             7. VISTA: GESTIÓN & PLANIFICACIÓN INTEGRAL DE PROYECTOS
-
-             ==================================================================== -->

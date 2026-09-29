@@ -1,4 +1,4 @@
-<section id="view-dashboard" class="hidden">
+        <section id="view-dashboard" class="hidden">
 
             <div class="banner-dalor">
 
@@ -26,58 +26,52 @@
 
 
 
+            <div class="card" style="margin-bottom: 14px; padding: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: flex-end;">
+                    <div>
+                        <label class="form-label">Búsqueda Predictiva de Proyectos</label>
+                        <input type="text" id="dashboard_filter_search" placeholder="Buscar por código, obra o cliente..." class="form-input" oninput="debouncedFilterComparisonDashboard()">
+                    </div>
+                    <div>
+                        <label class="form-label">Salud del Costo (CPI / Semáforo)</label>
+                        <select id="dashboard_filter_health" class="form-select" onchange="filterComparisonDashboard()">
+                            <option value="">-- Todos los Proyectos --</option>
+                            <option value="VERDE_RENTABLE">🟢 En Presupuesto (Verde Rentable)</option>
+                            <option value="AMARILLO_ALERTA">🟡 En Alerta (Amarillo 80-100%)</option>
+                            <option value="ROJO_SOBRECOSTO">🔴 Sobrecosto (Rojo Desviado)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
-
-                <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 12px;">
-
-                    Comparativo de Rentabilidad y Desviaciones por Proyecto
-
-                </h3>
-
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        Comparativo de Rentabilidad y Desviaciones por Proyecto
+                    </h3>
+                    <span id="dashboardProjectCountBadge" style="font-size: 11px; font-weight: 700; color: #64748b;">0 obras listadas</span>
+                </div>
                 <div class="table-wrapper">
-
                     <table>
-
                         <thead>
-
                             <tr>
-
                                 <th>Código</th>
-
                                 <th>Proyecto / Obra</th>
-
                                 <th>Cliente</th>
-
                                 <th>Contrato ($)</th>
-
                                 <th>Gasto Real ($)</th>
-
                                 <th>Margen ($)</th>
-
                                 <th>Margen (%)</th>
-
                                 <th>CPI (Eficiencia)</th>
-
                                 <th style="text-align: center;">Salud</th>
-
                             </tr>
-
                         </thead>
-
                         <tbody id="comparisonTableBody"></tbody>
-
                     </table>
-
                 </div>
 
+                <!-- PAGINACIÓN DASHBOARD -->
+                <div id="comparisonDashboardPagination" style="margin-top: 14px;"></div>
             </div>
 
         </section>
-
-
-
-        <!-- ====================================================================
-
-             12. VISTA: ÁRBOL DE PARTIDAS
-
-             ==================================================================== -->

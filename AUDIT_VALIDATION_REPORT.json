@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "audit_title": "Auditoría de Blindaje y Arquitectura de Producción - DALOR SIGO-P ERP",
+  "audit_timestamp": "2026-09-15T17:15:00Z",
+  "system_info": {
+    "name": "DALOR SIGO-P ERP",
+    "environment": "production",
+    "production_url": "https://dalor-sigop.onrender.com",
+    "repository": "menyerbergallardo08-glitch/dalor-sigop",
+    "branch": "main",
+    "deployed_version": "2026.09.15.v55-hardened",
+    "database_engine": "PostgreSQL (Production) / SQLite (Local Fallback)"
+  },
+  "hardening_pillars": {
+    "1_acid_concurrency_and_row_locking": {
+      "status": "VERIFIED_AND_ACTIVE",
+      "target_files": [
+        "backend/app/api/v1/endpoints/materials.py",
+        "backend/app/api/v1/endpoints/projects.py"
+      ],
+      "mechanisms": {
+        "pessimistic_locking": "db.query(Material).filter(...).with_for_update() aplicado en salidas y entradas de almacén",
+        "race_condition_prevention": true,
+        "dynamic_bcv_rate": "BCVScraperService.get_official_rate() en tiempo real (sin tasas estáticas cableadas)",
+        "strict_expense_category_validation": "Aborto con HTTP 400 y db.rollback() si la partida no existe (eliminado fallback silencioso 'else 1')",
+        "all_or_nothing_atomic_transactions": "Creación de Proyecto + Fases WBS + Cuadrillas + Flota/Herramientas + Cuenta por Cobrar (CxC) en una única transacción atómica con db.rollback()"
+      }
+    },
+    "2_frontend_modular_client": {
+      "status": "VERIFIED_AND_ACTIVE",
+      "target_directory": "frontend/src/",
+      "entrypoint": "frontend/index.html (<script type=\"module\" src=\"/src/main.js\">)",
+      "modules": [
+        {
+          "file": "frontend/src/api.js",
+          "size_bytes": 8818,
+          "features": [
+            "AbortController con timeout estricto de 30 segundos",
+            "Intercepción automática de códigos HTTP 401 y 403 con limpieza de localStorage y redirección",
+            "Inyección transparente del encabezado 'Authorization: Bearer <token>'",
+            "Servicios desacoplados: auth, financial, projects, materials, assets, personnel, maintenance, dispatch"
+          ]
+        },
+        {
+          "file": "frontend/src/auth.js",
+          "size_bytes": 5813,
+          "features": [
+            "Acceso en 1 clic para Director General",
+            "Normalización de usuario insensible a mayúsculas/minúsculas",
+            "Matriz de permisos por rol sin interferencias cruzadas",
+            "Renderizado dinámico de badge de usuario activo"
+          ]
+        },
+        {
+          "file": "frontend/src/state.js",
+          "size_bytes": 577,
+          "features": [
+            "Aislamiento de variables de sesión, tasa BCV y catálogos maestros"
+          ]
+        },
+        {
+          "file": "frontend/src/main.js",
+          "size_bytes": 3613,
+          "features": [
+            "Enrutador modular de pestañas (switchView)",
+            "Polling continuo del ticker de Tasa Oficial BCV",
+            "Sincronización con eventos del DOM"
+          ]
+        }
+      ]
+    },
+    "3_universal_database_backup_engine": {
+      "status": "VERIFIED_AND_ACTIVE",
+      "target_files": [
+        "backend/app/services/backup_service.py",
+        "backend/app/api/v1/endpoints/maintenance.py"
+      ],
+      "capabilities": {
+        "engine_agnostic_reflection": "Introspección dinámica con inspect(engine) para exportar tablas sin depender de esquemas fijos",
+        "total_tables_backed_up": 21,
+        "supported_formats": [".json", ".json.gz", ".db"],
+        "export_endpoint": "POST /api/v1/maintenance/backups/create",
+        "list_endpoint": "GET /api/v1/maintenance/backups",
+        "download_endpoint": "GET /api/v1/maintenance/backups/download/{filename}",
+        "restore_endpoint": "POST /api/v1/maintenance/backups/restore/{filename}",
+        "transactional_restore": "Purga e inserción atómica dentro de bloque transaccional con db.commit() / db.rollback()"
+      }
+    },
+    "4_multimodal_ocr_pipeline": {
+      "status": "VERIFIED_AND_ACTIVE",
+      "target_file": "backend/app/services/ocr_parser.py",
+      "pipeline": {
+        "step_1_image_preprocessing": [
+          "Auto-rotación EXIF para fotos de celulares de campo",
+          "Auto-contraste adaptativo (ImageOps.autocontrast cutoff=0.5)",
+          "Filtro de realce de nitidez (ImageEnhance.Sharpness 1.3)",
+          "Re-escalado inteligente a máximo 1600px para baja latencia"
+        ],
+        "step_2_primary_ai_engine": "Gemini 1.5 Flash Vision API (Extracción de RIF, Proveedor, Base Imponible, IVA 16%, Partida Dalor)",
+        "step_3_contingency_fallback": "Tesseract OCR (Linux) / Windows OCR (Windows)"
+      }
+    },
+    "5_anti_sleep_worker_24_7": {
+      "status": "VERIFIED_AND_ACTIVE",
+      "target_file": "backend/app/main.py",
+      "mechanism": "Daemon thread en segundo plano que sondea /healthz cada 7 minutos para evitar el apagado de la instancia gratuita en Render"
+    }
+  },
+  "database_tables_audit": [
+    "users",
+    "audit_logs",
+    "partner_withdrawals",
+    "fixed_expense_settings",
+    "clients",
+    "cost_centers",
+    "expense_categories",
+    "projects",
+    "project_phases",
+    "materials",
+    "material_movements",
+    "assets",
+    "personnel",
+    "resource_assignment_history",
+    "quotations",
+    "quotation_items",
+    "expenses",
+    "accounts_receivable",
+    "accounts_payable",
+    "financial_payments",
+    "service_items"
+  ],
+  "verified_endpoints_matrix": [
+    { "route": "/", "method": "GET", "auth_required": false, "status": "200 OK" },
+    { "route": "/healthz", "method": "GET", "auth_required": false, "status": "200 OK" },
+    { "route": "/src/api.js", "method": "GET", "auth_required": false, "status": "200 OK" },
+    { "route": "/src/auth.js", "method": "GET", "auth_required": false, "status": "200 OK" },
+    { "route": "/src/main.js", "method": "GET", "auth_required": false, "status": "200 OK" },
+    { "route": "/api/v1/financial/bcv-rate", "method": "GET", "auth_required": false, "status": "200 OK" },
+    { "route": "/api/v1/auth/login", "method": "POST", "auth_required": false, "status": "200 OK" },
+    { "route": "/api/v1/materials/", "method": "GET", "auth_required": true, "status": "200 OK" },
+    { "route": "/api/v1/materials/consume", "method": "POST", "auth_required": true, "status": "200 OK (with_for_update)" },
+    { "route": "/api/v1/personnel/", "method": "GET", "auth_required": true, "status": "200 OK" },
+    { "route": "/api/v1/projects/", "method": "GET", "auth_required": true, "status": "200 OK" },
+    { "route": "/api/v1/projects/", "method": "POST", "auth_required": true, "status": "200 OK (Atomic Transaction)" },
+    { "route": "/api/v1/maintenance/backups", "method": "GET", "auth_required": true, "status": "200 OK" }
+  ],
+  "roles_and_credentials_matrix": [
+    { "role": "director_general", "username": "director", "default_pass": "dalor2026", "one_click_access": true, "scope": "Acceso Total / Superusuario" },
+    { "role": "administracion", "username": "administracion", "default_pass": "admin2026", "one_click_access": false, "scope": "Finanzas, CxC, CxP, Gastos" },
+    { "role": "ingeniero_obra", "username": "ingeniero", "default_pass": "obra2026", "one_click_access": false, "scope": "Proyectos, Fases, Asignaciones" },
+    { "role": "almacenista", "username": "almacen", "default_pass": "almacen2026", "one_click_access": false, "scope": "Inventario, Consumos, Entradas, Despachos" },
+    { "role": "supervisor_campo", "username": "campo", "default_pass": "campo2026", "one_click_access": false, "scope": "Captura de Gastos OCR, Odómetros" }
+  ]
+}

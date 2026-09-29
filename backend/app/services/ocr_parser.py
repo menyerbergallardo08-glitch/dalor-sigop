@@ -38,8 +38,8 @@ class OCRReceiptParser:
 
     @staticmethod
     def extract_with_gemini(file_path: str, default_rate: float = 800.0) -> Optional[Dict[str, Any]]:
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or getattr(settings, "GEMINI_API_KEY", None)
-        if not api_key:
+        api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GOOGLE_API_KEY")
+        if not api_key or len(str(api_key).strip()) < 10:
             return None
 
         try:
@@ -47,7 +47,6 @@ class OCRReceiptParser:
             import base64
             import json
             import io
-
             from PIL import ImageEnhance
 
             with Image.open(file_path) as img:
@@ -63,12 +62,12 @@ class OCRReceiptParser:
                     pass
 
                 max_dim = max(img.width, img.height)
-                if max_dim > 1600:
-                    scale = 1600 / max_dim
+                if max_dim > 1024:
+                    scale = 1024 / max_dim
                     img = img.resize((int(img.width * scale), int(img.height * scale)), Image.Resampling.LANCZOS)
                 
                 buffer = io.BytesIO()
-                img.save(buffer, format="JPEG", quality=90)
+                img.save(buffer, format="JPEG", quality=80)
                 b64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
             prompt = f"""Actúa como auditor contable experto en comprobantes de gasto y facturación venezolana (facturas SENIAT, máquinas fiscales térmicas, tickets de venta, notas de entrega y talonarios manuscritos a bolígrafo/lápiz).
@@ -76,18 +75,27 @@ Analiza detenidamente esta imagen y extrae con precisión los datos contables en
 Tasa de cambio de referencia del sistema: {default_rate} Bs/USD.
 
 REGLAS CRÍTICAS DE LECTURA E INTERPRETACIÓN:
-1. DETECCIÓN DE ORIENTACIÓN Y AUTO-ROTACIÓN: La fotografía puede haber sido tomada de lado (rotada 90° a la izquierda o derecha, o invertida 180°). Rota mentalmente la imagen según la orientación natural del texto y cifras para interpretarlo todo correctamente.
-2. COMPROBANTES Y TALONARIOS MANUSCRITOS (A MANO): En notas de entrega o vales de caja manuales escritos con bolígrafo o lápiz, lee los renglones (cantidades y conceptos como 'Cable', 'Cinta', 'Tornillos', etc.) y busca el TOTAL al final de la columna o casillero inferior (ej: 6000). Si no tiene membrete formal con RIF, asigna 'Nota de Entrega / Comprobante Manual' a detected_vendor y marca is_tax_exempt: true con detected_tax_usd: 0.0.
-3. TICKETS TÉRMICOS Y ARRUGADOS: NUNCA confundas el nombre de un artículo o producto alimenticio/repuesto (ej: 'Cheddar', 'Hamburguesa', 'Aceite', 'Filtro', 'Tornillos') con el nombre del proveedor. El proveedor siempre está en el membrete superior. Si el membrete está arrugado o ilegible, coloca 'Ticket de Venta / Comercio Local' y jamás el nombre de un artículo.
-4. IDENTIFICACIÓN DE MONTOS TOTALES:
-- Busca la línea de 'TOTAL', 'TOTAL A PAGAR', 'TOTAL BS', 'TOTAL GENERAL', 'TOTAL USD' o el valor neto al pie del comprobante. NUNCA devuelvas detected_amount_usd: 0 o detected_amount_bs: 0 si hay un monto visible.
-- Si el monto está expresado en Bolívares (Bs.), asígnalo a detected_amount_bs y calcula detected_amount_usd = detected_amount_bs / {default_rate}.
-- Si el monto está expresado en Dólares ($), asígnalo a detected_amount_usd y calcula detected_amount_bs = detected_amount_usd * {default_rate}.
-- Si hay IVA del 16% desglosado formalmente, extráelo. Si es nota manual, vale o ticket exento, detected_tax_usd = 0.0 e is_tax_exempt = true.
+1. DETECCIÓN DE ORIENTACIÓN Y AUTO-ROTACIÓN: La fotografía puede haber sido tomada de lado (rotada 90° izquierda, 90° derecha o invertida 180°). Rota mentalmente la imagen según la orientación natural del texto y cifras para interpretarlo todo correctamente antes de extraer datos.
+2. DOCUMENTOS MANUSCRITOS A MANO (MÁXIMA PRIORIDAD): Si la imagen muestra una hoja de cuaderno, papel rayado, talonario o comprobante escrito con bolígrafo o lápiz:
+   - Lee cada renglón línea por línea buscando conceptos (ej: 'Cable 2x12', '3 tornillos hex', 'Cemento 1 bls', 'Cinta aislante', etc.) y el valor de cada ítem.
+   - Busca el TOTAL en la parte inferior de la hoja, al final de la columna de valores, en un casillero o al lado de 'Total', 'Subtotal', 'A pagar', 'Ref', 'Monto'.
+   - Si el monto está escrito como una cifra sola sin símbolo (ej: '2200'), asúmelo como Bolívares y calcula el USD dividiendo por la tasa.
+   - Si el membrete no tiene RIF formal: asigna el nombre comercial legible como detected_vendor (ej: 'Ferretería La Clave', 'Materiales El Constructor'), o usa 'Nota Manuscrita / Comprobante Manual' si el nombre no es legible. Marca is_tax_exempt: true.
+3. EMPRESAS DE ENCOMIENDA / TRANSPORTE VENEZOLANO: Si el comprobante corresponde a TEALCA, MRW, Zoom, Domesa, Motocarga, CoMoVen, Aerocav, Deprisa, o cualquier empresa de encomienda/flete, asigna:
+   - detected_vendor: nombre oficial exacto (ej: "TEALCA C.A.", "MRW C.A.", "Servicio Postal Zoom")
+   - suggested_category_code: "5.1" (Fletes / Encomiendas / Transporte)
+   - El monto del envío como detected_amount_usd o detected_amount_bs según la moneda mostrada.
+4. TICKETS TÉRMICOS SENIAT: NUNCA confundas el nombre de un artículo (ej: 'Carne', 'Filtro', 'Tornillos') con el nombre del proveedor. El proveedor siempre está en el membrete superior de la factura. Si hay RIF (ej: J-310071381), extráelo con precisión.
+5. IDENTIFICACIÓN DE MONTOS Y TASAS:
+   - Busca la línea de 'TOTAL', 'TOTAL A PAGAR', 'TOTAL BS', 'TOTAL GENERAL', 'TOTAL USD', 'MONTO', o el valor neto al pie del comprobante.
+   - Si en la factura SENIAT aparece una tasa (ej: 'Tasa de Cambio BCV: 848.55'), usa esa tasa para la conversión exacta.
+   - Si el monto está en Bolívares (Bs.), asígnalo a detected_amount_bs y calcula detected_amount_usd = detected_amount_bs / tasa.
+   - Si el monto está en Dólares ($), asígnalo a detected_amount_usd y calcula detected_amount_bs = detected_amount_usd * tasa.
+   - Si hay IVA (ej: 16%), extráelo en detected_tax_usd. Si es nota manual, vale o ticket exento, detected_tax_usd = 0.0 e is_tax_exempt = true.
 
 Estructura de respuesta JSON esperada:
 {{
-  "detected_vendor": "Nombre del proveedor o tipo de comprobante",
+  "detected_vendor": "Nombre comercial o razón social del proveedor/empresa",
   "detected_rif": "RIF si está visible o null",
   "detected_amount_bs": 0.0,
   "detected_amount_usd": 0.0,
@@ -96,10 +104,11 @@ Estructura de respuesta JSON esperada:
   "is_tax_exempt": false,
   "suggested_category_code": "10.0",
   "fuel_liters": null,
-  "raw_summary": "Resumen de los artículos o conceptos leídos"
+  "raw_summary": "Resumen detallado de los artículos, conceptos e importes leídos"
 }}
-Partidas Dalor: 1.1 Materiales, 1.2 Consumibles, 2.1 Equipos, 3.1 Combustible, 4.1 Mantenimiento, 5.1 Fletes, 10.0 Honorarios/General, 15.0 Hospedaje, 16.0 Viáticos/Alimentos, 17.0 Ferretería, 19.0 Combustible, 20.0 Peajes.
-Responde ÚNICAMENTE con el bloque JSON válido."""
+Partidas Dalor: 1.1 Materiales construcción/eléctrica, 1.2 Consumibles, 2.1 Equipos, 3.1 Combustible, 4.1 Mantenimiento, 5.1 Fletes/Encomiendas/Transporte, 10.0 Honorarios/General, 15.0 Hospedaje, 16.0 Viáticos/Alimentos, 17.0 Ferretería/Herramientas, 19.0 Combustible/Gasoil, 20.0 Peajes/Vialidad.
+Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
+
 
             payload = {
                 "contents": [{
@@ -119,14 +128,19 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
                 }
             }
 
+            # Modelos ordenados por disponibilidad y costo (más estables primero)
             candidate_models = [
+                "models/gemini-3.5-flash",
                 "models/gemini-3.5-flash-lite",
-                "models/gemini-3.6-flash",
+                "models/gemini-3.8-flash",
                 "models/gemini-3.7-flash",
+                "models/gemini-3.1-flash-lite",
+                "models/gemini-3.6-flash",
                 "models/gemini-flash-latest"
             ]
             text_resp = None
-            for model_name in candidate_models:
+            import time as _time
+            for attempt_idx, model_name in enumerate(candidate_models):
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
                     req = urllib.request.Request(
@@ -134,7 +148,7 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
                         data=json.dumps(payload).encode("utf-8"),
                         headers={"Content-Type": "application/json"}
                     )
-                    with urllib.request.urlopen(req, timeout=20) as res:
+                    with urllib.request.urlopen(req, timeout=30) as res:
                         resp_data = json.loads(res.read().decode("utf-8"))
                         candidates = resp_data.get("candidates", [])
                         if candidates and "content" in candidates[0]:
@@ -143,8 +157,16 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
                                 text_resp = parts[0]["text"].strip()
                                 if text_resp:
                                     break
-                except Exception:
+                except urllib.error.HTTPError as m_err:
+                    err_code = m_err.code
+                    print(f"Gemini model {model_name} error: HTTP {err_code}")
+                    if err_code in (429, 503) and attempt_idx < len(candidate_models) - 1:
+                        _time.sleep(1.5 + attempt_idx * 0.5)  # backoff exponencial suave
                     continue
+                except Exception as m_err:
+                    print(f"Gemini model {model_name} error: {m_err}")
+                    continue
+
 
             if not text_resp:
                 return None
@@ -155,27 +177,41 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
                 text_resp = text_resp.split("```")[1].split("```")[0].strip()
 
             parsed_json = json.loads(text_resp)
-            amt_usd = float(parsed_json.get("detected_amount_usd") or 0.0)
-            amt_bs = float(parsed_json.get("detected_amount_bs") or 0.0)
+            
+            def to_clean_float(val):
+                if val is None:
+                    return 0.0
+                if isinstance(val, (int, float)):
+                    return float(val)
+                return OCRReceiptParser._clean_number_str(str(val))
+
+            amt_usd = to_clean_float(parsed_json.get("detected_amount_usd"))
+            amt_bs = to_clean_float(parsed_json.get("detected_amount_bs"))
 
             if amt_usd > 0 and amt_bs == 0:
                 amt_bs = round(amt_usd * default_rate, 2)
             elif amt_bs > 0 and amt_usd == 0:
                 amt_usd = round(amt_bs / default_rate, 2)
 
-            base_usd = float(parsed_json.get("detected_base_usd") or (amt_usd * 0.862 if amt_usd > 0 else 0.0))
-            tax_usd = float(parsed_json.get("detected_tax_usd") or (amt_usd - base_usd if amt_usd > base_usd else 0.0))
+            base_usd = to_clean_float(parsed_json.get("detected_base_usd"))
+            if base_usd == 0 and amt_usd > 0:
+                base_usd = round(amt_usd * 0.862, 2)
+            tax_usd = to_clean_float(parsed_json.get("detected_tax_usd"))
+            if tax_usd == 0 and amt_usd > base_usd:
+                tax_usd = round(amt_usd - base_usd, 2)
 
             return {
                 "detected_vendor": parsed_json.get("detected_vendor") or "Comercio General",
+                "detected_rif": parsed_json.get("detected_rif"),
                 "detected_amount_bs": round(amt_bs, 2),
                 "detected_amount_usd": round(amt_usd, 2),
                 "detected_base_usd": round(base_usd, 2),
                 "detected_tax_usd": round(tax_usd, 2),
+                "is_tax_exempt": bool(parsed_json.get("is_tax_exempt") or tax_usd <= 0.01),
                 "suggested_category_code": str(parsed_json.get("suggested_category_code") or "10.0"),
                 "suggested_category_id": None,
-                "fuel_liters": float(parsed_json.get("fuel_liters")) if parsed_json.get("fuel_liters") is not None else None,
-                "raw_text": f"GEMINI 3.6 FLASH IA: {parsed_json.get('raw_summary', '')}\nProveedor: {parsed_json.get('detected_vendor', '')}\nTotal: ${amt_usd:.2f} USD ({amt_bs:,.2f} Bs)"
+                "fuel_liters": to_clean_float(parsed_json.get("fuel_liters")) if parsed_json.get("fuel_liters") is not None else None,
+                "raw_text": f"GEMINI VISION IA: {parsed_json.get('raw_summary', '')}\nProveedor: {parsed_json.get('detected_vendor', '')}\nTotal: ${amt_usd:.2f} USD ({amt_bs:,.2f} Bs)"
             }
         except Exception as e:
             print("Error ejecutando Gemini Vision REST:", e)
@@ -404,6 +440,26 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
             suggested_category_code = "20.0"
             if detected_vendor == "Comercio / Proveedor General":
                 detected_vendor = "Peaje / Vialidad"
+        # ENCOMIENDAS / TRANSPORTE VENEZOLANO - detectado antes de categoría general
+        elif any(w in single_upper for w in ["TEALCA", "TRANSPORTE ESPECIAL ALVAREZ", "MRW ", " MRW", "ZOOM COURIER", "DOMESA", "MOTOCARGA", "COMOVEN", "AEROCAV", "DEPRISA", "ENCOMIENDA", "MENSAJERIA", "SERVICIO POSTAL"]):
+            suggested_category_code = "5.1"
+            # Identificar la empresa exacta
+            if "TEALCA" in single_upper or "TRANSPORTE ESPECIAL ALVAREZ" in single_upper:
+                detected_vendor = "TEALCA C.A."
+            elif "MRW" in single_upper:
+                detected_vendor = "MRW C.A."
+            elif "ZOOM" in single_upper:
+                detected_vendor = "Zoom Courier C.A."
+            elif "DOMESA" in single_upper:
+                detected_vendor = "Domesa C.A."
+            elif "MOTOCARGA" in single_upper:
+                detected_vendor = "Motocarga C.A."
+            elif detected_vendor == "Comercio / Proveedor General":
+                detected_vendor = "Servicio de Encomienda / Mensajería"
+        elif any(w in single_upper for w in ["TRANSPORTE", "FLETE", "ACARREO", "CAMION", "MUDANZA"]):
+            suggested_category_code = "5.1"
+            if detected_vendor == "Comercio / Proveedor General":
+                detected_vendor = "Transporte / Flete"
 
         # ----------------------------------------------------
         # 2. Extracción de Litros (Combustible)
@@ -513,7 +569,7 @@ Responde ÚNICAMENTE con el bloque JSON válido."""
         Extrae la lectura del odómetro (kilometraje total) desde una fotografía del tablero
         del vehículo mediante Visión Multimodal por IA (Gemini) o OCR local con filtros numéricos.
         """
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or getattr(settings, "GEMINI_API_KEY", None)
+        api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GOOGLE_API_KEY")
 
         # 1. Intentar con Gemini Vision
         if api_key:
@@ -574,9 +630,10 @@ Responde ÚNICAMENTE con este JSON válido:
                 }
 
                 candidate_models = [
+                    "models/gemini-3.1-flash-lite",
                     "models/gemini-3.5-flash-lite",
+                    "models/gemini-3.8-flash",
                     "models/gemini-3.6-flash",
-                    "models/gemini-3.7-flash",
                     "models/gemini-flash-latest"
                 ]
                 for model_name in candidate_models:

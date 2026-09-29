@@ -1571,8 +1571,8 @@
             .main-content,
             #app-login-screen,
             #app-viewport,
-            .modal-overlay:not(#modalPrintPreview),
-            .modal:not(#modalPrintPreview),
+            .modal-overlay:not(#modalPrintPreview):not(#modalWithholdingVoucher),
+            .modal:not(#modalPrintPreview):not(#modalWithholdingVoucher),
             .no-print,
             #btnFloatingLogout,
             .btn-floating-logout {
@@ -1594,7 +1594,8 @@
                 overflow: visible !important;
             }
 
-            #modalPrintPreview {
+            #modalPrintPreview,
+            #modalWithholdingVoucher {
                 display: block !important;
                 position: static !important;
                 left: auto !important;
@@ -1609,7 +1610,8 @@
                 overflow: visible !important;
             }
 
-            #modalPrintPreview .modal-content {
+            #modalPrintPreview .modal-content,
+            #modalWithholdingVoucher .modal-content {
                 display: block !important;
                 box-shadow: none !important;
                 border: none !important;

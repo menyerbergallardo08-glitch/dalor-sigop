@@ -1,4 +1,4 @@
-<section id="view-quotations" class="hidden">
+        <section id="view-quotations" class="hidden">
 
             <div class="banner-dalor">
 
@@ -23,13 +23,41 @@
 
 
             <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin: 0;">Cotizaciones & Presupuestos Emitidos</h3>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button onclick="loadQuotations()" class="btn-secondary" style="font-size: 11.5px; padding: 6px 12px;"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
+                    </div>
+                </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-
-                    <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">Cotizaciones Emitidas</h3>
-
-                    <button onclick="loadQuotations()" class="btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Actualizar</button>
-
+                <!-- Barra de Filtros Inteligentes -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                    <div style="flex: 2; min-width: 220px;">
+                        <label style="font-size: 10.5px; font-weight: 700; color: #64748b; display: block; margin-bottom: 3px;">🔍 Búsqueda Inteligente (Escribe para filtrar):</label>
+                        <input type="text" id="quoteSearchInput" placeholder="Nº cotización, cliente o título de obra..." class="form-input" style="font-size: 12px; padding: 6px 10px; width: 100%;" oninput="onQuotationSearchInput(this.value)">
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="font-size: 10.5px; font-weight: 700; color: #64748b; display: block; margin-bottom: 3px;">Estado:</label>
+                        <select id="quoteStatusFilter" class="form-select" style="font-size: 12px; padding: 6px;" onchange="onQuotationStatusFilterChange(this.value)">
+                            <option value="">-- Todos los estados --</option>
+                            <option value="borrador">Borrador / Pendiente</option>
+                            <option value="aprobado">Aprobado (Convertido)</option>
+                            <option value="rechazado">Rechazado</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: flex-end; flex: 1.5; min-width: 240px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 10.5px; font-weight: 700; color: #64748b; display: block; margin-bottom: 3px;">Desde:</label>
+                            <input type="date" id="quoteFilterDateFrom" class="form-input" style="font-size: 11.5px; padding: 5px 8px; width: 100%;" onchange="onQuotationDateFilterChange()">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 10.5px; font-weight: 700; color: #64748b; display: block; margin-bottom: 3px;">Hasta:</label>
+                            <input type="date" id="quoteFilterDateTo" class="form-input" style="font-size: 11.5px; padding: 5px 8px; width: 100%;" onchange="onQuotationDateFilterChange()">
+                        </div>
+                        <button type="button" onclick="clearQuotationFilters()" class="btn-secondary" style="font-size: 11px; padding: 6px 8px; height: 32px;" title="Limpiar Filtros">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-wrapper">
@@ -65,15 +93,8 @@
                     </table>
 
                 </div>
+                <div id="quotationsPaginationContainer"></div>
 
             </div>
 
         </section>
-
-
-
-        <!-- ====================================================================
-
-             5. VISTA: CATÁLOGO DE SERVICIOS (APU)
-
-             ==================================================================== -->

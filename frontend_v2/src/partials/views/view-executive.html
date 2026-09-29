@@ -1,403 +1,423 @@
 <section id="view-executive" class="hidden">
+    <div style="background: #f8fafc; color: #0f172a; border-radius: 14px; padding: 22px; font-family: 'Inter', system-ui, -apple-system, sans-serif; box-shadow: 0 4px 20px rgba(15,23,42,0.08); border: 1px solid #e2e8f0; min-height: 85vh;">
+        
+        <!-- HEADER EJECUTIVO CORPORATIVO CLARO -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 18px; flex-wrap: wrap; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 100%); width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: white; box-shadow: 0 4px 12px rgba(29,78,216,0.3);">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <div>
+                    <h2 style="font-size: 20px; font-weight: 900; letter-spacing: -0.3px; color: #0f172a; margin: 0;">
+                        DALOR SIGOP <span style="font-weight: 500; color: #2563eb; font-size: 16px;">| Business Intelligence & Analítica de Operaciones</span>
+                    </h2>
+                    <p style="font-size: 12px; color: #64748b; margin: 3px 0 0 0;">
+                        Monitoreo Georreferenciado en Venezuela & Control Financiero 100% Real
+                    </p>
+                </div>
+            </div>
 
-            <div class="bi-container">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <button onclick="loadExecutiveDashboard()" class="btn-primary" style="padding: 8px 16px; font-size: 12px; background: #2563eb; border: none; color: white; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(37,99,235,0.3); transition: all 0.2s;">
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar Métricas
+                </button>
+            </div>
+        </div>
 
+        <!-- FILTROS SLICERS POWERBI CLAROS -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="fa-solid fa-map-location-dot" style="color: #2563eb;"></i> Filtrar por Región:
+                </span>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;" id="biRegionSlicers">
+                    <button type="button" class="bi-filter-pill-light active" onclick="filterBIExtended('region', 'all', this)">Todo el Territorio</button>
+                    <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'carabobo', this)">Carabobo (Centro)</button>
+                    <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'miranda', this)">Miranda / Caracas</button>
+                    <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'aragua', this)">Aragua</button>
+                    <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'oriente', this)">Oriente</button>
+                    <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'zulia_falcon', this)">Occidente</button>
+                    <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'bolivar', this)">Guayana / Sur</button>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Año:</span>
+                <select id="bi_slicer_year" class="bi-select-light" onchange="filterBIExtended('year', this.value)">
+                    <option value="all">Histórico General</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2025">2025</option>
+                </select>
+
+                <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-left: 6px;">Cliente:</span>
+                <select id="bi_slicer_client" class="bi-select-light" onchange="filterBIExtended('client', this.value)">
+                    <option value="all">Todos los Clientes</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- GRID SUPERIOR: KPIS DIRECTIVOS + MAPA DE VENEZUELA -->
+        <div style="display: grid; grid-template-columns: 360px 1fr; gap: 16px; margin-bottom: 18px;" class="bi-top-layout">
+            
+            <!-- COLUMNA IZQUIERDA: KPIS DE INGRESOS & EFICIENCIA -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
                 
-
-                <!-- Cabecera Ribbon Oscura PowerBI con Filtros Slicers -->
-
-                <div class="bi-ribbon">
-
-                    <div style="display: flex; align-items: center; gap: 12px;">
-
-                        <div style="background: var(--dalor-blue); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white;">
-
-                            <i class="fa-solid fa-chart-pie"></i>
-
-                        </div>
-
-                        <div>
-
-                            <h2 style="font-size: 16px; font-weight: 900; letter-spacing: 0.5px;">Dashboard Gerencial | Inteligencia Financiera & Obras</h2>
-
-                            <p style="font-size: 11px; color: #94a3b8;">Métricas analíticas consolidadas, rentabilidad real y desgloses en tiempo real</p>
-
-                        </div>
-
+                <!-- Tarjeta Principal Total Cobrado Real -->
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(15,23,42,0.05); position: relative; overflow: hidden;">
+                    <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-circle-check" style="color: #059669;"></i> Total Cobrado Efectivo (Ingresos Reales)
+                    </span>
+                    <h1 id="biTotalIngresosHeader" style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 8px 0 4px 0; letter-spacing: -0.5px;">
+                        $0.00
+                    </h1>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 12px;">
+                        <span style="color: #64748b;">Facturación Total Emitida:</span>
+                        <b id="biTotalFacturadoSub" style="color: #2563eb; font-weight: 800;">$0.00</b>
                     </div>
-
-
-
-                    <!-- Filtros Slicers Superiores -->
-
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-
-                        <span style="font-size: 11px; font-weight: 700; color: #cbd5e1;"><i class="fa-solid fa-filter" style="color: var(--dalor-gold);"></i> Filtro:</span>
-
-                        <select id="bi_slicer_project" class="bi-slicer" onchange="filterBIDashboard()">
-
-                            <option value="all">Todas las Obras</option>
-
-                        </select>
-
-                        <select id="bi_slicer_client" class="bi-slicer" onchange="filterBIDashboard()">
-
-                            <option value="all">Todos los Clientes</option>
-
-                        </select>
-
-                        <button onclick="loadExecutiveDashboard()" class="btn-primary" style="padding: 6px 12px; font-size: 11px; background: var(--dalor-gold); color: var(--dalor-navy);">
-
-                            <i class="fa-solid fa-arrows-rotate"></i> Actualizar BI
-
-                        </button>
-
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 12px;">
+                        <span style="color: #64748b;">Efectividad de Cobranza:</span>
+                        <b id="biTasaCobranzaSub" style="color: #059669; font-weight: 800;">0.0%</b>
                     </div>
-
                 </div>
 
-
-
-                <!-- Alertas Directivas en Vivo -->
-
-                <div id="executiveAlertsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
-
-
-
-                <!-- 4 Tarjetas de Respuestas Claras Directivas (Caja Libre, Gastos Fijos, Ganancia de Obras, Retiros Socios) -->
-
-                <div class="bi-kpi-grid" id="biRadialKPIs">
-
-                    
-
-                    <!-- 1. Caja Libre Disponible -->
-
-                    <div class="bi-kpi-card" style="border-top: 4px solid #059669; padding: 16px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
-
-                        <div style="flex: 1;">
-
-                            <div style="display: flex; align-items: center; gap: 8px;">
-
-                                <i class="fa-solid fa-wallet" style="font-size: 24px; color: #059669;"></i>
-
-                                <div>
-
-                                    <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">1. Caja / Bancos</span>
-
-                                    <h3 id="bi_kpi_cashflow_val" style="font-size: 22px; font-weight: 900; color: #059669; margin: 2px 0 0 0;">$0.00</h3>
-
-                                </div>
-
-                            </div>
-
-                            <p style="font-size: 11px; color: #10b981; font-weight: 700; margin-top: 6px;">Liquidez Libre en Cuentas</p>
-
-                        </div>
-
-                        <div class="bi-kpi-radial" style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
-
-                            <canvas id="radialChartCash" width="64" height="64"></canvas>
-
-                        </div>
-
+                <!-- Mini KPIs Resumen -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                        <span style="font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Margen Operativo</span>
+                        <h3 id="biMargenPromedio" style="font-size: 20px; font-weight: 900; color: #059669; margin: 4px 0 0 0;">0.0%</h3>
+                        <span style="font-size: 10px; color: #94a3b8;">Utilidad / Costos</span>
                     </div>
-
-
-
-                    <!-- 2. Tanque de Gastos Fijos de Sede (Punto de Equilibrio) -->
-
-                    <div class="bi-kpi-card" style="border-top: 4px solid #0284c7; padding: 16px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
-
-                        <div style="flex: 1;">
-
-                            <div style="display: flex; align-items: center; gap: 8px;">
-
-                                <i class="fa-solid fa-building-circle-check" style="font-size: 24px; color: #0284c7;"></i>
-
-                                <div>
-
-                                    <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">2. Gastos Fijos</span>
-
-                                    <h3 id="bi_kpi_overhead_pct" style="font-size: 22px; font-weight: 900; color: #0284c7; margin: 2px 0 0 0;">0%</h3>
-
-                                </div>
-
-                            </div>
-
-                            <p style="font-size: 11px; color: #64748b; font-weight: 700; margin-top: 6px;">Pto. Equilibrio: <span id="bi_kpi_overhead_target" style="color: #0284c7;">$5,000/mes</span></p>
-
-                        </div>
-
-                        <div class="bi-kpi-radial" style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
-
-                            <canvas id="radialChartOverhead" width="64" height="64"></canvas>
-
-                        </div>
-
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                        <span style="font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Obras Activas</span>
+                        <h3 id="biObrasActivasCount" style="font-size: 20px; font-weight: 900; color: #2563eb; margin: 4px 0 0 0;">0</h3>
+                        <span style="font-size: 10px; color: #94a3b8;">En Ejecución</span>
                     </div>
-
-
-
-                    <!-- 3. Ganancia Real de Obras -->
-
-                    <div class="bi-kpi-card" style="border-top: 4px solid var(--dalor-navy); padding: 16px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
-
-                        <div style="flex: 1;">
-
-                            <div style="display: flex; align-items: center; gap: 8px;">
-
-                                <i class="fa-solid fa-sack-dollar" style="font-size: 24px; color: var(--dalor-navy);"></i>
-
-                                <div>
-
-                                    <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">3. Ganancia Obras</span>
-
-                                    <h3 id="bi_kpi_profit_val" style="font-size: 22px; font-weight: 900; color: var(--dalor-navy); margin: 2px 0 0 0;">$0.00</h3>
-
-                                </div>
-
-                            </div>
-
-                            <p style="font-size: 11px; color: #0284c7; font-weight: 700; margin-top: 6px;">Margen Neto: <span id="bi_kpi_margin_pct" style="color: var(--dalor-navy); font-weight: 900;">0%</span></p>
-
-                        </div>
-
-                        <div class="bi-kpi-radial" style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
-
-                            <canvas id="radialChartMargin" width="64" height="64"></canvas>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- 4. Bolsa de Retiros de Socios -->
-
-                    <div class="bi-kpi-card" style="border-top: 4px solid #7c3aed; padding: 16px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
-
-                        <div style="flex: 1;">
-
-                            <div style="display: flex; align-items: center; gap: 8px;">
-
-                                <i class="fa-solid fa-user-tie" style="font-size: 24px; color: #7c3aed;"></i>
-
-                                <div>
-
-                                    <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">4. Retiros Socios</span>
-
-                                    <h3 id="bi_kpi_partners_val" style="font-size: 22px; font-weight: 900; color: #7c3aed; margin: 2px 0 0 0;">$0.00</h3>
-
-                                </div>
-
-                            </div>
-
-                            <p style="font-size: 11px; color: #a78bfa; font-weight: 700; margin-top: 6px;">A cuenta de ganancias</p>
-
-                        </div>
-
-                        <div class="bi-kpi-radial" style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
-
-                            <canvas id="radialChartPartners" width="64" height="64"></canvas>
-
-                        </div>
-
-                    </div>
-
-
-
                 </div>
 
-
-
-                <!-- Grilla Central: Sidebar de Tarjetas Sólidas + Gráficos Analíticos -->
-
-                <div class="bi-main-grid">
-
-                    
-
-                    <!-- Sidebar Izquierdo de Tarjetas Sólidas (Estilo Referencia) -->
-
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-
-                        <div class="bi-metric-pill" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
-
-                            <div>
-
-                                <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #bae6fd;">Cartera CxC en la Calle</span>
-
-                                <h4 id="bi_side_cxc_val" style="font-size: 19px; font-weight: 900; margin-top: 2px;">$0.00</h4>
-
-                                <span style="font-size: 10px; color: #e0f2fe;">Facturas por cobrar</span>
-
-                            </div>
-
-                            <i class="fa-solid fa-hand-holding-dollar" style="font-size: 28px; color: #bae6fd;"></i>
-
-                        </div>
-
-
-
-                        <div class="bi-metric-pill" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
-
-                            <div>
-
-                                <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #cbd5e1;">Deuda CxP a Proveedores</span>
-
-                                <h4 id="bi_side_cxp_val" style="font-size: 19px; font-weight: 900; margin-top: 2px;">$0.00</h4>
-
-                                <span style="font-size: 10px; color: #94a3b8;">Compromisos pendientes</span>
-
-                            </div>
-
-                            <i class="fa-solid fa-file-invoice" style="font-size: 28px; color: #94a3b8;"></i>
-
-                        </div>
-
-
-
-                        <div class="bi-metric-pill" style="background: linear-gradient(135deg, #ff4b72 0%, #e11d48 100%);">
-
-                            <div>
-
-                                <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #ffe4e6;">Alertas de Sobrecosto/Mora</span>
-
-                                <h4 id="bi_side_alerts_count" style="font-size: 19px; font-weight: 900; margin-top: 2px;">0</h4>
-
-                                <span style="font-size: 10px; color: #fff1f2;">Requieren atención</span>
-
-                            </div>
-
-                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 28px; color: #ffe4e6;"></i>
-
-                        </div>
-
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                        <span style="font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Cartera en Calle (CxC)</span>
+                        <h3 id="biCarteraCalle" style="font-size: 17px; font-weight: 900; color: #d97706; margin: 4px 0 0 0;">$0.00</h3>
+                        <span style="font-size: 10px; color: #94a3b8;">Por cobrar</span>
                     </div>
-
-
-
-                    <!-- Gráfico 1: Ranking de Gastos por Partida (Barras Horizontales) -->
-
-                    <div class="bi-chart-card">
-
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-
-                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy);">
-
-                                <i class="fa-solid fa-chart-bar" style="color: var(--dalor-blue);"></i> Costos por Partida / Rubro
-
-                            </h4>
-
-                            <span style="font-size: 10px; color: #64748b; font-weight: 700;">Top de Egresos</span>
-
-                        </div>
-
-                        <div style="height: 180px; position: relative;">
-
-                            <canvas id="chartRankingExpenses"></canvas>
-
-                        </div>
-
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                        <span style="font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Costos Operativos</span>
+                        <h3 id="biPasivoProveedores" style="font-size: 17px; font-weight: 900; color: #e11d48; margin: 4px 0 0 0;">$0.00</h3>
+                        <span style="font-size: 10px; color: #94a3b8;">Gastos + Pagos CxP</span>
                     </div>
-
-
-
-                    <!-- Gráfico 2: Desglose de Distribución de Costos (Dona Multi-Anillo) -->
-
-                    <div class="bi-chart-card">
-
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-
-                            <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy);">
-
-                                <i class="fa-solid fa-chart-pie" style="color: #ff4b72;"></i> Distribución del Presupuesto
-
-                            </h4>
-
-                            <span style="font-size: 10px; color: #64748b; font-weight: 700;">Mano Obra vs Insumos</span>
-
-                        </div>
-
-                        <div style="height: 180px; position: relative;">
-
-                            <canvas id="chartDonutCostDistribution"></canvas>
-
-                        </div>
-
-                    </div>
-
-
-
                 </div>
-
-
-
-                <!-- Tabla Estado de Resultados por Proyecto (P&L en Vivo) -->
-
-                <div class="bi-chart-card">
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-
-                        <h4 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-
-                            <i class="fa-solid fa-table-list" style="color: #059669;"></i> Estado de Resultados en Vivo por Proyecto (P&L)
-
-                        </h4>
-
-                        <span style="font-size: 11px; color: #64748b; font-weight: 600;">Ingresos Reales vs. Costos Totales = Margen Neto</span>
-
-                    </div>
-
-                    <div class="table-wrapper">
-
-                        <table>
-
-                            <thead>
-
-                                <tr>
-
-                                    <th>Código</th>
-
-                                    <th>Proyecto / Obra</th>
-
-                                    <th>Cliente</th>
-
-                                    <th>Contrato ($)</th>
-
-                                    <th>Facturado CxC ($)</th>
-
-                                    <th>Cobrado ($)</th>
-
-                                    <th>Costos Totales ($)</th>
-
-                                    <th>Utilidad Neta ($)</th>
-
-                                    <th>Margen (%)</th>
-
-                                    <th style="text-align: center;">Eficiencia CPI</th>
-
-                                </tr>
-
-                            </thead>
-
-                            <tbody id="executivePnlTableBody"></tbody>
-
-                        </table>
-
-                    </div>
-
-                </div>
-
-
 
             </div>
 
-        </section>
+            <!-- COLUMNA DERECHA: MAPA INTERACTIVO DE VENEZUELA CLARO & CÓMODO -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(15,23,42,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; z-index: 2;">
+                    <div>
+                        <h4 style="font-size: 13.5px; font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-satellite" style="color: #2563eb;"></i> Presencia Geográfica de Operaciones & Obras
+                        </h4>
+                        <span style="font-size: 11px; color: #64748b;">Nodos georreferenciados activos según proyectos registrados en DALOR SIGO-P</span>
+                    </div>
+                    <span id="biMapSelectedBadge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; letter-spacing: 0.3px;">
+                        Todo el Territorio
+                    </span>
+                </div>
 
+                <!-- CONTENEDOR DEL MAPA VECTORIAL SVG CLARO -->
+                <div style="position: relative; width: 100%; height: 280px; display: flex; align-items: center; justify-content: center; z-index: 1;" id="venezuelaMapContainer">
+                    <svg viewBox="0 0 820 480" style="width: 100%; height: 100%; max-height: 280px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.08));" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="vzlaFillLight" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#e2e8f0" />
+                                <stop offset="100%" stop-color="#cbd5e1" />
+                            </linearGradient>
+                            <linearGradient id="pinGradActive" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#38bdf8" />
+                                <stop offset="100%" stop-color="#0284c7" />
+                            </linearGradient>
+                            <pattern id="lightTechGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+                                <circle cx="2" cy="2" r="1" fill="#cbd5e1" opacity="0.6" />
+                            </pattern>
+                        </defs>
 
+                        <!-- Fondo retícula sutil -->
+                        <rect x="0" y="0" width="820" height="480" fill="url(#lightTechGrid)" opacity="0.4" />
 
-        <!-- ====================================================================
+                        <!-- Trazado Oficial de Venezuela en paleta ejecutiva clara -->
+                        <path d="M 175,110 L 210,95 L 255,85 L 290,65 L 305,45 L 320,50 L 325,75 L 350,90 L 395,95 L 435,92 L 465,102 L 505,105 L 545,100 L 590,95 L 635,110 L 665,135 L 700,165 L 710,195 L 685,220 L 660,240 L 640,285 L 620,330 L 590,380 L 545,430 L 500,455 L 450,445 L 430,420 L 415,380 L 400,340 L 370,300 L 340,270 L 300,250 L 250,240 L 220,230 L 190,210 L 170,185 L 160,150 Z" 
+                              fill="url(#vzlaFillLight)" stroke="#94a3b8" stroke-width="2" stroke-linejoin="round" />
 
-             2. VISTA: MÓDULO DE MANTENIMIENTO & USUARIOS (TIPO PROFIT PLUS)
+                        <!-- Líneas Internas de Regiones Principales -->
+                        <!-- Zulia / Lago de Maracaibo -->
+                        <path d="M 195,120 Q 215,165 210,190 Q 185,170 195,120" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2" />
+                        <!-- Región Central (Carabobo / Aragua / Miranda) -->
+                        <path d="M 370,105 L 390,175 L 450,170 L 440,100 Z" fill="rgba(37, 99, 235, 0.08)" stroke="#60a5fa" stroke-width="1" stroke-dasharray="3,3" />
+                        <!-- Región Guayana / Bolívar -->
+                        <path d="M 450,240 L 660,240 L 590,380 L 450,340 Z" fill="rgba(148, 163, 184, 0.15)" stroke="#94a3b8" stroke-width="1" />
 
-             ==================================================================== -->
+                        <!-- ================= NODOS GEOGRÁFICOS REALES (DINÁMICOS) ================= -->
+                        
+                        <!-- 1. NODO CARABOBO (VALENCIA / GUACARA - SEDE DALOR) -->
+                        <g id="mapNodeCarabobo" class="map-node" onclick="filterBIExtended('region', 'carabobo')" style="cursor: pointer; display: none;">
+                            <circle cx="385" cy="140" r="16" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
+                            <circle cx="385" cy="140" r="7" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <rect x="330" y="95" width="112" height="34" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
+                            <text x="386" y="108" fill="#1e3a8a" font-size="9" font-weight="900" text-anchor="middle">CARABOBO</text>
+                            <text x="386" y="122" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapCaraboboAmount">$0.00</text>
+                        </g>
+
+                        <!-- 2. NODO MIRANDA / CARACAS / GUARENAS -->
+                        <g id="mapNodeMiranda" class="map-node" onclick="filterBIExtended('region', 'miranda')" style="cursor: pointer; display: none;">
+                            <circle cx="440" cy="130" r="14" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
+                            <circle cx="440" cy="130" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <rect x="420" y="75" width="125" height="34" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
+                            <text x="482" y="88" fill="#1e3a8a" font-size="9" font-weight="900" text-anchor="middle">MIRANDA / CCS</text>
+                            <text x="482" y="102" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapMirandaAmount">$0.00</text>
+                        </g>
+
+                        <!-- 3. NODO ARAGUA -->
+                        <g id="mapNodeAragua" class="map-node" onclick="filterBIExtended('region', 'aragua')" style="cursor: pointer; display: none;">
+                            <circle cx="410" cy="148" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
+                            <circle cx="410" cy="148" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <rect x="370" y="165" width="105" height="32" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
+                            <text x="422" y="177" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ARAGUA</text>
+                            <text x="422" y="190" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapAraguaAmount">$0.00</text>
+                        </g>
+
+                        <!-- 4. NODO ANZOÁTEGUI / ORIENTE -->
+                        <g id="mapNodeOriente" class="map-node" onclick="filterBIExtended('region', 'oriente')" style="cursor: pointer; display: none;">
+                            <circle cx="530" cy="165" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
+                            <circle cx="530" cy="165" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <rect x="520" y="185" width="105" height="32" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
+                            <text x="572" y="197" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ORIENTE</text>
+                            <text x="572" y="210" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapOrienteAmount">$0.00</text>
+                        </g>
+
+                        <!-- 5. NODO ZULIA / FALCÓN -->
+                        <g id="mapNodeZulia" class="map-node" onclick="filterBIExtended('region', 'zulia_falcon')" style="cursor: pointer; display: none;">
+                            <circle cx="215" cy="155" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
+                            <circle cx="215" cy="155" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <rect x="145" y="170" width="105" height="32" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
+                            <text x="197" y="182" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ZULIA / FALCÓN</text>
+                            <text x="197" y="195" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapOccidenteAmount">$0.00</text>
+                        </g>
+
+                        <!-- 6. NODO BOLÍVAR / SUR -->
+                        <g id="mapNodeBolivar" class="map-node" onclick="filterBIExtended('region', 'bolivar')" style="cursor: pointer; display: none;">
+                            <circle cx="585" cy="270" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
+                            <circle cx="585" cy="270" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <rect x="580" y="290" width="95" height="30" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
+                            <text x="627" y="302" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">BOLÍVAR</text>
+                            <text x="627" y="314" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapBolivarAmount">$0.00</text>
+                        </g>
+
+                        <!-- 7. NODO LARA / CENTRO-OCCIDENTE -->
+                        <g id="mapNodeCentroOccidente" class="map-node" onclick="filterBIExtended('region', 'centro_occidente')" style="cursor: pointer; display: none;">
+                            <circle cx="310" cy="155" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
+                            <circle cx="310" cy="155" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <rect x="255" y="120" width="105" height="32" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
+                            <text x="307" y="132" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">LARA / CO</text>
+                            <text x="307" y="145" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapCentroOccAmount">$0.00</text>
+                        </g>
+                    </svg>
+
+                    <!-- Overlay si no hay obras activas en territorio -->
+                    <div id="biEmptyMapOverlay" style="display: none; position: absolute; background: rgba(255,255,255,0.85); backdrop-filter: blur(2px); border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px 18px; font-size: 12px; font-weight: 700; color: #64748b;">
+                        <i class="fa-solid fa-location-dot" style="color: #94a3b8; margin-right: 6px;"></i> Sin obras activas registradas en territorio
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: auto; font-size: 11.5px; color: #64748b;">
+                    <span><i class="fa-solid fa-circle-info" style="color: #2563eb;"></i> Haz clic sobre un nodo activo para filtrar las operaciones de esa región.</span>
+                    <button type="button" onclick="filterBIExtended('region', 'all')" style="background: none; border: none; color: #2563eb; font-weight: 800; cursor: pointer;">
+                        Ver Todo el País
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FILA MEDIA: GRÁFICO INGRESOS POR MES + LÍNEAS DE SERVICIO REALES -->
+        <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-bottom: 18px;" class="bi-mid-layout">
+            
+            <!-- Gráfico 1: Total Ingresos por Mes Real -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div>
+                        <h4 style="font-size: 13.5px; font-weight: 800; color: #0f172a; margin: 0;">
+                            <i class="fa-solid fa-chart-column" style="color: #2563eb;"></i> Facturación vs Cobranza Real por Mes
+                        </h4>
+                        <span style="font-size: 11px; color: #64748b;">Evolución histórica consolidada de cuentas por cobrar</span>
+                    </div>
+                    <span id="biMonthKpiTotal" style="font-size: 13px; font-weight: 900; color: #059669;">$0.00</span>
+                </div>
+                <div style="height: 210px; position: relative;">
+                    <canvas id="chartBiMonthlyRevenue"></canvas>
+                    <div id="chartBiMonthlyEmpty" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; font-weight: 600;">
+                        No hay registros mensuales para el filtro seleccionado.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico 2: Ingresos por Línea de Servicio Real -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div>
+                        <h4 style="font-size: 13.5px; font-weight: 800; color: #0f172a; margin: 0;">
+                            <i class="fa-solid fa-shapes" style="color: #2563eb;"></i> Ingresos por Línea de Especialidad
+                        </h4>
+                        <span style="font-size: 11px; color: #64748b;">Participación calculada según alcance de obras</span>
+                    </div>
+                </div>
+                <div style="height: 210px; position: relative;">
+                    <canvas id="chartBiServiceLine"></canvas>
+                    <div id="chartBiServiceEmpty" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; font-weight: 600;">
+                        Sin líneas de servicio registradas.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FILA INFERIOR: 3 DONUTS EJECUTIVOS CON DATOS REALES -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 18px;" class="bi-bottom-donuts">
+            
+            <!-- Dona 1: Top Clientes Real -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="margin-bottom: 10px; text-align: center;">
+                    <h4 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0;">
+                        Top Clientes por Facturación
+                    </h4>
+                    <p style="font-size: 10.5px; color: #64748b; margin: 2px 0 0 0;">Participación en volumen de ventas</p>
+                </div>
+                <div style="height: 190px; position: relative;">
+                    <canvas id="chartBiDonutClients"></canvas>
+                    <div id="chartBiClientsEmpty" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; font-weight: 600;">
+                        Sin clientes facturados.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dona 2: Distribución por Estado de Obras Real -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="margin-bottom: 10px; text-align: center;">
+                    <h4 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0;">
+                        Estatus Real de Proyectos
+                    </h4>
+                    <p style="font-size: 10.5px; color: #64748b; margin: 2px 0 0 0;">En Ejecución vs Culminados</p>
+                </div>
+                <div style="height: 190px; position: relative;">
+                    <canvas id="chartBiDonutProjectsStatus"></canvas>
+                    <div id="chartBiStatusEmpty" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; font-weight: 600;">
+                        Sin proyectos en base de datos.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dona 3: Métodos de Pago Reales -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="margin-bottom: 10px; text-align: center;">
+                    <h4 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0;">
+                        Canales de Cobranza Utilizados
+                    </h4>
+                    <p style="font-size: 10.5px; color: #64748b; margin: 2px 0 0 0;">Transferencias, Divisas & Zelle</p>
+                </div>
+                <div style="height: 190px; position: relative;">
+                    <canvas id="chartBiDonutPaymentMethods"></canvas>
+                    <div id="chartBiMethodsEmpty" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; font-weight: 600;">
+                        Sin cobros registrados.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ACORDEÓN DIRECTIVO: ESTADO DE RESULTADOS POR PROYECTO (P&L AUDITABLE) -->
+        <details style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);" open>
+            <summary style="font-size: 13.5px; font-weight: 800; color: #0f172a; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                <span><i class="fa-solid fa-table-list" style="color: #2563eb;"></i> Estado de Resultados por Proyecto (P&L en Vivo)</span>
+                <span style="font-size: 11px; color: #2563eb; font-weight: 700;">P&L Auditable <i class="fa-solid fa-chevron-down"></i></span>
+            </summary>
+            
+            <div style="margin-top: 14px;">
+                <div class="table-wrapper" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="border-bottom: 1.5px solid #cbd5e1; background: #f8fafc; color: #475569; text-align: left;">
+                                <th style="padding: 10px 8px; font-weight: 800;">Código</th>
+                                <th style="padding: 10px 8px; font-weight: 800;">Proyecto / Obra</th>
+                                <th style="padding: 10px 8px; font-weight: 800;">Cliente</th>
+                                <th style="padding: 10px 8px; font-weight: 800;">Ubicación</th>
+                                <th style="padding: 10px 8px; font-weight: 800; text-align: right;">Facturado ($)</th>
+                                <th style="padding: 10px 8px; font-weight: 800; text-align: right;">Cobrado ($)</th>
+                                <th style="padding: 10px 8px; font-weight: 800; text-align: right;">Costos ($)</th>
+                                <th style="padding: 10px 8px; font-weight: 800; text-align: right;">Utilidad ($)</th>
+                                <th style="padding: 10px 8px; font-weight: 800; text-align: right;">Margen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="executivePnlTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="biPnlPaginationContainer" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b;"></div>
+            </div>
+        </details>
+
+    </div>
+</section>
+
+<!-- ESTILOS EXCLUSIVOS DEL DASHBOARD EJECUTIVO BI CLARO -->
+<style>
+.bi-filter-pill-light {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.bi-filter-pill-light:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+.bi-filter-pill-light.active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #1d4ed8 !important;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.35);
+}
+.bi-select-light {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    outline: none;
+    cursor: pointer;
+}
+.bi-select-light:focus {
+    border-color: #2563eb;
+}
+@keyframes pulse-ring-light {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.4); opacity: 0.25; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+}
+.pulse-ring {
+    animation: pulse-ring-light 2.5s infinite ease-in-out;
+    transform-origin: center;
+}
+.map-node:hover rect {
+    filter: drop-shadow(0 4px 8px rgba(37,99,235,0.3));
+}
+@media (max-width: 900px) {
+    .bi-top-layout { grid-template-columns: 1fr !important; }
+    .bi-mid-layout { grid-template-columns: 1fr !important; }
+    .bi-bottom-donuts { grid-template-columns: 1fr !important; }
+}
+</style>

@@ -1,0 +1,5 @@
+[OK] almacen (200 OK) -> Rol: almacenista
+[OK] ingeniero (200 OK) -> Rol: ingeniero_obra
+[OK] director (200 OK) -> Rol: director_general
+[OK] administracion (200 OK) -> Rol: administrador_financiero
+[OK] campo (200 OK) -> Rol: supervisor_campo

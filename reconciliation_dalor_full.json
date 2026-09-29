@@ -1,0 +1,68 @@
+{
+  "total_excel_files": 10,
+  "excel_breakdown": {
+    "Electrodos stoc .xlsx": {
+      "ELECTRODOS": {
+        "count": 15,
+        "sample": [
+          [
+            "CODIGO",
+            null,
+            "DESCRIPCCION",
+            "MARCA",
+            "KILOS",
+            "UBICACCION",
+            "OBSERVACCION"
+          ],
+          [
+            "1-S-1-01",
+            null,
+            "ELECTRODO E-6010",
+            "WEST-ARCO",
+            135,
+            "CORO",
+            null
+          ],
+          [
+            "1-S-1-02",
+            null,
+            "ELECTRODO E-6013",
+            "WEST-ARCO",
+            0,
+            "CORO",
+            null
+          ],
+          [
+            "1-S-1-03",
+            null,
+            "ELECTRODO E-7018 GRIS",
+            "WEST-ARCO",
+            39.2,
+            "CORO",
+            null
+          ],
+          [
+            "1-S-1-04",
+            null,
+            "ELECTRODO E-7018 ROJO",
+            "LICOLN ELCETRIC",
+            38,
+            null,
+            null
+          ]
+        ]
+      },
+      "CONSUMO ELEC.": {
+        "count": 5,
+        "sample": [
+          [
+            "FECHA",
+            "USO",
+            "KILOS",
+            "RESP.",
+            "OBSERVACCION",
+            null,
+            null
+          ],
+          [
+            

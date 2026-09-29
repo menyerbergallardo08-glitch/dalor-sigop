@@ -12,3 +12,14 @@ temp_ocr_preprocessed.png
 cloudflared.exe
 tunnel_url.txt
 backups/daily/
+*.db
+*.db-wal
+*.db-shm
+*.log
+node_modules/
+# dist/ is intentionally tracked so Render can serve the compiled frontend
+# frontend_v2/node_modules are excluded above
+scratch/
+*.png
+*.jpg
+*.jpeg

@@ -1,0 +1,1520 @@
+/**
+ * DALOR SIGO-P | Módulo: CORE.JS
+ * Extraído y desacoplado del monolito de producción (v94)
+ */
+
+// --- BLOQUE L1-L34 ---
+// Global Helper: roundNumber
+function roundNumber(num, decimals = 2) {
+    const factor = Math.pow(10, decimals);
+    return Math.round((Number(num) || 0) * factor) / factor;
+}
+window.roundNumber = roundNumber;
+
+
+// --------------------------------------------------------------------------
+// DALOR PARSER NUMERICO UNIVERSAL PARA MULTIMONEDA (USD / VES / EUR)
+// --------------------------------------------------------------------------
+function parseLocalizedNumber(val) {
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    if (!val) return 0;
+    let s = String(val).trim().replace(/[$Bs€\s]/g, '');
+    if (s.includes(',') && s.includes('.')) {
+        if (s.indexOf('.') < s.indexOf(',')) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+            s = s.replace(/,/g, '');
+        }
+    } else if (s.includes(',')) {
+        s = s.replace(',', '.');
+    }
+    const num = parseFloat(s);
+    return isNaN(num) ? 0 : num;
+}
+
+
+
+window.API_BASE = window.location.origin + "/api/v1";
+var API_BASE = window.API_BASE;
+
+
+
+
+
+// --- BLOQUE L323-L384 ---
+// ==============================================================================
+
+// 🛠️ FUNCIONES UNIVERSALES DE UTILIDAD & ORDENAMIENTO NUMÉRICO JERÁRQUICO
+
+function printElementHtml(elementOrHtml, docTitle = 'Documento DALOR') {
+    let iframe = document.getElementById('dalor_print_iframe');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'dalor_print_iframe';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+    }
+
+    let contentHtml = '';
+    if (typeof elementOrHtml === 'string') {
+        contentHtml = elementOrHtml;
+    } else if (elementOrHtml && elementOrHtml.nodeType) {
+        const clone = elementOrHtml.cloneNode(true);
+        clone.querySelectorAll('.no-print, button, input[type="button"]').forEach(el => el.remove());
+        contentHtml = clone.innerHTML;
+    }
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+            <head>
+                <meta charset="utf-8">
+                <title>${docTitle}</title>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                <link rel="stylesheet" href="/css/styles.css?v=2026.09.24.v98.35">
+                <style>
+                    :root {
+                        --dalor-navy: #002B49;
+                        --dalor-blue: #0072B8;
+                        --dalor-gold: #F5B800;
+                        --dalor-coral: #ff4b72;
+                        --dalor-cyan: #0284c7;
+                        --dalor-emerald: #059669;
+                        --dalor-purple: #7c3aed;
+                        --dalor-bg: #f1f5f9;
+                        --dalor-card-bg: #ffffff;
+                        --border-color: #cbd5e1;
+                    }
+                    * { box-sizing: border-box; }
+                    body {
+                        margin: 0;
+                        padding: 8mm 10mm;
+                        background: #ffffff;
+                        color: #0f172a;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                        font-size: 11px;
+                        line-height: 1.4;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    @page {
+                        size: letter portrait;
+                        margin: 8mm 10mm;
+                    }
+                    @media print {
+                        body { padding: 0; margin: 0; background: #fff !important; }
+                        .no-print { display: none !important; }
+                    }
+                    .no-print { display: none !important; }
+                </style>
+            </head>
+            <body>
+                ${contentHtml}
+            </body>
+        </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    }, 250);
+}
+
+function populateSelect(selectId, items, mapFn) {
+
+    const el = document.getElementById(selectId);
+
+    if (!el) return;
+
+    if (!Array.isArray(items)) {
+
+        el.innerHTML = '';
+
+        return;
+
+    }
+
+    el.innerHTML = items.map(mapFn).join('');
+
+}
+
+
+
+function sortCategoriesNumerically(cats) {
+
+    if (!Array.isArray(cats)) return [];
+
+    return [...cats].sort((a, b) => {
+
+        const partsA = String(a.code || "").split('.').map(n => parseInt(n, 10) || 0);
+
+        const partsB = String(b.code || "").split('.').map(n => parseInt(n, 10) || 0);
+
+        for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+
+            const valA = partsA[i] !== undefined ? partsA[i] : -1;
+
+            const valB = partsB[i] !== undefined ? partsB[i] : -1;
+
+            if (valA !== valB) return valA - valB;
+
+        }
+
+        return String(a.name || "").localeCompare(String(b.name || ""));
+
+    });
+
+}
+
+
+
+
+
+
+
+
+
+// --- BLOQUE L385-L496 ---
+// ==============================================================================
+
+// 💵 CÁLCULOS DE MONTO & CONDICIÓN FISCAL EN FORMULARIO DE CAMPO
+
+// ==============================================================================
+
+window.calcFieldBs = function() {
+
+    const usd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
+
+    const rate = parseFloat(document.getElementById("globalExchangeRateInput")?.value) || EXCHANGE_RATE;
+
+    const bsEl = document.getElementById("field_amount_bs");
+
+    if (bsEl && !isNaN(usd)) {
+
+        bsEl.value = (usd * rate).toFixed(2);
+
+    }
+
+    updateFieldTaxDisplays();
+
+};
+
+
+
+window.calcFieldUsd = function() {
+
+    const bs = parseFloat(document.getElementById("field_amount_bs")?.value) || 0;
+
+    const rate = parseFloat(document.getElementById("globalExchangeRateInput")?.value) || EXCHANGE_RATE;
+
+    const usdEl = document.getElementById("field_amount_usd");
+
+    if (usdEl && !isNaN(bs) && rate > 0) {
+
+        usdEl.value = (bs / rate).toFixed(2);
+
+    }
+
+    updateFieldTaxDisplays();
+
+};
+
+
+
+window.onFieldTaxConditionChanged = function() {
+
+    updateFieldTaxDisplays();
+
+};
+
+
+
+function updateFieldTaxDisplays() {
+
+    const usd = parseFloat(document.getElementById("field_amount_usd")?.value) || 0;
+
+    const isExempt = document.getElementById("field_is_tax_exempt")?.value === "true";
+
+    const base = isExempt ? usd : +(usd / 1.16).toFixed(2);
+
+    const tax = isExempt ? 0.0 : +(usd - base).toFixed(2);
+
+    const baseIn = document.getElementById("field_base_amount_usd");
+
+    const taxIn = document.getElementById("field_tax_amount_usd");
+
+    const baseDisp = document.getElementById("field_base_display");
+
+    const taxDisp = document.getElementById("field_tax_display");
+
+    if (baseIn) baseIn.value = base.toFixed(2);
+
+    if (taxIn) taxIn.value = tax.toFixed(2);
+
+    if (baseDisp) baseDisp.innerText = `$${base.toFixed(2)}`;
+
+    if (taxDisp) taxDisp.innerText = `$${tax.toFixed(2)}`;
+
+}
+
+
+
+window.onValTaxChanged = function() {
+
+    const usd = parseFloat(document.getElementById("val_amount_usd")?.value) || 0;
+
+    const isExempt = document.getElementById("val_is_tax_exempt")?.value === "true";
+
+    const base = isExempt ? usd : +(usd / 1.16).toFixed(2);
+
+    const tax = isExempt ? 0.0 : +(usd - base).toFixed(2);
+
+    const baseEl = document.getElementById("val_base_usd");
+
+    const taxEl = document.getElementById("val_tax_usd");
+
+    if (baseEl) baseEl.value = base.toFixed(2);
+
+    if (taxEl) taxEl.value = tax.toFixed(2);
+
+};
+
+
+
+window.APP_BUILD_VERSION = "2026.09.15.v93-clean-production";
+
+console.log("--> DALOR SIGO-P INITIALIZED v98.31 [MODERNO]");
+
+
+
+
+
+// --- BLOQUE L765-L917 ---
+// ==============================================================================
+
+// 🚀 VERSIONADO & PURGA AUTOMÁTICA DE CACHÉ CLIENTE
+
+// ==============================================================================
+
+window.APP_BUILD_VERSION = "2026.09.15.v93-clean-production";
+
+var APP_BUILD_VERSION = window.APP_BUILD_VERSION;
+
+// Registrar versión de build sin destruir sesión de usuario
+localStorage.setItem("dalor_build_version", APP_BUILD_VERSION);
+
+
+
+let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 850.0;
+
+
+
+var allClients = window.allClients = window.allClients || [];
+
+var allServices = window.allServices = window.allServices || [];
+
+var allProjects = window.allProjects = window.allProjects || [];
+
+var allCategories = window.allCategories = window.allCategories || [];
+
+var allAssets = window.allAssets = window.allAssets || [];
+
+var allPersonnel = window.allPersonnel = window.allPersonnel || [];
+
+var allMaterials = window.allMaterials = window.allMaterials || [];
+
+let quoteRowsCount = 0;
+
+let splitRowsCount = 0;
+
+let phaseRowsCount = 0;
+
+
+
+// Estado de Selección de Recursos en Planificación de Obra
+
+let selectedPersonnelIds = [];
+
+let selectedVehicleIds = [];
+
+let selectedToolIds = [];
+let selectedMaterialIds = [];
+
+
+
+let currentUser = window.currentUser || (() => {
+    try { return JSON.parse(localStorage.getItem('dalor_user') || sessionStorage.getItem('dalor_user') || 'null'); } catch(e) { return null; }
+})();
+
+let authToken = window.authToken || localStorage.getItem('dalor_token') || sessionStorage.getItem('dalor_token') || null;
+/** authFetch - inyecta token en cada request usando window.fetch nativo */
+function authFetch(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    if (options.body && !(options.body instanceof FormData) && !_h['Content-Type']) {
+        _h['Content-Type'] = 'application/json';
+    }
+    if (options.body instanceof FormData) {
+        delete _h['Content-Type'];
+    }
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
+}
+
+
+let lastDropdownToggleTime = 0;
+
+
+
+const handleOutsideClick = (e) => {
+    if (Date.now() - lastDropdownToggleTime < 350) return;
+    if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu") && !e.target.closest(".mobile-submenu-card")) {
+        closeAllDropdowns();
+        closeMobileSubmenu();
+    }
+};
+document.addEventListener("click", handleOutsideClick);
+document.addEventListener("touchend", handleOutsideClick);
+
+
+
+
+
+// --- BLOQUE L1120-L1609 ---
+function isMobileViewport() {
+
+    return window.innerWidth <= 768;
+
+}
+
+
+
+function toggleDropdown(event, dropdownId) {
+
+    if (event) {
+
+        if (event.stopPropagation) event.stopPropagation();
+
+    }
+
+    lastDropdownToggleTime = Date.now();
+
+    const targetDropdown = document.getElementById(dropdownId);
+
+    if (!targetDropdown) return;
+
+
+
+    // Si estamos en Móvil / iPhone / iPad -> Abrir Action Sheet Nativo
+
+    if (isMobileViewport()) {
+
+        openMobileSubmenu(dropdownId);
+
+        return;
+
+    }
+
+
+
+    // Modo Desktop Estándar
+
+    const isOpen = targetDropdown.classList.contains("open");
+
+    closeAllDropdowns();
+
+    if (!isOpen) {
+
+        targetDropdown.classList.add("open");
+
+    }
+
+}
+
+
+
+function openMobileSubmenu(dropdownId) {
+
+    const targetDropdown = document.getElementById(dropdownId);
+
+    if (!targetDropdown) return;
+
+
+
+    const btn = targetDropdown.querySelector(".dropdown-btn");
+
+    const menu = targetDropdown.querySelector(".dropdown-menu");
+
+    const sheet = document.getElementById("mobileSubmenuSheet");
+
+    const sheetTitle = document.getElementById("mobileSubmenuTitle");
+
+    const sheetItems = document.getElementById("mobileSubmenuItems");
+
+
+
+    if (!sheet || !sheetTitle || !sheetItems || !menu) return;
+
+
+
+    // Obtener icono y título del botón
+
+    const btnIcon = btn ? btn.querySelector("i") : null;
+
+    const btnText = btn ? btn.querySelector("span") : null;
+
+    const iconHtml = btnIcon ? btnIcon.outerHTML : '<i class="fa-solid fa-layer-group" style="color: var(--dalor-blue);"></i>';
+
+    const titleText = btnText ? btnText.innerText : 'Opciones del Módulo';
+
+
+
+    sheetTitle.innerHTML = `${iconHtml} <span>${titleText}</span>`;
+
+
+
+    // Clonar items del menu para el sheet
+
+    sheetItems.innerHTML = '';
+
+    const items = menu.querySelectorAll(".dropdown-item");
+
+    items.forEach(item => {
+
+        const clone = item.cloneNode(true);
+
+        // Manejador táctil seguro para iOS Safari
+
+        clone.onclick = (e) => {
+
+            if (e && e.stopPropagation) e.stopPropagation();
+
+            closeMobileSubmenu();
+
+            if (item.onclick) {
+
+                item.onclick(e);
+
+            }
+
+        };
+
+        sheetItems.appendChild(clone);
+
+    });
+
+
+
+    sheet.classList.add("active");
+
+    document.body.style.overflow = "hidden";
+
+}
+
+
+
+function closeMobileSubmenu(event) {
+
+    if (event && event.target && event.target.closest(".mobile-submenu-card") && !event.target.classList.contains("mobile-submenu-close")) return;
+
+    const sheet = document.getElementById("mobileSubmenuSheet");
+
+    if (sheet) {
+
+        sheet.classList.remove("active");
+
+    }
+
+    document.body.style.overflow = "";
+
+}
+
+
+
+function closeAllDropdowns() {
+
+    document.querySelectorAll(".nav-dropdown").forEach(drop => {
+
+        drop.classList.remove("open");
+
+    });
+
+    closeMobileSubmenu();
+
+}
+
+
+
+// Navegación Modular Principal
+
+function switchView(viewName, moduleCategory, targetSubtab = null) {
+    closeAllDropdowns();
+
+    const allViews = [
+        'executive', 'financial', 'maintenance',
+        'quotations', 'clients', 'services', 
+        'projects', 'dispatch', 'dashboard', 
+        'resources', 
+        'pwa', 'manual', 'tree', 'inbox', 'expenses-log'
+    ];
+
+    allViews.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.add('hidden');
+    });
+
+    const activeView = document.getElementById(`view-${viewName}`);
+    if (activeView) activeView.classList.remove('hidden');
+
+    document.querySelectorAll(".nav-dropdown").forEach(drop => drop.classList.remove("active"));
+    const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`);
+    if (activeDropdown) activeDropdown.classList.add("active");
+
+    // Guardar estado persistente en localStorage y sessionStorage para refrescos de pantalla
+    try {
+        localStorage.setItem('dalor_active_view', viewName);
+        if (moduleCategory) localStorage.setItem('dalor_active_category', moduleCategory);
+        sessionStorage.setItem('dalor_active_view', viewName);
+        if (moduleCategory) sessionStorage.setItem('dalor_active_category', moduleCategory);
+    } catch(e) {}
+
+    if (viewName === 'executive' && typeof window.loadExecutiveDashboard === 'function') window.loadExecutiveDashboard();
+    if (viewName === 'financial') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_financial') || sessionStorage.getItem('dalor_active_subtab_financial') || 'cxc';
+        if (typeof window.switchFinancialSubtab === 'function') window.switchFinancialSubtab(sub);
+        else if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab(sub);
+    }
+    if (viewName === 'maintenance') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_maintenance') || sessionStorage.getItem('dalor_active_subtab_maintenance') || 'users';
+        if (typeof window.switchMaintenanceSubtab === 'function') window.switchMaintenanceSubtab(sub);
+        else if (typeof window.openMaintenanceSubtab === 'function') window.openMaintenanceSubtab(sub);
+    }
+    if (viewName === 'quotations' && typeof window.loadQuotations === 'function') window.loadQuotations();
+    if (viewName === 'clients' && typeof window.loadClients === 'function') window.loadClients();
+    if (viewName === 'services' && typeof window.loadServices === 'function') window.loadServices();
+    if (viewName === 'projects') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_projects') || sessionStorage.getItem('dalor_active_subtab_projects') || 'list';
+        if (typeof window.switchProjectSubtab === 'function') window.switchProjectSubtab(sub);
+        else if (typeof window.initProjectPlanningView === 'function') window.initProjectPlanningView();
+    }
+    if (viewName === 'dispatch') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_dispatch') || sessionStorage.getItem('dalor_active_subtab_dispatch') || 'list';
+        if (typeof window.switchDispatchSubtab === 'function') window.switchDispatchSubtab(sub);
+        else if (typeof window.initDispatchView === 'function') window.initDispatchView();
+    }
+    if (viewName === 'dashboard' && typeof window.loadComparisonDashboard === 'function') window.loadComparisonDashboard();
+    if (viewName === 'resources') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_resources') || sessionStorage.getItem('dalor_active_subtab_resources') || 'dashboard';
+        if (typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab(sub);
+        else if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab(sub);
+    }
+    if (viewName === 'inbox' && typeof window.loadPendingExpensesInbox === 'function') window.loadPendingExpensesInbox();
+    if (viewName === 'tree' && typeof window.loadCategoriesTree === 'function') window.loadCategoriesTree();
+    if (viewName === 'expenses-log' && typeof window.loadExpensesLog === 'function') window.loadExpensesLog();
+
+    if (window.onViewSwitched) window.onViewSwitched(viewName);
+}
+
+window.switchView = switchView;
+window.appSwitchView = switchView;
+
+/**
+ * Motor Universal de Paginación DALOR SIGO-P
+ * Renderiza una barra estándar de paginación con controles numéricos, elipsis, límites y selector de densidad.
+ */
+function renderPaginationControls({
+    containerId,
+    totalItems = 0,
+    currentPage = 1,
+    pageSize = 10,
+    onPageChange = '',
+    onPageSizeChange = '',
+    itemLabel = 'registro(s)',
+    pageSizeOptions = [10, 15, 25, 50, 100],
+    allowAll = true
+}) {
+    const container = document.getElementById(containerId);
+    if (!container) return { startIndex: 0, endIndex: 0, totalPages: 1, currentPage: 1 };
+
+    const effectivePageSize = (pageSize === 1000 || pageSize === 9999) ? (totalItems || 1) : (pageSize || 15);
+    const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+    let cur = Math.max(1, Math.min(currentPage, totalPages));
+
+    const startIndex = (cur - 1) * effectivePageSize;
+    const endIndex = Math.min(startIndex + effectivePageSize, totalItems);
+
+    if (totalItems <= Math.min(...pageSizeOptions) && totalPages <= 1) {
+        container.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 11.5px; color: #64748b; margin-top: 8px;">
+                <span>Mostrando <b>${totalItems}</b> ${itemLabel}</span>
+                ${onPageSizeChange ? `
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span>Mostrar:</span>
+                    <select onchange="${onPageSizeChange}(this.value)" style="padding: 2px 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-weight: 700; cursor: pointer;">
+                        ${pageSizeOptions.map(sz => `<option value="${sz}" ${pageSize === sz ? 'selected' : ''}>${sz}</option>`).join('')}
+                        ${allowAll ? `<option value="1000" ${pageSize === 1000 ? 'selected' : ''}>Todos</option>` : ''}
+                    </select>
+                </div>` : ''}
+            </div>
+        `;
+        return { startIndex, endIndex, totalPages, currentPage: cur };
+    }
+
+    let pageButtons = '';
+    let startP = Math.max(1, cur - 2);
+    let endP = Math.min(totalPages, cur + 2);
+
+    if (startP > 1) {
+        pageButtons += `<button type="button" onclick="${onPageChange}(1)" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;">1</button>`;
+        if (startP > 2) pageButtons += `<span style="padding: 0 4px; color: #94a3b8;">...</span>`;
+    }
+
+    for (let i = startP; i <= endP; i++) {
+        if (i === cur) {
+            pageButtons += `<button type="button" class="btn-primary" style="padding: 4px 10px; font-size: 11px; font-weight: 800; border-radius: 5px; background: var(--dalor-navy, #0f172a); color: white;">${i}</button>`;
+        } else {
+            pageButtons += `<button type="button" onclick="${onPageChange}(${i})" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;">${i}</button>`;
+        }
+    }
+
+    if (endP < totalPages) {
+        if (endP < totalPages - 1) pageButtons += `<span style="padding: 0 4px; color: #94a3b8;">...</span>`;
+        pageButtons += `<button type="button" onclick="${onPageChange}(${totalPages})" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;">${totalPages}</button>`;
+    }
+
+    container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; color: #475569; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-top: 8px;">
+            <div style="font-weight: 600;">
+                Mostrando <b style="color: var(--dalor-navy, #0f172a);">${totalItems === 0 ? 0 : startIndex + 1} - ${endIndex}</b> de <b style="color: var(--dalor-navy, #0f172a);">${totalItems}</b> ${itemLabel}
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button type="button" onclick="${onPageChange}(1)" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; border-radius: 5px;" ${cur === 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} title="Primera página">
+                    <i class="fa-solid fa-angles-left"></i>
+                </button>
+                <button type="button" onclick="${onPageChange}(${cur - 1})" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;" ${cur === 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} title="Página anterior">
+                    <i class="fa-solid fa-chevron-left"></i> Anterior
+                </button>
+
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    ${pageButtons}
+                </div>
+
+                <button type="button" onclick="${onPageChange}(${cur + 1})" class="btn-secondary" style="padding: 4px 9px; font-size: 11px; border-radius: 5px;" ${cur === totalPages ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} title="Página siguiente">
+                    Siguiente <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button type="button" onclick="${onPageChange}(${totalPages})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; border-radius: 5px;" ${cur === totalPages ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} title="Última página">
+                    <i class="fa-solid fa-angles-right"></i>
+                </button>
+            </div>
+
+            ${onPageSizeChange ? `
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 11.5px; color: #64748b;">Por página:</span>
+                <select onchange="${onPageSizeChange}(this.value)" style="padding: 3px 8px; font-size: 11.5px; border: 1px solid #cbd5e1; border-radius: 5px; background: white; font-weight: 700; color: var(--dalor-navy, #0f172a); cursor: pointer;">
+                    ${pageSizeOptions.map(sz => `<option value="${sz}" ${pageSize === sz ? 'selected' : ''}>${sz}</option>`).join('')}
+                    ${allowAll ? `<option value="1000" ${pageSize === 1000 ? 'selected' : ''}>Ver todos</option>` : ''}
+                </select>
+            </div>` : ''}
+        </div>
+    `;
+
+    return { startIndex, endIndex, totalPages, currentPage: cur };
+}
+
+window.renderPaginationControls = renderPaginationControls;
+
+
+
+// Carga Inicial de Datos Maestros
+
+async function loadInitialMasterData() {
+
+    // Auto-sincronización de catálogo DALOR si faltan datos
+
+    try {
+
+        await authFetch(`${API_BASE}/maintenance/sync-dalor-catalog`, { method: "POST" });
+
+    } catch(e) {}
+
+
+
+    try {
+
+        const [resCli, resSrv, resProj, resCat, resAss, resPers, resMat] = await Promise.all([
+
+            authFetch(`${API_BASE}/clients/`),
+
+            authFetch(`${API_BASE}/services/`),
+
+            authFetch(`${API_BASE}/projects/`),
+
+            authFetch(`${API_BASE}/expenses/categories`),
+
+            authFetch(`${API_BASE}/assets/`),
+
+            authFetch(`${API_BASE}/personnel/`),
+
+            authFetch(`${API_BASE}/materials/`)
+
+        ]);
+
+
+
+        const cliData = resCli.ok ? await resCli.json() : [];
+        window.allClients = allClients = Array.isArray(cliData) ? cliData : [];
+
+        const srvData = resSrv.ok ? await resSrv.json() : [];
+        window.allServices = allServices = Array.isArray(srvData) ? srvData : [];
+
+        const projData = resProj.ok ? await resProj.json() : [];
+        window.allProjects = allProjects = Array.isArray(projData) ? projData : [];
+
+        const catData = resCat.ok ? await resCat.json() : [];
+        window.allCategories = allCategories = Array.isArray(catData) ? catData : [];
+
+        const assData = resAss.ok ? await resAss.json() : [];
+        window.allAssets = allAssets = Array.isArray(assData) ? assData : [];
+
+        const persData = resPers.ok ? await resPers.json() : [];
+        window.allPersonnel = allPersonnel = Array.isArray(persData) ? persData : [];
+
+        const matData = resMat.ok ? await resMat.json() : {};
+        window.allMaterials = allMaterials = Array.isArray(matData.materials) ? matData.materials : (Array.isArray(matData) ? matData : []);
+
+
+
+        populateSelectDropdowns();
+
+        populatePlanDropdownSelectors();
+
+        updatePendingInboxBadge();
+
+    } catch (e) {
+
+        console.error("Error al cargar datos maestros:", e);
+
+    }
+
+}
+
+
+
+function populateSelectDropdowns() {
+
+    const safeClients = (window.allClients && window.allClients.length > 0) 
+        ? window.allClients 
+        : (Array.isArray(allClients) ? allClients : []);
+
+    const safeProjects = (window.allProjects && window.allProjects.length > 0) 
+        ? window.allProjects 
+        : (Array.isArray(allProjects) ? allProjects : []);
+
+    const safeCategories = (window.allCategories && window.allCategories.length > 0) 
+        ? window.allCategories 
+        : (Array.isArray(allCategories) ? allCategories : []);
+
+    const safeAssets = (window.allAssets && window.allAssets.length > 0) 
+        ? window.allAssets 
+        : (Array.isArray(allAssets) ? allAssets : []);
+
+    const safeMaterials = (window.allMaterials && window.allMaterials.length > 0) 
+        ? window.allMaterials 
+        : (Array.isArray(allMaterials) ? allMaterials : []);
+
+    const safePersonnel = (window.allPersonnel && window.allPersonnel.length > 0) 
+        ? window.allPersonnel 
+        : (Array.isArray(allPersonnel) ? allPersonnel : []);
+
+
+
+        // Helper para repoblar selectores PRESERVANDO la seleccion activa
+    const setSafeOptions = (id, optsHtml) => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = optsHtml;
+        if (prev) sel.value = prev;
+    };
+
+    // Clientes Selects
+    const cliOptions = `<option value="">-- Seleccione Cliente --</option>` + 
+        safeClients.map(c => `<option value="${c.id}">[${c.code}] ${c.name} (${c.rif || 'Sin RIF'})</option>`).join('');
+    
+    setSafeOptions("quote_client_id", cliOptions);
+    setSafeOptions("new_proj_client_id", cliOptions);
+    setSafeOptions("cxc_client_id", cliOptions);
+    setSafeOptions("rcp_client_id", cliOptions);
+
+    // Auto-seleccionar si solo hay 1 cliente disponible (ej. OXICAR)
+    if (safeClients.length === 1) {
+        const qCli = document.getElementById("quote_client_id");
+        if (qCli && !qCli.value) qCli.value = String(safeClients[0].id);
+        const npCli = document.getElementById("new_proj_client_id");
+        if (npCli && !npCli.value) npCli.value = String(safeClients[0].id);
+    }
+
+
+
+    // Proyectos Selects
+
+    const projOptions = `<option value="">-- Gasto General Sede (Sin Proyecto) --</option>` + 
+
+        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
+
+    
+
+    if (document.getElementById("field_project_id")) document.getElementById("field_project_id").innerHTML = projOptions;
+
+    if (document.getElementById("manual_project_id")) document.getElementById("manual_project_id").innerHTML = projOptions;
+
+    if (document.getElementById("cxc_project_id")) document.getElementById("cxc_project_id").innerHTML = projOptions;
+
+    if (document.getElementById("cxp_project_id")) document.getElementById("cxp_project_id").innerHTML = projOptions;
+
+    if (document.getElementById("rcp_project_id")) document.getElementById("rcp_project_id").innerHTML = `<option value="">-- Sin Proyecto Específico (Anticipo a Cuenta) --</option>`;
+
+    if (document.getElementById("mc_project_id")) document.getElementById("mc_project_id").innerHTML = 
+
+        `<option value="">-- Consumo Interno Taller Central (Gasto Sede) --</option>` + 
+
+        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name}</option>`).join('');
+
+
+
+    if (document.getElementById("modal_target_project_id")) document.getElementById("modal_target_project_id").innerHTML = 
+
+        safeProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name} (${p.location})</option>`).join('');
+
+    if (document.getElementById("tg_project_id")) document.getElementById("tg_project_id").innerHTML = 
+
+        `<option value="">-- Seleccione Proyecto Aprobado --</option>` +
+
+        safeProjects.map(p => `<option value="${p.id}" data-location="${p.location}">${p.code} - ${p.name} (${p.location})</option>`).join('');
+
+
+
+    // Categorías Selects (Ordenadas numéricamente 1.0 -> 1.1 -> 2.0 -> 10.0)
+
+    const sortedCats = sortCategoriesNumerically(safeCategories);
+
+    const catOptions = sortedCats.map(c => `<option value="${c.id}">[${c.code}] ${c.name}</option>`).join('');
+
+    if (document.getElementById("field_category_id")) document.getElementById("field_category_id").innerHTML = catOptions;
+
+    if (document.getElementById("manual_category_id")) document.getElementById("manual_category_id").innerHTML = catOptions;
+
+
+
+    // Activos / Flota
+
+    const assOptions = `<option value="">-- No Aplica --</option>` + 
+
+        safeAssets.map(a => `<option value="${a.id}">${a.asset_code} - ${a.name}</option>`).join('');
+
+    if (document.getElementById("field_asset_id")) document.getElementById("field_asset_id").innerHTML = assOptions;
+
+
+
+    // Vehículos para Guías
+
+    const vehicles = allAssets.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
+
+    const vehOptions = `<option value="">-- Seleccione Vehículo de Transporte --</option>` + 
+
+        vehicles.map(v => `<option value="${v.id}">[${v.asset_code}] ${v.name} (Placa: ${v.license_plate || 'S/P'})</option>`).join('');
+
+    if (document.getElementById("tg_vehicle_id")) document.getElementById("tg_vehicle_id").innerHTML = vehOptions;
+
+
+
+    // Materiales Selects
+
+    const matOptions = `<option value="">-- Seleccione Material --</option>` + 
+
+        allMaterials.map(m => `<option value="${m.id}" data-cost="${m.unit_cost_usd}" data-stock="${m.stock_quantity}" data-unit="${m.unit_measure}">[${m.code}] ${m.name} (${m.stock_quantity} ${m.unit_measure} disp. - $${m.unit_cost_usd}/u)</option>`).join('');
+
+    if (document.getElementById("me_material_id")) document.getElementById("me_material_id").innerHTML = matOptions;
+
+    if (document.getElementById("mc_material_id")) document.getElementById("mc_material_id").innerHTML = matOptions;
+
+
+
+    // Personal Selects
+
+    if (allPersonnel && allPersonnel.length > 0) {
+
+        const persOptions = allPersonnel.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name}${p.role_title ? ' - ' + p.role_title : ''}</option>`).join('');
+
+        if (document.getElementById("field_reported_by")) document.getElementById("field_reported_by").innerHTML = persOptions;
+
+        if (document.getElementById("manual_reported_by")) document.getElementById("manual_reported_by").innerHTML = persOptions;
+
+    }
+
+
+
+    // Preseleccionar usuario conectado
+
+    if (currentUser && allPersonnel && allPersonnel.length > 0) {
+
+        const userMatch = allPersonnel.find(p => 
+
+            (p.full_name && currentUser.username && p.full_name.toLowerCase().includes(currentUser.username.toLowerCase())) ||
+
+            (p.role_title && currentUser.role && p.role_title.toLowerCase().includes(currentUser.role.toLowerCase()))
+
+        ) || allPersonnel[0];
+
+        
+
+        if (userMatch) {
+
+            if (document.getElementById("field_reported_by")) document.getElementById("field_reported_by").value = userMatch.id;
+
+            if (document.getElementById("manual_reported_by")) document.getElementById("manual_reported_by").value = userMatch.id;
+        }
+    }
+
+    if (typeof window.populateServiceCategoriesAndUnits === 'function') {
+        window.populateServiceCategoriesAndUnits();
+    }
+}
+
+
+
+
+
+
+// --- BLOQUE L8013-L8038 ---
+// ----------------------------------------------------
+
+// UTILIDADES MODALES
+
+// ----------------------------------------------------
+
+function openModal(modalId) {
+    if (modalId === 'modalNewQuotation') modalId = 'modalQuotation';
+    const el = document.getElementById(modalId);
+
+    if (el) {
+        el.classList.remove("hidden");
+        el.style.removeProperty("display");
+    }
+
+    const floatingBtn = document.getElementById("btnFloatingLogout");
+    if (floatingBtn) floatingBtn.style.setProperty("display", "none", "important");
+}
+
+
+
+function closeModal(modalId) {
+
+    const el = document.getElementById(modalId);
+
+    if (el) el.classList.add("hidden");
+
+    const openModals = document.querySelectorAll(".modal-overlay:not(.hidden), .modal:not(.hidden)");
+    if (openModals.length === 0) {
+        const floatingBtn = document.getElementById("btnFloatingLogout");
+        if (floatingBtn) floatingBtn.style.removeProperty("display");
+    }
+}
+
+
+
+
+
+// --- BLOQUE L13829-L14266 ---
+// ==============================================================================
+
+// 🔔 SISTEMA DE ALERTAS EN TIEMPO REAL: SONIDO (CHIME), TOAST & AUTO-REFRESH
+
+// ==============================================================================
+
+
+
+let isSoundAlertsEnabled = localStorage.getItem('dalor_sound_alerts') !== 'false'; // Activo por defecto
+
+let lastKnownPendingIds = new Set();
+
+let isFirstPendingCheck = true;
+
+
+
+function toggleSoundAlerts() {
+
+    isSoundAlertsEnabled = !isSoundAlertsEnabled;
+
+    localStorage.setItem('dalor_sound_alerts', isSoundAlertsEnabled ? 'true' : 'false');
+
+    updateSoundToggleUI();
+
+    if (isSoundAlertsEnabled) {
+
+        playNotificationChime();
+
+    }
+
+}
+
+
+
+function updateSoundToggleUI() {
+
+    const icon1 = document.getElementById('iconSoundToggle');
+
+    const txt1 = document.getElementById('textSoundToggle');
+
+    const icon2 = document.getElementById('iconSoundToggleInbox');
+
+    const txt2 = document.getElementById('textSoundToggleInbox');
+
+    const btn1 = document.getElementById('btnSoundToggle');
+
+    
+
+    if (icon1 && txt1) {
+
+        if (isSoundAlertsEnabled) {
+
+            icon1.className = 'fa-solid fa-bell';
+
+            txt1.innerText = 'Sonido: ON';
+
+            if (btn1) {
+
+                btn1.style.color = '#fbbf24';
+
+                btn1.style.borderColor = '#fbbf24';
+
+            }
+
+        } else {
+
+            icon1.className = 'fa-solid fa-bell-slash';
+
+            txt1.innerText = 'Sonido: OFF';
+
+            if (btn1) {
+
+                btn1.style.color = '#94a3b8';
+
+                btn1.style.borderColor = '#334155';
+
+            }
+
+        }
+
+    }
+
+
+
+    if (icon2 && txt2) {
+
+        if (isSoundAlertsEnabled) {
+
+            icon2.className = 'fa-solid fa-bell';
+
+            icon2.style.color = '#059669';
+
+            txt2.innerText = 'Alertas Sonoras: ON';
+
+        } else {
+
+            icon2.className = 'fa-solid fa-bell-slash';
+
+            icon2.style.color = '#94a3b8';
+
+            txt2.innerText = 'Alertas Sonoras: OFF';
+
+        }
+
+    }
+
+}
+
+
+
+// 🔊 Generador de Tono de Notificación Nativo (Web Audio API - Cero Dependencias)
+
+function playNotificationChime() {
+
+    if (!isSoundAlertsEnabled) return;
+
+    try {
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+
+        if (!AudioCtx) return;
+
+        const ctx = new AudioCtx();
+
+        const now = ctx.currentTime;
+
+        
+
+        // Tono Armónico 1 (Mi 5 - 659.25 Hz)
+
+        const osc1 = ctx.createOscillator();
+
+        const gain1 = ctx.createGain();
+
+        osc1.type = 'sine';
+
+        osc1.frequency.setValueAtTime(659.25, now);
+
+        gain1.gain.setValueAtTime(0.25, now);
+
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc1.connect(gain1);
+
+        gain1.connect(ctx.destination);
+
+        osc1.start(now);
+
+        osc1.stop(now + 0.35);
+
+
+
+        // Tono Armónico 2 (La 5 - 880.00 Hz)
+
+        const osc2 = ctx.createOscillator();
+
+        const gain2 = ctx.createGain();
+
+        osc2.type = 'sine';
+
+        osc2.frequency.setValueAtTime(880.00, now + 0.12);
+
+        gain2.gain.setValueAtTime(0.30, now + 0.12);
+
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+        osc2.connect(gain2);
+
+        gain2.connect(ctx.destination);
+
+        osc2.start(now + 0.12);
+
+        osc2.stop(now + 0.55);
+
+    } catch(e) {
+
+        console.warn('Audio alert error:', e);
+
+    }
+
+}
+
+
+
+// 🪟 Renderizador de Tarjetas Flotantes (Toast Notification)
+
+function showInboxToastNotification(item) {
+
+    const container = document.getElementById('toastNotificationContainer');
+
+    if (!container) return;
+
+    
+
+    const toast = document.createElement('div');
+
+    toast.className = 'toast-card-live';
+
+    toast.style.cssText = `
+
+        background: #0f172a;
+
+        color: white;
+
+        border: 2px solid #059669;
+
+        border-radius: 12px;
+
+        padding: 12px 14px;
+
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+
+        pointer-events: auto;
+
+        display: flex;
+
+        align-items: flex-start;
+
+        gap: 12px;
+
+        transition: all 0.3s ease;
+
+    `;
+
+    
+
+    const rep = item.reported_by || 'Personal de Campo';
+
+    const amt = Number(item.amount_usd || 0).toFixed(2);
+
+    const proj = item.project_name || 'Obra General';
+
+    const vendor = item.supplier_vendor || 'Comercio General';
+
+    
+
+    toast.innerHTML = `
+
+        <div style="background: rgba(5, 150, 105, 0.2); color: #34d399; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; animation: pulseGlowGreen 2s infinite;">
+
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+
+        </div>
+
+        <div style="flex: 1; min-width: 0;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+
+                <h4 style="margin: 0; font-size: 13px; font-weight: 800; color: #34d399;">¡Nuevo Comprobante Recibido!</h4>
+
+                <button onclick="this.closest('.toast-card-live').remove()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px;">&times;</button>
+
+            </div>
+
+            <p style="margin: 3px 0 0 0; font-size: 11px; color: #cbd5e1;"><b>${rep}</b> reportó factura en <b>${vendor}</b></p>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+
+                <span style="font-size: 13px; font-weight: 900; color: var(--dalor-gold);">$${amt} USD <small style="color: #94a3b8; font-weight: 600;">(${proj})</small></span>
+
+                <button onclick="switchView('inbox', 'gastos'); this.closest('.toast-card-live').remove();" style="background: #059669; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+
+                    <i class="fa-solid fa-stamp"></i> Auditar
+
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+    
+
+    container.appendChild(toast);
+
+    
+
+    setTimeout(() => {
+
+        if (toast.parentElement) {
+
+            toast.style.opacity = '0';
+
+            toast.style.transform = 'translateX(60px)';
+
+            setTimeout(() => toast.remove(), 300);
+
+        }
+
+    }, 9000);
+
+}
+
+
+
+// 🔄 Ciclo de Monitoreo Rápido (Cada 5 Segundos)
+
+async function updatePendingInboxBadge() {
+
+    try {
+
+        if (!currentUser) return;
+
+        const uname = (currentUser.username || '').toLowerCase();
+
+        const role = (currentUser.role_name || '').toLowerCase();
+
+        const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
+
+        if (isCampo) {
+
+            const b1 = document.getElementById("badgeInboxCount");
+
+            const b2 = document.getElementById("badgeGastosDropdown");
+
+            if (b1) b1.style.display = "none";
+
+            if (b2) b2.style.display = "none";
+
+            return;
+
+        }
+
+
+
+        const res = await authFetch(`${API_BASE}/expenses/inbox/pending`);
+
+        if (!res.ok) return;
+
+        const pending = await res.json();
+
+        const list = Array.isArray(pending) ? pending : [];
+
+        const count = list.length;
+
+
+
+        const b1 = document.getElementById("badgeInboxCount");
+
+        if (b1) {
+
+            b1.innerText = count;
+
+            b1.style.display = count > 0 ? "inline-block" : "none";
+
+        }
+
+        const b2 = document.getElementById("badgeGastosDropdown");
+
+        if (b2) {
+
+            b2.innerText = count;
+
+            b2.style.display = count > 0 ? "inline-block" : "none";
+
+        }
+
+
+
+        // Detección de nuevos comprobantes entrantes
+
+        const currentIds = new Set(list.map(item => item.id));
+
+        
+
+        if (!isFirstPendingCheck) {
+
+            const newlyArrived = list.filter(item => !lastKnownPendingIds.has(item.id));
+
+            if (newlyArrived.length > 0) {
+
+                // 🔊 Sonido de Notificación
+
+                playNotificationChime();
+
+                
+
+                // 🪟 Notificación Toast en Pantalla
+
+                newlyArrived.forEach(item => showInboxToastNotification(item));
+
+                
+
+                // 🔄 Si el usuario está viendo el Inbox, actualizar la tabla automáticamente
+
+                const inboxView = document.getElementById('view-inbox');
+
+                if (inboxView && !inboxView.classList.contains('hidden')) {
+
+                    loadPendingExpensesInbox();
+
+                }
+
+            }
+
+        }
+
+
+
+        lastKnownPendingIds = currentIds;
+
+        isFirstPendingCheck = false;
+
+    } catch(e) {
+
+        // Silencioso
+
+    }
+
+}
+
+
+
+// Ejecutar cada 5 segundos para respuesta inmediata en demostraciones
+
+setInterval(updatePendingInboxBadge, 5000);
+
+
+
+// Inicializar el estado de los interruptores de sonido
+
+updateSoundToggleUI();
+
+
+
+// 🟢 UPTIME & KEEP-ALIVE PING (Mantiene Render 100% activo sin latencia en frío)
+
+setInterval(() => {
+
+    authFetch('/healthz').catch(() => {});
+
+}, 300000); // Cada 5 minutos
+
+
+
+
+
+
+
+
+// --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
+if (typeof window !== 'undefined') {
+    window.allClients = allClients;
+    window.allServices = allServices;
+    window.allProjects = allProjects;
+    window.allCategories = allCategories;
+    window.allAssets = allAssets;
+    window.allPersonnel = allPersonnel;
+    window.allMaterials = allMaterials;
+    window.selectedPersonnelIds = selectedPersonnelIds;
+    window.selectedVehicleIds = selectedVehicleIds;
+    window.selectedToolIds = selectedToolIds;
+    window.selectedMaterialIds = selectedMaterialIds;
+    window.EXCHANGE_RATE = EXCHANGE_RATE;
+    window.currentUser = window.currentUser || currentUser;
+    window.authToken = window.authToken || authToken;
+
+    window.closeAllDropdowns = closeAllDropdowns;
+    window.closeMobileSubmenu = closeMobileSubmenu;
+    window.closeModal = closeModal;
+    window.isMobileViewport = isMobileViewport;
+    window.loadInitialMasterData = loadInitialMasterData;
+    window.openMobileSubmenu = openMobileSubmenu;
+    window.openModal = openModal;
+    window.parseLocalizedNumber = parseLocalizedNumber;
+    window.playNotificationChime = playNotificationChime;
+    window.populateSelect = populateSelect;
+    window.populateSelectDropdowns = populateSelectDropdowns;
+    window.roundNumber = roundNumber;
+    window.showInboxToastNotification = showInboxToastNotification;
+    window.renderPaginationControls = renderPaginationControls;
+    window.sortCategoriesNumerically = sortCategoriesNumerically;
+    window.switchView = switchView;
+    window.toggleDropdown = toggleDropdown;
+    window.toggleSoundAlerts = toggleSoundAlerts;
+    window.printElementHtml = printElementHtml;
+    window.updatePendingInboxBadge = updatePendingInboxBadge;
+    window.updateSoundToggleUI = updateSoundToggleUI;
+}
+
+export { closeAllDropdowns, closeMobileSubmenu, closeModal, isMobileViewport, loadInitialMasterData, openMobileSubmenu, openModal, parseLocalizedNumber, playNotificationChime, populateSelect, populateSelectDropdowns, printElementHtml, renderPaginationControls, roundNumber, showInboxToastNotification, sortCategoriesNumerically, switchView, toggleDropdown, toggleSoundAlerts, updateFieldTaxDisplays, updatePendingInboxBadge, updateSoundToggleUI };

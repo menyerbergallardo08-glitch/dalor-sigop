@@ -19,6 +19,15 @@ var EXCHANGE_RATE = window.EXCHANGE_RATE = window.EXCHANGE_RATE || 850.0;
 var BCV_DATA = window.BCV_DATA = window.BCV_DATA || { rate: 850.0, source: 'BCV Oficial' };
 var currentUser = window.currentUser || null;
 var authToken = window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
+/** authFetch - inyecta token en cada request usando window.fetch nativo */
+function authFetch(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    if (options.body && !_h['Content-Type']) _h['Content-Type'] = 'application/json';
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
+}
+
 
 // --- BLOQUE L4952-L6327 ---
 // ----------------------------------------------------
@@ -27,135 +36,116 @@ var authToken = window.authToken = window.authToken || localStorage.getItem('dal
 
 // ----------------------------------------------------
 
-async function loadQuotations() {
+let lastQuotationsList = [];
+let quotationsCurrentPage = 1;
+let quotationsPageSize = 10;
 
+function goToQuotationsPage(page) {
+    quotationsCurrentPage = page;
+    renderQuotationsPaginated();
+    const tableEl = document.getElementById("quotationsTableBody");
+    if (tableEl) tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function changeQuotationsPageSize(size) {
+    quotationsPageSize = parseInt(size) || 10;
+    quotationsCurrentPage = 1;
+    renderQuotationsPaginated();
+}
+
+function renderQuotationsPaginated() {
     const tbody = document.getElementById("quotationsTableBody");
+    if (!tbody) return;
 
+    const quotes = lastQuotationsList;
+    if (quotes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;">No hay cotizaciones emitidas. Haz clic en '+ Nueva Cotización' para armar una.</td></tr>`;
+        const container = document.getElementById("quotationsPaginationContainer");
+        if (container) container.innerHTML = "";
+        return;
+    }
+
+    const { startIndex, endIndex } = (window.renderPaginationControls || renderPaginationControls)({
+        containerId: "quotationsPaginationContainer",
+        totalItems: quotes.length,
+        currentPage: quotationsCurrentPage,
+        pageSize: quotationsPageSize,
+        onPageChange: "goToQuotationsPage",
+        onPageSizeChange: "changeQuotationsPageSize",
+        itemLabel: "cotización(es)",
+        pageSizeOptions: [10, 20, 50, 100]
+    });
+
+    const pageItems = quotes.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageItems.map(q => {
+        const clientName = q.client ? q.client.name : 'Cliente General';
+        const isApproved = q.status === 'aprobado';
+        return `
+        <tr>
+            <td style="font-weight: 800; color: var(--dalor-blue);">${q.quote_number}</td>
+            <td style="font-weight: 600;">${clientName}</td>
+            <td>${q.project_title}</td>
+            <td style="font-weight: 700;">$${q.subtotal_usd.toLocaleString()}</td>
+            <td style="color: ${q.tax_usd === 0 ? '#10b981' : '#64748b'}; font-weight: 700;">
+                ${q.tax_usd === 0 ? 'EXENTO (0%)' : `$${q.tax_usd.toLocaleString()}`}
+            </td>
+            <td style="font-weight: 800; color: var(--dalor-navy);">$${q.total_usd.toLocaleString()}</td>
+            <td>
+                <span style="font-size: 10px; padding: 3px 8px; border-radius: 9999px; font-weight: 800; ${isApproved ? 'background: #dcfce7; color: #166534;' : 'background: #f1f5f9; color: #475569;'}">
+                    ${q.status.toUpperCase()}
+                </span>
+            </td>
+            <td style="text-align: center; white-space: nowrap;">
+                <button onclick="editQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px; color: #0284c7; font-weight: 700;" title="Re-editar Cotización">
+                    <i class="fa-solid fa-pen-to-square"></i> Re-editar
+                </button>
+                <button onclick="printQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Imprimir / Exportar Cotización">
+                    <i class="fa-solid fa-print"></i>
+                </button>
+                ${!isApproved ? `
+                    <button onclick="convertQuoteToProject(${q.id})" class="btn-primary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px; background: #059669;" title="Aprobar y Convertir en Proyecto">
+                        <i class="fa-solid fa-check"></i> Convertir en Proyecto
+                    </button>
+                ` : '<span style="font-size: 11px; color: #059669; font-weight: bold; margin-left: 6px;">Obra Activa</span>'}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function loadQuotations() {
+    const tbody = document.getElementById("quotationsTableBody");
     tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cotizaciones...</td></tr>`;
 
-
-
     try {
-
         // Carga fresca paralela de cotizaciones, clientes y servicios
-
         const [resQuotes, resCli, resSrv] = await Promise.all([
-
-            fetch(`${API_BASE}/quotations/`),
-
-            fetch(`${API_BASE}/clients/`),
-
-            fetch(`${API_BASE}/services/`)
-
+            authFetch(`${API_BASE}/quotations/`),
+            authFetch(`${API_BASE}/clients/`),
+            authFetch(`${API_BASE}/services/`)
         ]);
 
-
-
         if (resCli.ok) {
-
             const cData = await resCli.json();
-
             allClients = Array.isArray(cData) ? cData : [];
-
         }
 
         if (resSrv.ok) {
-
             const sData = await resSrv.json();
-
             allServices = Array.isArray(sData) ? sData : [];
-
         }
 
         populateSelectDropdowns();
 
-
-
         if (!resQuotes.ok) throw new Error("Error HTTP " + resQuotes.status);
         const quotesData = await resQuotes.json();
-        const quotes = Array.isArray(quotesData) ? quotesData : [];
-
-        if (quotes.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;">No hay cotizaciones emitidas. Haz clic en '+ Nueva Cotización' para armar una.</td></tr>`;
-            return;
-        }
-
-
-
-        tbody.innerHTML = quotes.map(q => {
-
-            const clientName = q.client ? q.client.name : 'Cliente General';
-
-            const isApproved = q.status === 'aprobado';
-
-            
-
-            return `
-
-            <tr>
-
-                <td style="font-weight: 800; color: var(--dalor-blue);">${q.quote_number}</td>
-
-                <td style="font-weight: 600;">${clientName}</td>
-
-                <td>${q.project_title}</td>
-
-                <td style="font-weight: 700;">$${q.subtotal_usd.toLocaleString()}</td>
-
-                <td style="color: ${q.tax_usd === 0 ? '#10b981' : '#64748b'}; font-weight: 700;">
-
-                    ${q.tax_usd === 0 ? 'EXENTO (0%)' : `$${q.tax_usd.toLocaleString()}`}
-
-                </td>
-
-                <td style="font-weight: 800; color: var(--dalor-navy);">$${q.total_usd.toLocaleString()}</td>
-
-                <td>
-
-                    <span style="font-size: 10px; padding: 3px 8px; border-radius: 9999px; font-weight: 800; ${isApproved ? 'background: #dcfce7; color: #166534;' : 'background: #f1f5f9; color: #475569;'}">
-
-                        ${q.status.toUpperCase()}
-
-                    </span>
-
-                </td>
-
-                <td style="text-align: center; white-space: nowrap;">
-
-                    <button onclick="editQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px; color: #0284c7; font-weight: 700;" title="Re-editar Cotización">
-
-                        <i class="fa-solid fa-pen-to-square"></i> Re-editar
-
-                    </button>
-
-                    <button onclick="printQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Imprimir / Exportar Cotización">
-
-                        <i class="fa-solid fa-print"></i>
-
-                    </button>
-
-                    ${!isApproved ? `
-
-                        <button onclick="convertQuoteToProject(${q.id})" class="btn-primary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px; background: #059669;" title="Aprobar y Convertir en Proyecto">
-
-                            <i class="fa-solid fa-check"></i> Convertir en Proyecto
-
-                        </button>
-
-                    ` : '<span style="font-size: 11px; color: #059669; font-weight: bold; margin-left: 6px;">Obra Activa</span>'}
-
-                </td>
-
-            </tr>`;
-
-        }).join('');
+        lastQuotationsList = Array.isArray(quotesData) ? quotesData : [];
+        quotationsCurrentPage = 1;
+        renderQuotationsPaginated();
 
     } catch (e) {
-
         tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48;">Error al cargar cotizaciones.</td></tr>`;
-
     }
-
 }
 
 
@@ -174,6 +164,9 @@ async function openNewQuotationModal() {
     const quoteForm = document.getElementById("quoteForm");
     if (quoteForm) quoteForm.reset();
 
+    const riskAlert = document.getElementById("quoteClientRiskAlert");
+    if (riskAlert) riskAlert.style.display = "none";
+
     const itemsContainer = document.getElementById("quoteItemsList");
     if (itemsContainer) itemsContainer.innerHTML = "";
 
@@ -183,7 +176,7 @@ async function openNewQuotationModal() {
         if (currentClients.length === 0) {
             const token = window.authToken || localStorage.getItem('dalor_token') || null;
             const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-            const resCli = await fetch(`${API_BASE}/clients/`, { headers });
+            const resCli = await authFetch(`${API_BASE}/clients/`, { headers });
             if (resCli.ok) {
                 const cData = await resCli.json();
                 allClients = window.allClients = Array.isArray(cData) ? cData : [];
@@ -192,7 +185,7 @@ async function openNewQuotationModal() {
         if (!window._servicesLoaded) {
             const token = window.authToken || localStorage.getItem('dalor_token') || null;
             const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-            const resSrv = await fetch(`${API_BASE}/services/`, { headers });
+            const resSrv = await authFetch(`${API_BASE}/services/`, { headers });
             if (resSrv.ok) {
                 const sData = await resSrv.json();
                 allServices = window.allServices = Array.isArray(sData) ? sData : [];
@@ -299,7 +292,7 @@ function addQuotationRow(itemData = null) {
 
 
 
-    const descVal = itemData ? (itemData.description || '').replace(/"/g, '&quot;') : '';
+    const descVal = itemData ? (itemData.description || '').replaceAll('"', '&quot;') : '';
 
     const unitVal = itemData ? (itemData.unit_measure || 'Global') : 'Global';
 
@@ -334,23 +327,10 @@ function addQuotationRow(itemData = null) {
         <div>
             <input type="text" class="form-input q-unit" list="datalist_units" placeholder="Und / Medida" value="${unitVal}" style="font-size: 11px; padding: 5px; font-weight: 700; color: #1e293b;" title="Selecciona o escribe cualquier unidad de medida (ej: Ton, Kg, m, Pulg-Diam, HH, Und)">
             <datalist id="datalist_units">
-                <option value="Global">
-                <option value="Und">
-                <option value="Pza">
-                <option value="m">
-                <option value="m²">
-                <option value="m³">
-                <option value="ml">
-                <option value="Kg">
-                <option value="Ton">
-                <option value="Litro">
-                <option value="Galón">
-                <option value="Horas">
-                <option value="HH">
-                <option value="Días">
-                <option value="Punto">
-                <option value="Juego">
-                <option value="Pulg-Diam">
+                ${Array.from(new Set([
+                    "Global", "Und", "Pza", "m", "m²", "m³", "ml", "Kg", "Ton", "Litro", "Galón", "Horas", "HH", "Días", "Punto", "Juego", "Pulg-Diam",
+                    ...(allServices || []).map(s => (s.unit_measure || '').trim()).filter(Boolean)
+                ])).map(u => `<option value="${u}">`).join('')}
             </datalist>
         </div>
 
@@ -499,14 +479,14 @@ async function editQuotation(quoteId) {
 
         let currentClients = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
         if (currentClients.length === 0) {
-            const resCli = await fetch(`${API_BASE}/clients/`, { headers });
+            const resCli = await authFetch(`${API_BASE}/clients/`, { headers });
             if (resCli.ok) {
                 const cData = await resCli.json();
                 allClients = window.allClients = Array.isArray(cData) ? cData : [];
             }
         }
         if (!window._servicesLoaded) {
-            const resSrv = await fetch(`${API_BASE}/services/`, { headers });
+            const resSrv = await authFetch(`${API_BASE}/services/`, { headers });
             if (resSrv.ok) {
                 const sData = await resSrv.json();
                 allServices = window.allServices = Array.isArray(sData) ? sData : [];
@@ -517,7 +497,7 @@ async function editQuotation(quoteId) {
             window.populateSelectDropdowns();
         }
 
-        const res = await fetch(`${API_BASE}/quotations/${quoteId}`, { headers });
+        const res = await authFetch(`${API_BASE}/quotations/${quoteId}`, { headers });
         if (!res.ok) throw new Error('No se pudo cargar la cotización para edición.');
         const q = await res.json();
 
@@ -646,7 +626,7 @@ async function submitCreateQuotation(event) {
     try {
         const url = isEdit ? `${API_BASE}/quotations/${editId}` : `${API_BASE}/quotations/`;
         const method = isEdit ? "PUT" : "POST";
-        const res = await fetch(url, {
+        const res = await authFetch(url, {
             method,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -711,12 +691,12 @@ async function convertQuoteToProject(quoteId) {
     try {
         if (!allClients || allClients.length === 0) {
             try {
-                const resCli = await fetch(`${API_BASE}/clients/`);
+                const resCli = await authFetch(`${API_BASE}/clients/`);
                 if (resCli.ok) allClients = await resCli.json();
             } catch(e) {}
         }
 
-        const res = await fetch(`${API_BASE}/quotations/${quoteId}`);
+        const res = await authFetch(`${API_BASE}/quotations/${quoteId}`);
         if (!res.ok) throw new Error('No se pudo cargar la información del presupuesto.');
         const q = await res.json();
 
@@ -823,7 +803,7 @@ async function printQuotation(quoteId) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/quotations/${quoteId}`);
+        const res = await authFetch(`${API_BASE}/quotations/${quoteId}`);
 
         if (!res.ok) throw new Error('No se pudo cargar la cotización.');
 
@@ -1264,9 +1244,13 @@ async function printQuotation(quoteId) {
 
 
 function triggerPrintFromModal() {
-
-    window.print();
-
+    const content = document.getElementById("modalPrintPreviewContent");
+    const title = document.getElementById("previewModalTitle")?.textContent || "Presupuesto DALOR";
+    if (typeof window.printElementHtml === 'function' && content) {
+        window.printElementHtml(content, title);
+    } else {
+        window.print();
+    }
 }
 
 
@@ -1282,7 +1266,7 @@ async function loadServices() {
 
 
     try {
-        const res = await fetch(`${API_BASE}/services/`);
+        const res = await authFetch(`${API_BASE}/services/`);
         if (!res.ok) throw new Error("Error HTTP " + res.status);
         const srvData = await res.json();
         allServices = Array.isArray(srvData) ? srvData : [];
@@ -1342,32 +1326,102 @@ async function loadServices() {
 
 
 
-function openNewServiceModal() {
+function populateServiceCategoriesAndUnits() {
+    const catSelect = document.getElementById("srv_category");
+    const unitSelect = document.getElementById("srv_unit");
 
-    document.getElementById("serviceForm").reset();
+    const baseCategories = [
+        "Electricidad",
+        "Mantenimiento Industrial",
+        "Montaje Industrial",
+        "Obra Civil",
+        "Telecomunicaciones"
+    ];
+    const existingCats = new Set(baseCategories);
+    (window.allServices || allServices || []).forEach(s => {
+        if (s.category && typeof s.category === 'string' && s.category.trim() && s.category !== '__NEW__') {
+            existingCats.add(s.category.trim());
+        }
+    });
+    (window.allCategories || []).forEach(c => {
+        if (c.name && typeof c.name === 'string' && c.name.trim()) {
+            existingCats.add(c.name.trim());
+        }
+    });
 
-    openModal("modalService");
+    if (catSelect) {
+        const prevCat = catSelect.value;
+        const sortedCats = Array.from(existingCats).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        catSelect.innerHTML = sortedCats.map(cat => `<option value="${cat}">${cat}</option>`).join('') +
+            `<option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Categoría...</option>`;
+        if (prevCat && existingCats.has(prevCat)) {
+            catSelect.value = prevCat;
+        } else if (sortedCats.length > 0 && prevCat !== '__NEW__') {
+            catSelect.value = sortedCats[0];
+        }
+    }
 
+    const baseUnits = [
+        "Global",
+        "Metro (m)",
+        "Metro Cuadrado (m²)",
+        "Metro Cúbico (m³)",
+        "Pieza (Pza)",
+        "Hora-Hombre (HH)",
+        "Punto",
+        "Kilogramo (Kg)",
+        "Tonelada (Ton)",
+        "Litro (L)"
+    ];
+    const existingUnits = new Set(baseUnits);
+    (window.allServices || allServices || []).forEach(s => {
+        if (s.unit_measure && typeof s.unit_measure === 'string' && s.unit_measure.trim() && s.unit_measure !== '__NEW__') {
+            existingUnits.add(s.unit_measure.trim());
+        }
+    });
+
+    if (unitSelect) {
+        const prevUnit = unitSelect.value;
+        const sortedUnits = Array.from(existingUnits).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        unitSelect.innerHTML = sortedUnits.map(u => `<option value="${u}">${u}</option>`).join('') +
+            `<option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Unidad...</option>`;
+        if (prevUnit && existingUnits.has(prevUnit)) {
+            unitSelect.value = prevUnit;
+        } else if (sortedUnits.length > 0 && prevUnit !== '__NEW__') {
+            unitSelect.value = sortedUnits[0];
+        }
+    }
 }
 
-
-
-
-
-function onServiceCategoryChanged(val) {
+function openNewServiceModal() {
+    const form = document.getElementById("serviceForm");
+    if (form) form.reset();
 
     const newCatInput = document.getElementById("srv_new_category");
+    if (newCatInput) {
+        newCatInput.value = "";
+        newCatInput.classList.add("hidden");
+    }
 
+    const newUnitInput = document.getElementById("srv_new_unit");
+    if (newUnitInput) {
+        newUnitInput.value = "";
+        newUnitInput.classList.add("hidden");
+    }
+
+    populateServiceCategoriesAndUnits();
+    openModal("modalService");
+}
+
+function onServiceCategoryChanged(val) {
+    const newCatInput = document.getElementById("srv_new_category");
     if (!newCatInput) return;
-
     if (val === '__NEW__') {
-
         newCatInput.classList.remove("hidden");
-
         newCatInput.focus();
-
     } else {
         newCatInput.classList.add("hidden");
+        newCatInput.value = "";
     }
 }
 
@@ -1414,45 +1468,28 @@ async function submitCreateService(event) {
         unit_price_usd: parseFloat(document.getElementById("srv_price").value) || 0.0
     };
 
-
-
     try {
-
-        const res = await fetch(`${API_BASE}/services/`, {
-
+        const res = await authFetch(`${API_BASE}/services/`, {
             method: "POST",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify(payload)
-
         });
 
         if (res.ok) {
-
             alert("Partida de servicio creada exitosamente.");
-
             closeModal("modalService");
-
             await loadInitialMasterData();
-
-            loadServices();
-
+            await loadServices();
+            populateServiceCategoriesAndUnits();
         } else {
-
             const err = await res.json();
-
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
-
         alert("Error al guardar servicio.");
-
     }
-
 }
+
 
 
 
@@ -1462,7 +1499,7 @@ async function deleteService(serviceId) {
 
     try {
 
-        const res = await fetch(`${API_BASE}/services/${serviceId}?permanent=true`, { method: "DELETE" });
+        const res = await authFetch(`${API_BASE}/services/${serviceId}?permanent=true`, { method: "DELETE" });
 
         if (res.ok) {
 
@@ -1489,6 +1526,77 @@ async function deleteService(serviceId) {
 
 
 
+// --- VERIFICACIÓN DE RIESGO CREDITICIO EN COTIZACIONES (SIN BLOQUEO AUTOMÁTICO) ---
+async function checkQuoteClientCreditRisk(clientId) {
+    const alertBox = document.getElementById("quoteClientRiskAlert");
+    const detailsBox = document.getElementById("quoteClientRiskDetails");
+    if (!alertBox || !clientId) {
+        if (alertBox) alertBox.style.display = "none";
+        return;
+    }
+
+    try {
+        const token = window.authToken || localStorage.getItem('dalor_token') || null;
+        const res = await fetch(`${API_BASE}/clients/${clientId}/credit-risk`, {
+            headers: token ? { "Authorization": `Bearer ${token}` } : {}
+        });
+        if (!res.ok) {
+            alertBox.style.display = "none";
+            return;
+        }
+
+        const data = await res.json();
+        if (data && data.has_risk) {
+            let debtList = (data.bad_debts || []).map(b => `• <strong>${b.invoice_number || 'Doc'}</strong>: $${(b.amount_usd || 0).toFixed(2)} USD <em>(${b.reason || 'Sin motivo'})</em>`).join("<br>");
+            if (detailsBox) {
+                detailsBox.innerHTML = `
+                    Este cliente posee antecedentes de <strong>cuenta incobrable / castigada</strong> por un total de <strong>$${(data.total_bad_debt_usd || 0).toFixed(2)} USD</strong>.<br>
+                    <div style="margin-top: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px;">${debtList}</div>
+                    <span style="font-size: 10px; color: #881337; margin-top: 4px; display: block;">
+                        <strong>Decisión Operativa:</strong> Puede autorizar emitir esta cotización bajo supervisión comercial o cambiar a otro cliente.
+                    </span>
+                `;
+            }
+            alertBox.style.display = "block";
+            window.quoteClientRiskDismissed = false;
+        } else {
+            alertBox.style.display = "none";
+            window.quoteClientRiskDismissed = true;
+        }
+    } catch(err) {
+        console.warn("Error al verificar riesgo crediticio:", err);
+        if (alertBox) alertBox.style.display = "none";
+    }
+}
+
+function onQuoteClientChanged(clientId) {
+    if (!clientId) {
+        const alertBox = document.getElementById("quoteClientRiskAlert");
+        if (alertBox) alertBox.style.display = "none";
+        return;
+    }
+    checkQuoteClientCreditRisk(clientId);
+}
+
+function confirmQuoteClientRisk() {
+    const alertBox = document.getElementById("quoteClientRiskAlert");
+    if (alertBox) alertBox.style.display = "none";
+    window.quoteClientRiskDismissed = true;
+    const clientSelect = document.getElementById("quote_client_id");
+    const opt = clientSelect ? clientSelect.options[clientSelect.selectedIndex] : null;
+    if (opt) {
+        console.log(`[Riesgo Crediticio] Cliente ${opt.text} autorizado manualmente para cotización.`);
+    }
+}
+
+function cancelQuoteClientRisk() {
+    const clientSelect = document.getElementById("quote_client_id");
+    if (clientSelect) clientSelect.value = "";
+    const alertBox = document.getElementById("quoteClientRiskAlert");
+    if (alertBox) alertBox.style.display = "none";
+    window.quoteClientRiskDismissed = false;
+}
+
 // --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
 if (typeof window !== 'undefined') {
     window.addQuotationRow = addQuotationRow;
@@ -1511,6 +1619,24 @@ if (typeof window !== 'undefined') {
     window.submitCreateQuotation = submitCreateQuotation;
     window.submitCreateService = submitCreateService;
     window.triggerPrintFromModal = triggerPrintFromModal;
+    window.populateServiceCategoriesAndUnits = populateServiceCategoriesAndUnits;
+    window.checkQuoteClientCreditRisk = checkQuoteClientCreditRisk;
+    window.onQuoteClientChanged = onQuoteClientChanged;
+    window.confirmQuoteClientRisk = confirmQuoteClientRisk;
+    window.cancelQuoteClientRisk = cancelQuoteClientRisk;
+    window.goToQuotationsPage = goToQuotationsPage;
+    window.changeQuotationsPageSize = changeQuotationsPageSize;
+    window.renderQuotationsPaginated = renderQuotationsPaginated;
 }
 
-export { addQuotationRow, cancelQuotationConversion, convertQuoteToProject, deleteService, editQuotation, loadQuotations, loadServices, onQuotationCurrencyChanged, onServiceCategoryChanged, onServiceUnitChanged, onServiceSelected, onTaxTypeChanged, openNewQuotationModal, openNewServiceModal, printQuotation, recalcQuotationTotals, removeQuotationRow, submitCreateQuotation, submitCreateService, triggerPrintFromModal };
+export { 
+    addQuotationRow, cancelQuotationConversion, convertQuoteToProject, deleteService, 
+    editQuotation, loadQuotations, loadServices, onQuotationCurrencyChanged, 
+    onServiceCategoryChanged, onServiceUnitChanged, onServiceSelected, onTaxTypeChanged, 
+    openNewQuotationModal, openNewServiceModal, printQuotation, recalcQuotationTotals, 
+    removeQuotationRow, submitCreateQuotation, submitCreateService, triggerPrintFromModal, 
+    populateServiceCategoriesAndUnits, checkQuoteClientCreditRisk, onQuoteClientChanged,
+    confirmQuoteClientRisk, cancelQuoteClientRisk,
+    goToQuotationsPage, changeQuotationsPageSize, renderQuotationsPaginated
+};
+

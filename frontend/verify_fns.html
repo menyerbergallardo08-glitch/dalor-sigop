@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>STARTING</title>
+    <script>
+        window.moduleErrors = [];
+        window.addEventListener('error', function(e) {
+            window.moduleErrors.push({
+                msg: e.message,
+                filename: e.filename,
+                lineno: e.lineno,
+                colno: e.colno,
+                error: e.error ? (e.error.stack || e.error.toString()) : null
+            });
+            document.title = "ERR: " + e.message + " in " + e.filename + ":" + e.lineno;
+        });
+    </script>
+</head>
+<body>
+    <script type="module" src="/src/main.js"></script>
+    <script>
+        setTimeout(() => {
+            if (window.moduleErrors.length > 0) {
+                const first = window.moduleErrors[0];
+                document.title = "RUNTIME_ERR: " + first.msg + " AT " + first.filename + ":" + first.lineno;
+            } else {
+                const hasRound = typeof window.roundNumber === 'function';
+                document.title = "NO_ERROR (roundNumber=" + hasRound + ")";
+            }
+        }, 1500);
+    </script>
+</body>
+</html>

@@ -1,74 +1,402 @@
+// DALOR SIGO-P | Global Environment Initializer
+window.API_BASE = window.API_BASE || (window.location.origin + "/api/v1");
+window.EXCHANGE_RATE = window.EXCHANGE_RATE || parseFloat(localStorage.getItem('dalor_exchange_rate')) || 850.0;
+window.BCV_DATA = window.BCV_DATA || { rate: 850.0, date_value: '', source: 'BCV Oficial', source_tier: 'oficial_directo' };
+window.allClients = window.allClients || [];
+window.allServices = window.allServices || [];
+window.allProjects = window.allProjects || [];
+window.allCategories = window.allCategories || [];
+window.allAssets = window.allAssets || [];
+window.allPersonnel = window.allPersonnel || [];
+window.allMaterials = window.allMaterials || [];
+window.quoteRowsCount = window.quoteRowsCount || 0;
+window.splitRowsCount = window.splitRowsCount || 0;
+window.phaseRowsCount = window.phaseRowsCount || 0;
+window.selectedPersonnelIds = window.selectedPersonnelIds || [];
+window.selectedVehicleIds = window.selectedVehicleIds || [];
+window.selectedToolIds = window.selectedToolIds || [];
+window.selectedMaterialIds = window.selectedMaterialIds || [];
+try {
+    window.currentUser = window.currentUser || JSON.parse(localStorage.getItem('dalor_user') || 'null');
+} catch(e) { window.currentUser = null; }
+window.authToken = window.authToken || localStorage.getItem('dalor_token') || null;
 
-import './styles/main.css';
-import { store } from './state/store.js';
-import { api } from './api/client.js';
-
-import { renderNavbar, bindNavbarEvents } from './components/Navbar.js';
-import { renderSubnav, bindSubnavEvents } from './components/Subnav.js';
-
-import { renderLoginView, bindLoginEvents } from './views/LoginView.js';
-import { renderQuotationsView, bindQuotationsEvents } from './views/QuotationsView.js';
-import { renderClientsView, bindClientsEvents } from './views/ClientsView.js';
-import { renderServicesView, bindServicesEvents } from './views/ServicesView.js';
-import { renderProjectsView, bindProjectsEvents } from './views/ProjectsView.js';
-import { renderResourcesView, bindResourcesEvents } from './views/ResourcesView.js';
-import { renderDispatchView, bindDispatchEvents } from './views/DispatchView.js';
-import { renderFinancialView, bindFinancialEvents } from './views/FinancialView.js';
-import { renderExpensesView, bindExpensesEvents } from './views/ExpensesView.js';
-import { renderMaintenanceView, bindMaintenanceEvents } from './views/MaintenanceView.js';
-
-const VIEW_MAP = {
-    'login': { render: renderLoginView, bind: bindLoginEvents },
-    'quotations': { render: renderQuotationsView, bind: bindQuotationsEvents },
-    'clients': { render: renderClientsView, bind: bindClientsEvents },
-    'services': { render: renderServicesView, bind: bindServicesEvents },
-    'projects': { render: renderProjectsView, bind: bindProjectsEvents },
-    'resources': { render: renderResourcesView, bind: bindResourcesEvents },
-    'dispatch': { render: renderDispatchView, bind: bindDispatchEvents },
-    'financial': { render: renderFinancialView, bind: bindFinancialEvents },
-    'expenses': { render: renderExpensesView, bind: bindExpensesEvents },
-    'maintenance': { render: renderMaintenanceView, bind: bindMaintenanceEvents }
+window.authFetch = function(url, options = {}) {
+    var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    var _h = Object.assign({}, options.headers || {});
+    if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    return window.fetch(url, Object.assign({}, options, { headers: _h }));
 };
 
-function renderApp() {
-    const appEl = document.getElementById('app');
-    if (!appEl) return;
+import { Api } from './api.js';
+import { State } from './state.js';
+import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js';
 
-    if (!store.token) {
-        appEl.innerHTML = renderLoginView();
-        bindLoginEvents();
+// Carga e Inicialización de Submódulos Especializados
+import './modules/core.js';
+import './modules/bcv.js';
+import './modules/maintenance.js';
+import './modules/projects.js';
+import './modules/resources.js';
+import './modules/quotations.js';
+import './modules/expenses.js';
+import './modules/financial.js';
+import './modules/materials.js';
+import './modules/dispatch.js';
+import './modules/rentals.js';
+
+// Exportar al scope global para compatibilidad total con eventos inline de index.html
+window.Api = Api;
+window.State = State;
+window.performLogin = performLogin;
+window.executePortalLogin = (u, p) => performLogin(u, p);
+window.quickFillAndLogin = (u, p) => performLogin(u, p);
+window.loginDirectlyAs = (u, p) => performLogin(u, p);
+window.handlePortalLogin = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const u = document.getElementById('portal_username')?.value?.trim();
+    const p = document.getElementById('portal_password')?.value;
+    performLogin(u, p);
+};
+window.handleLogout = handleLogout;
+
+// Universal Double-Submit Protection
+window.withDoubleSubmitProtection = function(btnOrForm, asyncFn) {
+    return async function(...args) {
+        let btn = null;
+        if (btnOrForm instanceof HTMLElement) {
+            btn = (btnOrForm.tagName === 'BUTTON' || (btnOrForm.tagName === 'INPUT' && btnOrForm.type === 'submit'))
+                ? btnOrForm 
+                : btnOrForm.querySelector('button[type="submit"], button:not([type="button"])');
+        } else if (typeof btnOrForm === 'string') {
+            btn = document.querySelector(btnOrForm);
+        }
+
+        if (btn) {
+            if (btn.dataset.submitting === "true" || btn.disabled) {
+                console.warn("[DoubleSubmit] Solicitud concurrente bloqueada.");
+                return;
+            }
+            btn.dataset.submitting = "true";
+            btn.disabled = true;
+            btn.classList.add('loading-submitting');
+            var origHtml = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Procesando...`;
+        }
+
+        try {
+            return await asyncFn.apply(this, args);
+        } finally {
+            if (btn) {
+                setTimeout(() => {
+                    btn.dataset.submitting = "false";
+                    btn.disabled = false;
+                    btn.classList.remove('loading-submitting');
+                    btn.innerHTML = origHtml;
+                }, 500);
+            }
+        }
+    };
+};
+
+// Global Form Submit interceptor for double-click protection across all standard forms
+document.addEventListener('submit', function(e) {
+    const form = e.target;
+    if (!form || form.tagName !== 'FORM') return;
+    
+    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"], button:not([type="button"])');
+    if (!submitBtn) return;
+    
+    if (submitBtn.dataset.submitting === "true") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.warn("[DoubleSubmit] Envío de formulario bloqueado por concurrencia.");
+        return false;
+    }
+    
+    submitBtn.dataset.submitting = "true";
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+    
+    setTimeout(() => {
+        submitBtn.dataset.submitting = "false";
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }, 4000);
+}, true);
+
+// Utility: Debounce for fast search inputs (250ms)
+window.debounce = function(func, wait = 250) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+};
+
+// Connected Debounced Search Functions (250ms) - V4.1.2
+window.debouncedFilterToolsList = window.debounce(function() {
+    if (typeof window.filterToolsList === 'function') window.filterToolsList();
+}, 250);
+
+window.debouncedFilterProjectsList = window.debounce(function(val) {
+    if (typeof window.filterProjectsList === 'function') window.filterProjectsList(val);
+}, 250);
+
+window.debouncedFilterDispatchList = window.debounce(function(val) {
+    if (typeof window.filterDispatchList === 'function') window.filterDispatchList(val);
+}, 250);
+
+window.debouncedApplyRentalsFilter = window.debounce(function() {
+    if (typeof window.applyRentalsFilter === 'function') window.applyRentalsFilter();
+}, 250);
+
+window.debouncedFilterMaterialsTable = window.debounce(function() {
+    if (typeof window.filterMaterialsTable === 'function') window.filterMaterialsTable();
+}, 250);
+
+window.debouncedFilterExpensesLog = window.debounce(function() {
+    if (typeof window.filterExpensesLog === 'function') window.filterExpensesLog();
+}, 250);
+
+window.debouncedFilterMaintenanceAuditLogs = window.debounce(function() {
+    if (typeof window.filterMaintenanceAuditLogs === 'function') window.filterMaintenanceAuditLogs();
+}, 250);
+
+window.debouncedFilterTransferToolsChecklist = window.debounce(function() {
+    if (typeof window.filterTransferToolsChecklist === 'function') window.filterTransferToolsChecklist();
+}, 250);
+
+// Auto-bind debounce listeners to avoid high-frequency DOM thrashing
+function initSearchDebounceBindings() {
+    const searchBindings = [
+        { id: "toolSearchInput", fn: window.debouncedFilterToolsList },
+        { id: "rentalFilterSearch", fn: window.debouncedApplyRentalsFilter },
+        { id: "filterMaterialSearch", fn: window.debouncedFilterMaterialsTable },
+        { id: "log_filter_search", fn: window.debouncedFilterExpensesLog },
+        { id: "auditFilterUser", fn: window.debouncedFilterMaintenanceAuditLogs },
+        { id: "auditFilterQuery", fn: window.debouncedFilterMaintenanceAuditLogs },
+        { id: "tg_tools_search", fn: window.debouncedFilterTransferToolsChecklist }
+    ];
+
+    searchBindings.forEach(({ id, fn }) => {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.debounced) {
+            el.addEventListener("input", fn);
+            el.dataset.debounced = "true";
+        }
+    });
+
+    const projInput = document.getElementById("project_search_input");
+    if (projInput && !projInput.dataset.debounced) {
+        projInput.addEventListener("input", (e) => window.debouncedFilterProjectsList(e.target.value));
+        projInput.dataset.debounced = "true";
+    }
+
+    const dispInput = document.getElementById("dispatch_search_input");
+    if (dispInput && !dispInput.dataset.debounced) {
+        dispInput.addEventListener("input", (e) => window.debouncedFilterDispatchList(e.target.value));
+        dispInput.dataset.debounced = "true";
+    }
+}
+window.initSearchDebounceBindings = initSearchDebounceBindings;
+
+// Control de Tasa Oficial BCV
+async function fetchAndApplyBcvRate(forceRefresh = false) {
+    try {
+        const data = await Api.financial.getBcvRate(forceRefresh);
+        State.bcvData = data;
+        window.BCV_DATA = data;
+        const val = parseFloat(data.rate);
+        if (!isNaN(val) && val > 0) {
+            State.exchangeRate = val;
+            window.EXCHANGE_RATE = val;
+            localStorage.setItem('dalor_exchange_rate', val);
+            
+            const display = document.getElementById("bcvRateDisplay");
+            if (display) display.innerText = data.formatted_rate || val.toFixed(2);
+            
+            const input = document.getElementById("globalExchangeRateInput");
+            if (input) input.value = val.toFixed(2);
+            
+            const modalRate = document.getElementById("modalBcvCurrentRate");
+            if (modalRate) modalRate.innerText = `${val.toFixed(2)} Bs/$ (${data.source || 'BCV'})`;
+            
+            const modalDate = document.getElementById("modalBcvDateValue");
+            if (modalDate) modalDate.innerText = data.date_value || 'Vigente';
+            
+            const kpiBcv = document.getElementById("kpi_partners_bcv_rate");
+            if (kpiBcv) kpiBcv.innerText = `${val.toFixed(2)} Bs/$`;
+
+            const manualInput = document.getElementById("manualTasaInput");
+            if (manualInput && !manualInput.value) manualInput.value = val.toFixed(2);
+        }
+    } catch (e) {
+        console.warn("No se pudo actualizar tasa BCV:", e);
+    }
+}
+window.fetchAndApplyBcvRate = fetchAndApplyBcvRate;
+
+// Router de Navegación de Vistas
+window.switchView = function(viewName, moduleCategory, targetSubtab = null) {
+    if (typeof window.appSwitchView === 'function') {
+        window.appSwitchView(viewName, moduleCategory, targetSubtab);
         return;
     }
 
-    const currentViewKey = store.activeView || 'quotations';
-    const viewHandler = VIEW_MAP[currentViewKey] || VIEW_MAP['quotations'];
+    const allViews = [
+        'executive', 'financial', 'maintenance',
+        'quotations', 'clients', 'services', 
+        'projects', 'dispatch', 'dashboard', 
+        'resources', 
+        'pwa', 'manual', 'tree', 'inbox', 'expenses-log'
+    ];
 
-    appEl.innerHTML = `
-        ${renderNavbar()}
-        ${renderSubnav()}
-        <main id="view-container">
-            ${viewHandler.render()}
-        </main>
-    `;
+    allViews.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.add('hidden');
+    });
 
-    bindNavbarEvents();
-    bindSubnavEvents();
-    if (viewHandler.bind) {
-        viewHandler.bind();
+    const activeView = document.getElementById(`view-${viewName}`) || document.getElementById('view-projects');
+    if (activeView) activeView.classList.remove('hidden');
+
+    document.querySelectorAll(".nav-dropdown").forEach(drop => drop.classList.remove("active", "open"));
+    const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`) || document.getElementById('dropdown-proyectos');
+    if (activeDropdown) activeDropdown.classList.add("active");
+
+    // Guardar estado de navegación para persistencia al refrescar
+    try {
+        localStorage.setItem('dalor_active_view', viewName);
+        if (moduleCategory) localStorage.setItem('dalor_active_category', moduleCategory);
+        sessionStorage.setItem('dalor_active_view', viewName);
+        if (moduleCategory) sessionStorage.setItem('dalor_active_category', moduleCategory);
+    } catch(e) {}
+
+    if (viewName === 'executive' && typeof window.loadExecutiveDashboard === 'function') window.loadExecutiveDashboard();
+    if (viewName === 'financial') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_financial') || sessionStorage.getItem('dalor_active_subtab_financial') || 'cxc';
+        if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab(sub);
+    }
+    if (viewName === 'maintenance') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_maintenance') || sessionStorage.getItem('dalor_active_subtab_maintenance') || 'users';
+        if (typeof window.openMaintenanceSubtab === 'function') window.openMaintenanceSubtab(sub);
+    }
+    if (viewName === 'quotations' && typeof window.loadQuotations === 'function') window.loadQuotations();
+    if (viewName === 'clients' && typeof window.loadClients === 'function') window.loadClients();
+    if (viewName === 'services' && typeof window.loadServices === 'function') window.loadServices();
+    if (viewName === 'projects' && typeof window.initProjectPlanningView === 'function') window.initProjectPlanningView();
+    if (viewName === 'dispatch' && typeof window.initDispatchView === 'function') window.initDispatchView();
+    if (viewName === 'dashboard' && typeof window.loadComparisonDashboard === 'function') window.loadComparisonDashboard();
+    if (viewName === 'resources') {
+        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_resources') || sessionStorage.getItem('dalor_active_subtab_resources') || 'dashboard';
+        if (typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab(sub);
+    }
+    if (viewName === 'inbox' && typeof window.loadPendingExpensesInbox === 'function') window.loadPendingExpensesInbox();
+    if (viewName === 'tree' && typeof window.loadCategoriesTree === 'function') window.loadCategoriesTree();
+    if (viewName === 'expenses-log' && typeof window.loadExpensesLog === 'function') window.loadExpensesLog();
+
+    if (window.onViewSwitched) {
+        window.onViewSwitched(viewName);
+    }
+    if (typeof window.initSearchDebounceBindings === 'function') {
+        setTimeout(window.initSearchDebounceBindings, 50);
+    }
+
+    // Actualizar botón activo en la barra móvil inferior
+    try {
+        document.querySelectorAll('.mobile-bottom-btn').forEach(b => b.classList.remove('active'));
+        const mBtn = document.getElementById(`mNav-${viewName}`);
+        if (mBtn) mBtn.classList.add('active');
+    } catch(e) {}
+};
+
+window.toggleMobileNavDrawer = function() {
+    const drawer = document.getElementById('mobileNavDrawer');
+    const overlay = document.getElementById('mobileDrawerOverlay');
+    if (!drawer) return;
+    const isOpen = drawer.classList.contains('open');
+    if (isOpen) {
+        drawer.classList.remove('open');
+        if (overlay) overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+    } else {
+        drawer.classList.add('open');
+        if (overlay) overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+};
+
+window.closeMobileNavDrawer = function() {
+    const drawer = document.getElementById('mobileNavDrawer');
+    const overlay = document.getElementById('mobileDrawerOverlay');
+    if (drawer) drawer.classList.remove('open');
+    if (overlay) overlay.classList.add('hidden');
+    document.body.style.overflow = '';
+};
+
+window.mobileNavigate = function(view, category) {
+    window.closeMobileNavDrawer();
+    window.switchView(view, category);
+};
+
+// Bootstrap Inicial
+async function initApp() {
+    fetchAndApplyBcvRate();
+    if (typeof window.initSearchDebounceBindings === 'function') {
+        window.initSearchDebounceBindings();
+    }
+    const isAuth = checkAuthStatus();
+    const currentUser = State.currentUser || window.currentUser;
+    
+    const loginScreen = document.getElementById('app-login-screen');
+    const authShell = document.getElementById('app-authenticated-shell');
+
+    if (isAuth && currentUser) {
+        document.body.classList.add('authenticated');
+        document.documentElement.classList.add('is-auth');
+        if (loginScreen) {
+            loginScreen.style.setProperty('display', 'none', 'important');
+            loginScreen.classList.add('hidden');
+        }
+        if (authShell) authShell.style.setProperty('display', 'block', 'important');
+        
+        try { renderUserBadge(); } catch(e) { console.warn("renderUserBadge warn:", e); }
+        try { applyPermissionMap(currentUser); } catch(e) { console.warn("applyPermissionMap warn:", e); }
+
+        // Restaurar la vista exacta y submódulo en el que estaba el usuario antes de refrescar
+        let savedView = localStorage.getItem('dalor_active_view') || sessionStorage.getItem('dalor_active_view');
+        let savedCategory = localStorage.getItem('dalor_active_category') || sessionStorage.getItem('dalor_active_category');
+        const validViews = ['projects', 'financial', 'quotations', 'clients', 'services', 'dispatch', 'resources', 'maintenance', 'executive', 'dashboard'];
+        if (!savedView || !validViews.includes(savedView)) {
+            savedView = 'projects';
+            savedCategory = 'proyectos';
+        }
+        window.switchView(savedView, savedCategory || 'proyectos');
+
+        if (typeof window.loadInitialMasterData === 'function') {
+            try { window.loadInitialMasterData(); } catch(e) { console.warn(e); }
+        }
+        if (typeof window.initSearchDebounceBindings === 'function') {
+            setTimeout(window.initSearchDebounceBindings, 300);
+        }
+    } else {
+        document.body.classList.remove('authenticated');
+        document.documentElement.classList.remove('is-auth');
+        if (loginScreen) {
+            loginScreen.style.setProperty('display', 'flex', 'important');
+            loginScreen.classList.remove('hidden');
+        }
+        if (authShell) authShell.style.setProperty('display', 'none', 'important');
     }
 }
 
-// Global hook for automated tests and legacy compatibility
-window.dalorStore = store;
-window.dalorApi = api;
-
-// Initial Bootstrap
-document.addEventListener('DOMContentLoaded', () => {
-    store.subscribe(() => renderApp());
-    renderApp();
-
-    // Fetch live BCV in background
-    api.financial.getBcvRate(false)
-        .then(data => store.setBcv(data))
-        .catch(err => console.warn("BCV Auto-fetch:", err));
-});
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}

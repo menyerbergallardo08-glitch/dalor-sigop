@@ -152,6 +152,7 @@ if os.path.exists(FRONTEND_DIR):
         return Response(status_code=404)
 
     @app.get("/")
+    @app.head("/")
     def serve_frontend():
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), headers=NO_CACHE_HEADERS)
 

@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from sqlalchemy import text
+from sqlalchemy import text, func
 from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.models.models import (
@@ -98,7 +98,7 @@ def init_db():
 
         # 0. Roles del Sistema y Catálogo de Permisos
         import json
-        if db.query(Role).count() == 0:
+        if db.query(func.count(Role.id)).scalar() == 0:
             print("--> Seeding default system roles...")
             roles_seed = [
                 Role(
@@ -275,7 +275,7 @@ def init_db():
             db.commit()
 
                 # 2. Clean Personnel Roster (15 Official Operational DALOR Members)
-        if db.query(Personnel).count() < 15:
+        if db.query(func.count(Personnel.id)).scalar() < 15:
             print("--> Synchronizing complete 15-member operational personnel roster...")
             # Keep existing IDs or clean and insert full roster
             existing_codes = {p.code for p in db.query(Personnel.code).all()}
@@ -316,7 +316,7 @@ def init_db():
             db.commit()
 
         # 3. Assets, Heavy Machinery, Welding Rigs & Vehicles (Ensure real Dalor fleet & tools loaded)
-        if db.query(Asset).count() < 916:
+        if db.query(func.count(Asset.id)).scalar() < 916:
             print("--> Seeding complete industrial catalog of tools, machinery, and vehicles (916 items)...")
             # 8 Vehículos Oficiales DALOR C.A. (Extracción certificada de VEHICULOS.xlsx)
             vehicles = [
@@ -399,7 +399,7 @@ def init_db():
             db.commit()
 
                 # 4. Materials & Consumables Catalog (Ensure 15 materials exist)
-        if db.query(Material).count() < 15:
+        if db.query(func.count(Material.id)).scalar() < 15:
             print("--> Seeding/Syncing 15 authentic raw materials & consumables...")
             existing_mats = {m.code for m in db.query(Material.code).all()}
             materials_list = [
@@ -529,7 +529,7 @@ def init_db():
         # Las partidas de servicio y APU deben ser registradas manualmente por Dalor.
 
         # 8. Seed de Cuentas Bancarias y Cajas Predeterminadas
-        if db.query(FinancialAccount).count() == 0:
+        if db.query(func.count(FinancialAccount.id)).scalar() == 0:
             print("--> Seeding default financial accounts (banks & cash registers)...")
             default_accounts = [
                 FinancialAccount(name="Banesco Panamá USD", account_type="usd", bank_or_provider="Banesco Panamá", is_default=True, sort_order=1),

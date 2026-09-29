@@ -102,9 +102,7 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/healthz")
-@app.head("/healthz")
 @app.get("/ping")
-@app.head("/ping")
 def healthcheck():
     return {
         "status": "healthy",
@@ -152,7 +150,6 @@ if os.path.exists(FRONTEND_DIR):
         return Response(status_code=404)
 
     @app.get("/")
-    @app.head("/")
     def serve_frontend():
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), headers=NO_CACHE_HEADERS)
 

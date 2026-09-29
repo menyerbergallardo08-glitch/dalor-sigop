@@ -165,8 +165,7 @@ def get_assets(
     
     is_paginated = page is not None and isinstance(page, int)
     if is_paginated:
-        from sqlalchemy import func as sa_func
-        total = db.query(sa_func.count()).select_from(query.subquery()).scalar()
+        total = query.count()
         items = query.offset((page - 1) * page_size).limit(page_size).all()
         return {
             "items": items,

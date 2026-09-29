@@ -3,8 +3,15 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from app.core.config import settings
 
 db_url = settings.DATABASE_URL
+
+# Normalizar URL de PostgreSQL: Render puede enviar postgres://, postgresql:// o postgresql+psycopg://
+# SQLAlchemy necesita psycopg2 (tenemos psycopg2-binary instalado, no psycopg3)
 if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+elif db_url.startswith("postgresql+psycopg://"):
+    db_url = db_url.replace("postgresql+psycopg://", "postgresql+psycopg2://", 1)
 
 connect_args = {"check_same_thread": False, "timeout": 15} if "sqlite" in db_url else {}
 

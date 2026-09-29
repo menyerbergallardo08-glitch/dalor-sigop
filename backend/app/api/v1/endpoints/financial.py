@@ -621,7 +621,7 @@ def get_receivables(
         .order_by(AccountReceivable.id.desc())
     )
     is_paginated = page is not None and isinstance(page, int)
-    total = query.count() if is_paginated else None
+    total = query.order_by(None).count() if is_paginated else None
     rows = query.offset((page - 1) * page_size).limit(page_size).all() if is_paginated else query.all()
 
     items = [{
@@ -977,7 +977,7 @@ def get_payables(
     query = query.order_by(AccountPayable.id.desc())
 
     is_paginated = page is not None and isinstance(page, int)
-    total = query.count() if is_paginated else None
+    total = query.order_by(None).count() if is_paginated else None
     rows = query.offset((page - 1) * page_size).limit(page_size).all() if is_paginated else query.all()
 
     items = []

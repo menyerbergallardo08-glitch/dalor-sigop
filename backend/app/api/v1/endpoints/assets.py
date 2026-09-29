@@ -165,7 +165,7 @@ def get_assets(
     
     is_paginated = page is not None and isinstance(page, int)
     if is_paginated:
-        total = query.count()
+        total = query.order_by(None).count()
         items = query.offset((page - 1) * page_size).limit(page_size).all()
         return {
             "items": items,

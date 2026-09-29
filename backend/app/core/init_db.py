@@ -11,9 +11,11 @@ from app.models.models import (
 def init_db():
     Base.metadata.create_all(bind=engine)
     
-    # Safe auto-migration for newly added columns and TEXT column expansion
-    with engine.connect() as conn:
-        for stmt in [
+    # Cada sentencia se ejecuta en su propia transaccion aislada.
+    # En PostgreSQL, si un ALTER falla (ej. columna ya existe), la conexion queda
+    # en estado "abortado" y todas las siguientes sentencias fallan silenciosamente.
+    # Con conexiones independientes, un fallo no afecta al resto.
+    migration_stmts = [
             "ALTER TABLE expenses ALTER COLUMN description TYPE TEXT;",
             "ALTER TABLE expenses ALTER COLUMN supplier_vendor TYPE TEXT;",
             "ALTER TABLE expenses ALTER COLUMN partner_name TYPE TEXT;",
@@ -26,7 +28,7 @@ def init_db():
             "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS tax_amount_usd FLOAT DEFAULT 0.0;",
             "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_tax_exempt BOOLEAN DEFAULT FALSE;",
             "ALTER TABLE projects ADD COLUMN IF NOT EXISTS tracking_token VARCHAR(64);",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS execution_time VARCHAR(100) DEFAULT '15 días hábiles';",
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS execution_time VARCHAR(100) DEFAULT '15 dias habiles';",
             "ALTER TABLE projects ADD COLUMN IF NOT EXISTS scope_of_work TEXT;",
             "ALTER TABLE projects ADD COLUMN IF NOT EXISTS duration_days INTEGER DEFAULT 30;",
             "ALTER TABLE projects ADD COLUMN IF NOT EXISTS contract_amount_usd FLOAT DEFAULT 0.0;",
@@ -74,7 +76,6 @@ def init_db():
             "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS is_freeform BOOLEAN DEFAULT FALSE;",
             "ALTER TABLE project_material_requisitions ADD COLUMN IF NOT EXISTS resource_type VARCHAR(50) DEFAULT 'material';",
             "ALTER TABLE project_material_requisitions ADD COLUMN IF NOT EXISTS asset_id INTEGER;",
-            # V4.1.2: Índices corregidos y FKs justificadas
             "DROP INDEX IF EXISTS idx_dispatch_items_guide_id;",
             "CREATE INDEX IF NOT EXISTS idx_dispatch_items_guide_id ON dispatch_guide_items (dispatch_guide_id);",
             "CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);",
@@ -84,13 +85,20 @@ def init_db():
             "CREATE INDEX IF NOT EXISTS idx_personnel_project_id ON personnel (current_project_id);",
             "CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);",
             "CREATE INDEX IF NOT EXISTS idx_expenses_asset_id ON expenses (asset_id);",
-            "CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id);"
-        ]:
-            try:
-                conn.execute(text(stmt))
-                conn.commit()
-            except Exception:
-                pass
+            "CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id);",
+            # Columnas de proyectos adicionales para modelo de negocio
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_name VARCHAR(200);",
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS location VARCHAR(200);",
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS description TEXT;",
+        ]
+
+    for stmt in migration_stmts:
+        try:
+            with engine.begin() as isolated_conn:
+                isolated_conn.execute(text(stmt))
+        except Exception:
+            pass  # Ignorar silenciosamente: columna ya existe, tabla no existe, etc.
+
 
     db = SessionLocal()
     try:

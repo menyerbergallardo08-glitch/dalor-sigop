@@ -163,26 +163,26 @@ def seed_database():
 
         print("--- 4. SEEDING OFFICIAL EXPENSE CATEGORIES & BUDGET HIERARCHY ---")
         cats = [
-            {"code": "1", "name": "Nómina Dalor Guacara", "group_type": "gasto_fijo_sede"},
-            {"code": "2", "name": "Impuestos Municipales", "group_type": "gasto_fijo_sede"},
-            {"code": "3", "name": "Consumibles Oficina", "group_type": "gasto_fijo_sede"},
-            {"code": "4", "name": "Consumibles Taller", "group_type": "costo_directo"},
-            {"code": "5", "name": "Seniat IVA", "group_type": "gasto_fijo_sede"},
-            {"code": "6", "name": "Seniat ISLR", "group_type": "gasto_fijo_sede"},
-            {"code": "7", "name": "Seniat Pensiones", "group_type": "gasto_fijo_sede"},
-            {"code": "8", "name": "Fonacit", "group_type": "gasto_fijo_sede"},
-            {"code": "9", "name": "Parafiscales", "group_type": "gasto_fijo_sede"},
-            {"code": "10", "name": "Honorarios Profesionales", "group_type": "gasto_fijo_sede"},
-            {"code": "11", "name": "Compra de Bienes & Activos", "group_type": "costo_directo"},
-            {"code": "12", "name": "Servicios (Neptunia, Internet, Vigilancia)", "group_type": "gasto_fijo_sede"},
-            {"code": "13", "name": "Gastos de Flota & Combustible", "group_type": "costo_directo"},
-            {"code": "14", "name": "Nómina de Proyecto / Campo", "group_type": "costo_directo"},
-            {"code": "15", "name": "Hospedaje de Cuadrilla", "group_type": "costo_directo"},
-            {"code": "16", "name": "Comidas & Viáticos", "group_type": "costo_directo"},
-            {"code": "17", "name": "Insumos & Ferretería", "group_type": "costo_directo"},
-            {"code": "18", "name": "Consumibles & Electrodos", "group_type": "costo_directo"},
-            {"code": "19", "name": "Combustible en Sitio", "group_type": "costo_directo"},
-            {"code": "20", "name": "Traslados & Fletes", "group_type": "costo_directo"}
+            {"code": "1.0", "name": "Nomina Dalor Guacara", "group_type": "gasto_fijo_sede"},
+            {"code": "2.0", "name": "Impuestos Municipales", "group_type": "gasto_fijo_sede"},
+            {"code": "3.0", "name": "Consumibles Oficina", "group_type": "gasto_fijo_sede"},
+            {"code": "4.0", "name": "Consumibles Taller", "group_type": "costo_directo"},
+            {"code": "5.0", "name": "Seniat Iva", "group_type": "gasto_fijo_sede"},
+            {"code": "6.0", "name": "Seniat ISLR", "group_type": "gasto_fijo_sede"},
+            {"code": "7.0", "name": "Seniat Pensiones", "group_type": "gasto_fijo_sede"},
+            {"code": "8.0", "name": "Fonacit", "group_type": "gasto_fijo_sede"},
+            {"code": "9.0", "name": "Parafiscales", "group_type": "gasto_fijo_sede"},
+            {"code": "10.0", "name": "Honorarios Profesionales", "group_type": "gasto_fijo_sede"},
+            {"code": "11.0", "name": "Compra de bienes", "group_type": "costo_directo"},
+            {"code": "12.0", "name": "Servicios", "group_type": "gasto_fijo_sede"},
+            {"code": "13.0", "name": "Gastos de Flota", "group_type": "costo_directo"},
+            {"code": "14.0", "name": "Nomina Proyecto", "group_type": "costo_directo"},
+            {"code": "15.0", "name": "Hospedaje", "group_type": "costo_directo"},
+            {"code": "16.0", "name": "Comidas", "group_type": "costo_directo"},
+            {"code": "17.0", "name": "Insumos", "group_type": "costo_directo"},
+            {"code": "18.0", "name": "Consumibles", "group_type": "costo_directo"},
+            {"code": "19.0", "name": "Combustible", "group_type": "costo_directo"},
+            {"code": "20.0", "name": "Traslados", "group_type": "costo_directo"}
         ]
         for c in cats:
             existing_c = db.query(ExpenseCategory).filter(ExpenseCategory.code == c["code"]).first()
@@ -190,6 +190,9 @@ def seed_database():
                 db.add(ExpenseCategory(code=c["code"], name=c["name"], group_type=c["group_type"]))
             else:
                 existing_c.name = c["name"]
+        
+        # Purgar cualquier residuo de categorías con código entero
+        db.query(ExpenseCategory).filter(ExpenseCategory.code.in_([str(i) for i in range(1, 21)])).delete(synchronize_session=False)
         db.commit()
         print(f"[OK] {len(cats)} Official Budget Categories synchronized.")
 

@@ -38,6 +38,7 @@
                     <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'oriente', this)">Oriente</button>
                     <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'zulia_falcon', this)">Occidente</button>
                     <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'bolivar', this)">Guayana / Sur</button>
+                    <button type="button" class="bi-filter-pill-light" onclick="filterBIExtended('region', 'centro_occidente', this)">Centro-Occidente</button>
                 </div>
             </div>
 
@@ -125,99 +126,224 @@
 
                 <!-- CONTENEDOR DEL MAPA VECTORIAL SVG CLARO -->
                 <div style="position: relative; width: 100%; height: 280px; display: flex; align-items: center; justify-content: center; z-index: 1;" id="venezuelaMapContainer">
-                    <svg viewBox="0 0 820 480" style="width: 100%; height: 100%; max-height: 280px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.08));" xmlns="http://www.w3.org/2000/svg">
+                    <svg viewBox="0 0 820 480" style="width: 100%; height: 100%; max-height: 280px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.06));" xmlns="http://www.w3.org/2000/svg">
                         <defs>
-                            <linearGradient id="vzlaFillLight" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#e2e8f0" />
-                                <stop offset="100%" stop-color="#cbd5e1" />
+                            <linearGradient id="vzlaMainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ffffff" />
+                                <stop offset="40%" stop-color="#f8fafc" />
+                                <stop offset="100%" stop-color="#e2e8f0" />
                             </linearGradient>
-                            <linearGradient id="pinGradActive" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#38bdf8" />
-                                <stop offset="100%" stop-color="#0284c7" />
+                            <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="#e0f2fe" />
+                                <stop offset="100%" stop-color="#bae6fd" />
                             </linearGradient>
-                            <pattern id="lightTechGrid" width="30" height="30" patternUnits="userSpaceOnUse">
-                                <circle cx="2" cy="2" r="1" fill="#cbd5e1" opacity="0.6" />
+                            <pattern id="esequiboStripe" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                                <line x1="0" y1="0" x2="0" y2="8" stroke="#cbd5e1" stroke-width="1.5" />
+                            </pattern>
+                            <pattern id="techGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+                                <circle cx="2" cy="2" r="0.8" fill="#cbd5e1" opacity="0.45" />
                             </pattern>
                         </defs>
 
-                        <!-- Fondo retícula sutil -->
-                        <rect x="0" y="0" width="820" height="480" fill="url(#lightTechGrid)" opacity="0.4" />
+                        <!-- Retícula Cartográfica Ejecutiva -->
+                        <rect x="0" y="0" width="820" height="480" fill="url(#techGrid)" opacity="0.4" rx="8" />
 
-                        <!-- Trazado Oficial de Venezuela en paleta ejecutiva clara -->
-                        <path d="M 175,110 L 210,95 L 255,85 L 290,65 L 305,45 L 320,50 L 325,75 L 350,90 L 395,95 L 435,92 L 465,102 L 505,105 L 545,100 L 590,95 L 635,110 L 665,135 L 700,165 L 710,195 L 685,220 L 660,240 L 640,285 L 620,330 L 590,380 L 545,430 L 500,455 L 450,445 L 430,420 L 415,380 L 400,340 L 370,300 L 340,270 L 300,250 L 250,240 L 220,230 L 190,210 L 170,185 L 160,150 Z" 
-                              fill="url(#vzlaFillLight)" stroke="#94a3b8" stroke-width="2" stroke-linejoin="round" />
+                        <!-- Referencias Geográficas Vecinas Sutiles -->
+                        <!-- Colombia (Oeste y Suroeste) -->
+                        <path d="M 60,80 L 150,110 L 166,138 L 178,192 L 210,230 L 245,240 L 368,260 L 370,290 L 385,350 L 395,400 L 408,432 L 350,460 L 200,470 L 80,380 L 50,220 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" opacity="0.7" />
+                        <text x="110" y="270" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="2">COLOMBIA</text>
 
-                        <!-- Líneas Internas de Regiones Principales -->
-                        <!-- Zulia / Lago de Maracaibo -->
-                        <path d="M 195,120 Q 215,165 210,190 Q 185,170 195,120" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2" />
-                        <!-- Región Central (Carabobo / Aragua / Miranda) -->
-                        <path d="M 370,105 L 390,175 L 450,170 L 440,100 Z" fill="rgba(37, 99, 235, 0.08)" stroke="#60a5fa" stroke-width="1" stroke-dasharray="3,3" />
-                        <!-- Región Guayana / Bolívar -->
-                        <path d="M 450,240 L 660,240 L 590,380 L 450,340 Z" fill="rgba(148, 163, 184, 0.15)" stroke="#94a3b8" stroke-width="1" />
+                        <!-- Brasil (Sur) -->
+                        <path d="M 408,432 L 450,455 C 475,470 540,470 600,460 L 750,460 L 760,370 L 632,360 L 575,380 L 525,410 L 450,455 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" opacity="0.7" />
+                        <text x="560" y="445" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="2">BRASIL</text>
+
+                        <!-- Mar Caribe y Océano Atlántico -->
+                        <text x="440" y="44" fill="#0284c7" font-size="10" font-weight="800" letter-spacing="3" opacity="0.75">MAR CARIBE</text>
+                        <text x="715" y="160" fill="#0284c7" font-size="8.5" font-weight="800" letter-spacing="2" opacity="0.6">OCÉANO ATLÁNTICO</text>
+
+                        <!-- ================= SILUETA OFICIAL DE VENEZUELA ================= -->
+                        <path d="
+                            M 185,115
+                            C 192,100 205,82 220,68
+                            C 226,62 234,65 236,75
+                            C 232,85 228,95 235,102
+                            C 245,106 256,104 266,96
+                            C 264,78 268,62 276,52
+                            C 285,48 292,54 293,72
+                            C 294,84 288,94 296,98
+                            C 310,100 330,105 350,110
+                            C 362,112 375,114 386,114
+                            C 402,112 418,110 432,112
+                            C 445,115 456,120 468,124
+                            C 482,126 498,122 510,114
+                            C 525,106 550,105 575,105
+                            C 595,105 608,110 615,118
+                            C 610,126 595,132 585,138
+                            C 592,146 605,148 618,150
+                            C 635,155 652,170 668,192
+                            C 678,208 688,222 705,232
+                            C 722,240 735,250 728,270
+                            C 718,288 695,302 675,315
+                            C 655,328 642,342 632,360
+                            C 620,372 595,376 575,380
+                            C 555,385 538,396 525,410
+                            C 505,426 475,445 450,455
+                            C 432,460 418,450 408,432
+                            C 398,415 392,385 385,350
+                            C 378,315 372,280 368,260
+                            C 345,256 315,252 285,248
+                            C 255,244 230,238 210,230
+                            C 195,222 182,210 178,192
+                            C 174,175 168,155 166,138
+                            C 166,125 174,118 185,115
+                            Z
+                        " fill="url(#vzlaMainGrad)" stroke="#475569" stroke-width="1.8" stroke-linejoin="round" />
+
+                        <!-- Guayana Esequiba (Zona en Reclamación Delimitada) -->
+                        <path d="
+                            M 668,192
+                            C 678,208 688,222 705,232
+                            C 722,240 735,250 728,270
+                            C 718,288 695,302 675,315
+                            C 655,328 642,342 632,360
+                            L 630,280 L 640,215 Z
+                        " fill="url(#esequiboStripe)" opacity="0.65" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="3,3" />
+                        <text x="680" y="275" fill="#64748b" font-size="8" font-weight="800" transform="rotate(-40 680 275)" opacity="0.85">ZONA EN RECLAMACIÓN</text>
+
+                        <!-- Área Sede Central Carabobo (Guacara / Valencia Highlight) -->
+                        <path d="M 345,112 C 355,110 375,112 385,115 C 382,135 375,152 355,150 C 342,142 342,125 345,112 Z" 
+                              fill="rgba(37, 99, 235, 0.12)" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="2,2" />
+
+                        <!-- Lago de Maracaibo Fidedigno -->
+                        <path d="
+                            M 215,103
+                            C 220,103 224,107 225,113
+                            C 232,122 238,136 235,150
+                            C 231,162 222,168 215,168
+                            C 207,168 202,159 201,146
+                            C 200,132 206,118 213,111
+                            Z
+                        " fill="url(#waterGrad)" stroke="#0284c7" stroke-width="1.2" />
+                        <text x="217" y="140" fill="#0369a1" font-size="7.5" font-weight="800" text-anchor="middle" opacity="0.85">LAGO DE MARACAIBO</text>
+
+                        <!-- Isla de Margarita & Dependencias Federales -->
+                        <path d="M 502,94 C 508,90 518,90 524,93 C 530,92 536,96 532,100 C 524,102 518,97 512,96 C 505,98 500,97 502,94 Z" 
+                              fill="#f8fafc" stroke="#475569" stroke-width="1.2" />
+                        <text x="518" y="87" fill="#475569" font-size="7" font-weight="800" text-anchor="middle">MARGARITA</text>
+                        <ellipse cx="516" cy="103" rx="3.5" ry="1.5" fill="#e2e8f0" stroke="#64748b" stroke-width="0.8" />
+                        <ellipse cx="506" cy="102" rx="2" ry="1.2" fill="#e2e8f0" stroke="#64748b" stroke-width="0.8" />
+                        <!-- Los Roques -->
+                        <circle cx="410" cy="80" r="2" fill="#bae6fd" stroke="#0284c7" stroke-width="1" />
+                        <circle cx="415" cy="78" r="1.5" fill="#bae6fd" stroke="#0284c7" stroke-width="1" />
+                        <text x="412" y="73" fill="#0284c7" font-size="6.5" font-weight="700" text-anchor="middle">LOS ROQUES</text>
+
+                        <!-- Río Orinoco Fluvial & Delta -->
+                        <path d="
+                            M 500,410
+                            C 460,370 410,360 395,350
+                            C 382,330 376,300 372,275
+                            C 375,250 410,240 440,232
+                            C 480,224 530,220 560,210
+                            C 590,200 620,175 645,162
+                            C 655,165 670,180 675,190
+                        " fill="none" stroke="#60a5fa" stroke-width="1.8" stroke-linecap="round" opacity="0.65" />
+                        <!-- Ramales del Delta -->
+                        <path d="M 645,162 L 660,150 M 645,162 L 670,166 M 650,172 L 675,178" fill="none" stroke="#60a5fa" stroke-width="1.2" opacity="0.5" />
+                        <text x="490" y="222" fill="#2563eb" font-size="7.5" font-weight="700" opacity="0.75" letter-spacing="1">RÍO ORINOCO</text>
+
+                        <!-- Embalse de Guri / Río Caroní -->
+                        <path d="M 575,212 C 580,230 585,250 580,270" fill="none" stroke="#0284c7" stroke-width="2.5" opacity="0.7" stroke-linecap="round" />
+                        <text x="595" y="255" fill="#0369a1" font-size="6.5" font-weight="700">GURI</text>
+
+                        <!-- Rosa de los vientos ejecutiva -->
+                        <g transform="translate(745, 65)">
+                            <circle cx="18" cy="18" r="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.06))" />
+                            <polygon points="18,5 21,18 18,16" fill="#2563eb" />
+                            <polygon points="18,5 15,18 18,16" fill="#1d4ed8" />
+                            <polygon points="18,31 21,18 18,20" fill="#94a3b8" />
+                            <polygon points="18,31 15,18 18,20" fill="#64748b" />
+                            <polygon points="31,18 18,21 20,18" fill="#94a3b8" />
+                            <polygon points="5,18 18,21 16,18" fill="#94a3b8" />
+                            <text x="18" y="4" fill="#1e3a8a" font-size="7.5" font-weight="900" text-anchor="middle">N</text>
+                        </g>
 
                         <!-- ================= NODOS GEOGRÁFICOS REALES (DINÁMICOS) ================= -->
                         
-                        <!-- 1. NODO CARABOBO (VALENCIA / GUACARA - SEDE DALOR) -->
+                        <!-- 1. NODO CARABOBO (VALENCIA / GUACARA - SEDE PRINCIPAL DALOR) -->
                         <g id="mapNodeCarabobo" class="map-node" onclick="filterBIExtended('region', 'carabobo')" style="cursor: pointer; display: none;">
-                            <circle cx="385" cy="140" r="16" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
-                            <circle cx="385" cy="140" r="7" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
-                            <rect x="330" y="95" width="112" height="34" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
-                            <text x="386" y="108" fill="#1e3a8a" font-size="9" font-weight="900" text-anchor="middle">CARABOBO</text>
-                            <text x="386" y="122" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapCaraboboAmount">$0.00</text>
+                            <circle cx="365" cy="128" r="16" fill="rgba(37, 99, 235, 0.25)" class="pulse-ring" />
+                            <circle cx="365" cy="128" r="7" fill="#2563eb" stroke="#ffffff" stroke-width="2.2" />
+                            <g transform="translate(305, 78)">
+                                <rect x="0" y="0" width="120" height="38" rx="8" fill="#ffffff" stroke="#2563eb" stroke-width="1.8" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.12))" />
+                                <text x="60" y="14" fill="#1e3a8a" font-size="9" font-weight="900" text-anchor="middle" letter-spacing="0.4">★ CARABOBO (SEDE)</text>
+                                <text x="60" y="29" fill="#059669" font-size="11" font-weight="900" text-anchor="middle" id="mapCaraboboAmount">$0.00</text>
+                            </g>
                         </g>
 
                         <!-- 2. NODO MIRANDA / CARACAS / GUARENAS -->
                         <g id="mapNodeMiranda" class="map-node" onclick="filterBIExtended('region', 'miranda')" style="cursor: pointer; display: none;">
-                            <circle cx="440" cy="130" r="14" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
-                            <circle cx="440" cy="130" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
-                            <rect x="420" y="75" width="125" height="34" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
-                            <text x="482" y="88" fill="#1e3a8a" font-size="9" font-weight="900" text-anchor="middle">MIRANDA / CCS</text>
-                            <text x="482" y="102" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapMirandaAmount">$0.00</text>
+                            <circle cx="428" cy="122" r="14" fill="rgba(37, 99, 235, 0.25)" class="pulse-ring" />
+                            <circle cx="428" cy="122" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <g transform="translate(425, 68)">
+                                <rect x="0" y="0" width="118" height="36" rx="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.1))" />
+                                <text x="59" y="14" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">MIRANDA / CCS</text>
+                                <text x="59" y="28" fill="#059669" font-size="10.5" font-weight="900" text-anchor="middle" id="mapMirandaAmount">$0.00</text>
+                            </g>
                         </g>
 
-                        <!-- 3. NODO ARAGUA -->
+                        <!-- 3. NODO ARAGUA (MARACAY / CAGUA) -->
                         <g id="mapNodeAragua" class="map-node" onclick="filterBIExtended('region', 'aragua')" style="cursor: pointer; display: none;">
-                            <circle cx="410" cy="148" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
-                            <circle cx="410" cy="148" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
-                            <rect x="370" y="165" width="105" height="32" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
-                            <text x="422" y="177" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ARAGUA</text>
-                            <text x="422" y="190" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapAraguaAmount">$0.00</text>
+                            <circle cx="395" cy="142" r="13" fill="rgba(37, 99, 235, 0.25)" class="pulse-ring" />
+                            <circle cx="395" cy="142" r="5.5" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <g transform="translate(345, 160)">
+                                <rect x="0" y="0" width="102" height="34" rx="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.1))" />
+                                <text x="51" y="13" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ARAGUA</text>
+                                <text x="51" y="26" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapAraguaAmount">$0.00</text>
+                            </g>
                         </g>
 
-                        <!-- 4. NODO ANZOÁTEGUI / ORIENTE -->
+                        <!-- 4. NODO ORIENTE (ANZOÁTEGUI / MONAGAS) -->
                         <g id="mapNodeOriente" class="map-node" onclick="filterBIExtended('region', 'oriente')" style="cursor: pointer; display: none;">
-                            <circle cx="530" cy="165" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
-                            <circle cx="530" cy="165" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
-                            <rect x="520" y="185" width="105" height="32" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
-                            <text x="572" y="197" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ORIENTE</text>
-                            <text x="572" y="210" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapOrienteAmount">$0.00</text>
+                            <circle cx="535" cy="148" r="14" fill="rgba(37, 99, 235, 0.25)" class="pulse-ring" />
+                            <circle cx="535" cy="148" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <g transform="translate(520, 168)">
+                                <rect x="0" y="0" width="112" height="34" rx="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.1))" />
+                                <text x="56" y="13" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ORIENTE</text>
+                                <text x="56" y="26" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapOrienteAmount">$0.00</text>
+                            </g>
                         </g>
 
-                        <!-- 5. NODO ZULIA / FALCÓN -->
+                        <!-- 5. NODO ZULIA / FALCÓN (OCCIDENTE) -->
                         <g id="mapNodeZulia" class="map-node" onclick="filterBIExtended('region', 'zulia_falcon')" style="cursor: pointer; display: none;">
-                            <circle cx="215" cy="155" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
-                            <circle cx="215" cy="155" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
-                            <rect x="145" y="170" width="105" height="32" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
-                            <text x="197" y="182" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ZULIA / FALCÓN</text>
-                            <text x="197" y="195" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapOccidenteAmount">$0.00</text>
+                            <circle cx="210" cy="120" r="14" fill="rgba(37, 99, 235, 0.25)" class="pulse-ring" />
+                            <circle cx="210" cy="120" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <g transform="translate(130, 68)">
+                                <rect x="0" y="0" width="115" height="34" rx="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.1))" />
+                                <text x="57" y="13" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">ZULIA / FALCÓN</text>
+                                <text x="57" y="26" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapOccidenteAmount">$0.00</text>
+                            </g>
                         </g>
 
                         <!-- 6. NODO BOLÍVAR / SUR -->
                         <g id="mapNodeBolivar" class="map-node" onclick="filterBIExtended('region', 'bolivar')" style="cursor: pointer; display: none;">
-                            <circle cx="585" cy="270" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
-                            <circle cx="585" cy="270" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
-                            <rect x="580" y="290" width="95" height="30" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
-                            <text x="627" y="302" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">BOLÍVAR</text>
-                            <text x="627" y="314" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapBolivarAmount">$0.00</text>
+                            <circle cx="570" cy="225" r="14" fill="rgba(37, 99, 235, 0.25)" class="pulse-ring" />
+                            <circle cx="570" cy="225" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <g transform="translate(560, 246)">
+                                <rect x="0" y="0" width="105" height="34" rx="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.1))" />
+                                <text x="52" y="13" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">BOLÍVAR / SUR</text>
+                                <text x="52" y="26" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapBolivarAmount">$0.00</text>
+                            </g>
                         </g>
 
                         <!-- 7. NODO LARA / CENTRO-OCCIDENTE -->
                         <g id="mapNodeCentroOccidente" class="map-node" onclick="filterBIExtended('region', 'centro_occidente')" style="cursor: pointer; display: none;">
-                            <circle cx="310" cy="155" r="13" fill="rgba(37, 99, 235, 0.2)" class="pulse-ring" />
-                            <circle cx="310" cy="155" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
-                            <rect x="255" y="120" width="105" height="32" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
-                            <text x="307" y="132" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">LARA / CO</text>
-                            <text x="307" y="145" fill="#059669" font-size="9.5" font-weight="900" text-anchor="middle" id="mapCentroOccAmount">$0.00</text>
+                            <circle cx="310" cy="140" r="14" fill="rgba(37, 99, 235, 0.25)" class="pulse-ring" />
+                            <circle cx="310" cy="140" r="6" fill="#2563eb" stroke="#ffffff" stroke-width="2" />
+                            <g transform="translate(245, 155)">
+                                <rect x="0" y="0" width="112" height="34" rx="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.1))" />
+                                <text x="56" y="13" fill="#1e3a8a" font-size="8.5" font-weight="900" text-anchor="middle">LARA / CO</text>
+                                <text x="56" y="26" fill="#059669" font-size="10" font-weight="900" text-anchor="middle" id="mapCentroOccAmount">$0.00</text>
+                            </g>
                         </g>
                     </svg>
 

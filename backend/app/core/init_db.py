@@ -507,9 +507,24 @@ def init_db():
                 cat.name = item["name"]
                 cat.group_type = item["group_type"]
                 cat.monthly_budget_usd = item["monthly_budget_usd"]
-                cat.parent_id = parent_map.get(item["parent_code"])
-                db.flush()
         db.commit()
+
+        # 5.1 Deduplicación Defensiva: Migrar y eliminar categorías con código entero redundante ('1', '2', ..., '20')
+        try:
+            legacy_int_codes = [str(i) for i in range(1, 21)]
+            legacy_cats = db.query(ExpenseCategory).filter(ExpenseCategory.code.in_(legacy_int_codes)).all()
+            for leg in legacy_cats:
+                official_code = f"{leg.code}.0"
+                official_target = db.query(ExpenseCategory).filter(ExpenseCategory.code == official_code).first()
+                if official_target:
+                    db.query(Expense).filter(Expense.category_id == leg.id).update(
+                        {"category_id": official_target.id}, synchronize_session=False
+                    )
+                    db.delete(leg)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"[WARN] Error purgando categorías duplicadas: {e}")
 
         # 6. Clients & Corporate Directory: Ensure default client exists if empty
         oxicar = db.query(Client).filter((Client.code == "MDCLI-001") | (Client.code == "CLI-OXICAR") | (Client.code == "CLI-001")).first()

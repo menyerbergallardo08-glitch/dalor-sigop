@@ -2175,7 +2175,7 @@ def _classify_venezuela_region(location_str: str, client_address: str = None) ->
 
 @router.get("/bi-metrics")
 def get_bi_metrics(
-    year: Optional[int] = None,
+    year: Optional[str] = None,
     client_id: Optional[int] = None,
     region: Optional[str] = None,
     db: Session = Depends(get_db)
@@ -2184,6 +2184,8 @@ def get_bi_metrics(
     Retorna métricas ejecutivas 100% reales consolidadas desde la base de datos de DALOR SIGO-P.
     Cero maquetas, cero porcentajes hardcodeados y cero datos simulados.
     """
+    from app.models.models import MaterialMovement
+    
     # 1. Base Queries
     all_clients = {c.id: c for c in db.query(Client).all()}
     
@@ -2202,14 +2204,18 @@ def get_bi_metrics(
     
     project_ids = {p.id for p in all_projects}
 
+    # Año filter helper
+    apply_year = year and str(year).strip().lower() not in ["all", "none", "0", ""]
+    year_int = int(year) if apply_year and str(year).strip().isdigit() else None
+
     # CxC Facturación & Valuaciones
     r_query = db.query(AccountReceivable)
     if client_id:
         r_query = r_query.filter(AccountReceivable.client_id == client_id)
     if region and region != "all":
         r_query = r_query.filter(AccountReceivable.project_id.in_(project_ids))
-    if year:
-        r_query = r_query.filter(func.extract('year', AccountReceivable.issue_date) == int(year))
+    if year_int:
+        r_query = r_query.filter(func.extract('year', AccountReceivable.issue_date) == year_int)
     all_rec = r_query.all()
     rec_ids = {r.id for r in all_rec}
 
@@ -2218,34 +2224,46 @@ def get_bi_metrics(
     if rec_ids:
         pay_query = pay_query.filter(FinancialPayment.receivable_id.in_(rec_ids))
     elif client_id or (region and region != "all"):
-        pay_query = pay_query.filter(FinancialPayment.receivable_id == -999) # vacío si no hay facturas que coincidan
-    if year:
-        pay_query = pay_query.filter(func.extract('year', FinancialPayment.payment_date) == int(year))
+        pay_query = pay_query.filter(FinancialPayment.receivable_id == -999)
+    if year_int:
+        pay_query = pay_query.filter(func.extract('year', FinancialPayment.payment_date) == year_int)
     all_cxc_payments = pay_query.all()
 
-    # Costos & Gastos
+    # Costos & Gastos Directos de Campo
     exp_query = db.query(Expense).filter(Expense.status == "aprobado")
     if region and region != "all":
         exp_query = exp_query.filter(Expense.project_id.in_(project_ids))
-    if year:
-        exp_query = exp_query.filter(func.extract('year', Expense.expense_date) == int(year))
+    if year_int:
+        exp_query = exp_query.filter(func.extract('year', Expense.expense_date) == year_int)
     all_expenses = exp_query.all()
 
-    cxp_pay_query = db.query(FinancialPayment).filter(
-        FinancialPayment.payable_id.isnot(None),
-        FinancialPayment.payment_method.notin_(["retencion_iva", "retencion_islr"])
-    )
-    if year:
-        cxp_pay_query = cxp_pay_query.filter(func.extract('year', FinancialPayment.payment_date) == int(year))
-    all_cxp_payments = cxp_pay_query.all()
+    # Cuentas por Pagar (Compras de Insumos/Servicios de Proveedores)
+    cxp_query = db.query(AccountPayable)
+    if region and region != "all":
+        cxp_query = cxp_query.filter(AccountPayable.project_id.in_(project_ids))
+    if year_int:
+        cxp_query = cxp_query.filter(func.extract('year', AccountPayable.issue_date) == year_int)
+    all_payables = cxp_query.all()
+
+    # Despachos de Materiales de Almacén a Proyectos
+    mat_query = db.query(MaterialMovement).filter(MaterialMovement.movement_type.in_(["salida_obra", "salida"]))
+    if region and region != "all":
+        mat_query = mat_query.filter(MaterialMovement.project_id.in_(project_ids))
+    if year_int:
+        mat_query = mat_query.filter(func.extract('year', MaterialMovement.movement_date) == year_int)
+    all_mat_movements = mat_query.all()
 
     # 2. Resumen KPI Superior
     tot_invoiced = sum(r.amount_usd for r in all_rec)
+    tot_contracted = sum(p.contract_amount_usd or 0.0 for p in all_projects)
     tot_collected = sum(p.amount_usd for p in all_cxc_payments)
     tot_pending_cxc = sum(r.balance_usd for r in all_rec)
-    tot_expenses = sum(e.amount_usd for e in all_expenses)
-    tot_cxp_paid = sum(p.amount_usd for p in all_cxp_payments)
-    tot_cost = round(tot_expenses + tot_cxp_paid, 2)
+    
+    tot_field_expenses = sum(e.amount_usd for e in all_expenses)
+    tot_supplier_purchases = sum(ap.amount_usd for ap in all_payables)
+    tot_warehouse_dispatches = sum((m.quantity * (m.unit_cost_usd or 0.0)) for m in all_mat_movements)
+    
+    tot_cost = round(tot_field_expenses + tot_supplier_purchases + tot_warehouse_dispatches, 2)
     net_profit = round(tot_collected - tot_cost, 2)
     margin_pct = round((net_profit / tot_cost * 100), 1) if tot_cost > 0 else 0.0
     collection_rate = round((tot_collected / tot_invoiced * 100), 1) if tot_invoiced > 0 else (100.0 if tot_collected > 0 else 0.0)
@@ -2415,9 +2433,15 @@ def get_bi_metrics(
         p_col = sum(r.paid_amount_usd for r in p_rec)
         p_bal = sum(r.balance_usd for r in p_rec)
         
-        # Gastos directos imputados a la obra
+        # Costos directos completos imputados a la obra:
+        # a) Gastos de campo / viáticos / nómina de campo
         p_exp = sum(e.amount_usd for e in all_expenses if e.project_id == p.id)
-        p_cost = round(p_exp, 2)
+        # b) Compras de insumos y servicios a proveedores (CxP)
+        p_cxp = sum(ap.amount_usd for ap in all_payables if ap.project_id == p.id)
+        # c) Despachos de materiales de almacén
+        p_mat = sum((m.quantity * (m.unit_cost_usd or 0.0)) for m in all_mat_movements if m.project_id == p.id)
+        
+        p_cost = round(p_exp + p_cxp + p_mat, 2)
         p_profit = round(p_col - p_cost, 2)
         p_margin = round((p_profit / p_cost * 100), 1) if p_cost > 0 else (100.0 if p_col > 0 else 0.0)
         
@@ -2430,10 +2454,14 @@ def get_bi_metrics(
             "status": p.status,
             "location": p.location or "En Sitio",
             "region": _classify_venezuela_region(p.location, cli.address if cli else None),
+            "contract_amount_usd": round(p.contract_amount_usd or 0.0, 2),
             "invoiced_usd": round(p_inv, 2),
             "collected_usd": round(p_col, 2),
             "balance_usd": round(p_bal, 2),
             "cost_usd": p_cost,
+            "field_expenses_usd": round(p_exp, 2),
+            "supplier_purchases_usd": round(p_cxp, 2),
+            "materials_consumed_usd": round(p_mat, 2),
             "profit_usd": p_profit,
             "margin_pct": p_margin
         })
@@ -2441,10 +2469,14 @@ def get_bi_metrics(
     return {
         "success": True,
         "summary": {
+            "total_contracted_usd": round(tot_contracted, 2),
             "total_invoiced_usd": round(tot_invoiced, 2),
             "total_collected_usd": round(tot_collected, 2),
             "total_pending_cxc_usd": round(tot_pending_cxc, 2),
             "total_cost_usd": tot_cost,
+            "field_expenses_usd": round(tot_field_expenses, 2),
+            "supplier_purchases_usd": round(tot_supplier_purchases, 2),
+            "materials_consumed_usd": round(tot_warehouse_dispatches, 2),
             "net_profit_usd": net_profit,
             "margin_pct": margin_pct,
             "collection_rate_pct": collection_rate,

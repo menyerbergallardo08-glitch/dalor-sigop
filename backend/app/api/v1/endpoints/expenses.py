@@ -130,12 +130,28 @@ def get_categories_tree(db: Session = Depends(get_db)):
     except Exception:
         pass
 
-    parents = [c for c in cats if not c.parent_id or "." not in c.code or c.code.endswith(".0")]
+    # Partidas principales raíces oficiales:
+    # 1. Agrupar por prefijo base numérico (ej: '1', '2', ..., '20')
+    # 2. Si existen simultáneamente '1' y '1.0', elegir siempre la oficial con decimales ('1.0')
+    # 3. Excluir subcuentas hijas (que tienen parent_id o decimales secundarios como 1.1)
+    base_parents = {}
+    for c in cats:
+        if c.parent_id is not None:
+            continue
+        parts = c.code.split('.')
+        base_num = parts[0]
+        if len(parts) > 1 and parts[1] != '0':
+            continue
+        if base_num not in base_parents or c.code.endswith(".0"):
+            base_parents[base_num] = c
+
+    parents = list(base_parents.values())
     parents.sort(key=cat_sort_key)
 
     tree = []
     for p in parents:
-        subcats = [c for c in cats if c.parent_id == p.id]
+        prefix = p.code.split('.')[0]
+        subcats = [c for c in cats if c.parent_id == p.id or (c.id != p.id and c.code.startswith(prefix + '.') and not c.code.endswith('.0'))]
         subcats.sort(key=cat_sort_key)
         p_direct = spent_by_cat.get(p.id, 0.0)
         sub_spent = sum(spent_by_cat.get(s.id, 0.0) for s in subcats)

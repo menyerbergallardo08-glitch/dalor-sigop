@@ -147,7 +147,9 @@ if os.path.exists(FRONTEND_DIR):
 
     # 📱 Rutas Oficiales PWA (Progressive Web App)
     @app.get("/manifest.webmanifest")
+    @app.head("/manifest.webmanifest")
     @app.get("/manifest.json")
+    @app.head("/manifest.json")
     def serve_pwa_manifest():
         candidate_paths = [
             os.path.join(FRONTEND_DIR, "manifest.webmanifest"),
@@ -160,6 +162,7 @@ if os.path.exists(FRONTEND_DIR):
         return Response(status_code=404)
 
     @app.get("/sw.js")
+    @app.head("/sw.js")
     def serve_pwa_sw():
         candidate_paths = [
             os.path.join(FRONTEND_DIR, "sw.js"),

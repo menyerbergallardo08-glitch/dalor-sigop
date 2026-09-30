@@ -438,34 +438,11 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
     db.query(ProjectPhase).delete(synchronize_session=False)
     db.query(Project).delete(synchronize_session=False)
 
-    # 2. Purgar todos los clientes que no sean OXICAR
-    db.query(Client).filter(
-        Client.code != "MDCLI-001",
-        Client.code != "CLI-OXICAR"
-    ).delete(synchronize_session=False)
+    # 2. Purgar todos los clientes a 0 (cero datos de prueba)
+    db.query(Client).delete(synchronize_session=False)
 
-    # 3. Asegurar que el ÚNICO cliente corporativo oficial sea OXICAR
-    oxicar = db.query(Client).filter((Client.code == "MDCLI-001") | (Client.code == "CLI-OXICAR")).first()
-    if not oxicar:
-        oxicar = Client(
-            code="MDCLI-001",
-            name="OXICAR (Oxígenos Carabobo C.A.)",
-            rif="J-07509812-4",
-            contact_name="Gerencia de Planta & Mantenimiento",
-            contact_phone="+58 241-8710000",
-            contact_email="operaciones@oxicar.com.ve",
-            address="Zona Industrial Municipal Sur, Valencia, Edo. Carabobo",
-            industry="Gases Industriales / Metalmecánica",
-            is_active=True
-        )
-        db.add(oxicar)
-    else:
-        oxicar.code = "MDCLI-001"
-        oxicar.name = "OXICAR (Oxígenos Carabobo C.A.)"
-        oxicar.rif = "J-07509812-4"
-        oxicar.address = "Zona Industrial Municipal Sur, Valencia, Edo. Carabobo"
-        oxicar.industry = "Gases Industriales / Metalmecánica"
-        oxicar.is_active = True
+    # 3. Purgar partidas de servicios y APU a 0 (deben quedar limpias para carga manual)
+    db.query(ServiceItem).delete(synchronize_session=False)
 
     # 4. Asegurar que al personal no se le asigne ningún cargo (solo sus nombres) y purgar impurezas
     db.query(Personnel).filter(

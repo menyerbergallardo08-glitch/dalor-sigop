@@ -31,7 +31,22 @@
         "psycopg2-binary 2.9.x (PostgreSQL)",
         "sqlite3 (Local Dev Fallback)"
       ],
-      "ocr_engine": "Tesseract OCR 5.3+ con modelos de entrenamiento tesseract-ocr-spa (Español)",
+      "ocr_and_ai_engine": {
+        "primary_ai": "Google Gemini Multimodal Vision API (REST & SDK)",
+        "models_cascade": [
+          "models/gemini-1.5-flash",
+          "models/gemini-2.5-flash",
+          "models/gemini-flash-latest"
+        ],
+        "capabilities": [
+          "Lectura semántica de comprobantes y facturas fiscales SENIAT",
+          "Interpretación de recibos manuscritos (bolígrafo/lápiz) y notas arrugadas",
+          "Detección y auto-rotación de imágenes de campo (90°, 180°, 270°)",
+          "Clasificación e imputación automática a las 20 partidas oficiales de Dalor",
+          "Visión de odómetros y kilometraje de vehículos/maquinaria en módulo de mantenimiento"
+        ],
+        "contingency_fallback": "Tesseract OCR 5.3+ (Linux) / Windows OCR (Local) para operación offline sin API Key"
+      },
       "image_processing": "Pillow (PIL) 10.x + OpenCV headless",
       "cryptography": "Passlib (Bcrypt) + Python-JOSE"
     },
@@ -45,9 +60,9 @@
     },
     "devops_and_infrastructure": {
       "containerization": "Docker Multi-stage Debian Slim",
-      "cloud_provider": "Render Cloud Services (Web Service Runtime)",
+      "cloud_provider": "Render Cloud Services (Instancia de Pago Dedicada 24/7 Always-On, sin suspensión por inactividad ni cold starts)",
       "database_provider": "Neon Serverless PostgreSQL (AWS us-east-1)",
-      "keep_alive_daemon": "Background Daemon Heartbeat /healthz cada 7 minutos para prevención de suspensión en Render"
+      "service_sla": "Operación continua ininterrumpida con recursos garantizados de CPU/RAM"
     }
   },
   "database_schema": {

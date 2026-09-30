@@ -72,6 +72,38 @@ function openFinancialSubtab(subtabName) {
 
 
 function switchFinancialSubtab(subtabName) {
+    const user = window.currentUser;
+    if (user) {
+        let p = {};
+        if (typeof user.permissions_json === 'string') {
+            try { p = JSON.parse(user.permissions_json); } catch(e) { p = {}; }
+        } else if (user.permissions_json && typeof user.permissions_json === 'object') {
+            p = user.permissions_json;
+        } else if (user.permissions && typeof user.permissions === 'object') {
+            p = user.permissions;
+        }
+        const role = (user.role_name || '').toLowerCase();
+        const uname = (user.username || '').toLowerCase();
+        const isDirector = uname === 'director' || role.includes('director') || user.is_superuser === true;
+
+        if (!isDirector) {
+            const canCxc = p.cxc_view !== undefined ? !!(p.cxc_view || p.cxc_pay) : true;
+            const canCxp = p.cxp_view !== undefined ? !!(p.cxp_view || p.cxp_pay) : true;
+            const canBancos = p.bancos_view !== undefined ? !!p.bancos_view : true;
+            const canPartners = p.retiros_view !== undefined ? !!p.retiros_view : isDirector;
+
+            if (subtabName === 'cxp' && !canCxp) {
+                subtabName = canCxc ? 'cxc' : (canBancos ? 'summary' : 'cxc');
+            } else if (subtabName === 'cxc' && !canCxc) {
+                subtabName = canCxp ? 'cxp' : (canBancos ? 'summary' : 'cxp');
+            } else if (subtabName === 'summary' && !canBancos) {
+                subtabName = canCxc ? 'cxc' : (canCxp ? 'cxp' : 'cxc');
+            } else if (subtabName === 'partners' && !canPartners) {
+                subtabName = canCxc ? 'cxc' : (canCxp ? 'cxp' : 'summary');
+            }
+        }
+    }
+
     try { 
         sessionStorage.setItem('dalor_active_subtab_financial', subtabName); 
         localStorage.setItem('dalor_active_subtab_financial', subtabName); 

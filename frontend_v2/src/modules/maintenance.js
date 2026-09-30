@@ -1,7 +1,12 @@
-/**
- * DALOR SIGO-P | Módulo: MAINTENANCE.JS
- * Extraído y desacoplado del monolito de producción (v94)
- */
+import { 
+    checkAuthStatus, 
+    performLogin, 
+    handleLogout, 
+    renderUserBadge, 
+    applyPermissionMap, 
+    redirectUserByRole, 
+    showLoginError 
+} from '../auth.js';
 
 var API_BASE = window.API_BASE || (window.location.origin + "/api/v1");
 var allClients = window.allClients = window.allClients || [];
@@ -81,225 +86,27 @@ window.toggleDemoProfiles = function() {
 
 
 
-window.quickFillAndLogin = async function(u, p) {
-
-    const uIn = document.getElementById('portal_username');
-
-    const pIn = document.getElementById('portal_password');
-
-    if (uIn) uIn.value = u;
-
-    if (pIn) pIn.value = p;
-
-    await performLogin(u, p);
-
-};
-
-
-
-window.handlePortalLogin = async function(e) {
-
+const fillQuickLogin = performLogin;
+const fillAndSubmitQuickLogin = performLogin;
+const loginDirectlyAs = performLogin;
+const submitLogin = function(e) {
     if (e && e.preventDefault) e.preventDefault();
-
-    const uIn = document.getElementById('portal_username');
-
-    const pIn = document.getElementById('portal_password');
-
-    const u = uIn ? uIn.value.trim() : '';
-
-    const p = pIn ? pIn.value : '';
-
-    await performLogin(u, p);
-
+    const u = document.getElementById('login_username')?.value?.trim();
+    const p = document.getElementById('login_password')?.value;
+    performLogin(u, p);
 };
 
-
-
-window.performLogin = async function(username, password) {
-
-    if (!username || !password) {
-
-        showLoginError('Por favor ingresa usuario y contraseña');
-
-        return;
-
-    }
-
-
-
-    const errBox = document.getElementById('loginErrorMessage');
-
-    const errTxt = document.getElementById('loginErrorText');
-
-    const btnSubmit = document.getElementById('btnSubmitPortalLogin');
-
-
-
-    if (errBox) errBox.style.display = 'none';
-
-    if (btnSubmit) {
-
-        btnSubmit.disabled = true;
-
-        btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Accediendo...';
-
-    }
-
-
-
-    try {
-
-        const res = await authFetch(`${API_BASE}/auth/login`, {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({ username, password })
-
-        });
-
-
-
-        const data = await res.json();
-
-        if (!res.ok || !data.access_token) {
-
-            const msg = data.detail || 'Usuario o contraseña incorrectos';
-
-            showLoginError(msg);
-
-            if (btnSubmit) {
-
-                btnSubmit.disabled = false;
-
-                btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión';
-
-            }
-
-            return;
-
-        }
-
-
-
-        // 1. Guardar sesión
-
-        currentUser = data.user;
-
-        authToken = data.access_token;
-
-        sessionStorage.setItem('dalor_session_active', 'true');
-
-        sessionStorage.setItem('dalor_user', JSON.stringify(currentUser));
-
-        sessionStorage.setItem('dalor_token', authToken);
-
-
-
-        // 2. Desbloquear visualmente el ERP de forma garantizada
-
-        document.body.classList.add('authenticated');
-
-        const loginScreen = document.getElementById('app-login-screen');
-
-        const authShell = document.getElementById('app-authenticated-shell');
-
-        if (loginScreen) {
-
-            loginScreen.style.setProperty('display', 'none', 'important');
-
-        }
-
-        if (authShell) {
-
-            authShell.style.setProperty('display', 'block', 'important');
-
-        }
-
-        const flLogout = document.getElementById('btnFloatingLogout');
-
-        if (flLogout) flLogout.style.display = 'inline-flex';
-
-
-
-        // 3. Configurar interfaz para el usuario
-
-        try { renderUserBadge(); } catch(e) { console.warn(e); }
-
-        try { applyPermissionMap(currentUser); } catch(e) { console.warn(e); }
-
-        try { configureMobileNav(currentUser); } catch(e) { console.warn(e); }
-
-        try { redirectUserByRole(currentUser); } catch(e) { console.warn(e); }
-
-
-
-        // 4. Cargar datos maestros sin bloquear la interfaz
-
-        setTimeout(() => {
-
-            try { loadInitialMasterData(); } catch(e) { console.warn(e); }
-
-        }, 50);
-
-
-
-        showToast(`Bienvenido, ${currentUser.full_name || currentUser.username}`, 'success');
-
-
-
-    } catch (err) {
-
-        showLoginError('Error al conectar con el servidor: ' + err.message);
-
-    } finally {
-
-        if (btnSubmit) {
-
-            btnSubmit.disabled = false;
-
-            btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión';
-
-        }
-
-    }
-
+window.quickFillAndLogin = performLogin;
+window.handlePortalLogin = function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const u = document.getElementById('portal_username')?.value?.trim();
+    const p = document.getElementById('portal_password')?.value;
+    performLogin(u, p);
 };
-
-
-
-function showLoginError(msg) {
-
-    const errBox = document.getElementById('loginErrorMessage');
-
-    const errTxt = document.getElementById('loginErrorText');
-
-    if (errTxt) errTxt.textContent = msg;
-
-    if (errBox) errBox.style.display = 'block';
-
-}
-
-
-
-window.configureMobileNav = function(user) {
-
-    const nav = document.querySelector('.mobile-bottom-nav');
-
-    if (nav) nav.remove();
-
-};
-
-
-
-// Aliases para compatibilidad
-
-window.loginDirectlyAs = window.quickFillAndLogin;
-
-window.fillAndSubmitQuickLogin = window.quickFillAndLogin;
-
-window.fillQuickLogin = window.quickFillAndLogin;
+window.loginDirectlyAs = loginDirectlyAs;
+window.fillAndSubmitQuickLogin = fillAndSubmitQuickLogin;
+window.fillQuickLogin = fillQuickLogin;
+window.submitLogin = submitLogin;
 
 
 
@@ -1094,543 +901,9 @@ window.changeCategoryHistoryPageSize = changeCategoryHistoryPageSize;
 
 
 
-// --- BLOQUE L8866-L9457 ---
 // ==============================================================================
-
-// 🔐 14. AUTENTICACIÓN, ROLES & CAPAS DE USO (TIPO PROFIT PLUS)
-
+// 🔐 AUTENTICACIÓN, ROLES & PERMISOS UNIFICADOS EN src/auth.js
 // ==============================================================================
-
-async function checkAuthStatus() {
-
-    // Para garantizar que el usuario SIEMPRE pueda elegir su perfil en el login al abrir el teléfono:
-
-    // Solo se mantiene autenticado si la sesión fue iniciada explícitamente en la pestaña actual (sessionStorage).
-
-    const sessionActive = sessionStorage.getItem('dalor_session_active');
-
-    const savedUser = sessionStorage.getItem('dalor_user');
-
-    const savedToken = sessionStorage.getItem('dalor_token');
-
-    
-
-    if (sessionActive === 'true' && savedUser && savedToken) {
-
-        try {
-
-            currentUser = JSON.parse(savedUser);
-
-            authToken = savedToken;
-
-            renderUserBadge();
-
-            applyPermissionMap(currentUser);
-
-            return true;
-
-        } catch (e) {
-
-            sessionStorage.clear();
-
-        }
-
-    }
-
-    
-
-    currentUser = null;
-
-    authToken = null;
-
-    sessionStorage.clear();
-
-    localStorage.removeItem('dalor_user');
-
-    localStorage.removeItem('dalor_token');
-
-    return false;
-
-}
-
-
-
-function renderUserBadge() {
-
-    if (!currentUser) return;
-
-    const nameEl = document.getElementById('userFullNameDisplay');
-
-    const roleEl = document.getElementById('userRoleDisplay');
-
-    const avatarEl = document.getElementById('userAvatar');
-
-
-
-    if (nameEl) nameEl.textContent = currentUser.full_name || currentUser.username;
-
-    if (roleEl) {
-
-        const roleNames = {
-
-            'director': '👑 Director General',
-
-            'director_general': '👑 Director General',
-
-            'admin': '👑 Director General',
-
-            'administracion': '💼 Administración & Finanzas',
-
-            'administrador_financiero': '💼 Administración & Finanzas',
-
-            'admin_finanzas': '💼 Administración & Finanzas',
-
-            'ingeniero': '👷 Ing. Residente de Obra',
-
-            'ingeniero_obra': '👷 Ing. Residente de Obra',
-
-            'campo': '📱 Supervisor de Campo',
-
-            'supervisor_campo': '📱 Supervisor de Campo'
-
-        };
-
-        roleEl.textContent = roleNames[currentUser.role_name] || currentUser.role_name;
-
-    }
-
-    if (avatarEl) {
-
-        avatarEl.textContent = (currentUser.full_name || currentUser.username).charAt(0).toUpperCase();
-
-    }
-
-}
-
-
-
-function applyPermissionMap(user) {
-
-    if (!user) return;
-
-    const role = (user.role_name || '').toLowerCase();
-    const uname = (user.username || '').toLowerCase();
-    const isDirector = uname === 'director' || role.includes('director') || user.is_superuser === true;
-    const isFinanzas = isDirector || uname === 'administracion' || role.includes('finanzas') || role.includes('administrador_financiero');
-    const isIngeniero = isDirector || uname === 'ingeniero' || role.includes('ingeniero');
-    const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
-    const isAlmacen = isDirector || uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
-
-    // Dropdown Comercial
-    const dCom = document.getElementById('dropdown-comercial');
-    if (dCom) dCom.style.display = 'inline-block';
-
-    // Dropdown Proyectos (Director e Ingeniero)
-    const dProj = document.getElementById('dropdown-proyectos');
-    if (dProj) dProj.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
-
-    // Dropdown Finanzas (Director y Administración/Finanzas)
-    const dFin = document.getElementById('dropdown-finanzas');
-    if (dFin) dFin.style.display = (isDirector || isFinanzas) ? 'inline-block' : 'none';
-
-    // Dropdown Recursos (Director, Ingeniero y Almacén/Pañol)
-    const dRec = document.getElementById('dropdown-recursos');
-    if (dRec) dRec.style.display = (isDirector || isIngeniero || isAlmacen) ? 'inline-block' : 'none';
-
-    // Dropdown Gastos (Oculto para Almacén exclusivo)
-    const dGas = document.getElementById('dropdown-gastos');
-    if (dGas) dGas.style.display = (isAlmacen && !isDirector) ? 'none' : 'inline-block';
-
-    // Dropdown Mantenimiento & Auditoría (SOLO Director General / Superuser)
-    const dMaint = document.getElementById('dropdown-mantenimiento');
-    if (dMaint) dMaint.style.display = isDirector ? 'inline-block' : 'none';
-
-    // Dropdown Gerencia / PowerBI (SOLO Director General)
-    const dGer = document.getElementById('dropdown-gerencia');
-    if (dGer) dGer.style.display = isDirector ? 'inline-block' : 'none';
-
-
-
-    const itmInbox = document.getElementById('item-gasto-inbox');
-
-    const itmPwa = document.getElementById('item-gasto-pwa');
-
-    const itmManual = document.getElementById('item-gasto-manual');
-
-    const itmDashboard = document.getElementById('item-gasto-dashboard');
-
-    const itmTree = document.getElementById('item-gasto-tree');
-
-
-
-    // 🛡️ Restricciones y Adaptaciones de Rol para Campo vs Administración vs Almacén vs Ingeniero
-
-    const btnQF = document.getElementById('btnQuickFlow');
-
-    if (btnQF) btnQF.style.display = (isCampo || isAlmacen || isIngeniero) ? 'none' : 'inline-flex';
-
-
-
-    const fiscalBox = document.getElementById('field_fiscal_tax_box');
-
-    if (fiscalBox) fiscalBox.style.display = isCampo ? 'none' : 'grid';
-
-
-
-    const splitBox = document.getElementById('field_split_expense_box');
-
-    if (splitBox) splitBox.style.display = isCampo ? 'none' : 'block';
-
-
-
-    const repContainer = document.getElementById('field_reported_by_container');
-
-    if (repContainer) repContainer.style.display = isCampo ? 'none' : 'block';
-
-
-
-    const repBadge = document.getElementById('field_reported_by_badge');
-
-    const repText = document.getElementById('field_reported_by_text');
-
-    if (repBadge) {
-
-        repBadge.style.display = isCampo ? 'flex' : 'none';
-
-        if (repText) repText.innerHTML = `Reportando como: <b>${user.full_name || user.username}</b> (Supervisor de Campo)`;
-
-    }
-
-
-
-    // Tasa BCV Oficial solo visible para Administración / Dirección
-
-    const tasaBox = document.getElementById('bcvTasaBadge') || document.querySelector('.tasa-editor-box');
-
-    if (tasaBox) {
-
-        tasaBox.style.display = (isDirector || isFinanzas) ? 'inline-flex' : 'none';
-
-    }
-
-
-
-    // Ocultar sección de Bolsas de Costo (Paso 4) en formulario de proyectos para Ingeniero
-
-    const step4Budget = document.getElementById('new_proj_contract')?.closest('.grid-3')?.parentElement?.parentElement?.querySelector('h4:has(span)') || document.getElementById('new_proj_labor')?.closest('.grid-3')?.parentElement;
-
-    if (step4Budget) {
-
-        step4Budget.style.display = isIngeniero ? 'none' : 'block';
-
-    }
-
-    const contractInputContainer = document.getElementById('new_proj_contract')?.parentElement;
-
-    if (contractInputContainer) {
-
-        contractInputContainer.style.display = isIngeniero ? 'none' : 'block';
-
-    }
-
-
-
-    if (isAlmacen) {
-
-        // ROL ALMACÉN & PAÑOL: Solo Activos, Recursos, Materiales y Despachos
-
-        switchView('resources');
-
-    } else if (isCampo) {
-
-        // ROL DE CAMPO: SOLO RENDICIÓN DE GASTO / CAPTURA OCR
-
-        if (itmInbox) itmInbox.style.display = 'none';
-
-        if (itmPwa) itmPwa.style.display = 'flex';
-
-        if (itmManual) itmManual.style.display = 'none';
-
-        if (itmDashboard) itmDashboard.style.display = 'none';
-
-        if (itmTree) itmTree.style.display = 'none';
-
-        switchView('pwa', 'gastos');
-
-    } else if (isFinanzas) {
-
-        // ADMINISTRACIÓN: Inbox, Carga Oficina, Dashboard Oculto (Job Costing solo para dirección), Árbol
-
-        if (itmInbox) itmInbox.style.display = 'flex';
-
-        if (itmPwa) itmPwa.style.display = 'none';
-
-        if (itmManual) itmManual.style.display = 'flex';
-
-        if (itmDashboard) itmDashboard.style.display = 'none';
-
-        if (itmTree) itmTree.style.display = 'flex';
-
-    } else if (isIngeniero) {
-
-        // INGENIERO DE OBRA: Operativa técnica de Proyectos y Recursos (Sin costos ni finanzas)
-
-        if (itmInbox) itmInbox.style.display = 'none';
-
-        if (itmPwa) itmPwa.style.display = 'none';
-
-        if (itmManual) itmManual.style.display = 'none';
-
-        if (itmDashboard) itmDashboard.style.display = 'none';
-
-        if (itmTree) itmTree.style.display = 'none';
-
-    } else {
-
-        // DIRECTOR GENERAL: Todo disponible
-
-        if (itmInbox) itmInbox.style.display = 'flex';
-
-        if (itmPwa) itmPwa.style.display = 'flex';
-
-        if (itmManual) itmManual.style.display = 'flex';
-
-        if (itmDashboard) itmDashboard.style.display = 'flex';
-
-        if (itmTree) itmTree.style.display = 'flex';
-
-    }
-
-
-
-
-    // Dropdown Mantenimiento (SOLO Director General / Superuser)
-    if (dMaint) dMaint.style.display = isDirector ? 'inline-block' : 'none';
-
-    // Botón PowerBI Directivo (SOLO Director General)
-    if (dGer) dGer.style.display = isDirector ? 'inline-block' : 'none';
-
-}
-
-
-
-async function loginDirectlyAs(username, password) {
-
-    const uIn = document.getElementById('login_username');
-
-    const pIn = document.getElementById('login_password');
-
-    if (uIn) uIn.value = username;
-
-    if (pIn) pIn.value = password;
-
-
-
-    const errEl = document.getElementById('loginErrorMessage');
-
-    if (errEl) errEl.classList.add('hidden');
-
-
-
-    try {
-
-        const res = await authFetch(`${API_BASE}/auth/login`, {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({ username, password })
-
-        });
-
-
-
-        const data = await res.json();
-
-        if (!res.ok) {
-
-            if (errEl) {
-
-                errEl.textContent = data.detail || 'Error de credenciales';
-
-                errEl.classList.remove('hidden');
-
-            }
-
-            return;
-
-        }
-
-
-
-        currentUser = data.user;
-
-        authToken = data.access_token;
-
-        localStorage.setItem('dalor_user', JSON.stringify(currentUser));
-
-        localStorage.setItem('dalor_token', authToken);
-
-
-
-        renderUserBadge();
-
-        applyPermissionMap(currentUser);
-
-        
-
-        const modal = document.getElementById('modalLogin');
-
-        if (modal) {
-
-            modal.classList.add('hidden');
-
-            modal.style.display = 'none';
-
-        }
-
-
-
-        redirectUserByRole(currentUser);
-
-
-
-    } catch (e) {
-
-        if (errEl) {
-
-            errEl.textContent = 'Error de conexión: ' + e.message;
-
-            errEl.classList.remove('hidden');
-
-        }
-
-    }
-
-}
-
-
-
-function fillQuickLogin(username, password) {
-
-    loginDirectlyAs(username, password);
-
-}
-
-
-
-function fillAndSubmitQuickLogin(username, password) {
-
-    loginDirectlyAs(username, password);
-
-}
-
-
-
-function redirectUserByRole(user) {
-
-    if (!user) return;
-
-    const role = (user.role_name || user.username || '').toLowerCase();
-
-    
-
-    if (role.includes('almacen') || role.includes('panol') || role.includes('taller')) {
-
-        switchView('resources', 'recursos');
-
-    } else if (role.includes('supervisor') || role.includes('campo')) {
-
-        switchView('pwa', 'gastos');
-
-    } else if (role.includes('admin') || role.includes('finanzas') || role.includes('administrador')) {
-
-        switchView('financial', 'finanzas');
-
-    } else if (role.includes('ingeniero') || role.includes('obra')) {
-
-        switchView('projects', 'proyectos');
-
-    } else {
-
-        switchView('executive', 'gerencia');
-
-    }
-
-}
-
-
-
-async function submitLogin(event) {
-
-    if (event && event.preventDefault) event.preventDefault();
-
-    const username = document.getElementById('login_username').value.trim();
-
-    const password = document.getElementById('login_password').value;
-
-    await loginDirectlyAs(username, password);
-
-}
-
-
-
-function handleLogout() {
-
-    sessionStorage.clear();
-
-    localStorage.removeItem('dalor_user');
-
-    localStorage.removeItem('dalor_token');
-
-    localStorage.clear();
-
-    currentUser = null;
-
-    authToken = null;
-
-    window.location.reload();
-
-    return;
-
-
-
-    document.body.classList.remove('authenticated');
-
-    const loginScreen = document.getElementById('app-login-screen');
-
-    const authShell = document.getElementById('app-authenticated-shell');
-
-    const nav = document.querySelector('.mobile-bottom-nav');
-
-
-
-    if (loginScreen) loginScreen.style.display = 'flex';
-
-    if (authShell) authShell.style.display = 'none';
-
-    if (nav) nav.style.display = 'none';
-
-
-
-    const uIn = document.getElementById('portal_username');
-
-    const pIn = document.getElementById('portal_password');
-
-    if (uIn) uIn.value = '';
-
-    if (pIn) pIn.value = '';
-
-    const errBox = document.getElementById('loginErrorMessage');
-
-    if (errBox) errBox.style.display = 'none';
-
-
-
-    showToast('Sesión finalizada. Inicia sesión con tus credenciales.', 'info');
-
-}
 
 
 
@@ -2007,28 +1280,15 @@ function onNewUserRoleChanged() {
     if (!roleSelect) return;
     const selectedRoleName = roleSelect.value;
     const role = allSystemRoles.find(r => r.name === selectedRoleName);
-
-    if (role) {
-        let perms = {};
-        try { perms = typeof role.permissions_json === 'string' ? JSON.parse(role.permissions_json) : role.permissions_json; } catch(e) { perms = {}; }
-        document.getElementById('nusr_perm_comercial').checked = !!(perms.comercial || perms.comercial_view);
-        document.getElementById('nusr_perm_proyectos').checked = !!(perms.proyectos || perms.proyectos_view);
-        document.getElementById('nusr_perm_finanzas').checked = !!(perms.finanzas || perms.finanzas_view);
-        document.getElementById('nusr_perm_recursos').checked = !!(perms.recursos || perms.recursos_view);
-        document.getElementById('nusr_perm_gastos').checked = !!(perms.gastos || perms.gastos_view);
-        document.getElementById('nusr_perm_bi').checked = !!(perms.executive_bi || perms.executive_dashboard);
-        document.getElementById('nusr_perm_mantenimiento').checked = !!(perms.mantenimiento || perms.mantenimiento_admin);
-    } else {
-        // Fallback standard templates
-        const isDirector = selectedRoleName === 'director_general' || selectedRoleName === 'director';
-        const isFinanzas = selectedRoleName === 'administrador_financiero' || selectedRoleName === 'admin_finanzas';
-        document.getElementById('nusr_perm_comercial').checked = true;
-        document.getElementById('nusr_perm_proyectos').checked = true;
-        document.getElementById('nusr_perm_finanzas').checked = isDirector || isFinanzas;
-        document.getElementById('nusr_perm_recursos').checked = true;
-        document.getElementById('nusr_perm_gastos').checked = true;
-        document.getElementById('nusr_perm_bi').checked = isDirector;
-        document.getElementById('nusr_perm_mantenimiento').checked = isDirector;
+    const descEl = document.getElementById('nusr_role_desc');
+    if (descEl) {
+        if (role && role.description) {
+            descEl.textContent = `${role.display_name}: ${role.description}. Heredará sus 32 permisos granulares automáticamente.`;
+        } else if (role) {
+            descEl.textContent = `Rol asignado: ${role.display_name}. Heredará sus 32 permisos granulares automáticamente.`;
+        } else {
+            descEl.textContent = 'Este usuario heredará automáticamente la matriz de 32 permisos asignada al rol seleccionado.';
+        }
     }
 }
 
@@ -2042,27 +1302,11 @@ async function submitCreateUser(event) {
     const password = document.getElementById('nusr_password').value;
     const role_name = document.getElementById('nusr_role').value;
 
-    const permissions = {
-        comercial: document.getElementById('nusr_perm_comercial').checked,
-        comercial_view: document.getElementById('nusr_perm_comercial').checked,
-        comercial_edit: document.getElementById('nusr_perm_comercial').checked,
-        proyectos: document.getElementById('nusr_perm_proyectos').checked,
-        proyectos_view: document.getElementById('nusr_perm_proyectos').checked,
-        proyectos_edit: document.getElementById('nusr_perm_proyectos').checked,
-        finanzas: document.getElementById('nusr_perm_finanzas').checked,
-        finanzas_view: document.getElementById('nusr_perm_finanzas').checked,
-        finanzas_edit: document.getElementById('nusr_perm_finanzas').checked,
-        recursos: document.getElementById('nusr_perm_recursos').checked,
-        recursos_view: document.getElementById('nusr_perm_recursos').checked,
-        recursos_edit: document.getElementById('nusr_perm_recursos').checked,
-        gastos: document.getElementById('nusr_perm_gastos').checked,
-        gastos_view: document.getElementById('nusr_perm_gastos').checked,
-        gastos_edit: document.getElementById('nusr_perm_gastos').checked,
-        executive_bi: document.getElementById('nusr_perm_bi').checked,
-        executive_dashboard: document.getElementById('nusr_perm_bi').checked,
-        mantenimiento: document.getElementById('nusr_perm_mantenimiento').checked,
-        mantenimiento_admin: document.getElementById('nusr_perm_mantenimiento').checked
-    };
+    const role = allSystemRoles.find(r => r.name === role_name);
+    let permissions_json = null;
+    if (role && role.permissions_json) {
+        permissions_json = typeof role.permissions_json === 'string' ? role.permissions_json : JSON.stringify(role.permissions_json);
+    }
 
     try {
         const res = await authFetch(`${API_BASE}/maintenance/users`, {
@@ -2070,7 +1314,7 @@ async function submitCreateUser(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username, full_name, email, password, role_name,
-                permissions_json: JSON.stringify(permissions)
+                permissions_json
             })
         });
 
@@ -2080,7 +1324,7 @@ async function submitCreateUser(event) {
             return;
         }
 
-        alert(`¡Usuario '${username}' creado con éxito con sus permisos asignados!`);
+        alert(`¡Usuario '${username}' creado con éxito con los permisos asignados del rol '${role ? role.display_name : role_name}'!`);
         closeModal('modalNewUser');
         loadMaintenanceUsersList();
     } catch (e) {

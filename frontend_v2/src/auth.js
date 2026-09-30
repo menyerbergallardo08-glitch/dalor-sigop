@@ -75,7 +75,7 @@ export function applyPermissionMap(user) {
     const uname = (user.username || '').toLowerCase();
     const isDirector = uname === 'director' || role.includes('director') || user.is_superuser === true;
 
-    // 1. Extraer permisos granulares
+    // 1. Extraer permisos
     let p = {};
     if (typeof user.permissions_json === 'string') {
         try { p = JSON.parse(user.permissions_json); } catch(e) { p = {}; }
@@ -85,27 +85,55 @@ export function applyPermissionMap(user) {
         p = user.permissions;
     }
 
-    // 2. Fallbacks de compatibilidad hacia atrás con roles nativos heredados
-    const isFinanzasLegacy = isDirector || uname === 'administracion' || role.includes('finanzas') || role.includes('administrador_financiero');
-    const isIngenieroLegacy = isDirector || uname === 'ingeniero' || role.includes('ingeniero');
-    const isAlmacenLegacy = isDirector || uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
+    // 2. Detectar si existen claves de la matriz granular enterprise (32 permisos)
+    const GRANULAR_TEST_KEYS = [
+        'comercial_view', 'comercial_edit', 'quotations_create',
+        'proyectos_view', 'proyectos_edit', 'proyectos_create',
+        'cxc_view', 'cxc_pay', 'cxp_view', 'cxp_pay', 'bancos_view', 'conciliacion_view', 'retiros_view',
+        'gastos_view', 'gastos_create', 'gastos_approve', 'gastos_export',
+        'recursos_view', 'personal_view', 'almacen_view',
+        'usuarios_admin', 'backups_admin', 'executive_dashboard'
+    ];
+    const hasExplicitGranular = GRANULAR_TEST_KEYS.some(k => p[k] !== undefined);
 
-    // 3. Banderas granulares por módulo
-    const hasComercial = isDirector || p.comercial || p.comercial_view || p.comercial_edit || p.quotations_create || (!role && true);
-    const hasProyectos = isDirector || p.proyectos || p.proyectos_view || isIngenieroLegacy;
-    const hasGastos = isDirector || p.gastos || p.gastos_view || p.gastos_create || (!isAlmacenLegacy && !isDirector) || isDirector;
-    const hasRecursos = isDirector || p.recursos || p.recursos_view || isIngenieroLegacy || isAlmacenLegacy;
+    let hasComercial, hasProyectos, hasGastos, hasRecursos;
+    let canCxc, canCxp, canBancos, canPartners, hasFinanzas;
+    let hasMantenimiento, hasBI;
 
-    // Finanzas granular: CxC vs CxP vs Bancos
-    const canCxc = isDirector || p.cxc_view === true || (isFinanzasLegacy && p.cxc_view !== false);
-    const canCxp = isDirector || p.cxp_view === true || (isFinanzasLegacy && p.cxp_view !== false);
-    const canBancos = isDirector || p.bancos_view === true || (isFinanzasLegacy && p.bancos_view !== false);
-    const hasFinanzas = isDirector || p.finanzas || p.finanzas_view || canCxc || canCxp || canBancos || isFinanzasLegacy;
+    if (hasExplicitGranular) {
+        // MODO GRANULAR ESTRICTO
+        hasComercial = isDirector || !!(p.comercial_view || p.comercial_edit || p.quotations_create || p.clients_manage || p.services_view);
+        hasProyectos = isDirector || !!(p.proyectos_view || p.proyectos_edit || p.proyectos_create || p.valuaciones_approve);
+        hasGastos = isDirector || !!(p.gastos_view || p.gastos_create || p.gastos_approve || p.gastos_export);
+        canCxc = isDirector || !!(p.cxc_view || p.cxc_pay);
+        canCxp = isDirector || !!(p.cxp_view || p.cxp_pay);
+        canBancos = isDirector || !!(p.bancos_view || p.conciliacion_view);
+        canPartners = isDirector || !!(p.retiros_view || p.bancos_view);
+        hasFinanzas = isDirector || canCxc || canCxp || canBancos || canPartners || !!p.finanzas_view;
+        hasRecursos = isDirector || !!(p.recursos_view || p.recursos_edit || p.personal_view || p.personal_edit || p.mantenimiento_vehicular || p.cuadrillas_assign || p.almacen_view || p.almacen_adjust || p.requisiciones_view || p.requisiciones_create || p.despacho_view || p.despacho_create || p.alquileres_view || p.alquileres_create);
+        hasMantenimiento = isDirector || !!(p.usuarios_admin || p.backups_admin || p.audit_logs || p.mantenimiento_admin);
+        hasBI = isDirector || !!(p.executive_dashboard || p.executive_bi);
+    } else {
+        // FALLBACK COMPATIBILIDAD CON ROLES HEREDADOS PREVIOS
+        const isFinanzasLegacy = isDirector || uname === 'administracion' || role.includes('finanzas') || role.includes('administrador_financiero');
+        const isIngenieroLegacy = isDirector || uname === 'ingeniero' || role.includes('ingeniero');
+        const isAlmacenLegacy = isDirector || uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
+        const isCampoLegacy = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
 
-    const hasMantenimiento = isDirector || p.mantenimiento || p.mantenimiento_admin || p.usuarios_admin;
-    const hasBI = isDirector || p.executive_bi || p.executive_dashboard;
+        hasComercial = isDirector || p.comercial || p.comercial_view || (!role && true);
+        hasProyectos = isDirector || p.proyectos || p.proyectos_view || isIngenieroLegacy;
+        hasGastos = isDirector || p.gastos || p.gastos_view || !isAlmacenLegacy;
+        hasRecursos = isDirector || p.recursos || p.recursos_view || isIngenieroLegacy || isAlmacenLegacy;
+        canCxc = isDirector || isFinanzasLegacy || !!p.cxc_view;
+        canCxp = isDirector || isFinanzasLegacy || !!p.cxp_view;
+        canBancos = isDirector || isFinanzasLegacy || !!p.bancos_view;
+        canPartners = isDirector;
+        hasFinanzas = isDirector || isFinanzasLegacy || !!p.finanzas;
+        hasMantenimiento = isDirector || !!p.mantenimiento;
+        hasBI = isDirector || !!p.executive_bi;
+    }
 
-    // Control de Dropdowns de la Barra de Módulos (Navbar)
+    // Dropdowns Principales de Navegación (Navbar)
     const dCom = document.getElementById('dropdown-comercial');
     if (dCom) dCom.style.display = hasComercial ? 'inline-block' : 'none';
 
@@ -127,7 +155,7 @@ export function applyPermissionMap(user) {
     const dGer = document.getElementById('dropdown-gerencia');
     if (dGer) dGer.style.display = hasBI ? 'inline-block' : 'none';
 
-    // Subtabs y botones del Módulo Financiero
+    // Subpestañas y Botones de Acción de Finanzas
     const tabCxc = document.getElementById('tabbtn-fin-cxc');
     if (tabCxc) tabCxc.style.display = canCxc ? '' : 'none';
 
@@ -136,6 +164,9 @@ export function applyPermissionMap(user) {
 
     const tabSummary = document.getElementById('tabbtn-fin-summary');
     if (tabSummary) tabSummary.style.display = canBancos ? '' : 'none';
+
+    const tabPartners = document.getElementById('tabbtn-fin-partners');
+    if (tabPartners) tabPartners.style.display = canPartners ? '' : 'none';
 
     const btnNewRec = document.getElementById('btnFinNewReceivable');
     if (btnNewRec) btnNewRec.style.display = canCxc ? '' : 'none';
@@ -146,10 +177,45 @@ export function applyPermissionMap(user) {
     const btnNewPay = document.getElementById('btnFinNewPayable');
     if (btnNewPay) btnNewPay.style.display = canCxp ? '' : 'none';
 
+    // Opciones del Menú Gastos
+    const itmInbox = document.getElementById('item-gasto-inbox');
+    if (itmInbox) itmInbox.style.display = (isDirector || p.gastos_approve || p.gastos_view) ? 'flex' : 'none';
+
+    const itmPwa = document.getElementById('item-gasto-pwa');
+    if (itmPwa) itmPwa.style.display = (isDirector || p.gastos_create || !hasExplicitGranular) ? 'flex' : 'none';
+
+    const itmManual = document.getElementById('item-gasto-manual');
+    if (itmManual) itmManual.style.display = (isDirector || p.gastos_create || p.gastos_approve) ? 'flex' : 'none';
+
+    const itmDashboard = document.getElementById('item-gasto-dashboard');
+    if (itmDashboard) itmDashboard.style.display = (isDirector || p.executive_dashboard) ? 'flex' : 'none';
+
+    const itmTree = document.getElementById('item-gasto-tree');
+    if (itmTree) itmTree.style.display = (isDirector || p.gastos_view) ? 'flex' : 'none';
+
+    // Elementos operativos de UI
+    const btnQF = document.getElementById('btnQuickFlow');
+    if (btnQF) btnQF.style.display = (hasGastos && (isDirector || p.gastos_create)) ? 'inline-flex' : 'none';
+
+    const tasaBox = document.getElementById('bcvTasaBadge') || document.querySelector('.tasa-editor-box');
+    if (tasaBox) tasaBox.style.display = (isDirector || hasFinanzas) ? 'inline-flex' : 'none';
+
     // Clases CSS de visibilidad por rol
     document.querySelectorAll('.role-director-only').forEach(el => el.style.display = isDirector ? '' : 'none');
     document.querySelectorAll('.role-admin-only').forEach(el => el.style.display = (isDirector || hasFinanzas) ? '' : 'none');
     document.querySelectorAll('.role-eng-only').forEach(el => el.style.display = (isDirector || hasProyectos) ? '' : 'none');
+
+    // Auto-ajustar subtab financiero si el actual no tiene permiso
+    try {
+        const currentFinTab = sessionStorage.getItem('dalor_active_subtab_financial') || localStorage.getItem('dalor_active_subtab_financial') || 'cxc';
+        if (currentFinTab === 'cxp' && !canCxp && canCxc) {
+            sessionStorage.setItem('dalor_active_subtab_financial', 'cxc');
+            localStorage.setItem('dalor_active_subtab_financial', 'cxc');
+        } else if (currentFinTab === 'summary' && !canBancos && canCxc) {
+            sessionStorage.setItem('dalor_active_subtab_financial', 'cxc');
+            localStorage.setItem('dalor_active_subtab_financial', 'cxc');
+        }
+    } catch(e) {}
 
     if (typeof window !== 'undefined') {
         window.applyPermissionMap = applyPermissionMap;
@@ -230,21 +296,49 @@ export function redirectUserByRole(user) {
     if (!user) return;
     const role = (user.role_name || user.username || '').toLowerCase();
     const uname = (user.username || '').toLowerCase();
-    if (role.includes('almacen') || uname === 'almacen') {
+    const isDirector = uname === 'director' || role.includes('director') || user.is_superuser === true;
+
+    let p = {};
+    if (typeof user.permissions_json === 'string') {
+        try { p = JSON.parse(user.permissions_json); } catch(e) { p = {}; }
+    } else if (user.permissions_json && typeof user.permissions_json === 'object') {
+        p = user.permissions_json;
+    } else if (user.permissions && typeof user.permissions === 'object') {
+        p = user.permissions;
+    }
+
+    const canCxc = isDirector || p.cxc_view === true || p.cxc_pay === true;
+    const canCxp = isDirector || p.cxp_view === true || p.cxp_pay === true;
+    const hasFin = isDirector || canCxc || canCxp || p.bancos_view === true || p.finanzas === true;
+    const hasProj = isDirector || p.proyectos === true || p.proyectos_view === true || role.includes('ingeniero');
+    const hasRec = isDirector || p.recursos === true || p.recursos_view === true || role.includes('almacen');
+    const hasGas = isDirector || p.gastos === true || p.gastos_view === true || p.gastos_create === true || role.includes('campo');
+    const hasCom = isDirector || p.comercial === true || p.comercial_view === true;
+    const hasMaint = isDirector || p.mantenimiento === true || p.usuarios_admin === true;
+
+    if (isDirector) {
+        window.switchView('projects', 'proyectos');
+        if (typeof window.loadProjectsList === 'function') window.loadProjectsList();
+    } else if (role.includes('almacen') || (hasRec && !hasProj && !hasFin && !hasGas)) {
         window.switchView('resources', 'recursos');
         if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('materials');
-    } else if (role.includes('supervisor') || role.includes('campo') || uname === 'campo') {
+    } else if (role.includes('supervisor') || role.includes('campo') || (hasGas && !hasProj && !hasFin && !hasRec)) {
         window.switchView('pwa', 'gastos');
-    } else if (role.includes('administrador_financiero') || (role.includes('finanzas') && !role.includes('director')) || uname === 'administracion') {
+    } else if (hasFin && !hasProj) {
         window.switchView('financial', 'finanzas');
-        if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab('cxc');
-    } else if (role.includes('ingeniero') || uname === 'ingeniero') {
+        const targetSub = canCxc ? 'cxc' : (canCxp ? 'cxp' : 'summary');
+        if (typeof window.switchFinancialSubtab === 'function') window.switchFinancialSubtab(targetSub);
+    } else if (hasProj) {
         window.switchView('projects', 'proyectos');
         if (typeof window.loadProjectsList === 'function') window.loadProjectsList();
+    } else if (hasCom) {
+        window.switchView('quotations', 'comercial');
+    } else if (hasGas) {
+        window.switchView('pwa', 'gastos');
+    } else if (hasMaint) {
+        window.switchView('maintenance', 'mantenimiento');
     } else {
-        // Director General / Admin
-        window.switchView('projects', 'proyectos');
-        if (typeof window.loadProjectsList === 'function') window.loadProjectsList();
+        window.switchView('pwa', 'gastos');
     }
 }
 

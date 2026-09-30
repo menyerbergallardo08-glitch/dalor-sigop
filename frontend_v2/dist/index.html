@@ -104,13 +104,13 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-CSFSs2cS.js"></script>
+  <script type="module" crossorigin src="/assets/main-Bvdyww62.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/maintenance-C199U8QU.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-DMhp0139.js">
-  <link rel="modulepreload" crossorigin href="/assets/maintenance-BIeyBGs5.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-Da4p262h.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-BG-fhTT4.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-dn8Ea59p.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-CJVm2qwM.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-bndku78Z.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-CQqaFuID.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-B3rKVl3S.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-CZAvUzlu.js">
@@ -9420,35 +9420,17 @@
                     </select>
                 </div>
 
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <label class="form-label" style="margin: 0; font-size: 11.5px; font-weight: 800; color: var(--dalor-navy);">
-                            <i class="fa-solid fa-sliders"></i> Permisos Asignados al Usuario (Personalizables)
-                        </label>
-                        <span style="font-size: 10px; color: #64748b;">Heredados del rol seleccionado</span>
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <i class="fa-solid fa-shield-halved" style="color: #0284c7; font-size: 15px;"></i>
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">Herencia Automática de Permisos Granulares</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="nusr_perm_comercial" checked> 🏢 Comercial
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="nusr_perm_proyectos" checked> 🏗️ Proyectos & Obras
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="nusr_perm_finanzas"> 💼 Finanzas (CxC/CxP)
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="nusr_perm_recursos" checked> 🚛 Recursos / Flota
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="nusr_perm_gastos" checked> 🧾 Gastos de Obra
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="nusr_perm_bi"> 👑 Panel Ejecutivo / BI
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0; grid-column: span 2;">
-                            <input type="checkbox" id="nusr_perm_mantenimiento"> ⚙️ Mantenimiento y Configuración
-                        </label>
+                    <p id="nusr_role_desc" style="font-size: 11.5px; color: #475569; margin: 0; line-height: 1.4;">
+                        Este usuario heredará automáticamente la matriz de 32 permisos asignada al rol seleccionado (incluyendo accesos precisos a CxC, CxP, Bancos, Gastos, etc.).
+                    </p>
+                    <div style="margin-top: 8px; font-size: 10.5px; color: #64748b; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-circle-info" style="color: #0284c7;"></i>
+                        Podrás afinar o alterar permisos individuales en cualquier momento desde el botón de escudo en la tabla de usuarios.
                     </div>
                 </div>
 

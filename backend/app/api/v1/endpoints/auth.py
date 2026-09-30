@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 import json
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, get_password_hash
-from app.models.models import User, AuditLog
+from app.models.models import User, AuditLog, Role
 
 router = APIRouter()
 
@@ -83,6 +83,14 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         except Exception:
             perms = {}
 
+    if not perms and user.role_name:
+        role_obj = db.query(Role).filter(Role.name == user.role_name).first()
+        if role_obj and role_obj.permissions_json:
+            try:
+                perms = json.loads(role_obj.permissions_json)
+            except Exception:
+                perms = {}
+
     if not perms:
         # Assign comprehensive default permissions based on role
         if user.role_name in ["director", "director_general"] or user.is_superuser:
@@ -153,6 +161,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             "email": user.email,
             "role_name": user.role_name,
             "permissions": perms,
+            "permissions_json": json.dumps(perms),
             "is_superuser": user.is_superuser
         }
     }
@@ -215,7 +224,14 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
             "resources": True, "capture": True, "financials": False, "audit": False, "system_settings": False
         }
     }
-    assigned_perms = role_perms.get(user_in.role_name, role_perms["ingeniero_obra"])
+    role_obj = db.query(Role).filter(Role.name == user_in.role_name).first()
+    if role_obj and role_obj.permissions_json:
+        try:
+            assigned_perms = json.loads(role_obj.permissions_json)
+        except Exception:
+            assigned_perms = role_perms.get(user_in.role_name, role_perms["ingeniero_obra"])
+    else:
+        assigned_perms = role_perms.get(user_in.role_name, role_perms["ingeniero_obra"])
 
     new_user = User(
         username=user_in.username.strip().lower(),

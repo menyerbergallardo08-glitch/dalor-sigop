@@ -836,9 +836,15 @@ function renderPayablesPaginated() {
                         </button>
                     ` : `<span style="color: #059669; font-weight: 800; font-size: 11px; margin-right: 2px;"><i class="fa-solid fa-circle-check"></i> Pagado</span>`}
 
-                    ${p.withholding_voucher_number ? `
+                    ${(p.tax_withholding_usd > 0 || p.withholding_voucher_number) ? `
                         <button onclick="openWithholdingVoucherModal(${p.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; background: #fdf2f8; color: #be185d; border-color: #fbcfe8; font-weight: 700;" title="Ver e Imprimir Comprobante Oficial de Retención IVA (SNAT/2015/0049)">
-                            <i class="fa-solid fa-file-invoice"></i> Comprobante
+                            <i class="fa-solid fa-file-invoice"></i> Ret. IVA
+                        </button>
+                    ` : ''}
+
+                    ${(p.islr_withholding_usd > 0 || (p.islr_rate && p.islr_rate > 0)) ? `
+                        <button onclick="openIslrWithholdingVoucherModal(${p.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 700;" title="Ver e Imprimir Comprobante Oficial de Retención ISLR (Decreto Nº 1.808)">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> Ret. ISLR
                         </button>
                     ` : ''}
 
@@ -1395,6 +1401,79 @@ function printWithholdingVoucher() {
     const voucherModal = document.querySelector("#modalWithholdingVoucher .modal-content");
     const docNumber = document.getElementById("voucher_doc_number")?.textContent || "SENIAT";
     const title = `Comprobante_Retencion_IVA_${docNumber}`;
+    if (typeof window.printElementHtml === 'function' && voucherModal) {
+        window.printElementHtml(voucherModal, title);
+    } else {
+        window.print();
+    }
+}
+
+async function openIslrWithholdingVoucherModal(payableId) {
+    try {
+        const res = await authFetch(`${API_BASE}/financial/cxp/${payableId}/islr-withholding-voucher`);
+        if (!res.ok) throw new Error("No se pudo obtener el comprobante de retención ISLR");
+        const data = await res.json();
+        const v = data.voucher;
+        if (!v) throw new Error("Datos de comprobante no disponibles");
+
+        const elDocNum = document.getElementById("islr_voucher_doc_number");
+        if (elDocNum) elDocNum.textContent = v.voucher_number || '-';
+
+        const elDocDate = document.getElementById("islr_voucher_doc_date");
+        if (elDocDate) elDocDate.textContent = v.voucher_date || '-';
+
+        const elDocPeriod = document.getElementById("islr_voucher_doc_period");
+        if (elDocPeriod) elDocPeriod.textContent = v.fiscal_period || '-';
+
+        const elSuppName = document.getElementById("islr_voucher_supp_name");
+        if (elSuppName) elSuppName.textContent = v.supplier.name || '-';
+
+        const elSuppRif = document.getElementById("islr_voucher_supp_rif");
+        if (elSuppRif) elSuppRif.textContent = v.supplier.rif || 'J-00000000-0';
+
+        const elSuppConcept = document.getElementById("islr_voucher_supp_concept");
+        if (elSuppConcept) elSuppConcept.textContent = v.invoice.concept || `Factura N° ${v.invoice.invoice_number}`;
+
+        const elBcvRate = document.getElementById("islr_voucher_bcv_rate");
+        if (elBcvRate) elBcvRate.textContent = `Bs. ${Number(v.invoice.exchange_rate || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+
+        const elTdDate = document.getElementById("islr_v_td_date");
+        if (elTdDate) elTdDate.textContent = v.invoice.invoice_date || '-';
+
+        const elTdInvoice = document.getElementById("islr_v_td_invoice");
+        if (elTdInvoice) elTdInvoice.textContent = v.invoice.invoice_number || '-';
+
+        const elTdControl = document.getElementById("islr_v_td_control");
+        if (elTdControl) elTdControl.textContent = v.invoice.control_number || '-';
+
+        const elTdCode = document.getElementById("islr_v_td_code");
+        if (elTdCode) elTdCode.textContent = v.invoice.concept_code || '054';
+
+        const elTdTotalBs = document.getElementById("islr_v_td_total_bs");
+        if (elTdTotalBs) elTdTotalBs.textContent = `Bs. ${Number(v.invoice.total_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+
+        const elTdBaseBs = document.getElementById("islr_v_td_base_bs");
+        if (elTdBaseBs) elTdBaseBs.textContent = `Bs. ${Number(v.invoice.base_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+
+        const elTdRetRate = document.getElementById("islr_v_td_ret_rate");
+        if (elTdRetRate) elTdRetRate.textContent = `${v.invoice.islr_rate_pct || 2}%`;
+
+        const elTdWithheldBs = document.getElementById("islr_v_td_withheld_bs");
+        if (elTdWithheldBs) elTdWithheldBs.textContent = `-Bs. ${Number(v.invoice.islr_withholding_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+
+        const elTdNetBs = document.getElementById("islr_v_td_net_bs");
+        if (elTdNetBs) elTdNetBs.textContent = `Bs. ${Number(v.invoice.net_payable_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+
+        openModal("modalIslrWithholdingVoucher");
+    } catch (err) {
+        alert("Error al cargar comprobante ISLR: " + err.message);
+    }
+}
+
+function printIslrWithholdingVoucher() {
+    const voucherModal = document.querySelector("#modalIslrWithholdingVoucher .modal-content");
+    const docNumber = document.getElementById("islr_voucher_doc_number")?.textContent || "SENIAT_ISLR";
+    const title = `Comprobante_Retencion_ISLR_${docNumber}`;
     if (typeof window.printElementHtml === 'function' && voucherModal) {
         window.printElementHtml(voucherModal, title);
     } else {
@@ -4313,6 +4392,8 @@ if (typeof window !== 'undefined') {
     window.calcPayablePreview = calcPayablePreview;
     window.openWithholdingVoucherModal = openWithholdingVoucherModal;
     window.printWithholdingVoucher = printWithholdingVoucher;
+    window.openIslrWithholdingVoucherModal = openIslrWithholdingVoucherModal;
+    window.printIslrWithholdingVoucher = printIslrWithholdingVoucher;
     window.openEditPayableModal = openEditPayableModal;
     window.submitEditPayable = submitEditPayable;
     window.calcEditPayableBsPreview = calcEditPayableBsPreview;
@@ -4570,5 +4651,5 @@ if (typeof window !== 'undefined') {
     }
 }
 
-export { calcClientPaymentBs, onRcpClientChanged, calcQuickBs, loadPartnersWithdrawalsList, loadPayablesList, loadReceivablesList, loadTreasurySummary, onTreasurySummaryPeriodChange, resetTreasurySummaryFilters, openBadDebtModal, openCreateCxCForProject, openDeclareBadDebtModal, openFinancialSubtab, openMaterialConsumeModalWithProject, openNewPartnerWithdrawalModal, openNewPayableModal, openNewReceivableModal, openPayableHistoryModal, openQuickFlowModal, openReceiveClientPaymentModal, openRecordPaymentModal, selectQuickType, submitBadDebtWriteOff, submitCreatePayable, submitCreateReceivable, submitDeclareBadDebt, submitDirectClientPayment, submitFinancialPayment, submitQuickFlow, switchFinancialSubtab, goToCxcPage, changeCxcPageSize, renderReceivablesPaginated, goToCxpPage, changeCxpPageSize, renderPayablesPaginated, goToTreasuryPage, changeTreasuryPageSize, renderTreasuryTracePaginated, goToPartnersPage, changePartnersPageSize, renderPartnersWithdrawalsPaginated, setFilterCxc, filterCxcList, calcFinTransBsEquiv, onFinTransAccountChanged, openClientRefundModal, submitClientRefund, openTreasuryExchangeModal, onTreasuryExchangeTypeChanged, calcTreasuryExchangeDiff, submitTreasuryExchange, setCashFlowRange, loadCashFlowMatrix, printCashFlowMatrixReport, applyTreasuryFilters, resetTreasuryFilters, handleTreasuryPeriodChange, printTreasuryTraceReport, onCxpSearchInput, onCxpDocTypeFilterChange, applyCxpDateFilter, clearCxpDateFilter, setFilterCxp, onCxpModalDocTypeChange, calcPayablePreview, openWithholdingVoucherModal, printWithholdingVoucher, openEditPayableModal, submitEditPayable, calcEditPayableBsPreview, calcEditPayableFromBs, deletePayablePrompt, setCashFlowCurrency, onCashFlowMonthChange, applyCashFlowDateFilter, clearCashFlowDateFilter, openBcvRateHistoryModal, selectBcvHistoricalRate, onTreasuryExchangeDateChanged, filterPartnersWithdrawals, selectPartnerSummaryCard, confirmDeletePartnerWithdrawal, loadUnbilledWarehouseEntries, onCxpPayableTypeChanged, onCxpWarehouseModeChange, onCxpWarehouseEntrySelected, addCxpMaterialRow, onCxpMaterialRowMatChanged, removeCxpMaterialRow, calcCxpMaterialsTotal, applyCxpMaterialsTotalToAmount, onMaterialCreatedFromCxp, onCxcClientChanged, onCxcProjectChanged, openManageAccountsModal, submitNewFinancialAccount, deactivateFinancialAccount, loadFinancialAccounts };
+export { calcClientPaymentBs, onRcpClientChanged, calcQuickBs, loadPartnersWithdrawalsList, loadPayablesList, loadReceivablesList, loadTreasurySummary, onTreasurySummaryPeriodChange, resetTreasurySummaryFilters, openBadDebtModal, openCreateCxCForProject, openDeclareBadDebtModal, openFinancialSubtab, openMaterialConsumeModalWithProject, openNewPartnerWithdrawalModal, openNewPayableModal, openNewReceivableModal, openPayableHistoryModal, openQuickFlowModal, openReceiveClientPaymentModal, openRecordPaymentModal, selectQuickType, submitBadDebtWriteOff, submitCreatePayable, submitCreateReceivable, submitDeclareBadDebt, submitDirectClientPayment, submitFinancialPayment, submitQuickFlow, switchFinancialSubtab, goToCxcPage, changeCxcPageSize, renderReceivablesPaginated, goToCxpPage, changeCxpPageSize, renderPayablesPaginated, goToTreasuryPage, changeTreasuryPageSize, renderTreasuryTracePaginated, goToPartnersPage, changePartnersPageSize, renderPartnersWithdrawalsPaginated, setFilterCxc, filterCxcList, calcFinTransBsEquiv, onFinTransAccountChanged, openClientRefundModal, submitClientRefund, openTreasuryExchangeModal, onTreasuryExchangeTypeChanged, calcTreasuryExchangeDiff, submitTreasuryExchange, setCashFlowRange, loadCashFlowMatrix, printCashFlowMatrixReport, applyTreasuryFilters, resetTreasuryFilters, handleTreasuryPeriodChange, printTreasuryTraceReport, onCxpSearchInput, onCxpDocTypeFilterChange, applyCxpDateFilter, clearCxpDateFilter, setFilterCxp, onCxpModalDocTypeChange, calcPayablePreview, openWithholdingVoucherModal, printWithholdingVoucher, openIslrWithholdingVoucherModal, printIslrWithholdingVoucher, openEditPayableModal, submitEditPayable, calcEditPayableBsPreview, calcEditPayableFromBs, deletePayablePrompt, setCashFlowCurrency, onCashFlowMonthChange, applyCashFlowDateFilter, clearCashFlowDateFilter, openBcvRateHistoryModal, selectBcvHistoricalRate, onTreasuryExchangeDateChanged, filterPartnersWithdrawals, selectPartnerSummaryCard, confirmDeletePartnerWithdrawal, loadUnbilledWarehouseEntries, onCxpPayableTypeChanged, onCxpWarehouseModeChange, onCxpWarehouseEntrySelected, addCxpMaterialRow, onCxpMaterialRowMatChanged, removeCxpMaterialRow, calcCxpMaterialsTotal, applyCxpMaterialsTotalToAmount, onMaterialCreatedFromCxp, onCxcClientChanged, onCxcProjectChanged, openManageAccountsModal, submitNewFinancialAccount, deactivateFinancialAccount, loadFinancialAccounts };
 

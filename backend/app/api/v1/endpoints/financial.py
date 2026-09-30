@@ -1364,6 +1364,65 @@ def get_payable_withholding_voucher(payable_id: int, db: Session = Depends(get_d
         }
     }
 
+@router.get("/cxp/{payable_id}/islr-withholding-voucher")
+def get_payable_islr_withholding_voucher(payable_id: int, db: Session = Depends(get_db)):
+    p = db.query(AccountPayable).filter(AccountPayable.id == payable_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Factura o cuenta por pagar no encontrada.")
+
+    v_date = p.withholding_voucher_date or p.issue_date or datetime.utcnow()
+    period_fiscal = v_date.strftime("%Y-%m")
+    v_num = f"ISLR-{v_date.strftime('%Y%m')}{p.id:04d}"
+
+    rate_bcv = p.exchange_rate or 850.0
+    base_usd = p.taxable_base_usd if (p.taxable_base_usd and p.taxable_base_usd > 0) else round(p.amount_usd / 1.16, 2)
+    base_bs = round(base_usd * rate_bcv, 2)
+    
+    islr_rate = p.islr_rate if p.islr_rate is not None else 2.0
+    islr_usd = p.islr_withholding_usd if (p.islr_withholding_usd and p.islr_withholding_usd > 0) else round(base_usd * (islr_rate / 100.0), 2)
+    islr_bs = round(islr_usd * rate_bcv, 2)
+    
+    total_bs = round(p.amount_usd * rate_bcv, 2)
+    tax_bs = round((p.tax_amount_usd or (p.amount_usd - base_usd)) * rate_bcv, 2)
+    net_bs = round(total_bs - islr_bs - round((p.tax_withholding_usd or 0.0) * rate_bcv, 2), 2)
+
+    return {
+        "success": True,
+        "voucher": {
+            "voucher_number": v_num,
+            "voucher_date": v_date.strftime("%d/%m/%Y"),
+            "fiscal_period": period_fiscal,
+            "legal_base": "Decreto N° 1.808 - Reglamento Parcial de la Ley de Impuesto Sobre la Renta en Materia de Retenciones (G.O. N° 36.203 del 12/05/1997).",
+            "agent": {
+                "name": "METALMECANICA DALOR, C.A.",
+                "rif": "J-31601195-0",
+                "address": "AV CAMARA DE LAS INDUSTRIAS LOCAL GALPON NRO 10 ZONA INDUSTRIAL EL TIGRE GUACARA CARABOBO",
+                "email": "metalmecanicadalorca@yahoo.com"
+            },
+            "supplier": {
+                "name": p.supplier_name,
+                "rif": p.supplier_rif or "J-00000000-0"
+            },
+            "invoice": {
+                "invoice_date": p.issue_date.strftime("%d/%m/%Y") if p.issue_date else v_date.strftime("%d/%m/%Y"),
+                "invoice_number": p.invoice_number or f"FAC-{p.id}",
+                "control_number": p.control_number or p.invoice_number or f"00-{p.id}",
+                "concept": p.description or "Servicios / Suministros Comerciales e Industriales",
+                "concept_code": "054" if islr_rate == 2.0 else "001",
+                "total_usd": p.amount_usd,
+                "total_bs": total_bs,
+                "base_usd": base_usd,
+                "base_bs": base_bs,
+                "tax_bs": tax_bs,
+                "islr_rate_pct": islr_rate,
+                "islr_withholding_usd": islr_usd,
+                "islr_withholding_bs": islr_bs,
+                "net_payable_bs": net_bs,
+                "exchange_rate": rate_bcv
+            }
+        }
+    }
+
 @router.put("/cxp/{payable_id}")
 def update_payable(payable_id: int, p_in: PayableUpdate, db: Session = Depends(get_db)):
     p = db.query(AccountPayable).filter(AccountPayable.id == payable_id).with_for_update().first()

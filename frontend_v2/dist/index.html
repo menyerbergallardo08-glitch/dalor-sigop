@@ -104,9 +104,9 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-sQX1zuNY.js"></script>
+  <script type="module" crossorigin src="/assets/main-CSFSs2cS.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/quotations-DMhp0139.js">
-  <link rel="modulepreload" crossorigin href="/assets/maintenance-BeLgOY1D.js">
+  <link rel="modulepreload" crossorigin href="/assets/maintenance-BIeyBGs5.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-Da4p262h.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-BG-fhTT4.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-dn8Ea59p.js">
@@ -1867,19 +1867,19 @@
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
 
-                    <button onclick="openReceiveClientPaymentModal()" class="btn-primary" style="background-color: #10b981; color: #ffffff; font-weight: 800; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+                    <button id="btnFinReceiveClientPayment" onclick="openReceiveClientPaymentModal()" class="btn-primary" style="background-color: #10b981; color: #ffffff; font-weight: 800; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
 
                         <i class="fa-solid fa-money-bill-wave"></i> 💵 + Registrar Cobro / Abono de Cliente
 
                     </button>
 
-                    <button onclick="openNewReceivableModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px;">
+                    <button id="btnFinNewReceivable" onclick="openNewReceivableModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px;">
 
                         <i class="fa-solid fa-plus"></i> Facturar a Cliente (CxC)
 
                     </button>
 
-                    <button onclick="openNewPayableModal()" class="btn-primary" style="background-color: #ffffff; color: #064e3b; font-size: 12px;">
+                    <button id="btnFinNewPayable" onclick="openNewPayableModal()" class="btn-primary" style="background-color: #ffffff; color: #064e3b; font-size: 12px;">
 
                         <i class="fa-solid fa-plus"></i> Registrar Deuda Proveedor (CxP)
 
@@ -9216,7 +9216,7 @@
 
     <!-- MODAL: MAPA DE PERMISOS DE USUARIO -->
     <div id="modalUserPermissions" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 580px;">
+        <div class="modal-content" style="max-width: 680px; width: 95%; max-height: 92vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
                 <div>
                     <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
@@ -9230,53 +9230,112 @@
             </div>
             <form onsubmit="event.preventDefault(); submitSaveUserPermissions();" style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="hidden" id="perm_target_user_id" value="">
-                <div>
-                    <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy); display: block; margin-bottom: 8px;">
-                        Permisos Granulares por Módulo:
-                    </span>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🏢 Módulo Comercial (Cotizaciones & APU)</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_comercial_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_comercial_edit"> Editar</label>
-                            </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; max-height: 400px; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                        <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy);">
+                            Permisos Granulares para este Usuario:
+                        </span>
+                        <div style="display: flex; gap: 6px; font-size: 11px;">
+                            <button type="button" onclick="window.toggleAllUserCheckboxes(true)" style="background: none; border: none; color: #0284c7; cursor: pointer; font-weight: 800;">Marcar Todos</button>
+                            <span style="color: #cbd5e1;">|</span>
+                            <button type="button" onclick="window.toggleAllUserCheckboxes(false)" style="background: none; border: none; color: #e11d48; cursor: pointer; font-weight: 800;">Desmarcar</button>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🏗️ Módulo Proyectos & Obras</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_edit"> Editar</label>
-                            </div>
+                    </div>
+
+                    <!-- 1. COMERCIAL -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #0369a1; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-briefcase"></i> 1. Comercial, Clientes & Cotizaciones
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">💼 Finanzas, CxC, CxP & Tesorería</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_finanzas_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_finanzas_edit"> Editar</label>
-                            </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_comercial_view"> Ver Directorio de Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_comercial_edit"> Crear / Editar Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_services_view"> Ver Catálogo de Servicios (APU)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_quotations_create"> Elaborar Cotizaciones</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_quotations_approve"> Aprobar / Emitir Cotizaciones</label>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🚛 Flota, Maquinaria & Herramientas</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_recursos_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_recursos_edit"> Editar</label>
-                            </div>
+                    </div>
+
+                    <!-- 2. PROYECTOS & OBRAS -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #15803d; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-helmet-safety"></i> 2. Proyectos, Fases & Obras
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">🧾 Auditoría y Rendición de Gastos</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_gastos_view"> Ver</label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="perm_gastos_edit"> Editar</label>
-                            </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_view"> Ver Listado de Proyectos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_edit"> Crear / Editar Proyectos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_phases"> Fases y Cronograma de Obra</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_adendas"> Adendas y Órdenes de Variación</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_costs"> Margen Financiero (Costos Reales)</label>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 800; color: #1e40af;">👑 Acceso a Panel Ejecutivo & BI</span>
-                            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer;"><input type="checkbox" id="perm_executive_dashboard"> Permitido</label>
+                    </div>
+
+                    <!-- 3. FINANZAS & TESORERÍA -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #b45309; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-coins"></i> 3. Finanzas, Facturación, CxC, CxP & Bancos
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 12px; font-weight: 800; color: #991b1b;">⚙️ Administración de Sistema & Usuarios</span>
-                            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer;"><input type="checkbox" id="perm_mantenimiento_admin"> Permitido</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #047857; font-weight: 700;"><input type="checkbox" id="perm_cxc_view"> Cuentas por Cobrar (CxC / Facturar)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #047857;"><input type="checkbox" id="perm_cxc_pay"> Registrar Cobros / Abonos Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #b91c1c;"><input type="checkbox" id="perm_cxp_view"> Cuentas por Pagar (CxP Proveedores)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #b91c1c;"><input type="checkbox" id="perm_cxp_pay"> Programar y Registrar Pagos Proveedor</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_bancos_view"> Ver Bancos, Cajas Chicas y Saldos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_conciliacion_view"> Conciliación Bancaria y Flujo de Caja</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_retiros_view"> Retiros de Socios y Gastos Fijos</label>
+                        </div>
+                    </div>
+
+                    <!-- 4. GASTOS DE OPERACIÓN -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #c2410c; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-receipt"></i> 4. Gastos de Operación & Rendiciones
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_gastos_view"> Ver Registro Histórico de Gastos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_gastos_create"> Cargar Gastos / Escaneo OCR con IA</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_gastos_approve"> Aprobar / Auditar Gastos Rendidos</label>
+                        </div>
+                    </div>
+
+                    <!-- 5. RECURSOS (FLOTA & PERSONAL) -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #6b21a8; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-truck"></i> 5. Flota, Maquinaria, Equipos & Personal
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_recursos_view"> Ver Flota de Vehículos y Equipos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_recursos_edit"> Crear / Editar Fichas de Activos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_mantenimiento_vehicular"> Registrar Servicios y Odómetros</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_personal_view"> Ver Nómina de Personal Técnico</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_cuadrillas_assign"> Asignar Cuadrillas a Obras</label>
+                        </div>
+                    </div>
+
+                    <!-- 6. ALMACÉN, MATERIALES & DESPACHO -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #0f766e; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-boxes-stacked"></i> 6. Almacén, Materiales & Despacho
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_almacen_view"> Consultar Stock e Inventario</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_almacen_adjust"> Ajustar Stock y Registrar Compras</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_requisiciones_view"> Requisiciones de Materiales de Obra</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_despacho_view"> Generar Guías de Despacho / Traslado</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_alquileres_view"> Alquileres de Maquinaria a Terceros</label>
+                        </div>
+                    </div>
+
+                    <!-- 7. GERENCIA, AUDITORÍA & SEGURIDAD -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #4338ca; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-shield-halved"></i> 7. Gerencia, Auditoría & Seguridad
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_executive_dashboard"> Tablero Ejecutivo / BI Analytics</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_audit_logs"> Bitácora de Auditoría de Eventos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_usuarios_admin"> Administrar Usuarios y Roles</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_backups_admin"> Generar / Descargar Copias de Seguridad</label>
                         </div>
                     </div>
                 </div>
@@ -9405,7 +9464,7 @@
 
     <!-- MODAL: CREAR / EDITAR ROL DE SEGURIDAD (PROFIT PLUS) -->
     <div id="modalRoleForm" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 540px;">
+        <div class="modal-content" style="max-width: 680px; width: 95%; max-height: 92vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
                 <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
                     <i class="fa-solid fa-shield-halved" style="color: #d97706;"></i> <span id="roleModalTitle">Crear Rol de Seguridad</span>
@@ -9428,32 +9487,113 @@
                     <label class="form-label">Descripción Funcional</label>
                     <input type="text" id="role_description" placeholder="Responsable de supervisión presupuestaria..." class="form-input">
                 </div>
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                    <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy); display: block; margin-bottom: 8px;">
-                        Módulos y Permisos Habilitados para este Rol:
-                    </span>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="role_perm_comercial"> 🏢 Comercial
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="role_perm_proyectos"> 🏗️ Proyectos & Obras
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="role_perm_finanzas"> 💼 Finanzas & CxC/CxP
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="role_perm_recursos"> 🚛 Maquinaria & Flota
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="role_perm_gastos"> 🧾 Gastos de Operación
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <input type="checkbox" id="role_perm_bi"> 👑 Panel Ejecutivo / BI
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 5px 8px; border-radius: 4px; border: 1px solid #e2e8f0; grid-column: span 2;">
-                            <input type="checkbox" id="role_perm_mantenimiento"> ⚙️ Configuración & Auditoría
-                        </label>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; max-height: 400px; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                        <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy);">
+                            Matriz de Permisos Granulares por Módulo (Estilo Profit Plus):
+                        </span>
+                        <div style="display: flex; gap: 6px; font-size: 11px;">
+                            <button type="button" onclick="window.toggleAllRoleCheckboxes(true)" style="background: none; border: none; color: #0284c7; cursor: pointer; font-weight: 800;">Marcar Todos</button>
+                            <span style="color: #cbd5e1;">|</span>
+                            <button type="button" onclick="window.toggleAllRoleCheckboxes(false)" style="background: none; border: none; color: #e11d48; cursor: pointer; font-weight: 800;">Desmarcar</button>
+                        </div>
+                    </div>
+
+                    <!-- 1. COMERCIAL -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #0369a1; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-briefcase"></i> 1. Comercial, Clientes & Cotizaciones
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_comercial_view"> Ver Directorio de Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_comercial_edit"> Crear / Editar Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_services_view"> Ver Catálogo de Servicios (APU)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_quotations_create"> Elaborar Cotizaciones</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_quotations_approve"> Aprobar / Emitir Cotizaciones</label>
+                        </div>
+                    </div>
+
+                    <!-- 2. PROYECTOS & OBRAS -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #15803d; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-helmet-safety"></i> 2. Proyectos, Fases & Obras
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_view"> Ver Listado de Proyectos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_edit"> Crear / Editar Proyectos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_phases"> Fases y Cronograma de Obra</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_adendas"> Adendas y Órdenes de Variación</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_costs"> Margen Financiero (Costos Reales)</label>
+                        </div>
+                    </div>
+
+                    <!-- 3. FINANZAS & TESORERÍA -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #b45309; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-coins"></i> 3. Finanzas, Facturación, CxC, CxP & Bancos
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #047857; font-weight: 700;"><input type="checkbox" id="role_perm_cxc_view"> Cuentas por Cobrar (CxC / Facturar)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #047857;"><input type="checkbox" id="role_perm_cxc_pay"> Registrar Cobros / Abonos Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #b91c1c;"><input type="checkbox" id="role_perm_cxp_view"> Cuentas por Pagar (CxP Proveedores)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #b91c1c;"><input type="checkbox" id="role_perm_cxp_pay"> Programar y Registrar Pagos Proveedor</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_bancos_view"> Ver Bancos, Cajas Chicas y Saldos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_conciliacion_view"> Conciliación Bancaria y Flujo de Caja</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_retiros_view"> Retiros de Socios y Gastos Fijos</label>
+                        </div>
+                    </div>
+
+                    <!-- 4. GASTOS DE OPERACIÓN -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #c2410c; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-receipt"></i> 4. Gastos de Operación & Rendiciones
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_gastos_view"> Ver Registro Histórico de Gastos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_gastos_create"> Cargar Gastos / Escaneo OCR con IA</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_gastos_approve"> Aprobar / Auditar Gastos Rendidos</label>
+                        </div>
+                    </div>
+
+                    <!-- 5. RECURSOS (FLOTA & PERSONAL) -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #6b21a8; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-truck"></i> 5. Flota, Maquinaria, Equipos & Personal
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_recursos_view"> Ver Flota de Vehículos y Equipos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_recursos_edit"> Crear / Editar Fichas de Activos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_mantenimiento_vehicular"> Registrar Servicios y Odómetros</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_personal_view"> Ver Nómina de Personal Técnico</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_cuadrillas_assign"> Asignar Cuadrillas a Obras</label>
+                        </div>
+                    </div>
+
+                    <!-- 6. ALMACÉN, MATERIALES & DESPACHO -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #0f766e; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-boxes-stacked"></i> 6. Almacén, Materiales & Despacho
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_almacen_view"> Consultar Stock e Inventario</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_almacen_adjust"> Ajustar Stock y Registrar Compras</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_requisiciones_view"> Requisiciones de Materiales de Obra</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_despacho_view"> Generar Guías de Despacho / Traslado</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_alquileres_view"> Alquileres de Maquinaria a Terceros</label>
+                        </div>
+                    </div>
+
+                    <!-- 7. GERENCIA, AUDITORÍA & SEGURIDAD -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #4338ca; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-shield-halved"></i> 7. Gerencia, Auditoría & Seguridad
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_executive_dashboard"> Tablero Ejecutivo / BI Analytics</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_audit_logs"> Bitácora de Auditoría de Eventos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_usuarios_admin"> Administrar Usuarios y Roles</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_backups_admin"> Generar / Descargar Copias de Seguridad</label>
+                        </div>
                     </div>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">

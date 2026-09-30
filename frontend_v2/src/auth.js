@@ -74,37 +74,82 @@ export function applyPermissionMap(user) {
     const role = (user.role_name || '').toLowerCase();
     const uname = (user.username || '').toLowerCase();
     const isDirector = uname === 'director' || role.includes('director') || user.is_superuser === true;
-    const isFinanzas = isDirector || uname === 'administracion' || role.includes('finanzas') || role.includes('administrador_financiero');
-    const isIngeniero = isDirector || uname === 'ingeniero' || role.includes('ingeniero');
-    const isCampo = uname === 'campo' || role.includes('supervisor') || role.includes('campo');
-    const isAlmacen = isDirector || uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
+
+    // 1. Extraer permisos granulares
+    let p = {};
+    if (typeof user.permissions_json === 'string') {
+        try { p = JSON.parse(user.permissions_json); } catch(e) { p = {}; }
+    } else if (user.permissions_json && typeof user.permissions_json === 'object') {
+        p = user.permissions_json;
+    } else if (user.permissions && typeof user.permissions === 'object') {
+        p = user.permissions;
+    }
+
+    // 2. Fallbacks de compatibilidad hacia atrás con roles nativos heredados
+    const isFinanzasLegacy = isDirector || uname === 'administracion' || role.includes('finanzas') || role.includes('administrador_financiero');
+    const isIngenieroLegacy = isDirector || uname === 'ingeniero' || role.includes('ingeniero');
+    const isAlmacenLegacy = isDirector || uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller');
+
+    // 3. Banderas granulares por módulo
+    const hasComercial = isDirector || p.comercial || p.comercial_view || p.comercial_edit || p.quotations_create || (!role && true);
+    const hasProyectos = isDirector || p.proyectos || p.proyectos_view || isIngenieroLegacy;
+    const hasGastos = isDirector || p.gastos || p.gastos_view || p.gastos_create || (!isAlmacenLegacy && !isDirector) || isDirector;
+    const hasRecursos = isDirector || p.recursos || p.recursos_view || isIngenieroLegacy || isAlmacenLegacy;
+
+    // Finanzas granular: CxC vs CxP vs Bancos
+    const canCxc = isDirector || p.cxc_view === true || (isFinanzasLegacy && p.cxc_view !== false);
+    const canCxp = isDirector || p.cxp_view === true || (isFinanzasLegacy && p.cxp_view !== false);
+    const canBancos = isDirector || p.bancos_view === true || (isFinanzasLegacy && p.bancos_view !== false);
+    const hasFinanzas = isDirector || p.finanzas || p.finanzas_view || canCxc || canCxp || canBancos || isFinanzasLegacy;
+
+    const hasMantenimiento = isDirector || p.mantenimiento || p.mantenimiento_admin || p.usuarios_admin;
+    const hasBI = isDirector || p.executive_bi || p.executive_dashboard;
 
     // Control de Dropdowns de la Barra de Módulos (Navbar)
     const dCom = document.getElementById('dropdown-comercial');
-    if (dCom) dCom.style.display = 'inline-block';
+    if (dCom) dCom.style.display = hasComercial ? 'inline-block' : 'none';
 
     const dProj = document.getElementById('dropdown-proyectos');
-    if (dProj) dProj.style.display = (isDirector || isIngeniero) ? 'inline-block' : 'none';
+    if (dProj) dProj.style.display = hasProyectos ? 'inline-block' : 'none';
 
     const dFin = document.getElementById('dropdown-finanzas');
-    if (dFin) dFin.style.display = (isDirector || isFinanzas) ? 'inline-block' : 'none';
+    if (dFin) dFin.style.display = hasFinanzas ? 'inline-block' : 'none';
 
     const dRec = document.getElementById('dropdown-recursos');
-    if (dRec) dRec.style.display = (isDirector || isIngeniero || isAlmacen) ? 'inline-block' : 'none';
+    if (dRec) dRec.style.display = hasRecursos ? 'inline-block' : 'none';
 
     const dGas = document.getElementById('dropdown-gastos');
-    if (dGas) dGas.style.display = (isAlmacen && !isDirector) ? 'none' : 'inline-block';
+    if (dGas) dGas.style.display = hasGastos ? 'inline-block' : 'none';
 
     const dMaint = document.getElementById('dropdown-mantenimiento');
-    if (dMaint) dMaint.style.display = isDirector ? 'inline-block' : 'none';
+    if (dMaint) dMaint.style.display = hasMantenimiento ? 'inline-block' : 'none';
 
     const dGer = document.getElementById('dropdown-gerencia');
-    if (dGer) dGer.style.display = isDirector ? 'inline-block' : 'none';
+    if (dGer) dGer.style.display = hasBI ? 'inline-block' : 'none';
+
+    // Subtabs y botones del Módulo Financiero
+    const tabCxc = document.getElementById('tabbtn-fin-cxc');
+    if (tabCxc) tabCxc.style.display = canCxc ? '' : 'none';
+
+    const tabCxp = document.getElementById('tabbtn-fin-cxp');
+    if (tabCxp) tabCxp.style.display = canCxp ? '' : 'none';
+
+    const tabSummary = document.getElementById('tabbtn-fin-summary');
+    if (tabSummary) tabSummary.style.display = canBancos ? '' : 'none';
+
+    const btnNewRec = document.getElementById('btnFinNewReceivable');
+    if (btnNewRec) btnNewRec.style.display = canCxc ? '' : 'none';
+
+    const btnRecPay = document.getElementById('btnFinReceiveClientPayment');
+    if (btnRecPay) btnRecPay.style.display = canCxc ? '' : 'none';
+
+    const btnNewPay = document.getElementById('btnFinNewPayable');
+    if (btnNewPay) btnNewPay.style.display = canCxp ? '' : 'none';
 
     // Clases CSS de visibilidad por rol
     document.querySelectorAll('.role-director-only').forEach(el => el.style.display = isDirector ? '' : 'none');
-    document.querySelectorAll('.role-admin-only').forEach(el => el.style.display = isFinanzas ? '' : 'none');
-    document.querySelectorAll('.role-eng-only').forEach(el => el.style.display = isIngeniero ? '' : 'none');
+    document.querySelectorAll('.role-admin-only').forEach(el => el.style.display = (isDirector || hasFinanzas) ? '' : 'none');
+    document.querySelectorAll('.role-eng-only').forEach(el => el.style.display = (isDirector || hasProyectos) ? '' : 'none');
 
     if (typeof window !== 'undefined') {
         window.applyPermissionMap = applyPermissionMap;

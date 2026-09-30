@@ -1796,25 +1796,47 @@ async function loadMaintenanceRolesList() {
     }
 }
 
+const GRANULAR_PERM_KEYS = [
+    'comercial_view', 'comercial_edit', 'services_view', 'quotations_create', 'quotations_approve',
+    'proyectos_view', 'proyectos_edit', 'proyectos_phases', 'proyectos_adendas', 'proyectos_costs',
+    'cxc_view', 'cxc_pay', 'cxp_view', 'cxp_pay', 'bancos_view', 'conciliacion_view', 'retiros_view',
+    'gastos_view', 'gastos_create', 'gastos_approve',
+    'recursos_view', 'recursos_edit', 'mantenimiento_vehicular', 'personal_view', 'cuadrillas_assign',
+    'almacen_view', 'almacen_adjust', 'requisiciones_view', 'despacho_view', 'alquileres_view',
+    'executive_dashboard', 'audit_logs', 'usuarios_admin', 'backups_admin'
+];
+
+function toggleAllRoleCheckboxes(check) {
+    GRANULAR_PERM_KEYS.forEach(k => {
+        const el = document.getElementById('role_perm_' + k);
+        if (el) el.checked = !!check;
+    });
+}
+
+function toggleAllUserCheckboxes(check) {
+    GRANULAR_PERM_KEYS.forEach(k => {
+        const el = document.getElementById('perm_' + k);
+        if (el) el.checked = !!check;
+    });
+}
+
 function openNewRoleModal() {
     const form = document.getElementById('roleForm');
     if (form) form.reset();
     document.getElementById('role_form_id').value = '';
     document.getElementById('roleModalTitle').textContent = 'Crear Rol de Seguridad';
     document.getElementById('role_name').readOnly = false;
-    document.getElementById('role_perm_comercial').checked = true;
-    document.getElementById('role_perm_proyectos').checked = true;
-    document.getElementById('role_perm_finanzas').checked = false;
-    document.getElementById('role_perm_recursos').checked = true;
-    document.getElementById('role_perm_gastos').checked = true;
-    document.getElementById('role_perm_bi').checked = false;
-    document.getElementById('role_perm_mantenimiento').checked = false;
+    toggleAllRoleCheckboxes(false);
+    ['comercial_view', 'proyectos_view', 'gastos_view', 'gastos_create', 'recursos_view'].forEach(k => {
+        const el = document.getElementById('role_perm_' + k);
+        if (el) el.checked = true;
+    });
     openModal('modalRoleForm');
 }
 
 function autoGenerateRoleSlug() {
     const idField = document.getElementById('role_form_id');
-    if (idField && idField.value) return; // don't override on edit
+    if (idField && idField.value) return;
     const title = document.getElementById('role_display_name').value;
     const slug = title.toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -1837,13 +1859,31 @@ function openEditRoleModal(roleId) {
     let perms = {};
     try { perms = typeof role.permissions_json === 'string' ? JSON.parse(role.permissions_json) : role.permissions_json; } catch(e) { perms = {}; }
 
-    document.getElementById('role_perm_comercial').checked = !!(perms.comercial || perms.comercial_view);
-    document.getElementById('role_perm_proyectos').checked = !!(perms.proyectos || perms.proyectos_view);
-    document.getElementById('role_perm_finanzas').checked = !!(perms.finanzas || perms.finanzas_view);
-    document.getElementById('role_perm_recursos').checked = !!(perms.recursos || perms.recursos_view);
-    document.getElementById('role_perm_gastos').checked = !!(perms.gastos || perms.gastos_view);
-    document.getElementById('role_perm_bi').checked = !!(perms.executive_bi || perms.executive_dashboard);
-    document.getElementById('role_perm_mantenimiento').checked = !!(perms.mantenimiento || perms.mantenimiento_admin);
+    GRANULAR_PERM_KEYS.forEach(k => {
+        const el = document.getElementById('role_perm_' + k);
+        if (!el) return;
+        if (perms[k] !== undefined) {
+            el.checked = !!perms[k];
+        } else if (k.startsWith('comercial_') || k.startsWith('quotations_') || k === 'services_view') {
+            el.checked = !!(perms.comercial || perms.comercial_view);
+        } else if (k.startsWith('proyectos_')) {
+            el.checked = !!(perms.proyectos || perms.proyectos_view);
+        } else if (['cxc_view', 'cxc_pay', 'cxp_view', 'cxp_pay', 'bancos_view', 'conciliacion_view', 'retiros_view'].includes(k)) {
+            el.checked = !!(perms.finanzas || perms.finanzas_view);
+        } else if (k.startsWith('gastos_')) {
+            el.checked = !!(perms.gastos || perms.gastos_view);
+        } else if (k.startsWith('recursos_') || k.startsWith('personal_') || k === 'mantenimiento_vehicular' || k === 'cuadrillas_assign') {
+            el.checked = !!(perms.recursos || perms.recursos_view);
+        } else if (k.startsWith('almacen_') || k.startsWith('requisiciones_') || k.startsWith('despacho_') || k.startsWith('alquileres_')) {
+            el.checked = !!(perms.recursos || perms.recursos_view);
+        } else if (k === 'executive_dashboard') {
+            el.checked = !!(perms.executive_bi || perms.executive_dashboard);
+        } else if (['usuarios_admin', 'audit_logs', 'backups_admin'].includes(k)) {
+            el.checked = !!(perms.mantenimiento || perms.mantenimiento_admin);
+        } else {
+            el.checked = false;
+        }
+    });
 
     openModal('modalRoleForm');
 }
@@ -1855,27 +1895,32 @@ async function submitRoleForm(event) {
     const name = document.getElementById('role_name').value.trim();
     const description = document.getElementById('role_description').value.trim();
 
-    const permissions = {
-        comercial: document.getElementById('role_perm_comercial').checked,
-        comercial_view: document.getElementById('role_perm_comercial').checked,
-        comercial_edit: document.getElementById('role_perm_comercial').checked,
-        proyectos: document.getElementById('role_perm_proyectos').checked,
-        proyectos_view: document.getElementById('role_perm_proyectos').checked,
-        proyectos_edit: document.getElementById('role_perm_proyectos').checked,
-        finanzas: document.getElementById('role_perm_finanzas').checked,
-        finanzas_view: document.getElementById('role_perm_finanzas').checked,
-        finanzas_edit: document.getElementById('role_perm_finanzas').checked,
-        recursos: document.getElementById('role_perm_recursos').checked,
-        recursos_view: document.getElementById('role_perm_recursos').checked,
-        recursos_edit: document.getElementById('role_perm_recursos').checked,
-        gastos: document.getElementById('role_perm_gastos').checked,
-        gastos_view: document.getElementById('role_perm_gastos').checked,
-        gastos_edit: document.getElementById('role_perm_gastos').checked,
-        executive_bi: document.getElementById('role_perm_bi').checked,
-        executive_dashboard: document.getElementById('role_perm_bi').checked,
-        mantenimiento: document.getElementById('role_perm_mantenimiento').checked,
-        mantenimiento_admin: document.getElementById('role_perm_mantenimiento').checked
-    };
+    const permissions = {};
+    GRANULAR_PERM_KEYS.forEach(k => {
+        const el = document.getElementById('role_perm_' + k);
+        permissions[k] = el ? el.checked : false;
+    });
+
+    // Rollup legacy flags for 100% backward compatibility
+    permissions.comercial = permissions.comercial_view || permissions.comercial_edit || permissions.quotations_create;
+    permissions.comercial_view = permissions.comercial_view;
+    permissions.comercial_edit = permissions.comercial_edit;
+    permissions.proyectos = permissions.proyectos_view || permissions.proyectos_edit;
+    permissions.proyectos_view = permissions.proyectos_view;
+    permissions.proyectos_edit = permissions.proyectos_edit;
+    permissions.finanzas = permissions.cxc_view || permissions.cxp_view || permissions.bancos_view;
+    permissions.finanzas_view = permissions.finanzas;
+    permissions.finanzas_edit = permissions.cxc_pay || permissions.cxp_pay;
+    permissions.gastos = permissions.gastos_view || permissions.gastos_create;
+    permissions.gastos_view = permissions.gastos_view;
+    permissions.gastos_edit = permissions.gastos_create;
+    permissions.recursos = permissions.recursos_view || permissions.personal_view || permissions.almacen_view;
+    permissions.recursos_view = permissions.recursos;
+    permissions.recursos_edit = permissions.recursos_edit || permissions.almacen_adjust;
+    permissions.executive_bi = permissions.executive_dashboard;
+    permissions.executive_dashboard = permissions.executive_dashboard;
+    permissions.mantenimiento = permissions.usuarios_admin || permissions.backups_admin || permissions.audit_logs;
+    permissions.mantenimiento_admin = permissions.mantenimiento;
 
     try {
         let res;
@@ -2060,53 +2105,64 @@ function openUserPermissionsModal(userId) {
         p = user.permissions;
     }
 
-    document.getElementById('perm_comercial_view').checked = !!(p.comercial_view !== undefined ? p.comercial_view : p.comercial);
-    document.getElementById('perm_comercial_edit').checked = !!(p.comercial_edit !== undefined ? p.comercial_edit : p.comercial);
-    document.getElementById('perm_proyectos_view').checked = !!(p.proyectos_view !== undefined ? p.proyectos_view : p.proyectos);
-    document.getElementById('perm_proyectos_edit').checked = !!(p.proyectos_edit !== undefined ? p.proyectos_edit : p.proyectos);
-    document.getElementById('perm_finanzas_view').checked = !!(p.finanzas_view !== undefined ? p.finanzas_view : p.finanzas);
-    document.getElementById('perm_finanzas_edit').checked = !!(p.finanzas_edit !== undefined ? p.finanzas_edit : p.finanzas);
-    document.getElementById('perm_recursos_view').checked = !!(p.recursos_view !== undefined ? p.recursos_view : p.recursos);
-    document.getElementById('perm_recursos_edit').checked = !!(p.recursos_edit !== undefined ? p.recursos_edit : p.recursos);
-    document.getElementById('perm_gastos_view').checked = !!(p.gastos_view !== undefined ? p.gastos_view : p.gastos);
-    document.getElementById('perm_gastos_edit').checked = !!(p.gastos_edit !== undefined ? p.gastos_edit : p.gastos);
-    document.getElementById('perm_executive_dashboard').checked = !!(p.executive_dashboard !== undefined ? p.executive_dashboard : p.executive_bi);
-    document.getElementById('perm_mantenimiento_admin').checked = !!(p.mantenimiento_admin !== undefined ? p.mantenimiento_admin : p.mantenimiento);
+    GRANULAR_PERM_KEYS.forEach(k => {
+        const el = document.getElementById('perm_' + k);
+        if (!el) return;
+        if (p[k] !== undefined) {
+            el.checked = !!p[k];
+        } else if (k.startsWith('comercial_') || k.startsWith('quotations_') || k === 'services_view') {
+            el.checked = !!(p.comercial || p.comercial_view);
+        } else if (k.startsWith('proyectos_')) {
+            el.checked = !!(p.proyectos || p.proyectos_view);
+        } else if (['cxc_view', 'cxc_pay', 'cxp_view', 'cxp_pay', 'bancos_view', 'conciliacion_view', 'retiros_view'].includes(k)) {
+            el.checked = !!(p.finanzas || p.finanzas_view);
+        } else if (k.startsWith('gastos_')) {
+            el.checked = !!(p.gastos || p.gastos_view);
+        } else if (k.startsWith('recursos_') || k.startsWith('personal_') || k === 'mantenimiento_vehicular' || k === 'cuadrillas_assign') {
+            el.checked = !!(p.recursos || p.recursos_view);
+        } else if (k.startsWith('almacen_') || k.startsWith('requisiciones_') || k.startsWith('despacho_') || k.startsWith('alquileres_')) {
+            el.checked = !!(p.recursos || p.recursos_view);
+        } else if (k === 'executive_dashboard') {
+            el.checked = !!(p.executive_bi || p.executive_dashboard);
+        } else if (['usuarios_admin', 'audit_logs', 'backups_admin'].includes(k)) {
+            el.checked = !!(p.mantenimiento || p.mantenimiento_admin);
+        } else {
+            el.checked = false;
+        }
+    });
 
     document.getElementById('modalUserPermissions').classList.remove('hidden');
 }
 
 async function submitSaveUserPermissions() {
-
     const userId = parseInt(document.getElementById('perm_target_user_id').value);
 
-    const permissions = {
+    const permissions = {};
+    GRANULAR_PERM_KEYS.forEach(k => {
+        const el = document.getElementById('perm_' + k);
+        permissions[k] = el ? el.checked : false;
+    });
 
-        comercial_view: document.getElementById('perm_comercial_view').checked,
-
-        comercial_edit: document.getElementById('perm_comercial_edit').checked,
-
-        proyectos_view: document.getElementById('perm_proyectos_view').checked,
-
-        proyectos_edit: document.getElementById('perm_proyectos_edit').checked,
-
-        finanzas_view: document.getElementById('perm_finanzas_view').checked,
-
-        finanzas_edit: document.getElementById('perm_finanzas_edit').checked,
-
-        recursos_view: document.getElementById('perm_recursos_view').checked,
-
-        recursos_edit: document.getElementById('perm_recursos_edit').checked,
-
-        gastos_view: document.getElementById('perm_gastos_view').checked,
-
-        gastos_edit: document.getElementById('perm_gastos_edit').checked,
-
-        executive_dashboard: document.getElementById('perm_executive_dashboard').checked,
-
-        mantenimiento_admin: document.getElementById('perm_mantenimiento_admin').checked
-
-    };
+    // Rollup legacy flags for 100% backward compatibility
+    permissions.comercial = permissions.comercial_view || permissions.comercial_edit || permissions.quotations_create;
+    permissions.comercial_view = permissions.comercial_view;
+    permissions.comercial_edit = permissions.comercial_edit;
+    permissions.proyectos = permissions.proyectos_view || permissions.proyectos_edit;
+    permissions.proyectos_view = permissions.proyectos_view;
+    permissions.proyectos_edit = permissions.proyectos_edit;
+    permissions.finanzas = permissions.cxc_view || permissions.cxp_view || permissions.bancos_view;
+    permissions.finanzas_view = permissions.finanzas;
+    permissions.finanzas_edit = permissions.cxc_pay || permissions.cxp_pay;
+    permissions.gastos = permissions.gastos_view || permissions.gastos_create;
+    permissions.gastos_view = permissions.gastos_view;
+    permissions.gastos_edit = permissions.gastos_create;
+    permissions.recursos = permissions.recursos_view || permissions.personal_view || permissions.almacen_view;
+    permissions.recursos_view = permissions.recursos;
+    permissions.recursos_edit = permissions.recursos_edit || permissions.almacen_adjust;
+    permissions.executive_bi = permissions.executive_dashboard;
+    permissions.executive_dashboard = permissions.executive_dashboard;
+    permissions.mantenimiento = permissions.usuarios_admin || permissions.backups_admin || permissions.audit_logs;
+    permissions.mantenimiento_admin = permissions.mantenimiento;
 
 
 
@@ -3248,6 +3304,8 @@ if (typeof window !== 'undefined') {
     window.submitRoleForm = submitRoleForm;
     window.deleteRole = deleteRole;
     window.onNewUserRoleChanged = onNewUserRoleChanged;
+    window.toggleAllRoleCheckboxes = toggleAllRoleCheckboxes;
+    window.toggleAllUserCheckboxes = toggleAllUserCheckboxes;
 }
 
 export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterBIExtended, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, debouncedFilterComparisonDashboard, filterComparisonDashboard, goToComparisonPage, changeComparisonPageSize, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadMaintenanceRolesList, openNewRoleModal, openEditRoleModal, autoGenerateRoleSlug, submitRoleForm, deleteRole, onNewUserRoleChanged, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, goToBiPnlPage, changeBiPnlPageSize, renderBIPnlTablePaginated, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus, goToClientsPage, changeClientsPageSize, renderClientsPaginated, onClientSearchInput, openEditClientModal, submitEditClient, openClientHistoryModal, openCategoryHistoryModal, debouncedFilterCategoryHistory, filterCategoryHistory, goToCategoryHistoryPage, changeCategoryHistoryPageSize };

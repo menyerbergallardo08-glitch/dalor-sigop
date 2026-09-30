@@ -143,10 +143,21 @@ if os.path.exists(FRONTEND_DIR):
         app.mount("/css", StaticFiles(directory=css_dir), name="css")
 
     @app.get("/logo_dalor.jpg")
+    @app.head("/logo_dalor.jpg")
+    @app.get("/dist/logo_dalor.jpg")
+    @app.head("/dist/logo_dalor.jpg")
     def serve_logo():
-        logo_path = os.path.join(FRONTEND_DIR, "logo_dalor.jpg")
-        if os.path.exists(logo_path):
-            return FileResponse(logo_path, media_type="image/jpeg")
+        candidate_paths = [
+            os.path.join(FRONTEND_DIR, "logo_dalor.jpg"),
+            os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "dist", "logo_dalor.jpg"),
+            os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "public", "logo_dalor.jpg"),
+            os.path.join(ROOT_PROJECT_DIR, "frontend", "logo_dalor.jpg"),
+            os.path.join(os.getcwd(), "frontend_v2", "dist", "logo_dalor.jpg"),
+            os.path.join(os.getcwd(), "frontend", "logo_dalor.jpg"),
+        ]
+        for p in candidate_paths:
+            if os.path.exists(p) and os.path.isfile(p):
+                return FileResponse(p, media_type="image/jpeg")
         return Response(status_code=404)
 
     @app.get("/")

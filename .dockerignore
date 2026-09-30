@@ -17,6 +17,10 @@ cloudflared.exe
 *.jpeg
 !frontend/logo_dalor.jpg
 !frontend/*.png
+!frontend_v2/dist/logo_dalor.jpg
+!frontend_v2/dist/*.jpg
+!frontend_v2/dist/*.png
+!frontend_v2/dist/assets/*
 
 # Bases de datos locales SQLite y temporales WAL
 *.db

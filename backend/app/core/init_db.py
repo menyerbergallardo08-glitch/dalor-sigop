@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from sqlalchemy import text
+from sqlalchemy import text, func
 from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.models.models import (
@@ -9,95 +9,91 @@ from app.models.models import (
 )
 
 def init_db():
+    from sqlalchemy import Integer, Float, Boolean, DateTime, Text, String, Enum as SaEnum
+    
+    # 1. Crear todas las tablas que no existan aun
     Base.metadata.create_all(bind=engine)
     
-    # Cada sentencia se ejecuta en su propia transaccion aislada.
-    # En PostgreSQL, si un ALTER falla (ej. columna ya existe), la conexion queda
-    # en estado "abortado" y todas las siguientes sentencias fallan silenciosamente.
-    # Con conexiones independientes, un fallo no afecta al resto.
-    migration_stmts = [
-            "ALTER TABLE expenses ALTER COLUMN description TYPE TEXT;",
-            "ALTER TABLE expenses ALTER COLUMN supplier_vendor TYPE TEXT;",
-            "ALTER TABLE expenses ALTER COLUMN partner_name TYPE TEXT;",
-            "ALTER TABLE expenses ALTER COLUMN alert_notes TYPE TEXT;",
-            "ALTER TABLE expenses ALTER COLUMN receipt_image_path TYPE TEXT;",
-            "ALTER TABLE audit_logs ALTER COLUMN username TYPE VARCHAR(150);",
-            "ALTER TABLE audit_logs ALTER COLUMN action TYPE VARCHAR(150);",
-            "ALTER TABLE audit_logs ALTER COLUMN details TYPE TEXT;",
-            "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS base_amount_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS tax_amount_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_tax_exempt BOOLEAN DEFAULT FALSE;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS tracking_token VARCHAR(64);",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS execution_time VARCHAR(100) DEFAULT '15 dias habiles';",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS scope_of_work TEXT;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS duration_days INTEGER DEFAULT 30;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS contract_amount_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS estimated_labor_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS estimated_fuel_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS estimated_materials_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS estimated_tools_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS estimated_services_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS budget_limit_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS is_bad_debt BOOLEAN DEFAULT FALSE;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS bad_debt_amount_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS bad_debt_reason VARCHAR(255);",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS bad_debt_date TIMESTAMP;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS taxable_base_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS tax_amount_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS tax_withholding_rate FLOAT DEFAULT 75.0;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS tax_withholding_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS islr_rate FLOAT DEFAULT 2.0;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS islr_withholding_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_receivable ADD COLUMN IF NOT EXISTS net_amount_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_payable ADD COLUMN IF NOT EXISTS payable_type VARCHAR(50) DEFAULT 'costo_material_obra';",
-            "ALTER TABLE accounts_payable ADD COLUMN IF NOT EXISTS taxable_base_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_payable ADD COLUMN IF NOT EXISTS tax_amount_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_payable ADD COLUMN IF NOT EXISTS tax_withholding_rate FLOAT DEFAULT 75.0;",
-            "ALTER TABLE accounts_payable ADD COLUMN IF NOT EXISTS tax_withholding_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_payable ADD COLUMN IF NOT EXISTS islr_rate FLOAT DEFAULT 2.0;",
-            "ALTER TABLE accounts_payable ADD COLUMN IF NOT EXISTS islr_withholding_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE accounts_payable ADD COLUMN IF NOT EXISTS net_amount_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS transfer_code VARCHAR(50);",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS custodian_name VARCHAR(150);",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS driver_name VARCHAR(150);",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS origin_location VARCHAR(150) DEFAULT 'Sede Central';",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS freight_cost_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS fuel_cost_usd FLOAT DEFAULT 0.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS start_odometer FLOAT DEFAULT 0.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS end_odometer FLOAT DEFAULT 0.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS start_hourmeter FLOAT DEFAULT 0.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS end_hourmeter FLOAT DEFAULT 0.0;",
-            "ALTER TABLE resource_assignment_history ADD COLUMN IF NOT EXISTS cargo_manifest_details TEXT;",
-            "ALTER TABLE resource_assignment_history ALTER COLUMN project_id DROP NOT NULL;",
-            "ALTER TABLE resource_assignment_history ALTER COLUMN client_id DROP NOT NULL;",
-            "ALTER TABLE dispatch_guides ALTER COLUMN project_id DROP NOT NULL;",
-            "ALTER TABLE dispatch_guides ALTER COLUMN client_id DROP NOT NULL;",
-            "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(150);",
-            "ALTER TABLE dispatch_guides ADD COLUMN IF NOT EXISTS is_freeform BOOLEAN DEFAULT FALSE;",
-            "ALTER TABLE project_material_requisitions ADD COLUMN IF NOT EXISTS resource_type VARCHAR(50) DEFAULT 'material';",
-            "ALTER TABLE project_material_requisitions ADD COLUMN IF NOT EXISTS asset_id INTEGER;",
-            "DROP INDEX IF EXISTS idx_dispatch_items_guide_id;",
-            "CREATE INDEX IF NOT EXISTS idx_dispatch_items_guide_id ON dispatch_guide_items (dispatch_guide_id);",
-            "CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);",
-            "CREATE INDEX IF NOT EXISTS idx_project_phases_project_id ON project_phases (project_id);",
-            "CREATE INDEX IF NOT EXISTS idx_mat_movements_project_id ON material_movements (project_id);",
-            "CREATE INDEX IF NOT EXISTS idx_mat_movements_material_id ON material_movements (material_id);",
-            "CREATE INDEX IF NOT EXISTS idx_personnel_project_id ON personnel (current_project_id);",
-            "CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);",
-            "CREATE INDEX IF NOT EXISTS idx_expenses_asset_id ON expenses (asset_id);",
-            "CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id);",
-            # Columnas de proyectos adicionales para modelo de negocio
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_name VARCHAR(200);",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS location VARCHAR(200);",
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS description TEXT;",
-        ]
+    # 2. Sincronizacion exhaustiva de esquema dinámico:
+    # Recorre cada tabla y cada columna de los modelos SQLAlchemy y asegura
+    # que exista en PostgreSQL / SQLite, ejecutando cada sentencia en su
+    # propia transaccion aislada para blindar contra transacciones abortadas.
+    is_sqlite = "sqlite" in str(engine.url).lower()
+    
+    for table_name, table in Base.metadata.tables.items():
+        for col in table.columns:
+            col_name = col.name
+            col_type = col.type
+            
+            if isinstance(col_type, Integer):
+                sql_type = "INTEGER"
+            elif isinstance(col_type, Float):
+                sql_type = "FLOAT" if is_sqlite else "DOUBLE PRECISION"
+            elif isinstance(col_type, Boolean):
+                sql_type = "BOOLEAN"
+            elif isinstance(col_type, DateTime):
+                sql_type = "TIMESTAMP"
+            elif isinstance(col_type, Text):
+                sql_type = "TEXT"
+            elif isinstance(col_type, String):
+                sql_type = f"VARCHAR({col_type.length or 255})"
+            elif isinstance(col_type, SaEnum):
+                sql_type = "VARCHAR(50)"
+            else:
+                sql_type = "VARCHAR(255)"
+                
+            default_clause = ""
+            if col.default is not None and hasattr(col.default, 'arg'):
+                arg = col.default.arg
+                if isinstance(arg, bool):
+                    default_clause = f" DEFAULT {str(arg).upper()}"
+                elif isinstance(arg, (int, float)):
+                    default_clause = f" DEFAULT {arg}"
+                elif isinstance(arg, str):
+                    default_clause = f" DEFAULT '{arg}'"
+                    
+            if is_sqlite:
+                stmt = f'ALTER TABLE "{table_name}" ADD COLUMN "{col_name}" {sql_type}{default_clause}'
+            else:
+                stmt = f'ALTER TABLE "{table_name}" ADD COLUMN IF NOT EXISTS "{col_name}" {sql_type}{default_clause}'
+                
+            try:
+                with engine.begin() as isolated_conn:
+                    isolated_conn.execute(text(stmt))
+            except Exception:
+                pass  # Columna ya existe o base de datos no lo requiere
 
-    for stmt in migration_stmts:
+    # Expansiones de texto e indices criticos
+    extra_stmts = [
+        "ALTER TABLE expenses ALTER COLUMN description TYPE TEXT;",
+        "ALTER TABLE expenses ALTER COLUMN supplier_vendor TYPE TEXT;",
+        "ALTER TABLE expenses ALTER COLUMN partner_name TYPE TEXT;",
+        "ALTER TABLE expenses ALTER COLUMN alert_notes TYPE TEXT;",
+        "ALTER TABLE expenses ALTER COLUMN receipt_image_path TYPE TEXT;",
+        "ALTER TABLE audit_logs ALTER COLUMN username TYPE VARCHAR(150);",
+        "ALTER TABLE audit_logs ALTER COLUMN action TYPE VARCHAR(150);",
+        "ALTER TABLE audit_logs ALTER COLUMN details TYPE TEXT;",
+        "ALTER TABLE resource_assignment_history ALTER COLUMN project_id DROP NOT NULL;",
+        "ALTER TABLE resource_assignment_history ALTER COLUMN client_id DROP NOT NULL;",
+        "ALTER TABLE dispatch_guides ALTER COLUMN project_id DROP NOT NULL;",
+        "ALTER TABLE dispatch_guides ALTER COLUMN client_id DROP NOT NULL;",
+        "DROP INDEX IF EXISTS idx_dispatch_items_guide_id;",
+        "CREATE INDEX IF NOT EXISTS idx_dispatch_items_guide_id ON dispatch_guide_items (dispatch_guide_id);",
+        "CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);",
+        "CREATE INDEX IF NOT EXISTS idx_project_phases_project_id ON project_phases (project_id);",
+        "CREATE INDEX IF NOT EXISTS idx_mat_movements_project_id ON material_movements (project_id);",
+        "CREATE INDEX IF NOT EXISTS idx_mat_movements_material_id ON material_movements (material_id);",
+        "CREATE INDEX IF NOT EXISTS idx_personnel_project_id ON personnel (current_project_id);",
+        "CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);",
+        "CREATE INDEX IF NOT EXISTS idx_expenses_asset_id ON expenses (asset_id);",
+        "CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id);"
+    ]
+    for stmt in extra_stmts:
         try:
             with engine.begin() as isolated_conn:
                 isolated_conn.execute(text(stmt))
         except Exception:
-            pass  # Ignorar silenciosamente: columna ya existe, tabla no existe, etc.
+            pass
 
 
     db = SessionLocal()
@@ -106,7 +102,7 @@ def init_db():
 
         # 0. Roles del Sistema y Catálogo de Permisos
         import json
-        if db.query(Role).count() == 0:
+        if db.query(func.count(Role.id)).scalar() == 0:
             print("--> Seeding default system roles...")
             roles_seed = [
                 Role(
@@ -283,7 +279,7 @@ def init_db():
             db.commit()
 
                 # 2. Clean Personnel Roster (15 Official Operational DALOR Members)
-        if db.query(Personnel).count() < 15:
+        if db.query(func.count(Personnel.id)).scalar() < 15:
             print("--> Synchronizing complete 15-member operational personnel roster...")
             # Keep existing IDs or clean and insert full roster
             existing_codes = {p.code for p in db.query(Personnel.code).all()}
@@ -324,7 +320,7 @@ def init_db():
             db.commit()
 
         # 3. Assets, Heavy Machinery, Welding Rigs & Vehicles (Ensure real Dalor fleet & tools loaded)
-        if db.query(Asset).count() < 916:
+        if db.query(func.count(Asset.id)).scalar() < 916:
             print("--> Seeding complete industrial catalog of tools, machinery, and vehicles (916 items)...")
             # 8 Vehículos Oficiales DALOR C.A. (Extracción certificada de VEHICULOS.xlsx)
             vehicles = [
@@ -407,7 +403,7 @@ def init_db():
             db.commit()
 
                 # 4. Materials & Consumables Catalog (Ensure 15 materials exist)
-        if db.query(Material).count() < 15:
+        if db.query(func.count(Material.id)).scalar() < 15:
             print("--> Seeding/Syncing 15 authentic raw materials & consumables...")
             existing_mats = {m.code for m in db.query(Material.code).all()}
             materials_list = [
@@ -537,7 +533,7 @@ def init_db():
         # Las partidas de servicio y APU deben ser registradas manualmente por Dalor.
 
         # 8. Seed de Cuentas Bancarias y Cajas Predeterminadas
-        if db.query(FinancialAccount).count() == 0:
+        if db.query(func.count(FinancialAccount.id)).scalar() == 0:
             print("--> Seeding default financial accounts (banks & cash registers)...")
             default_accounts = [
                 FinancialAccount(name="Banesco Panamá USD", account_type="usd", bank_or_provider="Banesco Panamá", is_default=True, sort_order=1),

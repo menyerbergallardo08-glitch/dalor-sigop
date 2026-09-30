@@ -19,6 +19,7 @@ COPY backend/ ./backend/
 
 # Copiar frontend_v2/dist compilado (frontend moderno Vite)
 COPY frontend_v2/dist/ ./frontend_v2/dist/
+COPY frontend/logo_dalor.jpg ./frontend_v2/dist/logo_dalor.jpg
 
 WORKDIR /app/backend
 

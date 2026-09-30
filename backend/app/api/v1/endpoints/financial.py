@@ -559,7 +559,7 @@ def get_partner_withdrawals(db: Session = Depends(get_db)):
         "payment_method": r.payment_method,
         "reference_number": r.reference_number,
         "notes": r.notes,
-        "date": r.withdrawal_date.strftime("%Y-%m-%d %H:%M")
+        "date": r.withdrawal_date.strftime("%Y-%m-%d %H:%M") if r.withdrawal_date else ""
     } for r in rows]
 
 @router.post("/partners/withdrawals", dependencies=[Depends(require_roles(["director_general"]))])
@@ -2203,7 +2203,7 @@ def get_bi_metrics(
     if region and region != "all":
         r_query = r_query.filter(AccountReceivable.project_id.in_(project_ids))
     if year:
-        r_query = r_query.filter(func.strftime("%Y", AccountReceivable.issue_date) == str(year))
+        r_query = r_query.filter(func.extract('year', AccountReceivable.issue_date) == int(year))
     all_rec = r_query.all()
     rec_ids = {r.id for r in all_rec}
 
@@ -2214,7 +2214,7 @@ def get_bi_metrics(
     elif client_id or (region and region != "all"):
         pay_query = pay_query.filter(FinancialPayment.receivable_id == -999) # vacío si no hay facturas que coincidan
     if year:
-        pay_query = pay_query.filter(func.strftime("%Y", FinancialPayment.payment_date) == str(year))
+        pay_query = pay_query.filter(func.extract('year', FinancialPayment.payment_date) == int(year))
     all_cxc_payments = pay_query.all()
 
     # Costos & Gastos
@@ -2222,7 +2222,7 @@ def get_bi_metrics(
     if region and region != "all":
         exp_query = exp_query.filter(Expense.project_id.in_(project_ids))
     if year:
-        exp_query = exp_query.filter(func.strftime("%Y", Expense.expense_date) == str(year))
+        exp_query = exp_query.filter(func.extract('year', Expense.expense_date) == int(year))
     all_expenses = exp_query.all()
 
     cxp_pay_query = db.query(FinancialPayment).filter(
@@ -2230,7 +2230,7 @@ def get_bi_metrics(
         FinancialPayment.payment_method.notin_(["retencion_iva", "retencion_islr"])
     )
     if year:
-        cxp_pay_query = cxp_pay_query.filter(func.strftime("%Y", FinancialPayment.payment_date) == str(year))
+        cxp_pay_query = cxp_pay_query.filter(func.extract('year', FinancialPayment.payment_date) == int(year))
     all_cxp_payments = cxp_pay_query.all()
 
     # 2. Resumen KPI Superior

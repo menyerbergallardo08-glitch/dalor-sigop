@@ -1385,12 +1385,28 @@ function openEditPayableModal(payableId) {
     document.getElementById("edit_cxp_due_date").value = p.due_date || '';
     document.getElementById("edit_cxp_description").value = p.description || '';
 
+    const rateBcv = p.exchange_rate || (window.BCV_DATA?.rate || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0));
+    const baseUsd = p.taxable_base_usd || (p.amount_usd ? (p.amount_usd / 1.16) : 0);
+    const retUsd = p.tax_withholding_usd || 0;
+    const baseBs = baseUsd * rateBcv;
+    const retBs = retUsd * rateBcv;
+
+    const rateInput = document.getElementById("edit_cxp_exchange_rate");
+    const baseBsInput = document.getElementById("edit_cxp_base_bs");
+    const retBsInput = document.getElementById("edit_cxp_ret_bs");
+    const retUsdInput = document.getElementById("edit_cxp_ret_usd");
+
+    if (rateInput) rateInput.value = Number(rateBcv).toFixed(2);
+    if (baseBsInput) baseBsInput.value = Number(baseBs).toFixed(2);
+    if (retBsInput) retBsInput.value = Number(retBs).toFixed(2);
+    if (retUsdInput) retUsdInput.value = Number(retUsd).toFixed(2);
+
     const voucherContainer = document.getElementById("edit_cxp_voucher_container");
     const voucherInput = document.getElementById("edit_cxp_voucher_number");
     if (voucherContainer && voucherInput) {
-        if (p.withholding_voucher_number) {
+        if (p.withholding_voucher_number || p.is_withholding_applied) {
             voucherContainer.style.display = "block";
-            voucherInput.value = p.withholding_voucher_number;
+            voucherInput.value = p.withholding_voucher_number || "";
         } else {
             voucherContainer.style.display = "none";
             voucherInput.value = "";
@@ -1398,6 +1414,44 @@ function openEditPayableModal(payableId) {
     }
 
     openModal("modalEditPayable");
+}
+
+function calcEditPayableBsPreview() {
+    const rate = parseFloat(document.getElementById("edit_cxp_exchange_rate")?.value) || 850.0;
+    const totalUsd = parseFloat(document.getElementById("edit_cxp_amount_usd")?.value) || 0;
+    const retPct = parseFloat(document.getElementById("edit_cxp_tax_withholding_rate")?.value) || 75.0;
+
+    const baseUsd = totalUsd > 0 ? (totalUsd / 1.16) : 0;
+    const taxUsd = totalUsd - baseUsd;
+    const retUsd = taxUsd * (retPct / 100.0);
+
+    const baseBs = baseUsd * rate;
+    const retBs = retUsd * rate;
+
+    const baseBsInput = document.getElementById("edit_cxp_base_bs");
+    const retBsInput = document.getElementById("edit_cxp_ret_bs");
+    const retUsdInput = document.getElementById("edit_cxp_ret_usd");
+
+    if (baseBsInput) baseBsInput.value = baseBs.toFixed(2);
+    if (retBsInput) retBsInput.value = retBs.toFixed(2);
+    if (retUsdInput) retUsdInput.value = retUsd.toFixed(2);
+}
+
+function calcEditPayableFromBs() {
+    const rate = parseFloat(document.getElementById("edit_cxp_exchange_rate")?.value) || 850.0;
+    const baseBs = parseFloat(document.getElementById("edit_cxp_base_bs")?.value) || 0;
+    const retPct = parseFloat(document.getElementById("edit_cxp_tax_withholding_rate")?.value) || 75.0;
+
+    if (rate > 0) {
+        const taxBs = baseBs * 0.16;
+        const retBs = taxBs * (retPct / 100.0);
+        const retUsd = retBs / rate;
+
+        const retBsInput = document.getElementById("edit_cxp_ret_bs");
+        const retUsdInput = document.getElementById("edit_cxp_ret_usd");
+        if (retBsInput) retBsInput.value = retBs.toFixed(2);
+        if (retUsdInput) retUsdInput.value = retUsd.toFixed(2);
+    }
 }
 
 async function submitEditPayable(e) {
@@ -1420,6 +1474,14 @@ async function submitEditPayable(e) {
     if (voucherVal) {
         payload.withholding_voucher_number = voucherVal;
     }
+
+    const rateVal = parseFloat(document.getElementById("edit_cxp_exchange_rate")?.value);
+    const retUsdVal = parseFloat(document.getElementById("edit_cxp_ret_usd")?.value);
+    const baseBsVal = parseFloat(document.getElementById("edit_cxp_base_bs")?.value);
+
+    if (!isNaN(rateVal) && rateVal > 0) payload.exchange_rate = rateVal;
+    if (!isNaN(retUsdVal) && retUsdVal >= 0) payload.tax_withholding_usd = retUsdVal;
+    if (!isNaN(baseBsVal) && rateVal > 0) payload.taxable_base_usd = parseFloat((baseBsVal / rateVal).toFixed(2));
 
     try {
         const res = await authFetch(`${API_BASE}/financial/cxp/${id}`, {
@@ -2151,7 +2213,7 @@ async function loadTreasurySummary() {
                 // 2. Trazabilidad de cada pago / abono individual a proveedores
                 if (Array.isArray(cxpList)) {
                     cxpList.forEach(p => {
-                        const payments = p.payments || [];
+                        const payments = (p.payments || []).filter(pm => pm.payment_method !== 'retencion_iva' && pm.payment_method !== 'retencion_islr' && pm.payment_type === 'cxp_pago');
                         if (payments.length > 0) {
                             payments.forEach(pm => {
                                 const usd = pm.amount_usd || 0;
@@ -4220,6 +4282,8 @@ if (typeof window !== 'undefined') {
     window.printWithholdingVoucher = printWithholdingVoucher;
     window.openEditPayableModal = openEditPayableModal;
     window.submitEditPayable = submitEditPayable;
+    window.calcEditPayableBsPreview = calcEditPayableBsPreview;
+    window.calcEditPayableFromBs = calcEditPayableFromBs;
     window.deletePayablePrompt = deletePayablePrompt;
     window.setCashFlowCurrency = setCashFlowCurrency;
     window.onCashFlowMonthChange = onCashFlowMonthChange;
@@ -4473,5 +4537,5 @@ if (typeof window !== 'undefined') {
     }
 }
 
-export { calcClientPaymentBs, onRcpClientChanged, calcQuickBs, loadPartnersWithdrawalsList, loadPayablesList, loadReceivablesList, loadTreasurySummary, onTreasurySummaryPeriodChange, resetTreasurySummaryFilters, openBadDebtModal, openCreateCxCForProject, openDeclareBadDebtModal, openFinancialSubtab, openMaterialConsumeModalWithProject, openNewPartnerWithdrawalModal, openNewPayableModal, openNewReceivableModal, openPayableHistoryModal, openQuickFlowModal, openReceiveClientPaymentModal, openRecordPaymentModal, selectQuickType, submitBadDebtWriteOff, submitCreatePayable, submitCreateReceivable, submitDeclareBadDebt, submitDirectClientPayment, submitFinancialPayment, submitQuickFlow, switchFinancialSubtab, goToCxcPage, changeCxcPageSize, renderReceivablesPaginated, goToCxpPage, changeCxpPageSize, renderPayablesPaginated, goToTreasuryPage, changeTreasuryPageSize, renderTreasuryTracePaginated, goToPartnersPage, changePartnersPageSize, renderPartnersWithdrawalsPaginated, setFilterCxc, filterCxcList, calcFinTransBsEquiv, onFinTransAccountChanged, openClientRefundModal, submitClientRefund, openTreasuryExchangeModal, onTreasuryExchangeTypeChanged, calcTreasuryExchangeDiff, submitTreasuryExchange, setCashFlowRange, loadCashFlowMatrix, printCashFlowMatrixReport, applyTreasuryFilters, resetTreasuryFilters, handleTreasuryPeriodChange, printTreasuryTraceReport, onCxpSearchInput, onCxpDocTypeFilterChange, applyCxpDateFilter, clearCxpDateFilter, setFilterCxp, onCxpModalDocTypeChange, calcPayablePreview, openWithholdingVoucherModal, printWithholdingVoucher, openEditPayableModal, submitEditPayable, deletePayablePrompt, setCashFlowCurrency, onCashFlowMonthChange, applyCashFlowDateFilter, clearCashFlowDateFilter, openBcvRateHistoryModal, selectBcvHistoricalRate, onTreasuryExchangeDateChanged, filterPartnersWithdrawals, selectPartnerSummaryCard, confirmDeletePartnerWithdrawal, loadUnbilledWarehouseEntries, onCxpPayableTypeChanged, onCxpWarehouseModeChange, onCxpWarehouseEntrySelected, addCxpMaterialRow, onCxpMaterialRowMatChanged, removeCxpMaterialRow, calcCxpMaterialsTotal, applyCxpMaterialsTotalToAmount, onMaterialCreatedFromCxp, onCxcClientChanged, onCxcProjectChanged, openManageAccountsModal, submitNewFinancialAccount, deactivateFinancialAccount, loadFinancialAccounts };
+export { calcClientPaymentBs, onRcpClientChanged, calcQuickBs, loadPartnersWithdrawalsList, loadPayablesList, loadReceivablesList, loadTreasurySummary, onTreasurySummaryPeriodChange, resetTreasurySummaryFilters, openBadDebtModal, openCreateCxCForProject, openDeclareBadDebtModal, openFinancialSubtab, openMaterialConsumeModalWithProject, openNewPartnerWithdrawalModal, openNewPayableModal, openNewReceivableModal, openPayableHistoryModal, openQuickFlowModal, openReceiveClientPaymentModal, openRecordPaymentModal, selectQuickType, submitBadDebtWriteOff, submitCreatePayable, submitCreateReceivable, submitDeclareBadDebt, submitDirectClientPayment, submitFinancialPayment, submitQuickFlow, switchFinancialSubtab, goToCxcPage, changeCxcPageSize, renderReceivablesPaginated, goToCxpPage, changeCxpPageSize, renderPayablesPaginated, goToTreasuryPage, changeTreasuryPageSize, renderTreasuryTracePaginated, goToPartnersPage, changePartnersPageSize, renderPartnersWithdrawalsPaginated, setFilterCxc, filterCxcList, calcFinTransBsEquiv, onFinTransAccountChanged, openClientRefundModal, submitClientRefund, openTreasuryExchangeModal, onTreasuryExchangeTypeChanged, calcTreasuryExchangeDiff, submitTreasuryExchange, setCashFlowRange, loadCashFlowMatrix, printCashFlowMatrixReport, applyTreasuryFilters, resetTreasuryFilters, handleTreasuryPeriodChange, printTreasuryTraceReport, onCxpSearchInput, onCxpDocTypeFilterChange, applyCxpDateFilter, clearCxpDateFilter, setFilterCxp, onCxpModalDocTypeChange, calcPayablePreview, openWithholdingVoucherModal, printWithholdingVoucher, openEditPayableModal, submitEditPayable, calcEditPayableBsPreview, calcEditPayableFromBs, deletePayablePrompt, setCashFlowCurrency, onCashFlowMonthChange, applyCashFlowDateFilter, clearCashFlowDateFilter, openBcvRateHistoryModal, selectBcvHistoricalRate, onTreasuryExchangeDateChanged, filterPartnersWithdrawals, selectPartnerSummaryCard, confirmDeletePartnerWithdrawal, loadUnbilledWarehouseEntries, onCxpPayableTypeChanged, onCxpWarehouseModeChange, onCxpWarehouseEntrySelected, addCxpMaterialRow, onCxpMaterialRowMatChanged, removeCxpMaterialRow, calcCxpMaterialsTotal, applyCxpMaterialsTotalToAmount, onMaterialCreatedFromCxp, onCxcClientChanged, onCxcProjectChanged, openManageAccountsModal, submitNewFinancialAccount, deactivateFinancialAccount, loadFinancialAccounts };
 

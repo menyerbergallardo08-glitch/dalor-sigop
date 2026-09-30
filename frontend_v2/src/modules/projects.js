@@ -2156,6 +2156,38 @@ async function viewProjectDetails(projectId) {
                 `).join('');
             }
         }
+
+        // Renderizar Compras y Facturas CxP Imputadas a la Obra
+        const payBodyEl = document.getElementById("detail_proj_payables_body");
+        const payCountEl = document.getElementById("detail_proj_payables_count_badge");
+        if (payBodyEl) {
+            const payables = data.payables || [];
+            const totalPayUsd = payables.reduce((acc, curr) => acc + (Number(curr.paid_amount_usd) || 0), 0);
+            if (payCountEl) {
+                payCountEl.innerText = `${payables.length} compra(s) ($${totalPayUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD pagado)`;
+            }
+            if (payables.length === 0) {
+                payBodyEl.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 14px;">No se registran compras por CxP imputadas a esta obra.</td></tr>`;
+            } else {
+                payBodyEl.innerHTML = payables.map(p => `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; font-weight: 700; color: #475569;">${p.issue_date}</td>
+                        <td style="padding: 6px 8px; font-weight: 800; color: var(--dalor-navy); font-family: monospace;">${p.invoice_number}</td>
+                        <td style="padding: 6px 8px; font-weight: 700; color: #1e293b;">${p.supplier_name}</td>
+                        <td style="padding: 6px 8px; color: #334155; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${p.description}">${p.description}</td>
+                        <td style="padding: 6px 8px; text-align: right; font-weight: 700; color: #475569;">$${Number(p.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td style="padding: 6px 8px; text-align: right; font-weight: 800; color: #059669;">$${Number(p.paid_amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td style="padding: 6px 8px; text-align: right; font-weight: 700; color: ${p.balance_usd > 0.05 ? '#dc2626' : '#64748b'};">$${Number(p.balance_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td style="padding: 6px 8px; text-align: center;">
+                            <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase; ${p.status === 'pagado_total' ? 'background: #dcfce7; color: #166534;' : (p.status === 'abono_parcial' ? 'background: #e0f2fe; color: #0369a1;' : 'background: #fef3c7; color: #92400e;')}">
+                                ${(p.status || 'pendiente').replace(/_/g, ' ')}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
         const btnFact = document.getElementById("btn_detail_facturar_cxc");
         if (btnFact) {
             const billed = Number(data.total_billed_cxc_usd || 0);

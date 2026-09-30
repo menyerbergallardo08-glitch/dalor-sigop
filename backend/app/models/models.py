@@ -206,9 +206,9 @@ class Project(Base):
 
     @property
     def total_spent_usd(self) -> float:
-        if hasattr(self, 'expenses') and self.expenses:
-            return sum(float(e.amount_usd or 0.0) for e in self.expenses)
-        return 0.0
+        exp_spent = sum(float(e.amount_usd or 0.0) for e in self.expenses if (not hasattr(e, 'status') or e.status == 'aprobado')) if hasattr(self, 'expenses') and self.expenses else 0.0
+        pay_spent = sum(float(p.paid_amount_usd or 0.0) for p in self.payables) if hasattr(self, 'payables') and self.payables else 0.0
+        return round(exp_spent + pay_spent, 2)
 
     @property
     def progress_pct(self) -> float:

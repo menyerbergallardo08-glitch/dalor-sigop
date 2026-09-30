@@ -81,13 +81,13 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-Dk0j16oB.js"></script>
+  <script type="module" crossorigin src="/assets/main-CSdzuxTU.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/quotations-DMhp0139.js">
   <link rel="modulepreload" crossorigin href="/assets/maintenance-DeNlMrNZ.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-CEb2aRYM.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-Da4p262h.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-BG-fhTT4.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-DPOLHRPX.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-kJflU1np.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-JisZjAgM.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-CQqaFuID.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-B3rKVl3S.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-CZAvUzlu.js">
@@ -5885,45 +5885,47 @@
                 </div>
             </div>
 
-            <!-- Tabla de Operación Conforme a SNAT/2015/0049 -->
+            <!-- Tabla de Operación Conforme a SNAT/2015/0049 (Moneda de Curso Legal: Bolívares Bs.) -->
             <div style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 16px;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 10px; text-align: right;">
-                    <thead style="background: #f1f5f9; color: #1e293b; font-weight: 800;">
+                    <thead style="background: #0f172a; color: white; font-weight: 800;">
                         <tr>
                             <th style="padding: 6px; text-align: center;">Fecha</th>
                             <th style="padding: 6px; text-align: center;">Nº Factura</th>
                             <th style="padding: 6px; text-align: center;">Nº Control</th>
-                            <th style="padding: 6px;">Total Compra ($)</th>
-                            <th style="padding: 6px;">Base Imponible ($)</th>
+                            <th style="padding: 6px;">Total Factura (Bs.)</th>
+                            <th style="padding: 6px;">Base Imponible (Bs.)</th>
                             <th style="padding: 6px; text-align: center;">% Alíc.</th>
-                            <th style="padding: 6px;">Impuesto IVA ($)</th>
+                            <th style="padding: 6px;">Impuesto IVA (Bs.)</th>
                             <th style="padding: 6px; text-align: center;">% Ret.</th>
-                            <th style="padding: 6px; color: #b91c1c;">IVA Retenido ($)</th>
-                            <th style="padding: 6px; color: #166534;">Neto Proveedor ($)</th>
+                            <th style="padding: 6px; color: #fca5a5;">IVA Retenido (Bs.)</th>
+                            <th style="padding: 6px; color: #86efac;">Neto Proveedor (Bs.)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr style="border-bottom: 1px solid #e2e8f0;">
-                            <td id="v_td_date" style="padding: 6px; text-align: center;">14/09/2026</td>
-                            <td id="v_td_invoice" style="padding: 6px; text-align: center; font-weight: 700;">000229</td>
-                            <td id="v_td_control" style="padding: 6px; text-align: center;">00-000229</td>
-                            <td id="v_td_total_usd" style="padding: 6px; font-weight: 700;">$0.00</td>
-                            <td id="v_td_base_usd" style="padding: 6px;">$0.00</td>
-                            <td style="padding: 6px; text-align: center;">16%</td>
-                            <td id="v_td_tax_usd" style="padding: 6px;">$0.00</td>
-                            <td id="v_td_ret_rate" style="padding: 6px; text-align: center; font-weight: 700;">75%</td>
-                            <td id="v_td_withheld_usd" style="padding: 6px; font-weight: 800; color: #b91c1c;">$0.00</td>
-                            <td id="v_td_net_usd" style="padding: 6px; font-weight: 800; color: #166534;">$0.00</td>
+                        <tr style="border-bottom: 1px solid #e2e8f0; font-weight: 700; background: #ffffff;">
+                            <td id="v_td_date" style="padding: 7px 6px; text-align: center;">14/09/2026</td>
+                            <td id="v_td_invoice" style="padding: 7px 6px; text-align: center; font-weight: 900; color: #0f172a;">000229</td>
+                            <td id="v_td_control" style="padding: 7px 6px; text-align: center; color: #475569;">00-000229</td>
+                            <td id="v_td_total_bs" style="padding: 7px 6px; font-weight: 800;">Bs. 0.00</td>
+                            <td id="v_td_base_bs" style="padding: 7px 6px;">Bs. 0.00</td>
+                            <td style="padding: 7px 6px; text-align: center;">16%</td>
+                            <td id="v_td_tax_bs" style="padding: 7px 6px;">Bs. 0.00</td>
+                            <td id="v_td_ret_rate" style="padding: 7px 6px; text-align: center; font-weight: 800; color: #b91c1c;">75%</td>
+                            <td id="v_td_withheld_bs" style="padding: 7px 6px; font-weight: 900; color: #b91c1c; font-size: 11px;">Bs. 0.00</td>
+                            <td id="v_td_net_bs" style="padding: 7px 6px; font-weight: 900; color: #166534; font-size: 11px;">Bs. 0.00</td>
                         </tr>
-                        <tr style="background: #fafafa; font-weight: 800; border-top: 1px solid #cbd5e1;">
-                            <td colspan="3" style="padding: 6px; text-align: left;">Total en Bolívares (Bs.):</td>
-                            <td id="v_td_total_bs" style="padding: 6px;">Bs. 0.00</td>
-                            <td id="v_td_base_bs" style="padding: 6px;">Bs. 0.00</td>
-                            <td></td>
-                            <td id="v_td_tax_bs" style="padding: 6px;">Bs. 0.00</td>
-                            <td></td>
-                            <td id="v_td_withheld_bs" style="padding: 6px; color: #b91c1c;">Bs. 0.00</td>
-                            <td id="v_td_net_bs" style="padding: 6px; color: #166534;">Bs. 0.00</td>
+                        <tr style="background: #f8fafc; font-weight: 700; border-top: 1px solid #cbd5e1; color: #475569; font-size: 9.5px;">
+                            <td colspan="3" style="padding: 6px; text-align: left; font-weight: 800; color: #64748b;">
+                                <i class="fa-solid fa-circle-info"></i> Contravalor Referencial ($ USD):
+                            </td>
+                            <td id="v_td_total_usd" style="padding: 6px;">$0.00</td>
+                            <td id="v_td_base_usd" style="padding: 6px;">$0.00</td>
+                            <td style="text-align: center;">16%</td>
+                            <td id="v_td_tax_usd" style="padding: 6px;">$0.00</td>
+                            <td style="text-align: center;">-</td>
+                            <td id="v_td_withheld_usd" style="padding: 6px; color: #b91c1c;">-$0.00</td>
+                            <td id="v_td_net_usd" style="padding: 6px; color: #166534;">$0.00</td>
                         </tr>
                     </tbody>
                 </table>
@@ -6022,8 +6024,30 @@
                         <i class="fa-solid fa-stamp"></i> Nº Comprobante Retención IVA (14 dígitos SENIAT):
                     </label>
                     <input type="text" id="edit_cxp_voucher_number" class="form-input" style="font-family: monospace; font-weight: 800; font-size: 13px; color: #b91c1c; background: white;" placeholder="Ej: 20260900001015" maxlength="20">
-                    <p style="font-size: 10px; color: #9d174d; margin: 4px 0 0 0; line-height: 1.2;">
-                        * Formato oficial: <strong>AAAAMMXXXXXXXX</strong> (Año + Mes + 8 dígitos). Al modificar este número, los nuevos registros seguirán la secuencia consecutiva a partir de este valor.
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                        <div>
+                            <label class="form-label" style="font-size: 10.5px; color: #9d174d; font-weight: 700;">Tasa BCV del Comprobante (Bs/$):</label>
+                            <input type="number" step="0.01" id="edit_cxp_exchange_rate" oninput="calcEditPayableBsPreview()" class="form-input" style="font-weight: 800; color: #0369a1; background: white;">
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10.5px; color: #9d174d; font-weight: 700;">Base Imponible (Bs.):</label>
+                            <input type="number" step="0.01" id="edit_cxp_base_bs" oninput="calcEditPayableFromBs()" class="form-input" style="font-weight: 800; color: #1e293b; background: white;">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                        <div>
+                            <label class="form-label" style="font-size: 10.5px; color: #9d174d; font-weight: 700;">IVA Retenido en Bolívares (Bs.):</label>
+                            <input type="number" step="0.01" id="edit_cxp_ret_bs" class="form-input" style="font-weight: 900; color: #b91c1c; background: white;">
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10.5px; color: #9d174d; font-weight: 700;">IVA Retenido en Divisas ($ USD):</label>
+                            <input type="number" step="0.01" id="edit_cxp_ret_usd" readonly class="form-input" style="font-weight: 800; color: #64748b; background: #f1f5f9;">
+                        </div>
+                    </div>
+
+                    <p style="font-size: 10px; color: #9d174d; margin: 6px 0 0 0; line-height: 1.2;">
+                        * Conforme a la Providencia SNAT/2015/0049 Art. 14 y 16, puede ajustar la Tasa BCV y centavos en Bolívares para coincidencia exacta con el comprobante físico del proveedor antes de enterar al SENIAT.
                     </p>
                 </div>
 
@@ -6284,7 +6308,7 @@
     </div>
 
     <!-- MODAL WIDGET: HISTÓRICO DE TASAS BCV -->
-    <div id="modalBcvRateHistory" class="modal-overlay hidden" style="z-index: 1050;">
+    <div id="modalBcvRateHistory" class="modal-overlay hidden" style="z-index: 3500;">
         <div class="modal-content" style="max-width: 520px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
                 <div>
@@ -6680,6 +6704,42 @@
                         <tbody id="detail_proj_expenses_body">
                             <tr>
                                 <td colspan="8" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran gastos imputados a esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- COMPRAS Y FACTURAS CXP IMPUTADAS A LA OBRA -->
+            <div class="card" style="margin-bottom: 14px; border-left: 4px solid #0284c7; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-file-invoice-dollar" style="color: #0284c7;"></i> Compras y Facturas CxP Imputadas a la Obra
+                        </h4>
+                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Materiales, suministros y servicios facturados en Cuentas por Pagar para este proyecto.</p>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span id="detail_proj_payables_count_badge" style="font-size: 11px; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 6px;">0 compras ($0.00 USD)</span>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">Fecha</th>
+                                <th style="padding: 6px 8px; text-align: left;">Factura / Doc</th>
+                                <th style="padding: 6px 8px; text-align: left;">Proveedor</th>
+                                <th style="padding: 6px 8px; text-align: left;">Descripción</th>
+                                <th style="padding: 6px 8px; text-align: right;">Total Doc ($)</th>
+                                <th style="padding: 6px 8px; text-align: right;">Pagado ($)</th>
+                                <th style="padding: 6px 8px; text-align: right;">Saldo ($)</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_payables_body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran compras por CxP imputadas a esta obra.</td>
                             </tr>
                         </tbody>
                     </table>

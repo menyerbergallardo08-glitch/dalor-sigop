@@ -5,9 +5,10 @@ from datetime import datetime, timedelta
 import re
 from pydantic import BaseModel
 from app.core.database import get_db
-from app.models.models import Project, Client, Expense, ProjectPhase, Asset, Personnel, ResourceAssignmentHistory, AccountReceivable, FinancialPayment, ProjectAddendum, AuditLog, Material, ProjectMaterialRequisition, MaterialMovement
+from app.models.models import Project, Client, Expense, ProjectPhase, Asset, Personnel, ResourceAssignmentHistory, AccountReceivable, AccountPayable, FinancialPayment, ProjectAddendum, AuditLog, Material, ProjectMaterialRequisition, MaterialMovement
 from app.schemas.schemas import ProjectCreate, ProjectOut, ProjectAddendumCreate, ProjectAddendumOut
 from app.services.excel_service import ExcelProjectService
+from sqlalchemy import func
 
 router = APIRouter()
 
@@ -28,9 +29,20 @@ def get_projects(db: Session = Depends(get_db)):
         .order_by(Project.created_at.desc())
         .all()
     )
+    
+    # Compras y Facturas CxP pagadas imputadas a proyectos
+    cxp_sums = dict(
+        db.query(AccountPayable.project_id, func.sum(AccountPayable.paid_amount_usd))
+        .filter(AccountPayable.project_id.isnot(None))
+        .group_by(AccountPayable.project_id)
+        .all()
+    )
+
     results = []
     for proj in projects:
-        spent = sum(e.amount_usd for e in proj.expenses if e.status == 'aprobado') if proj.expenses else 0.0
+        exp_spent = sum(e.amount_usd for e in proj.expenses if e.status == 'aprobado') if proj.expenses else 0.0
+        cxp_spent = float(cxp_sums.get(proj.id, 0.0) or 0.0)
+        spent = round(exp_spent + cxp_spent, 2)
         
         # Calculate physical progress percentage based on tasks or completed phases
         total_tasks = 0
@@ -131,7 +143,12 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
     
     # Gastos ejecutados (solo aprobados)
     expenses = db.query(Expense).filter(Expense.project_id == project_id, Expense.status == "aprobado").all()
-    total_spent = sum(e.amount_usd for e in expenses)
+    expenses_spent = sum(e.amount_usd for e in expenses)
+
+    # Compras y Facturas de Proveedores (CxP) imputadas a la obra
+    payables = db.query(AccountPayable).filter(AccountPayable.project_id == project_id).order_by(AccountPayable.issue_date.desc(), AccountPayable.id.desc()).all()
+    payables_spent = sum(p.paid_amount_usd for p in payables)
+    total_spent = round(expenses_spent + payables_spent, 2)
 
     # Trazabilidad de Cobros y Cuentas por Cobrar (CxC) de la obra
     receivables = db.query(AccountReceivable).filter(AccountReceivable.project_id == project_id).all()
@@ -198,6 +215,31 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
             "receipt_image_path": e.receipt_image_path or "",
             "reported_by_name": e.reported_by.full_name if e.reported_by else (e.reported_by.username if e.reported_by else "Admin")
         } for e in project_expenses
+    ]
+
+    payables_data = [
+        {
+            "id": p.id,
+            "invoice_number": p.invoice_number,
+            "control_number": p.control_number or "-",
+            "supplier_name": p.supplier_name,
+            "supplier_rif": p.supplier_rif or "-",
+            "doc_type": p.doc_type or "factura",
+            "payable_type": p.payable_type,
+            "description": p.description,
+            "issue_date": p.issue_date.strftime("%Y-%m-%d") if p.issue_date else "-",
+            "due_date": p.due_date.strftime("%Y-%m-%d") if p.due_date else "-",
+            "amount_usd": round(p.amount_usd or 0.0, 2),
+            "amount_bs": round(p.amount_bs or 0.0, 2) if p.amount_bs else 0.0,
+            "exchange_rate": p.exchange_rate or 850.0,
+            "taxable_base_usd": round(p.taxable_base_usd or 0.0, 2),
+            "tax_withholding_usd": round(p.tax_withholding_usd or 0.0, 2),
+            "net_amount_usd": round(p.net_amount_usd or 0.0, 2),
+            "paid_amount_usd": round(p.paid_amount_usd or 0.0, 2),
+            "balance_usd": round(p.balance_usd or 0.0, 2),
+            "status": p.status,
+            "withholding_voucher_number": p.withholding_voucher_number or "-"
+        } for p in payables
     ]
 
     return {
@@ -293,7 +335,8 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
                 "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "-"
             } for r in db.query(ProjectMaterialRequisition).filter(ProjectMaterialRequisition.project_id == project_id).order_by(ProjectMaterialRequisition.id.asc()).all()
         ],
-        "expenses": expenses_data
+        "expenses": expenses_data,
+        "payables": payables_data
     }
 
 class MaterialRequestItemIn(BaseModel):

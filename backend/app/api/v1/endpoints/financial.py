@@ -100,6 +100,7 @@ class PayableUpdate(BaseModel):
     islr_rate: Optional[float] = None
     islr_withholding_usd: Optional[float] = None
     amount_usd: Optional[float] = None
+    exchange_rate: Optional[float] = None
     notes: Optional[str] = None
 
 class PaymentCreate(BaseModel):
@@ -217,10 +218,7 @@ def get_financial_summary(
             pay_cxp_q = pay_cxp_q.filter(FinancialPayment.financial_account_id == account_id)
     cxp_bank_outflows = sum(p.amount_usd for p in pay_cxp_q.all())
 
-    if df or dt or account_id:
-        total_paid_cxp = cxp_bank_outflows
-    else:
-        total_paid_cxp = sum(p.paid_amount_usd for p in p_query)
+    total_paid_cxp = cxp_bank_outflows
     pending_cxp = sum(p.balance_usd for p in p_query)
 
     # 3. Gastos Directos y de Oficina
@@ -1212,7 +1210,7 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
         voucher_num = f"{prefix}{seq:08d}"
         voucher_date = now
         is_ret_applied = True
-        init_paid = round(ret_iva_usd + ret_islr_usd, 2)
+        init_paid = 0.0
         init_balance = net_usd
 
     amount_bs = round(p_in.amount_usd * p_in.exchange_rate, 2)
@@ -1373,7 +1371,7 @@ def update_payable(payable_id: int, p_in: PayableUpdate, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="Cuenta por pagar no encontrada.")
 
     # Solo permitir editar si no se han hecho pagos bancarios definitivos
-    bank_pays = [pm for pm in p.payments if pm.payment_method != "retencion_iva"]
+    bank_pays = [pm for pm in p.payments if pm.payment_method not in ["retencion_iva", "retencion_islr"]]
     if bank_pays:
         raise HTTPException(status_code=400, detail="No se puede modificar una factura que ya posee pagos bancarios ejecutados. Debe anular primero los pagos si desea corregirla.")
 
@@ -1387,24 +1385,28 @@ def update_payable(payable_id: int, p_in: PayableUpdate, db: Session = Depends(g
     if p_in.doc_type is not None: p.doc_type = p_in.doc_type.strip().lower()
     if p_in.withholding_voucher_number is not None: p.withholding_voucher_number = p_in.withholding_voucher_number.strip()
 
+    if p_in.exchange_rate is not None and p_in.exchange_rate > 0:
+        p.exchange_rate = p_in.exchange_rate
+
     if p_in.amount_usd is not None and p_in.amount_usd > 0:
         p.amount_usd = p_in.amount_usd
-        p.amount_bs = round(p.amount_usd * p.exchange_rate, 2)
+    
+    p.amount_bs = round(p.amount_usd * p.exchange_rate, 2)
 
     if p_in.tax_withholding_rate is not None:
         p.tax_withholding_rate = p_in.tax_withholding_rate
 
     if p.doc_type == "factura" and p.tax_withholding_rate and p.tax_withholding_rate > 0:
-        base_usd = p_in.taxable_base_usd if (p_in.taxable_base_usd and p_in.taxable_base_usd > 0) else round(p.amount_usd / 1.16, 2)
-        tax_usd = p_in.tax_amount_usd if (p_in.tax_amount_usd and p_in.tax_amount_usd > 0) else round(p.amount_usd - base_usd, 2)
-        ret_usd = round(tax_usd * (p.tax_withholding_rate / 100.0), 2)
+        base_usd = p_in.taxable_base_usd if (p_in.taxable_base_usd is not None and p_in.taxable_base_usd > 0) else round(p.amount_usd / 1.16, 2)
+        tax_usd = p_in.tax_amount_usd if (p_in.tax_amount_usd is not None and p_in.tax_amount_usd > 0) else round(p.amount_usd - base_usd, 2)
+        ret_usd = p_in.tax_withholding_usd if (p_in.tax_withholding_usd is not None and p_in.tax_withholding_usd > 0) else round(tax_usd * (p.tax_withholding_rate / 100.0), 2)
         net_usd = round(p.amount_usd - ret_usd, 2)
 
         p.taxable_base_usd = base_usd
         p.tax_amount_usd = tax_usd
         p.tax_withholding_usd = ret_usd
         p.net_amount_usd = net_usd
-        p.paid_amount_usd = ret_usd
+        p.paid_amount_usd = 0.0
         p.balance_usd = net_usd
         p.is_withholding_applied = True
 
@@ -1416,6 +1418,10 @@ def update_payable(payable_id: int, p_in: PayableUpdate, db: Session = Depends(g
         if ret_pay:
             ret_pay.amount_usd = ret_usd
             ret_pay.amount_bs = round(ret_usd * p.exchange_rate, 2)
+            ret_pay.exchange_rate = p.exchange_rate
+            if p.withholding_voucher_number:
+                ret_pay.voucher_number = p.withholding_voucher_number
+                ret_pay.reference_number = p.withholding_voucher_number
         elif ret_usd > 0:
             now = datetime.utcnow()
             v_num = p.withholding_voucher_number or f"{now.strftime('%Y%m')}00001015"

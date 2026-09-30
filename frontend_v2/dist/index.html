@@ -81,13 +81,13 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-CSdzuxTU.js"></script>
+  <script type="module" crossorigin src="/assets/main-B-GF4zhL.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/quotations-DMhp0139.js">
-  <link rel="modulepreload" crossorigin href="/assets/maintenance-DeNlMrNZ.js">
+  <link rel="modulepreload" crossorigin href="/assets/maintenance-B5QQiFV6.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-Da4p262h.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-BG-fhTT4.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-DPOLHRPX.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-JisZjAgM.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-CJVm2qwM.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-CQqaFuID.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-B3rKVl3S.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-CZAvUzlu.js">
@@ -1919,7 +1919,7 @@
                                     <th>Emisión</th>
                                     <th>Vencimiento</th>
                                     <th>Total Factura ($)</th>
-                                    <th>Ret. IVA ($)</th>
+                                    <th>Ret. IVA (Bs.)</th>
                                     <th>Saldo Pendiente ($)</th>
                                     <th>Estado</th>
                                     <th style="text-align: center;">Acciones</th>
@@ -5812,12 +5812,12 @@
                         <p id="cxp_lbl_tax" style="font-weight: 800; margin: 2px 0 0 0; color: #2563eb;">$0.00</p>
                     </div>
                     <div>
-                        <span style="color: #b91c1c; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. IVA</span>
-                        <p id="cxp_lbl_withholding" style="font-weight: 900; margin: 2px 0 0 0; color: #b91c1c;">$0.00</p>
+                        <span style="color: #b91c1c; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. IVA (Bs.)</span>
+                        <p id="cxp_lbl_withholding" style="font-weight: 900; margin: 2px 0 0 0; color: #b91c1c;">Bs. 0.00</p>
                     </div>
                     <div>
-                        <span style="color: #6b21a8; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. ISLR</span>
-                        <p id="cxp_lbl_islr" style="font-weight: 900; margin: 2px 0 0 0; color: #7e22ce;">$0.00</p>
+                        <span style="color: #6b21a8; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. ISLR (Bs.)</span>
+                        <p id="cxp_lbl_islr" style="font-weight: 900; margin: 2px 0 0 0; color: #7e22ce;">Bs. 0.00</p>
                     </div>
                     <div style="background: #f0fdf4; border-radius: 6px; padding: 2px;">
                         <span style="color: #166534; font-weight: 700; text-transform: uppercase; font-size: 9px;">Neto Proveedor</span>
@@ -5914,18 +5914,6 @@
                             <td id="v_td_ret_rate" style="padding: 7px 6px; text-align: center; font-weight: 800; color: #b91c1c;">75%</td>
                             <td id="v_td_withheld_bs" style="padding: 7px 6px; font-weight: 900; color: #b91c1c; font-size: 11px;">Bs. 0.00</td>
                             <td id="v_td_net_bs" style="padding: 7px 6px; font-weight: 900; color: #166534; font-size: 11px;">Bs. 0.00</td>
-                        </tr>
-                        <tr style="background: #f8fafc; font-weight: 700; border-top: 1px solid #cbd5e1; color: #475569; font-size: 9.5px;">
-                            <td colspan="3" style="padding: 6px; text-align: left; font-weight: 800; color: #64748b;">
-                                <i class="fa-solid fa-circle-info"></i> Contravalor Referencial ($ USD):
-                            </td>
-                            <td id="v_td_total_usd" style="padding: 6px;">$0.00</td>
-                            <td id="v_td_base_usd" style="padding: 6px;">$0.00</td>
-                            <td style="text-align: center;">16%</td>
-                            <td id="v_td_tax_usd" style="padding: 6px;">$0.00</td>
-                            <td style="text-align: center;">-</td>
-                            <td id="v_td_withheld_usd" style="padding: 6px; color: #b91c1c;">-$0.00</td>
-                            <td id="v_td_net_usd" style="padding: 6px; color: #166534;">$0.00</td>
                         </tr>
                     </tbody>
                 </table>
@@ -6035,15 +6023,10 @@
                             <input type="number" step="0.01" id="edit_cxp_base_bs" oninput="calcEditPayableFromBs()" class="form-input" style="font-weight: 800; color: #1e293b; background: white;">
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
-                        <div>
-                            <label class="form-label" style="font-size: 10.5px; color: #9d174d; font-weight: 700;">IVA Retenido en Bolívares (Bs.):</label>
-                            <input type="number" step="0.01" id="edit_cxp_ret_bs" class="form-input" style="font-weight: 900; color: #b91c1c; background: white;">
-                        </div>
-                        <div>
-                            <label class="form-label" style="font-size: 10.5px; color: #9d174d; font-weight: 700;">IVA Retenido en Divisas ($ USD):</label>
-                            <input type="number" step="0.01" id="edit_cxp_ret_usd" readonly class="form-input" style="font-weight: 800; color: #64748b; background: #f1f5f9;">
-                        </div>
+                    <div style="margin-top: 6px;">
+                        <label class="form-label" style="font-size: 10.5px; color: #9d174d; font-weight: 700;">IVA Retenido en Bolívares (Bs.):</label>
+                        <input type="number" step="0.01" id="edit_cxp_ret_bs" class="form-input" style="font-weight: 900; color: #b91c1c; background: white;">
+                        <input type="hidden" id="edit_cxp_ret_usd">
                     </div>
 
                     <p style="font-size: 10px; color: #9d174d; margin: 6px 0 0 0; line-height: 1.2;">

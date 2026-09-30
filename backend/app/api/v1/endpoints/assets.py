@@ -343,11 +343,12 @@ def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = 
         status_msg = f"Servicio de {req.service_type} registrado en bitácora. Odómetro actualizado a {req.new_odometer:,.0f} km. Ciclo de aceite preservado ({remaining_km:,.0f} Km restantes)."
     
     if req.cost_usd > 0:
-        from app.models.models import ExpenseCategory
-        cat = db.query(ExpenseCategory).filter(ExpenseCategory.name.ilike("%mantenimiento%")).first()
-        if not cat:
-            cat = db.query(ExpenseCategory).first()
-        cat_id = cat.id if cat else 1
+        cat = db.query(ExpenseCategory).filter(
+            (ExpenseCategory.code == "13.0") | 
+            (ExpenseCategory.name.ilike("%flota%")) | 
+            (ExpenseCategory.name.ilike("%vehiculo%"))
+        ).first()
+        cat_id = cat.id if cat else 13
         exp = Expense(
             category_id=cat_id,
             asset_id=asset.id,

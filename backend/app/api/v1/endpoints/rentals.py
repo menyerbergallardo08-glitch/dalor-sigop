@@ -287,8 +287,12 @@ def create_rental_loan(
             if req.project_id:
                 proj = db.query(Project).filter(Project.id == req.project_id).first()
                 if proj:
-                    cat = db.query(ExpenseCategory).filter(ExpenseCategory.name.ilike("%alquiler%")).first() or db.query(ExpenseCategory).first()
-                    cat_id = cat.id if cat else 1
+                    cat = db.query(ExpenseCategory).filter(
+                        (ExpenseCategory.code == "12.0") | 
+                        (ExpenseCategory.name.ilike("%servicio%")) | 
+                        (ExpenseCategory.name.ilike("%alquiler%"))
+                    ).first()
+                    cat_id = cat.id if cat else 12
                     exp = Expense(
                         category_id=cat_id,
                         project_id=proj.id,

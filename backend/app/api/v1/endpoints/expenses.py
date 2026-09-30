@@ -56,6 +56,7 @@ def get_expense_receipt(expense_id: int, db: Session = Depends(get_db)):
 def get_expenses(
     project_id: Optional[int] = None,
     category_id: Optional[int] = None,
+    direct_only: bool = False,
     alert_only: bool = False,
     status: Optional[str] = "aprobado",
     db: Session = Depends(get_db)
@@ -70,13 +71,16 @@ def get_expenses(
     if category_id:
         cat = db.query(ExpenseCategory).filter(ExpenseCategory.id == category_id).first()
         if cat:
-            prefix = cat.code.split('.')[0] if '.' in cat.code else cat.code
-            child_ids = [c[0] for c in db.query(ExpenseCategory.id).filter(
-                (ExpenseCategory.parent_id == cat.id) | 
-                (ExpenseCategory.code.startswith(prefix + '.')) |
-                (ExpenseCategory.id == cat.id)
-            ).all()]
-            query = query.filter(Expense.category_id.in_(child_ids))
+            # Si es una subpartida (hija) o se pide explícitamente solo la cuenta base, filtrar ESTRICTAMENTE por ella sola
+            if cat.parent_id is not None or direct_only:
+                query = query.filter(Expense.category_id == cat.id)
+            else:
+                # Si es una partida padre/raíz consolidadora, incluir la raíz y sus hijas directas
+                child_ids = [c[0] for c in db.query(ExpenseCategory.id).filter(
+                    (ExpenseCategory.parent_id == cat.id) | 
+                    (ExpenseCategory.id == cat.id)
+                ).all()]
+                query = query.filter(Expense.category_id.in_(child_ids))
         else:
             query = query.filter(Expense.category_id == category_id)
     if status and status != "all":
@@ -131,8 +135,7 @@ def get_categories_tree(db: Session = Depends(get_db)):
 
     tree = []
     for p in parents:
-        prefix = p.code.split('.')[0] if '.' in p.code else p.code
-        subcats = [c for c in cats if (c.parent_id == p.id or c.code.startswith(prefix + '.')) and c.id != p.id]
+        subcats = [c for c in cats if c.parent_id == p.id]
         subcats.sort(key=cat_sort_key)
         p_direct = spent_by_cat.get(p.id, 0.0)
         sub_spent = sum(spent_by_cat.get(s.id, 0.0) for s in subcats)
@@ -144,19 +147,21 @@ def get_categories_tree(db: Session = Depends(get_db)):
                 "code": s.code,
                 "name": s.name,
                 "monthly_budget_usd": float(getattr(s, "monthly_budget_usd", 0.0) or 0.0),
-                "spent_usd": round(spent_by_cat.get(s.id, 0.0), 2)
+                "spent_usd": round(spent_by_cat.get(s.id, 0.0), 2),
+                "is_direct": False
             } for s in subcats
         ]
 
         # Si el padre tiene gastos imputados directamente a su cuenta raíz,
-        # mostrarlos explícitamente en el desglose para que la suma cuadre exactamente con el total
+        # diferenciarlos explícitamente en el desglose
         if p_direct > 0 and len(subcats) > 0:
             sub_items.insert(0, {
                 "id": p.id,
                 "code": f"{p.code} (Base)",
-                "name": f"Imputación Directa a Cuenta Raíz ({p.name})",
+                "name": f"Gastos generales no asignados a subcuentas",
                 "monthly_budget_usd": float(getattr(p, "monthly_budget_usd", 0.0) or 0.0),
-                "spent_usd": round(p_direct, 2)
+                "spent_usd": round(p_direct, 2),
+                "is_direct": True
             })
 
         tree.append({
@@ -165,6 +170,7 @@ def get_categories_tree(db: Session = Depends(get_db)):
             "name": p.name,
             "monthly_budget_usd": float(getattr(p, "monthly_budget_usd", 0.0) or 0.0),
             "total_spent_usd": total_p,
+            "direct_spent_usd": round(p_direct, 2),
             "subcategories": sub_items
         })
     return tree

@@ -265,11 +265,11 @@ def record_material_entry(entry: MaterialEntryCreate, db: Session = Depends(get_
             )
             db.add(created_cxp)
         else:
-            cat = db.query(ExpenseCategory).filter(ExpenseCategory.code == "10.0").first() or db.query(ExpenseCategory).first()
+            cat = db.query(ExpenseCategory).filter((ExpenseCategory.code == "17.0") | (ExpenseCategory.code == "11.0")).first()
             ref_info = f"Ref: {entry.payment_ref or entry.reference_doc or 'Contado Almacén'}."
             note_info = f" {entry.notes}" if entry.notes else ""
             cash_expense = Expense(
-                category_id=cat.id if cat else 1,
+                category_id=cat.id if cat else 17,
                 expense_type="gasto_sede",
                 expense_date=datetime.utcnow(),
                 description=f"Compra Contado Stock ({len(raw_items)} ítems). {summary_desc[:180]}. {ref_info}{note_info}",

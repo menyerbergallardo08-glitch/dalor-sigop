@@ -844,30 +844,30 @@ async function loadCategoriesTree() {
 
 
         container.innerHTML = tree.map(parent => `
-            <div class="card" style="margin-bottom: 0; border-top: 3px solid var(--dalor-blue); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.08)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';" onclick="openCategoryHistoryModal(${parent.id}, '${(parent.code || '').replace(/'/g, "\\'")}', '${(parent.name || '').replace(/'/g, "\\'")}', ${parent.total_spent_usd})">
+            <div class="card" style="margin-bottom: 0; border-top: 3px solid var(--dalor-blue); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.08)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';" onclick="openCategoryHistoryModal(${parent.id}, '${(parent.code || '').replace(/'/g, "\\'")}', '${(parent.name || '').replace(/'/g, "\\'")}', ${parent.total_spent_usd}, false)">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 8px;">
                     <div>
                         <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 6px; border-radius: 4px;">${parent.code}</span>
                         <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); display: inline-block; margin-left: 6px;">${parent.name}</h4>
                     </div>
                     <div style="text-align: right;">
-                        <span style="font-size: 10px; color: #64748b; display: block;">Gasto Real Acumulado</span>
+                        <span style="font-size: 10px; color: #64748b; display: block;">Total Consolidado Partida</span>
                         <span style="font-weight: 800; color: #e11d48; font-size: 13px;">$${parent.total_spent_usd.toFixed(2)}</span>
                     </div>
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; margin-bottom: 6px;">
                     <span style="font-size: 10px; color: var(--dalor-blue); font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                        <i class="fa-solid fa-list-check"></i> Ver Bitácora Completa <i class="fa-solid fa-chevron-right" style="font-size: 8px;"></i>
+                        <i class="fa-solid fa-list-check"></i> Ver Bitácora Consolidada <i class="fa-solid fa-chevron-right" style="font-size: 8px;"></i>
                     </span>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     ${parent.subcategories && parent.subcategories.length > 0 ? parent.subcategories.map(sub => `
-                        <div style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #475569; padding: 6px 10px; background: #f8fafc; border-radius: 4px; border: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='#f8fafc'" onclick="openCategoryHistoryModal(${sub.id}, '${(sub.code || '').replace(/'/g, "\\'")}', '${(sub.name || '').replace(/'/g, "\\'")}', ${sub.spent_usd}); event.stopPropagation();">
+                        <div style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #475569; padding: 6px 10px; background: ${sub.is_direct ? '#fffbeb' : '#f8fafc'}; border-radius: 4px; border: 1px solid ${sub.is_direct ? '#fef3c7' : '#f1f5f9'}; transition: background 0.15s;" onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='${sub.is_direct ? '#fffbeb' : '#f8fafc'}'" onclick="openCategoryHistoryModal(${sub.id}, '${(sub.code || '').replace(/'/g, "\\'")}', '${(sub.name || '').replace(/'/g, "\\'")}', ${sub.spent_usd}, ${sub.is_direct ? 'true' : 'false'}); event.stopPropagation();">
                             <span><b>${sub.code}</b> ${sub.name}</span>
                             <span style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-weight: 700; color: var(--dalor-navy);">$${sub.spent_usd.toFixed(2)}</span>
+                                <span style="font-weight: 700; color: ${sub.is_direct ? '#b45309' : 'var(--dalor-navy)'};">$${sub.spent_usd.toFixed(2)}</span>
                                 <i class="fa-solid fa-chevron-right" style="font-size: 9px; color: #94a3b8;"></i>
                             </span>
                         </div>
@@ -894,7 +894,7 @@ let currentCatHistoryPage = 1;
 let catHistoryPageSize = 10;
 let catHistoryDebounceTimer = null;
 
-async function openCategoryHistoryModal(catId, catCode, catName, totalSpent) {
+async function openCategoryHistoryModal(catId, catCode, catName, totalSpent, isDirect = false) {
     const titleEl = document.getElementById("catHistTitle");
     const subtitleEl = document.getElementById("catHistSubtitle");
     const totalSpentEl = document.getElementById("catHistTotalSpent");
@@ -903,7 +903,7 @@ async function openCategoryHistoryModal(catId, catCode, catName, totalSpent) {
     const tbody = document.getElementById("catHistTableBody");
 
     if (titleEl) titleEl.innerText = `Bitácora: [${catCode}] ${catName}`;
-    if (subtitleEl) subtitleEl.innerText = `Histórico de comprobantes y egresos imputados a esta partida contable`;
+    if (subtitleEl) subtitleEl.innerText = isDirect ? `Comprobantes imputados directamente a la partida raíz` : `Histórico de comprobantes y egresos imputados a esta partida contable`;
     if (totalSpentEl) totalSpentEl.innerText = `$${(totalSpent || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const bcvRate = window.EXCHANGE_RATE || (window.BCV_DATA ? window.BCV_DATA.rate : 850.0) || 850.0;
@@ -927,7 +927,8 @@ async function openCategoryHistoryModal(catId, catCode, catName, totalSpent) {
     }
 
     try {
-        const res = await authFetch(`${API_BASE}/expenses/?category_id=${catId}&status=all`);
+        const directParam = isDirect ? '&direct_only=true' : '';
+        const res = await authFetch(`${API_BASE}/expenses/?category_id=${catId}&status=all${directParam}`);
         if (!res.ok) throw new Error("Error en servidor al consultar gastos");
         const items = await res.json();
         allCatHistoryItems = Array.isArray(items) ? items : [];

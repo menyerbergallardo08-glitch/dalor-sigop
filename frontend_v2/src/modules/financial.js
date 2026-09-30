@@ -784,8 +784,8 @@ function renderPayablesPaginated() {
             <td style="font-size: 11px; color: #64748b;">${p.issue_date || '-'}</td>
             <td style="font-size: 11px; font-weight: 700; color: ${p.aging_status === 'vencido' ? '#e11d48' : '#334155'};"><i class="fa-regular fa-calendar"></i> ${p.due_date || '-'}</td>
             <td style="font-weight: 800; color: #0f172a;">$${Number(p.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-            <td style="font-weight: 700; color: #b91c1c;">
-                ${p.tax_withholding_usd > 0 ? `-$${Number(p.tax_withholding_usd).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '$0.00'}
+            <td style="font-weight: 700; color: #b91c1c; font-size: 11px;">
+                ${p.tax_withholding_usd > 0 ? `-Bs. ${((p.tax_withholding_usd || 0) * (p.exchange_rate || bcvRate || 850.0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'Bs. 0.00'}
             </td>
             <td style="font-weight: 900; color: ${p.balance_usd > 0.01 ? '#e11d48' : '#059669'}; font-size: 13px;">
                 $${Number(p.balance_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
@@ -880,10 +880,11 @@ function calcPayablePreview() {
     const lblIslr = document.getElementById("cxp_lbl_islr");
     const lblNet = document.getElementById("cxp_lbl_net");
 
+    const activeRate = window.EXCHANGE_RATE || (window.BCV_DATA ? window.BCV_DATA.rate : 850.0) || 850.0;
     if (lblBase) lblBase.textContent = `$${base.toFixed(2)}`;
     if (lblTax) lblTax.textContent = `$${tax.toFixed(2)}`;
-    if (lblRet) lblRet.textContent = `$${ret.toFixed(2)}`;
-    if (lblIslr) lblIslr.textContent = `$${islr.toFixed(2)}`;
+    if (lblRet) lblRet.textContent = `Bs. ${(ret * activeRate).toFixed(2)}`;
+    if (lblIslr) lblIslr.textContent = `Bs. ${(islr * activeRate).toFixed(2)}`;
     if (lblNet) lblNet.textContent = `$${net.toFixed(2)}`;
 }
 
@@ -1334,17 +1335,12 @@ async function openWithholdingVoucherModal(payableId) {
         document.getElementById("voucher_supp_name").textContent = v.supplier.name || '-';
         document.getElementById("voucher_supp_rif").textContent = v.supplier.rif || 'J-00000000-0';
         document.getElementById("voucher_supp_concept").textContent = v.invoice.invoice_number ? `Factura N° ${v.invoice.invoice_number}` : '-';
-        document.getElementById("voucher_bcv_rate").textContent = `Bs. ${Number(v.invoice.exchange_rate || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} / USD`;
+        document.getElementById("voucher_bcv_rate").textContent = `Bs. ${Number(v.invoice.exchange_rate || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
 
         document.getElementById("v_td_date").textContent = v.invoice.invoice_date || '-';
         document.getElementById("v_td_invoice").textContent = v.invoice.invoice_number || '-';
         document.getElementById("v_td_control").textContent = v.invoice.control_number || '-';
-        document.getElementById("v_td_total_usd").textContent = `$${Number(v.invoice.total_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-        document.getElementById("v_td_base_usd").textContent = `$${Number(v.invoice.base_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-        document.getElementById("v_td_tax_usd").textContent = `$${Number(v.invoice.tax_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
         document.getElementById("v_td_ret_rate").textContent = `${v.invoice.withholding_rate_pct || 75}%`;
-        document.getElementById("v_td_withheld_usd").textContent = `-$${Number(v.invoice.withholding_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-        document.getElementById("v_td_net_usd").textContent = `$${Number(v.invoice.net_payable_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
 
         document.getElementById("v_td_total_bs").textContent = `Bs. ${Number(v.invoice.total_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
         document.getElementById("v_td_base_bs").textContent = `Bs. ${Number(v.invoice.base_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;

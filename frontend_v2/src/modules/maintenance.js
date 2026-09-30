@@ -2314,7 +2314,7 @@ let biCurrentFilter = { region: 'all', year: '2026', client: 'all' };
 
 async function loadExecutiveDashboard() {
     const pnlTbody = document.getElementById("executivePnlTableBody");
-    if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #64748b; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Consolidando analítica ejecutiva y mapa georreferenciado...</td></tr>`;
+    if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #64748b; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Consolidando analítica ejecutiva y mapa georreferenciado...</td></tr>`;
 
     try {
         let qParams = [];
@@ -2342,7 +2342,7 @@ async function loadExecutiveDashboard() {
 
     } catch (e) {
         console.error("Error al cargar BI:", e);
-        if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #e11d48; padding: 20px;">Error al consolidar dashboard ejecutivo: ${e?.message || e}</td></tr>`;
+        if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48; padding: 20px;">Error al consolidar dashboard ejecutivo: ${e?.message || e}</td></tr>`;
     }
 }
 
@@ -2755,7 +2755,7 @@ function renderBIPnlTablePaginated() {
 
     const list = lastBiPnlList || [];
     if (list.length === 0) {
-        pnlTbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 18px;">No hay registros para este filtro.</td></tr>`;
+        pnlTbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 18px;">No hay registros para este filtro.</td></tr>`;
         const pCont = document.getElementById("biPnlPaginationContainer");
         if (pCont) pCont.innerHTML = '';
         return;
@@ -2775,23 +2775,32 @@ function renderBIPnlTablePaginated() {
 
     const pageItems = list.slice(startIndex, endIndex);
     pnlTbody.innerHTML = pageItems.map(p => {
-        const isProfitable = (p.net_profit_usd || 0) >= 0;
         const rawP = (biRawProjects || []).find(rp => rp.id === (p.project_id || p.id));
         const loc = rawP?.location || p.location || 'Sede Central (Guacara)';
+        
+        const contr = Number(p.contract_amount_usd || 0);
+        const inv = Number(p.invoiced_usd ?? p.total_invoiced_usd ?? 0);
+        const col = Number(p.collected_usd ?? p.collected_cxc_usd ?? 0);
+        const cost = Number(p.cost_usd ?? p.total_cost_usd ?? 0);
+        const profit = Number(p.profit_usd ?? p.net_profit_usd ?? (col - cost));
+        const margin = Number(p.margin_pct ?? p.net_margin_percent ?? (cost > 0 ? (profit / cost * 100) : (col > 0 ? 100 : 0)));
+        const isProfitable = profit >= 0;
+
         return `
         <tr style="border-bottom: 1px solid #e2e8f0; hover: background: #f8fafc;">
             <td style="padding: 9px 8px; font-weight: 800; color: #0284c7;">${p.code}</td>
             <td style="padding: 9px 8px; font-weight: 700; color: #0f172a;">${p.name}</td>
             <td style="padding: 9px 8px; color: #334155; font-weight: 600;">${p.client_name || 'General'}</td>
             <td style="padding: 9px 8px; color: #475569; font-size: 11px;"><i class="fa-solid fa-location-dot" style="color:#0284c7;"></i> ${loc}</td>
-            <td style="padding: 9px 8px; text-align: right; font-weight: 700; color: #0f172a;">$${(p.contract_amount_usd || 0).toLocaleString()}</td>
-            <td style="padding: 9px 8px; text-align: right; font-weight: 700; color: #059669;">$${(p.collected_cxc_usd || 0).toLocaleString()}</td>
-            <td style="padding: 9px 8px; text-align: right; font-weight: 800; color: #dc2626;">$${(p.total_cost_usd || 0).toLocaleString()}</td>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 700; color: #0f172a;">$${contr.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 700; color: #2563eb;">$${inv.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 800; color: #059669;">$${col.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="padding: 9px 8px; text-align: right; font-weight: 800; color: #dc2626;">$${cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td style="padding: 9px 8px; text-align: right; font-weight: 900; color: ${isProfitable ? '#059669' : '#dc2626'};">
-                $${(p.net_profit_usd || 0).toLocaleString()}
+                $${profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </td>
             <td style="padding: 9px 8px; text-align: right; font-weight: 800; color: ${isProfitable ? '#059669' : '#dc2626'};">
-                ${p.net_margin_percent || 0}%
+                ${margin.toFixed(1)}%
             </td>
         </tr>`;
     }).join('');

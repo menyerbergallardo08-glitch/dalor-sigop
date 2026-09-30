@@ -2447,6 +2447,7 @@ def get_bi_metrics(
         
         projects_pnl.append({
             "id": p.id,
+            "project_id": p.id,
             "code": p.code,
             "name": p.name,
             "client_id": p.client_id,
@@ -2456,14 +2457,20 @@ def get_bi_metrics(
             "region": _classify_venezuela_region(p.location, cli.address if cli else None),
             "contract_amount_usd": round(p.contract_amount_usd or 0.0, 2),
             "invoiced_usd": round(p_inv, 2),
+            "total_invoiced_usd": round(p_inv, 2),
             "collected_usd": round(p_col, 2),
+            "collected_cxc_usd": round(p_col, 2),
             "balance_usd": round(p_bal, 2),
+            "pending_cxc_usd": round(p_bal, 2),
             "cost_usd": p_cost,
+            "total_cost_usd": p_cost,
             "field_expenses_usd": round(p_exp, 2),
             "supplier_purchases_usd": round(p_cxp, 2),
             "materials_consumed_usd": round(p_mat, 2),
             "profit_usd": p_profit,
-            "margin_pct": p_margin
+            "net_profit_usd": p_profit,
+            "margin_pct": p_margin,
+            "net_margin_percent": p_margin
         })
 
     return {
@@ -2472,15 +2479,18 @@ def get_bi_metrics(
             "total_contracted_usd": round(tot_contracted, 2),
             "total_invoiced_usd": round(tot_invoiced, 2),
             "total_collected_usd": round(tot_collected, 2),
+            "total_collected_cxc_usd": round(tot_collected, 2),
             "total_pending_cxc_usd": round(tot_pending_cxc, 2),
             "total_cost_usd": tot_cost,
             "field_expenses_usd": round(tot_field_expenses, 2),
             "supplier_purchases_usd": round(tot_supplier_purchases, 2),
             "materials_consumed_usd": round(tot_warehouse_dispatches, 2),
             "net_profit_usd": net_profit,
+            "profit_usd": net_profit,
             "margin_pct": margin_pct,
+            "net_margin_percent": margin_pct,
             "collection_rate_pct": collection_rate,
-            "active_projects_count": status_counts["en_ejecucion"],
+            "active_projects_count": status_counts.get("en_ejecucion", 0) + status_counts.get("activo", 0),
             "total_projects_count": len(all_projects)
         },
         "regions": list(regional_metrics.values()),

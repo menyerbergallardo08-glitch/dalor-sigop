@@ -104,7 +104,7 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-zZhbzyQO.js"></script>
+  <script type="module" crossorigin src="/assets/main-sQX1zuNY.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/quotations-DMhp0139.js">
   <link rel="modulepreload" crossorigin href="/assets/maintenance-BeLgOY1D.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-Da4p262h.js">
@@ -229,6 +229,16 @@
                         Credenciales: <b>admin</b> o <b>campo</b> / Clave: <b>admin123</b>
                     </div>
                 </div>
+
+                <!-- Botón Visible de Instalación PWA -->
+                <div style="margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center;">
+                    <button type="button" onclick="window.triggerPwaInstall()"
+                        style="width: 100%; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; padding: 11px 14px; border-radius: 10px; border: none; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);">
+                        <i class="fa-solid fa-mobile-screen-button" style="color: #f59e0b; font-size: 15px;"></i>
+                        <span>Instalar DALOR SIGO-P en este Dispositivo</span>
+                    </button>
+                    <p style="font-size: 10px; color: #64748b; margin-top: 5px;">Instálalo como App nativa en Android, iPhone o PC</p>
+                </div>
             </form>
 
         </div>
@@ -311,6 +321,12 @@
                     </button>
 
                 </div>
+
+                <!-- Botón Visible para Instalar PWA / App Móvil o Desktop -->
+                <button onclick="window.triggerPwaInstall()" id="btnHeaderInstallPwa" class="btn-pwa-install" title="Instalar DALOR SIGO-P en tu pantalla de inicio o escritorio" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #0f172a; font-weight: 800; font-size: 11px; padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4); margin-right: 8px;">
+                    <i class="fa-solid fa-mobile-screen-button" style="font-size: 13px;"></i>
+                    <span class="hide-on-mobile">Instalar</span> App
+                </button>
 
 
 

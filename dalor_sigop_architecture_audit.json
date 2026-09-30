@@ -1,0 +1,399 @@
+{
+  "system_metadata": {
+    "system_name": "DALOR SIGO-P",
+    "full_name": "Sistema Integral de Gestión Operativa, Activos, Job Costing y Captura OCR",
+    "version": "2026.10.0-PROD",
+    "organization": "METALMECÁNICA DALOR C.A.",
+    "country": "Venezuela",
+    "headquarters": "Guacara, Estado Carabobo, Venezuela",
+    "industry_sector": "Ingeniería Metalmecánica, Montaje Industrial, Obras Civiles y Mantenimiento",
+    "target_environment": "Producción Nube (Render.com + Neon Serverless PostgreSQL)",
+    "repository": "https://github.com/menyerbergallardo08-glitch/dalor-sigop.git",
+    "branch": "main",
+    "live_production_url": "https://dalor-sigop.onrender.com",
+    "audit_timestamp": "2026-09-30T00:46:00-04:00"
+  },
+  "architectural_overview": {
+    "architecture_type": "Client-Server Decoupled Single Page Application (SPA) con REST API Backend",
+    "backend_architecture": "Layered Domain-Driven Architecture (Controllers/Endpoints -> Business Services -> ORM Models -> SQL Database)",
+    "frontend_architecture": "Componentized Vanilla JS Modular Architecture compilada con Vite 5",
+    "dual_currency_engine": "Bimonetario Dual Estricto (Moneda de Cuenta: USD | Moneda Fiscal y Legal: VES con Tasa Oficial BCV)",
+    "security_framework": "OAuth2 Password Bearer Token con JWT (HMAC-SHA256) y Control de Acceso Basado en Roles (RBAC)"
+  },
+  "technology_stack": {
+    "backend": {
+      "runtime": "Python 3.12.x 64-bit",
+      "api_framework": "FastAPI 0.110.x",
+      "web_server": "Uvicorn ASGI 0.28.x",
+      "orm": "SQLAlchemy 2.0.x Core & Declarative",
+      "validation_serialization": "Pydantic v2",
+      "database_drivers": [
+        "psycopg2-binary 2.9.x (PostgreSQL)",
+        "sqlite3 (Local Dev Fallback)"
+      ],
+      "ocr_engine": "Tesseract OCR 5.3+ con modelos de entrenamiento tesseract-ocr-spa (Español)",
+      "image_processing": "Pillow (PIL) 10.x + OpenCV headless",
+      "cryptography": "Passlib (Bcrypt) + Python-JOSE"
+    },
+    "frontend": {
+      "build_tool": "Vite 5.4.x",
+      "core_language": "JavaScript ECMAScript 2022+ Modular",
+      "ui_styling": "CSS3 Modern Grid & Flexbox, Glassmorphism, Responsive Mobile-First",
+      "charting_library": "Chart.js 4.4.x",
+      "iconography": "FontAwesome 6.5.x Pro/Free Webfonts",
+      "svg_engine": "Vectorial Cartográfico Georreferenciado Nativo (Mapa de Venezuela de Alta Fidelidad)"
+    },
+    "devops_and_infrastructure": {
+      "containerization": "Docker Multi-stage Debian Slim",
+      "cloud_provider": "Render Cloud Services (Web Service Runtime)",
+      "database_provider": "Neon Serverless PostgreSQL (AWS us-east-1)",
+      "keep_alive_daemon": "Background Daemon Heartbeat /healthz cada 7 minutos para prevención de suspensión en Render"
+    }
+  },
+  "database_schema": {
+    "database_dialect": "PostgreSQL 16+ (compatible con SQLite 3.38+)",
+    "tables_count": 32,
+    "core_tables": {
+      "users": {
+        "description": "Usuarios del sistema, credenciales encriptadas y asociación a roles.",
+        "key_columns": [
+          "id",
+          "username",
+          "email",
+          "hashed_password",
+          "role_name",
+          "is_active",
+          "is_superuser"
+        ]
+      },
+      "roles": {
+        "description": "Catálogo de perfiles y permisos operativos (director, gerente, residente, auditor).",
+        "key_columns": [
+          "id",
+          "name",
+          "permissions_json"
+        ]
+      },
+      "audit_logs": {
+        "description": "Trazabilidad e inmutabilidad de acciones de usuarios en el sistema.",
+        "key_columns": [
+          "id",
+          "user_id",
+          "username",
+          "action",
+          "module",
+          "details",
+          "created_at"
+        ]
+      },
+      "clients": {
+        "description": "Directorio corporativo de clientes, RIF, razones sociales y direcciones georreferenciadas.",
+        "key_columns": [
+          "id",
+          "code",
+          "name",
+          "rif",
+          "address",
+          "industry",
+          "contact_name",
+          "contact_phone",
+          "contact_email"
+        ]
+      },
+      "projects": {
+        "description": "Obras metalmecánicas, centros de costos, montos contractuales y geoubicación.",
+        "key_columns": [
+          "id",
+          "code",
+          "name",
+          "client_id",
+          "status",
+          "contract_amount_usd",
+          "budget_usd",
+          "location",
+          "start_date",
+          "end_date"
+        ]
+      },
+      "expense_categories": {
+        "description": "Árbol jerárquico de 20 partidas oficiales (1.0 a 20.0) y sus subcuentas analíticas.",
+        "key_columns": [
+          "id",
+          "code",
+          "name",
+          "parent_id",
+          "group_type",
+          "monthly_budget_usd"
+        ]
+      },
+      "expenses": {
+        "description": "Gastos operativos directos de campo, nóminas de obra, consumibles y viáticos con captura OCR.",
+        "key_columns": [
+          "id",
+          "code",
+          "project_id",
+          "category_id",
+          "amount_usd",
+          "amount_bs",
+          "exchange_rate",
+          "status",
+          "supplier_rif",
+          "invoice_number"
+        ]
+      },
+      "accounts_receivable": {
+        "description": "Cuentas por Cobrar (CxC), valuaciones contractuales, facturación comercial y retenciones.",
+        "key_columns": [
+          "id",
+          "invoice_number",
+          "project_id",
+          "client_id",
+          "amount_usd",
+          "taxable_base_usd",
+          "tax_amount_usd",
+          "paid_amount_usd",
+          "balance_usd",
+          "status"
+        ]
+      },
+      "accounts_payable": {
+        "description": "Cuentas por Pagar (CxP), facturas de proveedores de insumos/servicios imputadas a proyectos.",
+        "key_columns": [
+          "id",
+          "invoice_number",
+          "supplier_name",
+          "supplier_rif",
+          "project_id",
+          "category_id",
+          "amount_usd",
+          "payable_type",
+          "status",
+          "due_date"
+        ]
+      },
+      "financial_payments": {
+        "description": "Movimientos de tesorería, cobros reales de clientes, pagos a proveedores y retenciones tributarias.",
+        "key_columns": [
+          "id",
+          "payment_type",
+          "voucher_number",
+          "receivable_id",
+          "payable_id",
+          "financial_account_id",
+          "amount_usd",
+          "amount_bs",
+          "payment_date",
+          "payment_method"
+        ]
+      },
+      "financial_accounts": {
+        "description": "Cuentas bancarias nacionales/internacionales y cajas físicas (USD/VES).",
+        "key_columns": [
+          "id",
+          "name",
+          "account_type",
+          "bank_or_provider",
+          "account_number",
+          "is_active"
+        ]
+      },
+      "materials": {
+        "description": "Maestro de materiales de acero, perfiles, tuberías, planchas, soldadura y abrasivos.",
+        "key_columns": [
+          "id",
+          "code",
+          "name",
+          "category",
+          "unit_measure",
+          "current_stock",
+          "unit_cost_usd",
+          "min_stock"
+        ]
+      },
+      "material_movements": {
+        "description": "Kárdex de almacén: entradas por compras y salidas físicas despachadas a obras.",
+        "key_columns": [
+          "id",
+          "material_id",
+          "project_id",
+          "movement_type",
+          "quantity",
+          "unit_cost_usd",
+          "total_cost_usd",
+          "movement_date"
+        ]
+      },
+      "assets": {
+        "description": "Flota vehicular (camiones, camionetas), grúas, plantas eléctricas y máquinas de soldar.",
+        "key_columns": [
+          "id",
+          "code",
+          "name",
+          "asset_type",
+          "status",
+          "serial_number",
+          "daily_rental_cost_usd"
+        ]
+      },
+      "quotations": {
+        "description": "Estimación de costos y cotizaciones comerciales con cálculo de margen operativo.",
+        "key_columns": [
+          "id",
+          "code",
+          "client_id",
+          "total_cost_usd",
+          "margin_pct",
+          "total_price_usd",
+          "status"
+        ]
+      }
+    }
+  },
+  "core_business_engines": {
+    "job_costing_three_way_matching": {
+      "formula": "Costo Real de Obra = Gastos Directos (expenses) + Facturas Proveedores (accounts_payable) + Despachos de Almacén (material_movements)",
+      "objective": "Garantizar que la rentabilidad de cada proyecto considere no solo caja chica, sino el consumo físico de acero y subcontrataciones.",
+      "pnl_metrics": [
+        "contract_amount_usd",
+        "invoiced_usd",
+        "collected_usd",
+        "field_expenses_usd",
+        "supplier_purchases_usd",
+        "materials_consumed_usd",
+        "total_cost_usd",
+        "net_profit_usd",
+        "net_margin_percent"
+      ]
+    },
+    "providencia_seniat_snat_2015_0049": {
+      "legal_framework": "Régimen de Retenciones de IVA para Sujetos Pasivos Especiales en Venezuela",
+      "compliance_rules": [
+        "Expresión monetaria obligatoria en Bolívares (VES) en todos los comprobantes oficiales.",
+        "Exclusión total de referencias en moneda extranjera ($ USD) en los comprobantes descargables/impresos.",
+        "Aplicación de alícuotas del 75% o 100% de retención según la condición fiscal del proveedor.",
+        "Conversión oficial a la tasa publicada por el Banco Central de Venezuela (BCV) en la fecha de emisión."
+      ]
+    },
+    "venezuela_cartography_and_georeferencing": {
+      "regions_monitored": [
+        "Carabobo (Centro / Sede Guacara)",
+        "Miranda / Caracas / Guarenas",
+        "Aragua (Maracay / Cagua)",
+        "Oriente (Anzoátegui / Monagas)",
+        "Zulia / Falcón (Occidente)",
+        "Bolívar / Guayana (Sur)",
+        "Lara / Centro-Occidente"
+      ],
+      "svg_features": "Vector geográfico de alta fidelidad con curvas Bézier, Lago de Maracaibo, Delta del Orinoco, Guayana Esequiba (Zona en Reclamación) y dependencias insulares."
+    },
+    "tree_deduplication_engine": {
+      "rules": [
+        "Estructura jerárquica estricta de 20 cuentas oficiales con prefijo decimal (1.0 a 20.0).",
+        "Deduplicación automática por base numérico en el API.",
+        "Rutina de migración y purga de códigos enteros redundantes en PostgreSQL."
+      ]
+    }
+  },
+  "api_catalog": {
+    "authentication": [
+      {
+        "method": "POST",
+        "route": "/api/v1/auth/login",
+        "description": "Autenticación con JWT Bearer token"
+      },
+      {
+        "method": "GET",
+        "route": "/api/v1/auth/me",
+        "description": "Datos del usuario activo y permisos"
+      }
+    ],
+    "business_intelligence_and_financial": [
+      {
+        "method": "GET",
+        "route": "/api/v1/financial/bi-metrics",
+        "description": "Dashboard ejecutivo integral (KPIs, regiones, P&L, mensual)"
+      },
+      {
+        "method": "GET",
+        "route": "/api/v1/financial/cash-flow",
+        "description": "Flujo de caja proyectado vs ejecutado"
+      },
+      {
+        "method": "GET",
+        "route": "/api/v1/financial/cxc",
+        "description": "Listado de Cuentas por Cobrar y valuaciones"
+      },
+      {
+        "method": "POST",
+        "route": "/api/v1/financial/cxc/{id}/payment",
+        "description": "Registro de abonos y cobros de clientes"
+      },
+      {
+        "method": "GET",
+        "route": "/api/v1/financial/cxp",
+        "description": "Listado de Cuentas por Pagar a proveedores"
+      },
+      {
+        "method": "POST",
+        "route": "/api/v1/financial/cxp/{id}/payment",
+        "description": "Registro de pagos y retenciones a proveedores"
+      },
+      {
+        "method": "GET",
+        "route": "/api/v1/financial/cxp/{id}/withholding-voucher",
+        "description": "Generación de Comprobante Fiscal SENIAT en Bs"
+      }
+    ],
+    "projects_and_cost_centers": [
+      {
+        "method": "GET",
+        "route": "/api/v1/projects/",
+        "description": "Listado de proyectos y avance físico"
+      },
+      {
+        "method": "POST",
+        "route": "/api/v1/projects/",
+        "description": "Creación de nueva obra con monto contractual"
+      },
+      {
+        "method": "GET",
+        "route": "/api/v1/projects/{id}/pnl",
+        "description": "Estado de resultados específico de la obra"
+      }
+    ],
+    "expenses_and_ocr": [
+      {
+        "method": "GET",
+        "route": "/api/v1/expenses/categories-tree",
+        "description": "Árbol jerárquico de 20 partidas deduplicadas"
+      },
+      {
+        "method": "GET",
+        "route": "/api/v1/expenses/",
+        "description": "Bitácora general de gastos filtrable por partida"
+      },
+      {
+        "method": "POST",
+        "route": "/api/v1/expenses/",
+        "description": "Registro de gasto con imputación a obra y partida"
+      },
+      {
+        "method": "POST",
+        "route": "/api/v1/ocr/process-receipt",
+        "description": "Lectura automática de facturas mediante Tesseract"
+      }
+    ],
+    "materials_and_warehouse": [
+      {
+        "method": "GET",
+        "route": "/api/v1/materials/",
+        "description": "Catálogo de existencias y costos unitarios"
+      },
+      {
+        "method": "POST",
+        "route": "/api/v1/materials/movement",
+        "description": "Despacho de material con imputación a obra"
+      }
+    ]
+  }
+}

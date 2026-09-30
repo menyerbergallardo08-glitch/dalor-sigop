@@ -92,7 +92,14 @@ def get_expenses(
 
 @router.get("/categories")
 def get_expense_categories(db: Session = Depends(get_db)):
+    legacy_int_codes = {str(i) for i in range(1, 21)}
+    all_codes = {c[0] for c in db.query(ExpenseCategory.code).all()}
     cats = db.query(ExpenseCategory).order_by(ExpenseCategory.code.asc()).all()
+    filtered_cats = []
+    for c in cats:
+        if c.code in legacy_int_codes and f"{c.code}.0" in all_codes:
+            continue
+        filtered_cats.append(c)
     return [
         {
             "id": c.id,
@@ -102,7 +109,7 @@ def get_expense_categories(db: Session = Depends(get_db)):
             "group_type": c.group_type,
             "monthly_budget_usd": c.monthly_budget_usd
         }
-        for c in cats
+        for c in filtered_cats
     ]
 
 @router.get("/categories-tree")

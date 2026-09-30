@@ -511,15 +511,26 @@ def init_db():
 
         # 5.1 Deduplicación Defensiva: Migrar y eliminar categorías con código entero redundante ('1', '2', ..., '20')
         try:
+            from app.models.models import AccountPayable
             legacy_int_codes = [str(i) for i in range(1, 21)]
             legacy_cats = db.query(ExpenseCategory).filter(ExpenseCategory.code.in_(legacy_int_codes)).all()
             for leg in legacy_cats:
                 official_code = f"{leg.code}.0"
                 official_target = db.query(ExpenseCategory).filter(ExpenseCategory.code == official_code).first()
                 if official_target:
+                    # Migrar gastos
                     db.query(Expense).filter(Expense.category_id == leg.id).update(
                         {"category_id": official_target.id}, synchronize_session=False
                     )
+                    # Migrar cuentas por pagar (CxP)
+                    db.query(AccountPayable).filter(AccountPayable.category_id == leg.id).update(
+                        {"category_id": official_target.id}, synchronize_session=False
+                    )
+                    # Reasignar subcategorías huérfanas
+                    db.query(ExpenseCategory).filter(ExpenseCategory.parent_id == leg.id).update(
+                        {"parent_id": official_target.id}, synchronize_session=False
+                    )
+                    db.flush()
                     db.delete(leg)
             db.commit()
         except Exception as e:

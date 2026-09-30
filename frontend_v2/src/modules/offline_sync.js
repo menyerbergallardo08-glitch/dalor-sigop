@@ -1,4 +1,4 @@
-﻿// DALOR SIGO-P ERP — Motor de Sincronización Fuera de Línea (IndexedDB & Background Sync)
+// DALOR SIGO-P ERP — Motor de Sincronización Fuera de Línea (IndexedDB & Background Sync)
 // Diseñado para frentes de obra, carreteras y galpones con intermitencia de cobertura
 
 const DB_NAME = "dalor_sigop_offline_db";

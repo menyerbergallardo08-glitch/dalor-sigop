@@ -1,4 +1,4 @@
-﻿// DALOR SIGO-P ERP — Service Worker Oficial (v1.0.0-PROD)
+// DALOR SIGO-P ERP — Service Worker Oficial (v1.0.0-PROD)
 // Políticas de Resguardo: Network-First para APIs y Stale-While-Revalidate para Interfaz
 
 const CACHE_NAME = 'dalor-sigop-pwa-v1';

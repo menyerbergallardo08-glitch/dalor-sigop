@@ -56,7 +56,20 @@
       "ui_styling": "CSS3 Modern Grid & Flexbox, Glassmorphism, Responsive Mobile-First",
       "charting_library": "Chart.js 4.4.x",
       "iconography": "FontAwesome 6.5.x Pro/Free Webfonts",
-      "svg_engine": "Vectorial Cartográfico Georreferenciado Nativo (Mapa de Venezuela de Alta Fidelidad)"
+      "svg_engine": "Vectorial Cartográfico Georreferenciado Nativo (Mapa de Venezuela de Alta Fidelidad)",
+      "pwa_specifications": {
+        "status": "OPERATIONAL_AND_CERTIFIED",
+        "manifest_file": "/manifest.webmanifest",
+        "service_worker": "/sw.js",
+        "offline_engine": "IndexedDB dalor_sigop_offline_db con Background Sync",
+        "installability": "Standalone App (Android, iOS Safari, Windows Desktop, macOS)",
+        "network_strategy": "Network-First para /api/v1/ y Stale-While-Revalidate para Interfaz y Assets",
+        "icons_catalog": [
+          "/icons/icon-192.png",
+          "/icons/icon-512.png",
+          "/icons/icon-maskable-512.png"
+        ]
+      }
     },
     "devops_and_infrastructure": {
       "containerization": "Docker Multi-stage Debian Slim",

@@ -1,6 +1,6 @@
         <section id="view-pwa" class="hidden">
 
-            <div class="banner-dalor">
+            <div class="banner-dalor" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
 
                 <div>
 
@@ -10,6 +10,11 @@
 
                     <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Extracción de tickets y facturas digitales en PDF con opción de desglose multi-partida.</p>
 
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="pwa-connection-indicator" style="background: rgba(15,23,42,0.6); padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);"></span>
+                    <span class="pwa-pending-counter" style="display: none; background: #f59e0b; color: #0f172a; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer;" onclick="syncOfflineQueue()"></span>
                 </div>
 
             </div>

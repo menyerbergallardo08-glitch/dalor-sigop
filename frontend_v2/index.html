@@ -8,6 +8,29 @@
     <meta http-equiv="Expires" content="0">
     <title>DALOR SIGO-P | ERP Modular (Vite Engine)</title>
     
+    <!-- 📱 Identidad PWA Oficial -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0F172A">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DALOR SIGO-P">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" href="/icons/icon-192.png">
+
+    <!-- ⚙️ Service Worker Registro -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                    console.log('[PWA] Service Worker registrado exitosamente:', reg.scope);
+                }).catch(function(err) {
+                    console.warn('[PWA] Fallo registro SW:', err);
+                });
+            });
+        }
+    </script>
+
     <!-- Iconos FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     

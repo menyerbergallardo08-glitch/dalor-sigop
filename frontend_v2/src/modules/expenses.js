@@ -243,6 +243,23 @@ async function processOCRFile(rawFile) {
         badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Leyendo con Gemini IA...';
     }
 
+    // 📶 Manejo si el dispositivo se encuentra sin conexión a internet
+    if (!navigator.onLine) {
+        if (procBar) procBar.classList.add("hidden");
+        if (badge) {
+            badge.style.background = "#fef3c7";
+            badge.style.color = "#92400e";
+            badge.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i> Modo Offline: Foto lista para resguardo local';
+        }
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Cola Local Offline';
+            btnSubmit.style.background = "#d97706";
+            btnSubmit.style.color = "#ffffff";
+        }
+        return;
+    }
+
     // Compresión instantánea en el navegador (<100ms, reduce foto de 15MB a ~200KB)
     const file = await compressImageForOCR(rawFile);
 
@@ -668,6 +685,24 @@ async function submitFieldExpense(event) {
 
 
 
+    // 📶 Resguardo Automático si el dispositivo está sin cobertura (Modo Offline PWA)
+    if (!navigator.onLine) {
+        if (typeof window.savePendingExpenseLocally === "function") {
+            try {
+                await window.savePendingExpenseLocally(payload);
+                alert("📶 MODO SIN CONEXIÓN:\n\nTu comprobante ha sido resguardado de forma segura en la memoria de este teléfono.\n\nApenas detecte señal WiFi o datos móviles (4G), se transmitirá automáticamente a Administración y Google Gemini.");
+                document.getElementById("expenseForm")?.reset();
+                document.getElementById("imagePreviewContainer")?.classList.add("hidden");
+                document.getElementById("dropzoneContent")?.classList.remove("hidden");
+                document.getElementById("ocrNoticeBox")?.classList.add("hidden");
+                if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = origBtnHtml; }
+                return;
+            } catch (storeErr) {
+                console.warn("[PWA Offline] Error al almacenar en IndexedDB:", storeErr);
+            }
+        }
+    }
+
     try {
 
         const res = await authFetch(`${API_BASE}/expenses/`, {
@@ -807,6 +842,19 @@ async function submitFieldExpense(event) {
     } catch (e) {
 
         console.error("Error al enviar gasto:", e);
+
+        if (typeof window.savePendingExpenseLocally === "function") {
+            try {
+                await window.savePendingExpenseLocally(payload);
+                alert("📶 MODO SIN CONEXIÓN:\n\nHubo una interrupción en la red durante la transmisión. El comprobante ha sido resguardado de forma segura en la memoria de este teléfono y se enviará automáticamente al reconectar.");
+                document.getElementById("expenseForm")?.reset();
+                document.getElementById("imagePreviewContainer")?.classList.add("hidden");
+                document.getElementById("dropzoneContent")?.classList.remove("hidden");
+                document.getElementById("ocrNoticeBox")?.classList.add("hidden");
+                if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = origBtnHtml; }
+                return;
+            } catch (errDb) {}
+        }
 
         alert("⚠️ Error al registrar comprobante: " + (e.message || e));
 

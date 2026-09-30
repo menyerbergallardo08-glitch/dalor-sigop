@@ -135,12 +135,41 @@ if os.path.exists(FRONTEND_DIR):
     assets_dir = os.path.join(FRONTEND_DIR, "assets")
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    icons_dir = os.path.join(FRONTEND_DIR, "icons")
+    if os.path.exists(icons_dir):
+        app.mount("/icons", StaticFiles(directory=icons_dir), name="icons")
     src_dir = os.path.join(FRONTEND_DIR, "src")
     if os.path.exists(src_dir):
         app.mount("/src", StaticFiles(directory=src_dir), name="src")
     css_dir = os.path.join(FRONTEND_DIR, "css")
     if os.path.exists(css_dir):
         app.mount("/css", StaticFiles(directory=css_dir), name="css")
+
+    # 📱 Rutas Oficiales PWA (Progressive Web App)
+    @app.get("/manifest.webmanifest")
+    @app.get("/manifest.json")
+    def serve_pwa_manifest():
+        candidate_paths = [
+            os.path.join(FRONTEND_DIR, "manifest.webmanifest"),
+            os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "public", "manifest.webmanifest"),
+            os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "dist", "manifest.webmanifest"),
+        ]
+        for p in candidate_paths:
+            if os.path.exists(p):
+                return FileResponse(p, media_type="application/manifest+json")
+        return Response(status_code=404)
+
+    @app.get("/sw.js")
+    def serve_pwa_sw():
+        candidate_paths = [
+            os.path.join(FRONTEND_DIR, "sw.js"),
+            os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "public", "sw.js"),
+            os.path.join(ROOT_PROJECT_DIR, "frontend_v2", "dist", "sw.js"),
+        ]
+        for p in candidate_paths:
+            if os.path.exists(p):
+                return FileResponse(p, media_type="application/javascript", headers={"Service-Worker-Allowed": "/"})
+        return Response(status_code=404)
 
     @app.get("/logo_dalor.jpg")
     @app.head("/logo_dalor.jpg")

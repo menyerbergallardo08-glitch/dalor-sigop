@@ -8,6 +8,29 @@
     <meta http-equiv="Expires" content="0">
     <title>DALOR SIGO-P | ERP Modular (Vite Engine)</title>
     
+    <!-- 📱 Identidad PWA Oficial -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0F172A">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DALOR SIGO-P">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" href="/icons/icon-192.png">
+
+    <!-- ⚙️ Service Worker Registro -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                    console.log('[PWA] Service Worker registrado exitosamente:', reg.scope);
+                }).catch(function(err) {
+                    console.warn('[PWA] Fallo registro SW:', err);
+                });
+            });
+        }
+    </script>
+
     <!-- Iconos FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -81,12 +104,12 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-jpYXZ72b.js"></script>
+  <script type="module" crossorigin src="/assets/main-zZhbzyQO.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/quotations-DMhp0139.js">
   <link rel="modulepreload" crossorigin href="/assets/maintenance-BeLgOY1D.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-Da4p262h.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-BG-fhTT4.js">
-  <link rel="modulepreload" crossorigin href="/assets/expenses-DPOLHRPX.js">
+  <link rel="modulepreload" crossorigin href="/assets/expenses-dn8Ea59p.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-CJVm2qwM.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-CQqaFuID.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-B3rKVl3S.js">
@@ -4515,7 +4538,7 @@
 
                     <section id="view-pwa" class="hidden">
 
-            <div class="banner-dalor">
+            <div class="banner-dalor" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
 
                 <div>
 
@@ -4525,6 +4548,11 @@
 
                     <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Extracción de tickets y facturas digitales en PDF con opción de desglose multi-partida.</p>
 
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="pwa-connection-indicator" style="background: rgba(15,23,42,0.6); padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);"></span>
+                    <span class="pwa-pending-counter" style="display: none; background: #f59e0b; color: #0f172a; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; cursor: pointer;" onclick="syncOfflineQueue()"></span>
                 </div>
 
             </div>

@@ -1,504 +1,737 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DALOR SIGO-P - Presentación Ejecutiva (Modo Smart TV)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
-    
-    :root {
-      --tv-scale: 1.25; /* Escala base ampliada para Smart TV */
-    }
-
-    body { 
-      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: calc(16px * var(--tv-scale));
-    }
-    
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
-    .slide { display: none; opacity: 0; transition: opacity 0.25s ease-in-out; }
-    .slide.active { display: flex; opacity: 1; }
-    
-    .feature-card {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1.5px solid rgba(255, 255, 255, 0.12);
-      backdrop-filter: blur(12px);
-      transition: all 0.25s ease;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-    }
-    
-    .feature-card:hover {
-      border-color: rgba(245, 158, 11, 0.6);
-      transform: translateY(-3px);
-    }
-
-    /* Escalado inteligente para Proyección y Smart TV */
-    @media (min-width: 1024px) {
-      :root { --tv-scale: 1.35; }
-      .slide-title { font-size: 2.75rem !important; line-height: 1.15 !important; }
-      .slide-subtitle { font-size: 1.35rem !important; }
-      .card-title { font-size: 1.35rem !important; }
-      .card-text { font-size: 1.05rem !important; line-height: 1.6 !important; }
-      .hero-title { font-size: 4.2rem !important; line-height: 1.05 !important; }
-      .hero-sub { font-size: 1.55rem !important; }
-      .hero-desc { font-size: 1.25rem !important; }
-      .stat-num { font-size: 3.5rem !important; }
-      .stat-label { font-size: 1.2rem !important; }
-    }
-
-    @media (min-width: 1600px) {
-      :root { --tv-scale: 1.55; }
-      .slide-title { font-size: 3.4rem !important; }
-      .slide-subtitle { font-size: 1.6rem !important; }
-      .card-title { font-size: 1.55rem !important; }
-      .card-text { font-size: 1.22rem !important; }
-      .hero-title { font-size: 5.2rem !important; }
-      .hero-sub { font-size: 1.85rem !important; }
-      .hero-desc { font-size: 1.45rem !important; }
-      .stat-num { font-size: 4.2rem !important; }
-      .stat-label { font-size: 1.4rem !important; }
-    }
-
-    /* Modos de Zoom Manual */
-    body.zoom-tv-large { --tv-scale: 1.5; }
-    body.zoom-tv-huge { --tv-scale: 1.8; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DALOR SIGO-P ERP | Presentación Ejecutiva Corporativa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --navy-dark: #0f172a;
+            --navy-surface: #1e293b;
+            --navy-border: #334155;
+            --gold-accent: #f59e0b;
+            --gold-hover: #d97706;
+            --blue-vibrant: #0284c7;
+            --blue-light: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-bg: rgba(30, 41, 59, 0.7);
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background-color: var(--navy-dark);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+        /* Top Navigation Header */
+        header {
+            height: 60px;
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid var(--navy-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 100;
+        }
+        .brand-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .brand-badge i {
+            color: var(--gold-accent);
+            font-size: 20px;
+        }
+        .brand-title {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: var(--text-main);
+        }
+        .brand-sub {
+            font-size: 11px;
+            color: var(--blue-light);
+            font-weight: 600;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .slide-counter {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--gold-accent);
+            background: var(--navy-surface);
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--navy-border);
+        }
+        .btn-ctrl {
+            background: var(--navy-surface);
+            border: 1px solid var(--navy-border);
+            color: var(--text-main);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-ctrl:hover {
+            background: var(--blue-vibrant);
+            border-color: var(--blue-light);
+            color: #fff;
+        }
+        /* Slide Canvas */
+        #viewport {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 40px;
+        }
+        .slide {
+            position: absolute;
+            width: calc(100% - 80px);
+            max-width: 1280px;
+            height: calc(100% - 40px);
+            max-height: 720px;
+            background: radial-gradient(circle at 10% 20%, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 90%);
+            border: 1px solid var(--navy-border);
+            border-radius: 20px;
+            padding: 40px 50px;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.96) translateY(20px);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .slide.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1) translateY(0);
+        }
+        /* Slide Header */
+        .slide-header {
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--navy-border);
+            padding-bottom: 15px;
+        }
+        .slide-tag {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--gold-accent);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 5px;
+        }
+        .slide-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: #fff;
+        }
+        /* Grid Layouts */
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            flex: 1;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            flex: 1;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--navy-border);
+            border-radius: 14px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .card:hover {
+            border-color: var(--blue-vibrant);
+            transform: translateY(-2px);
+        }
+        .card-icon {
+            font-size: 24px;
+            color: var(--gold-accent);
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+        .card-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .card-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .card-list li i {
+            color: var(--blue-light);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        /* Formula Banner */
+        .formula-box {
+            background: linear-gradient(135deg, rgba(217, 119, 6, 0.2) 0%, rgba(245, 158, 11, 0.1) 100%);
+            border: 1px solid var(--gold-accent);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 20px;
+            letter-spacing: 0.5px;
+        }
+        /* Hero Cover Slide */
+        .hero-slide {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .hero-title {
+            font-size: 52px;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ffffff 0%, var(--blue-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-sub {
+            font-size: 20px;
+            color: var(--gold-accent);
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .hero-desc {
+            font-size: 15px;
+            color: var(--text-muted);
+            max-width: 800px;
+            line-height: 1.6;
+            margin-bottom: 35px;
+        }
+        .hero-badges {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .badge-pill {
+            background: var(--navy-surface);
+            border: 1px solid var(--navy-border);
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge-pill i {
+            color: var(--gold-accent);
+        }
+        /* Bottom Progress bar */
+        .progress-bar-container {
+            height: 4px;
+            background: rgba(51, 65, 85, 0.4);
+            width: 100%;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold-accent), var(--blue-vibrant));
+            width: 8.33%;
+            transition: width 0.3s ease;
+        }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+<body>
 
-  <!-- Top Navigation Ribbon -->
-  <header class="w-full border-b border-slate-800/80 bg-slate-900/95 backdrop-blur-md px-6 py-4 flex items-center justify-between z-50 sticky top-0">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center font-black text-slate-950 text-lg shadow-lg">D</div>
-      <div>
-        <span class="font-extrabold tracking-tight text-white text-lg">DALOR, C.A.</span>
-        <span class="text-slate-400 text-sm ml-2 font-medium">| Sistema SIGO-P</span>
-      </div>
-    </div>
-    
-    <div class="flex items-center gap-3">
-      <!-- Selector de Tamaño de Letra / TV Zoom -->
-      <div class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg p-1 text-xs gap-1">
-        <span class="text-slate-400 px-2 font-bold hidden sm:inline"><i class="fa-solid fa-tv"></i> Tamaño Letra:</span>
-        <button onclick="setZoom('normal')" id="btnZoomNormal" class="px-2.5 py-1 rounded bg-slate-700 text-white font-bold hover:bg-slate-600 transition">Normal</button>
-        <button onclick="setZoom('large')" id="btnZoomLarge" class="px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition">TV Grande (+30%)</button>
-        <button onclick="setZoom('huge')" id="btnZoomHuge" class="px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition">TV Gigante (+60%)</button>
-      </div>
-
-      <div class="flex items-center gap-2 text-sm text-slate-300 font-mono">
-        <span id="slideIndicator" class="px-3 py-1 rounded-md bg-slate-800 text-amber-400 font-bold border border-slate-700">01 / 10</span>
-      </div>
-
-      <a href="/manual" target="_blank" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold transition flex items-center gap-1.5 border border-slate-700" title="Ver Manuales de Operación">
-        <i class="fa-solid fa-book-open"></i> <span class="hidden md:inline">Manual de Usuario</span>
-      </a>
-      
-      <button onclick="prevSlide()" class="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition text-sm font-bold" title="Anterior (Flecha Izq)">◀</button>
-      <button onclick="nextSlide()" class="p-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition text-sm font-bold" title="Siguiente (Flecha Der)">▶</button>
-      <button onclick="toggleFullscreen()" class="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition text-sm ml-1" title="Pantalla Completa">⛶</button>
-    </div>
-  </header>
-
-  <!-- Main Slide Display Area -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-6 md:p-12 flex items-center justify-center relative">
-
-    <!-- SLIDE 1: PORTADA -->
-    <section class="slide active flex-col justify-center items-center text-center max-w-5xl mx-auto py-8" data-title="Portada">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-400 text-sm font-bold uppercase tracking-wider mb-6">
-        <span>⚡ Solución Operativa y Gerencial</span>
-      </div>
-      <h1 class="hero-title text-4xl md:text-6xl font-black tracking-tight text-white leading-tight mb-4">
-        DALOR <span class="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 bg-clip-text text-transparent">SIGO-P</span>
-      </h1>
-      <p class="hero-sub text-xl md:text-2xl font-bold text-slate-200 max-w-3xl mx-auto mb-3">
-        Control Total de Fabricación en Taller, Montaje y Finanzas
-      </p>
-      <p class="hero-desc text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-        Una plataforma en internet que conecta la producción diaria, el inventario de materiales, la maquinaria y las ganancias de cada proyecto.
-      </p>
-
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-4xl w-full text-left">
-        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg">
-          <div class="text-slate-400 text-xs font-bold uppercase mb-1.5">Producción</div>
-          <div class="card-title text-base font-bold text-white">Avance Diario de Taller</div>
-        </div>
-        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg">
-          <div class="text-slate-400 text-xs font-bold uppercase mb-1.5">Compras</div>
-          <div class="card-title text-base font-bold text-amber-400">Facturas desde el Celular</div>
-        </div>
-        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg">
-          <div class="text-slate-400 text-xs font-bold uppercase mb-1.5">Finanzas</div>
-          <div class="card-title text-base font-bold text-emerald-400">Ganancias en Tiempo Real</div>
-        </div>
-        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg">
-          <div class="text-slate-400 text-xs font-bold uppercase mb-1.5">Equipos</div>
-          <div class="card-title text-base font-bold text-cyan-400">Custodia de Maquinaria</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SLIDE 2: EL DIAGNÓSTICO -->
-    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Diagnóstico y Retos Actuales">
-      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">01. EL DIAGNÓSTICO</div>
-      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Los principales retos del día a día</h2>
-      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Tres problemas comunes que frenan la rentabilidad y el control de las operaciones:</p>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="feature-card p-7 rounded-3xl flex flex-col justify-between">
-          <div>
-            <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl mb-4">🔌</div>
-            <h3 class="card-title text-lg md:text-xl font-bold text-white mb-2.5">Sistemas Atados a la Oficina</h3>
-            <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Si se va la luz o el internet en la oficina, la gerencia no puede ver la información. Depender de computadoras encendidas o programas lentos de acceso remoto genera demoras y riesgos.</p>
-          </div>
-          <div class="mt-6 pt-3 border-t border-slate-800 text-sm text-rose-400 font-bold">Problema: Falta de acceso remoto seguro</div>
-        </div>
-
-        <div class="feature-card p-7 rounded-3xl flex flex-col justify-between">
-          <div>
-            <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl mb-4">📄</div>
-            <h3 class="card-title text-lg md:text-xl font-bold text-white mb-2.5">Información Dispersa</h3>
-            <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">El avance de trabajo, los consumos de material y los recibos de compras se reportan en papeles o mensajes de WhatsApp sueltos, lo que causa pérdidas de comprobantes y atrasos al cobrar.</p>
-          </div>
-          <div class="mt-6 pt-3 border-t border-slate-800 text-sm text-rose-400 font-bold">Problema: Desconexión entre taller y oficina</div>
-        </div>
-
-        <div class="feature-card p-7 rounded-3xl flex flex-col justify-between">
-          <div>
-            <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl mb-4">💸</div>
-            <h3 class="card-title text-lg md:text-xl font-bold text-white mb-2.5">Costos que se Conocen Tarde</h3>
-            <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Saber si un trabajo dejó ganancias semanas o meses después de haberlo entregado impide corregir sobrecostos de material o mano de obra a tiempo.</p>
-          </div>
-          <div class="mt-6 pt-3 border-t border-slate-800 text-sm text-rose-400 font-bold">Problema: Rentabilidad a ciegas</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SLIDE 3: LA SOLUCIÓN INTEGRAL -->
-    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="La Solución Modular">
-      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">02. LA SOLUCIÓN</div>
-      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Cuatro módulos trabajando como un solo equipo</h2>
-      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">SIGO-P une en una sola pantalla todas las actividades de la empresa:</p>
-
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div class="feature-card p-6 rounded-3xl">
-          <div class="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-2xl mb-4">
+    <header>
+        <div class="brand-badge">
             <i class="fa-solid fa-industry"></i>
-          </div>
-          <h4 class="card-title text-lg font-bold text-white mb-2">1. Taller & Montaje</h4>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Registro diario de corte, armado, soldadura y montaje con fotos de respaldo desde el celular.</p>
+            <div>
+                <div class="brand-title">METALMECÁNICA DALOR C.A.</div>
+                <div class="brand-sub">DALOR SIGO-P ERP • Presentación Ejecutiva</div>
+            </div>
+        </div>
+        <div class="controls">
+            <span class="slide-counter" id="slideIndicator">1 / 12</span>
+            <button class="btn-ctrl" onclick="prevSlide()" title="Anterior (Flecha Izquierda)"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="btn-ctrl" onclick="nextSlide()" title="Siguiente (Flecha Derecha)"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="btn-ctrl" onclick="toggleFullScreen()" title="Pantalla Completa (F)"><i class="fa-solid fa-expand"></i></button>
+        </div>
+    </header>
+
+    <div id="viewport">
+
+        <!-- SLIDE 1: PORTADA -->
+        <div class="slide active hero-slide">
+            <div class="slide-tag"><i class="fa-solid fa-award"></i> Presentación de Plataforma Corporativa</div>
+            <h1 class="hero-title">DALOR SIGO-P ERP</h1>
+            <div class="hero-sub">Sistema Integral de Gestión Operativa, Activos, Job Costing & Inteligencia Artificial</div>
+            <p class="hero-desc">
+                La plataforma tecnológica central desarrollada a la medida de Metalmecánica Dalor C.A., diseñada para centralizar la trazabilidad de faena, compras, kárdex físico de acero, flujo bimonetario USD/VES y cumplimiento tributario SENIAT.
+            </p>
+            <div class="hero-badges">
+                <div class="badge-pill"><i class="fa-solid fa-cloud"></i> Producción: dalor-sigop.onrender.com (Always-On 24/7)</div>
+                <div class="badge-pill"><i class="fa-solid fa-database"></i> Neon PostgreSQL 16</div>
+                <div class="badge-pill"><i class="fa-solid fa-brain"></i> Google Gemini Multimodal Vision</div>
+                <div class="badge-pill"><i class="fa-solid fa-location-dot"></i> Guacara, Estado Carabobo</div>
+            </div>
         </div>
 
-        <div class="feature-card p-6 rounded-3xl">
-          <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-2xl mb-4">
-            <i class="fa-solid fa-receipt"></i>
-          </div>
-          <h4 class="card-title text-lg font-bold text-white mb-2">2. Compras & Facturas</h4>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Lectura automática de facturas con una foto y reparto de costos entre los proyectos que usaron el material.</p>
+        <!-- SLIDE 2: DESAFÍOS VS SOLUCIÓN -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-bullseye"></i> Diagnóstico Operativo</div>
+                <h2 class="slide-title">1. Visión Estratégica: Desafíos Históricos vs. Solución SIGO-P</h2>
+            </div>
+            <div class="grid-3">
+                <div class="card">
+                    <i class="fa-solid fa-warehouse card-icon"></i>
+                    <div class="card-title">Descontrol en Almacén</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-xmark" style="color:#ef4444;"></i> Compras repetitivas de materiales sin conocer stock real en taller.</li>
+                        <li><i class="fa-solid fa-xmark" style="color:#ef4444;"></i> Sobrantes de obra acumulados sin registro digital.</li>
+                        <li><i class="fa-solid fa-check" style="color:#10b981;"></i> <strong>Solución:</strong> Kárdex con bloqueo pesimista y Guías Oficiales GT-DALOR.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-chart-line-down card-icon"></i>
+                    <div class="card-title">Costeo a Ciegas de Obras</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-xmark" style="color:#ef4444;"></i> Margen real desconocido hasta semanas después de entregar la obra.</li>
+                        <li><i class="fa-solid fa-xmark" style="color:#ef4444;"></i> Facturas de campo y notas de entrega arrugadas o extraviadas.</li>
+                        <li><i class="fa-solid fa-check" style="color:#10b981;"></i> <strong>Solución:</strong> Job Costing Three-Way Matching en tiempo real.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-scale-unbalanced card-icon"></i>
+                    <div class="card-title">Riesgo Fiscal SENIAT</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-xmark" style="color:#ef4444;"></i> Retenciones manuales expuestas a sanciones tributarias.</li>
+                        <li><i class="fa-solid fa-xmark" style="color:#ef4444;"></i> Desfase entre tasa BCV y fecha de pago a proveedores.</li>
+                        <li><i class="fa-solid fa-check" style="color:#10b981;"></i> <strong>Solución:</strong> Comprobantes SNAT/2015/0049 100% en Bs con tasa BCV.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
-        <div class="feature-card p-6 rounded-3xl">
-          <div class="w-12 h-12 rounded-2xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center text-2xl mb-4">
-            <i class="fa-solid fa-truck-ramp-box"></i>
-          </div>
-          <h4 class="card-title text-lg font-bold text-white mb-2">3. Patio & Maquinaria</h4>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Control de inventario de acero, horas de uso en máquinas de soldar/generadores y asignación de herramientas.</p>
+        <!-- SLIDE 3: ARQUITECTURA TÉCNICA -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-server"></i> Infraestructura de Alto Nivel</div>
+                <h2 class="slide-title">2. Arquitectura de Producción y Tecnología 360°</h2>
+            </div>
+            <div class="grid-3">
+                <div class="card">
+                    <i class="fa-solid fa-cloud-bolt card-icon"></i>
+                    <div class="card-title">Cloud Dedicado Always-On</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> <strong>Render Web Service:</strong> Plan Pago Dedicado activo 24/7 sin cold starts.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Neon Serverless PostgreSQL:</strong> Esquema relacional con 32 tablas e índices optimizados.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Respaldo Continuo:</strong> Snapshots automáticos y túneles cifrados SSL.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-gears card-icon"></i>
+                    <div class="card-title">Backend Python & FastAPI</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> <strong>Python 3.12 64-bit:</strong> Uvicorn ASGI de ultra alta concurrencia.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>SQLAlchemy 2.0:</strong> Control estricto de integridad ACID y transacciones atómicas.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Seguridad RBAC:</strong> Tokens JWT criptográficos y hash PBKDF2/Bcrypt.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-desktop card-icon"></i>
+                    <div class="card-title">Frontend Modular Vite 5</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> <strong>Vanilla JS ECMAScript 2022+:</strong> Cero sobrecarga de frameworks, arranque inmediato.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>11 Módulos & 15 Vistas:</strong> Desacoplados y mantenibles.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Cartografía Bézier:</strong> Mapa interactivo nativo de Venezuela.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
-        <div class="feature-card p-6 rounded-3xl">
-          <div class="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center text-2xl mb-4">
-            <i class="fa-solid fa-chart-pie"></i>
-          </div>
-          <h4 class="card-title text-lg font-bold text-white mb-2">4. Panel Gerencial</h4>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Semáforos de ganancia neta en vivo para saber si cada trabajo va en verde (ganancia) o rojo (alerta).</p>
+        <!-- SLIDE 4: GEMINI AI -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-wand-magic-sparkles"></i> Inteligencia Artificial Multimodal</div>
+                <h2 class="slide-title">3. El Motor de IA: Google Gemini Multimodal Vision</h2>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <i class="fa-solid fa-file-invoice-dollar card-icon"></i>
+                    <div class="card-title">Lectura de Facturas y Notas Manuscritas</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Extrae automáticamente RIF, Razón Social, Número de Factura, Base Imponible e IVA (16%).</li>
+                        <li><i class="fa-solid fa-check"></i> Lee talonarios escritos a mano en bolígrafo o lápiz y notas térmicas arrugadas de ferretería.</li>
+                        <li><i class="fa-solid fa-check"></i> Convierte en el acto los montos a la tasa oficial del BCV del día.</li>
+                        <li><i class="fa-solid fa-check"></i> Clasifica de forma predictiva a cuál de las 20 Partidas Contables corresponde.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-gauge-high card-icon"></i>
+                    <div class="card-title">Auditoría IA de Odómetros de Flota</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> El chofer toma una foto del tablero/clúster del camión o camioneta al salir o volver.</li>
+                        <li><i class="fa-solid fa-check"></i> Gemini detecta el odómetro total (ODO) discriminando tacómetros, reloj o lecturas TRIP.</li>
+                        <li><i class="fa-solid fa-check"></i> Alimenta el semáforo preventivo de cambio de aceite y filtros cada 5.000 Km.</li>
+                        <li><i class="fa-solid fa-check"></i> Elimina fraudes y errores de tipeo manual en bitácoras de papel.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-      </div>
-    </section>
 
-    <!-- SLIDE 4: CONTROL DE PRODUCCIÓN -->
-    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Control de Producción & Avance">
-      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">03. PRODUCCIÓN & TALLER</div>
-      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Seguimiento paso a paso de cada pieza</h2>
-      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Claridad absoluta desde que se corta la primera plancha hasta la entrega en sitio al cliente:</p>
+        <!-- SLIDE 5: JOB COSTING -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-calculator"></i> Rentabilidad Quirúrgica</div>
+                <h2 class="slide-title">4. Job Costing por Proyecto: La Ecuación Three-Way Matching</h2>
+            </div>
+            <div class="formula-box">
+                COSTO TOTAL DE OBRA = GASTOS DE CAMPO (OCR) + FACTURAS PROVEEDORES (CxP) + DESPACHOS ALMACÉN (Kárdex)
+            </div>
+            <div class="grid-3">
+                <div class="card">
+                    <i class="fa-solid fa-receipt card-icon"></i>
+                    <div class="card-title">1. Gastos de Campo</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Caja chica, viáticos, refrigerios y compras menores en ferretería.</li>
+                        <li><i class="fa-solid fa-check"></i> Capturados en segundos por la PWA con Google Gemini.</li>
+                        <li><i class="fa-solid fa-check"></i> Imputados al centro de costos de la obra con aprobación administrativa.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-truck-ramp-box card-icon"></i>
+                    <div class="card-title">2. Facturas Proveedores (CxP)</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Suministro de vigas, planchas, perfiles y electrodos por compras formales.</li>
+                        <li><i class="fa-solid fa-check"></i> Subcontratos de tornería, grúas o ensayos no destructivos.</li>
+                        <li><i class="fa-solid fa-check"></i> Vencimientos programados a 7, 15 y 30 días.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-boxes-stacked card-icon"></i>
+                    <div class="card-title">3. Consumo de Almacén</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Materiales del taller de Guacara despachados a la faena.</li>
+                        <li><i class="fa-solid fa-check"></i> Amparados por la Guía Oficial de Traslado GT-DALOR.</li>
+                        <li><i class="fa-solid fa-check"></i> Valorados al costo promedio ponderado exacto.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-layer-group"></i> Fases Claras de Trabajo</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">El trabajo se divide en pasos sencillos: Corte, Armado, Soldadura, Limpieza/Pintura y Montaje en sitio. Cada paso tiene sus cantidades y fechas de entrega.</p>
+        <!-- SLIDE 6: FISCAL SENIAT -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-landmark"></i> Cumplimiento Legal Venezolano</div>
+                <h2 class="slide-title">5. Módulo Fiscal SENIAT (Providencia SNAT/2015/0049)</h2>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <i class="fa-solid fa-stamp card-icon"></i>
+                    <div class="card-title">Comprobantes Oficiales de Retención de IVA</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Diseñado para Sujetos Pasivos Especiales: cálculo automático de retención del 75% o 100%.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>100% en Bolívares (VES):</strong> Sin mención de dólares en el formato impreso, evitando multas fiscales.</li>
+                        <li><i class="fa-solid fa-check"></i> Correlativo legal inalterable de 14 dígitos (AAAAMMAAAAAAAA).</li>
+                        <li><i class="fa-solid fa-check"></i> Exportación directa a PDF con membrete y firma digitalizada.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-money-bill-transfer card-icon"></i>
+                    <div class="card-title">Tesorería Bimonetaria y Flujo de Caja</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Moneda de Cuenta ($ USD) para control financiero y Moneda Fiscal (VES) para bancos.</li>
+                        <li><i class="fa-solid fa-check"></i> Aislamiento estricto de Pasivos Fiscales (las retenciones no se confunden con caja operativa).</li>
+                        <li><i class="fa-solid fa-check"></i> Registro formal de retiros de socios con soporte y justificación.</li>
+                        <li><i class="fa-solid fa-check"></i> Conciliación bancaria transparente sin faltantes inexplicables.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-emerald-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-mobile-screen"></i> Reporte Diario Fácil</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">El supervisor o ingeniero anota las piezas completadas y toma fotos con el celular directo en el taller o en la obra, incluso sin señal de internet.</p>
-        </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-file-invoice-dollar"></i> Cobro Rápido al Cliente</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">El sistema genera automáticamente el reporte de avance con fotos de respaldo listo para presentar al cliente y acelerar el pago de la valuación.</p>
-        </div>
-      </div>
-    </section>
 
-    <!-- SLIDE 5: COMPRAS FÁCILES & OCR -->
-    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Compras Rápidas & Facturas">
-      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">04. COMPRAS & GASTOS</div>
-      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Cero tipeo manual de facturas</h2>
-      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">La cámara del celular lee las facturas y registra los gastos en segundos:</p>
+        <!-- SLIDE 7: ALMACÉN Y GUÍAS -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-boxes-packing"></i> Logística de Taller y Faena</div>
+                <h2 class="slide-title">6. Almacén Central, Kárdex de Insumos & Guías GT-DALOR</h2>
+            </div>
+            <div class="grid-3">
+                <div class="card">
+                    <i class="fa-solid fa-cubes card-icon"></i>
+                    <div class="card-title">Maestro de Materiales</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Catálogo especializado en acero, tuberías, planchas, soldadura y abrasivos.</li>
+                        <li><i class="fa-solid fa-check"></i> Alertas de stock mínimo para evitar paros de fabricación en taller.</li>
+                        <li><i class="fa-solid fa-check"></i> Registro de ubicaciones físicas y estantes.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-dolly card-icon"></i>
+                    <div class="card-title">Guías Oficiales GT-DALOR</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Ningún activo o material sale de la sede sin Guía de Traslado correlativa.</li>
+                        <li><i class="fa-solid fa-check"></i> Vinculación estricta de vehículo, chofer y obra destino.</li>
+                        <li><i class="fa-solid fa-check"></i> Costeo automático al proyecto al momento del despacho.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-recycle card-icon"></i>
+                    <div class="card-title">Trazabilidad de Sobrantes</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Retorno formal de sobrantes de obra al almacén central de Guacara.</li>
+                        <li><i class="fa-solid fa-check"></i> Reincorporación al stock disponible para nuevos presupuestos.</li>
+                        <li><i class="fa-solid fa-check"></i> Ahorro tangible al frenar las compras duplicadas de acero.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-camera"></i> Lectura Automática con Foto</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Se le toma una foto a la factura del proveedor y el sistema extrae de inmediato el nombre, RIF, número, monto total e IVA sin tener que escribirlo a mano.</p>
+        <!-- SLIDE 8: FLOTA Y ACTIVOS -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-truck-moving"></i> Protección del Patrimonio</div>
+                <h2 class="slide-title">7. Flota Pesada, Activos & Mantenimiento Preventivo</h2>
+            </div>
+            <div class="grid-3">
+                <div class="card">
+                    <i class="fa-solid fa-truck-pickup card-icon"></i>
+                    <div class="card-title">Control de Flota y Maquinaria</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Inventario de camiones, camionetas, plantas de soldar y grúas.</li>
+                        <li><i class="fa-solid fa-check"></i> Registro de seriales de motor, carrocería y pólizas de seguro.</li>
+                        <li><i class="fa-solid fa-check"></i> Módulo de alquiler de equipos a clientes externos con facturación.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-traffic-light card-icon"></i>
+                    <div class="card-title">Semáforo de Cambio de Aceite</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> 🟢 <strong>Verde (< 4.000 Km):</strong> Óptimo para despachos a carretera.</li>
+                        <li><i class="fa-solid fa-check"></i> 🟡 <strong>Ámbar (4.000 - 5.000 Km):</strong> Alerta de mantenimiento próximo.</li>
+                        <li><i class="fa-solid fa-check"></i> 🔴 <strong>Rojo (> 5.000 Km):</strong> Bloqueo automático de asignación hasta hacer servicio.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-camera-rotate card-icon"></i>
+                    <div class="card-title">Inspección con Gemini AI</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Lectura instantánea de fotografías del clúster de instrumentos.</li>
+                        <li><i class="fa-solid fa-check"></i> Historial inmutable de intervenciones mecánicas y repuestos.</li>
+                        <li><i class="fa-solid fa-check"></i> Prolonga la vida útil de los camiones de Dalor.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-share-nodes"></i> Reparto de Gastos Compartidos</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Si se compran materiales o se paga un flete que sirve para dos o más trabajos, el gasto se divide con un clic entre los proyectos correspondientes.</p>
-        </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-emerald-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-coins"></i> Dólares y Bolívares al Día</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Calcula al instante la conversión oficial con la tasa del día del Banco Central (BCV), evitando descuadres en pagos de transferencias o caja.</p>
-        </div>
-      </div>
-    </section>
 
-    <!-- SLIDE 6: MAQUINARIA & CUSTODIA -->
-    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Patio & Maquinaria">
-      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">05. MAQUINARIA & PATIO</div>
-      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Cuidado de herramientas y maquinaria pesada</h2>
-      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Protección y control de los activos más valiosos de la empresa:</p>
+        <!-- SLIDE 9: BUSINESS INTELLIGENCE -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-chart-pie"></i> Cuadro de Mando Estratégico</div>
+                <h2 class="slide-title">8. Business Intelligence y Cartografía Georreferenciada</h2>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <i class="fa-solid fa-chart-column card-icon"></i>
+                    <div class="card-title">Dashboard Gerencial 360°</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> <strong>KPIs Críticos:</strong> CxC vivas en la calle, CxP por vencer y Saldo Líquido Bancario.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Márgenes Netos:</strong> Porcentaje de rentabilidad real por obra y acumulado Dalor.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Árbol de Partidas Oficial:</strong> 20 cuentas decimales deduplicadas (1.0 a 20.0).</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Auditoría Completa:</strong> Registro inmutable de cada acción en audit_logs.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-map-location-dot card-icon"></i>
+                    <div class="card-title">Mapa Vectorial Nativo de Venezuela</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Georreferenciación de alta precisión de obras en Carabobo, Aragua, Miranda, etc.</li>
+                        <li><i class="fa-solid fa-check"></i> Interactivo: clic en un estado para ver de inmediato las obras y cuadrillas en faena.</li>
+                        <li><i class="fa-solid fa-check"></i> Diseñado para decisiones logísticas de desplazamiento y cotización de fletes.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-clock"></i> Horas de Motor y Kilómetros</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Control de horas de trabajo en plantas eléctricas, compresores y máquinas de soldar, y kilometraje en camiones para hacer mantenimientos a tiempo.</p>
+        <!-- SLIDE 10: MATRIZ DE SEGURIDAD -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-shield-halved"></i> Gobernanza y Blindaje</div>
+                <h2 class="slide-title">9. Seguridad Corporativa y Control de Roles (RBAC)</h2>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <i class="fa-solid fa-users-gear card-icon"></i>
+                    <div class="card-title">Segregación Estricta de Funciones</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> <strong>Director General:</strong> Control total, bancos, márgenes y decisiones comerciales.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Administración:</strong> Facturación, pagos a proveedores y retenciones SENIAT.</li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Ingeniero Residente:</strong> Avance técnico y fases. <em>Cero acceso a dólares ni balances.</em></li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Almacén Central:</strong> Control físico y guías. <em>Costos de compra 100% ocultos.</em></li>
+                        <li><i class="fa-solid fa-check"></i> <strong>Supervisor de Campo:</strong> Solo interfaz de cámara fotográfica para gastos.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-lock card-icon"></i>
+                    <div class="card-title">Protocolos Criptográficos</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Tokens de autenticación JWT (OAuth2) con tiempo de expiración controlado.</li>
+                        <li><i class="fa-solid fa-check"></i> Contraseñas cifradas con algoritmos PBKDF2/Bcrypt no reversibles.</li>
+                        <li><i class="fa-solid fa-check"></i> Revocación instantánea de credenciales en caso de extravío de dispositivos móviles.</li>
+                        <li><i class="fa-solid fa-check"></i> Aislamiento total de base de datos contra accesos no autorizados.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-emerald-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-handshake"></i> Responsable por cada Equipo</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Cada herramienta eléctrica, máquina de soldar o esmeril queda asignada con firma digital al trabajador responsable para evitar pérdidas.</p>
-        </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-truck"></i> Despachos Controlados</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Ningún material o estructura sale del patio hacia la obra sin una nota de entrega digital que indica quién lo llevó y quién lo recibió.</p>
-        </div>
-      </div>
-    </section>
 
-    <!-- SLIDE 7: SEMÁFORO DE GANANCIAS -->
-    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Semáforo de Ganancias">
-      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">06. CONTROL GERENCIAL</div>
-      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Semáforo de rentabilidad en tiempo real</h2>
-      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Información clara y visual para tomar decisiones rápidas:</p>
+        <!-- SLIDE 11: PWA MÓVIL -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-tag"><i class="fa-solid fa-mobile-screen-button"></i> Movilidad y Eficiencia</div>
+                <h2 class="slide-title">10. Progressive Web App (PWA) Móvil & Modo Offline</h2>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <i class="fa-solid fa-download card-icon"></i>
+                    <div class="card-title">Experiencia de App Nativa Instalable</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Instalable en teléfonos Android, iPhone y computadoras con un toque.</li>
+                        <li><i class="fa-solid fa-check"></i> Ícono corporativo de Dalor en la pantalla de inicio y visualización a pantalla completa.</li>
+                        <li><i class="fa-solid fa-check"></i> Apertura ultrarrápida con caché local seguro para estilos y componentes.</li>
+                        <li><i class="fa-solid fa-check"></i> Sesión protegida que evita ingresar usuario y clave a cada momento en campo.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fa-solid fa-cloud-arrow-up card-icon"></i>
+                    <div class="card-title">Cola Local de Gastos sin Cobertura</div>
+                    <ul class="card-list">
+                        <li><i class="fa-solid fa-check"></i> Si el personal está en un galpón o carretera sin señal, la foto se guarda en el celular (IndexedDB).</li>
+                        <li><i class="fa-solid fa-check"></i> Distintivo visual claro: <code>🟡 1 Comprobante pendiente por enviar</code>.</li>
+                        <li><i class="fa-solid fa-check"></i> Sincronización automática de fondo apenas el teléfono detecta WiFi o 4G.</li>
+                        <li><i class="fa-solid fa-check"></i> Gemini OCR procesa el gasto sin requerir que el usuario repita la acción.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-emerald-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-traffic-light"></i> Semáforo Verde / Rojo</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Verde indica ganancia saludable, amarillo margen ajustado y rojo alerta de sobrecosto, para actuar antes de que el trabajo termine.</p>
+        <!-- SLIDE 12: CONCLUSIÓN -->
+        <div class="slide hero-slide">
+            <div class="slide-tag"><i class="fa-solid fa-handshake"></i> Compromiso de Excelencia</div>
+            <h1 class="hero-title" style="font-size: 42px;">DALOR SIGO-P ERP</h1>
+            <div class="hero-sub">El Motor de Crecimiento para Metalmecánica Dalor C.A.</div>
+            <p class="hero-desc">
+                Una solución de clase mundial que transforma la cultura operativa de la empresa: blinda la rentabilidad en cada presupuesto, protege el flujo de caja ante las autoridades fiscales, dignifica el trabajo de cuadrillas y pañol, y entrega al Director General el timón financiero completo en tiempo real.
+            </p>
+            <div class="hero-badges">
+                <div class="badge-pill"><i class="fa-solid fa-check-double"></i> 100% Desplegado en Producción</div>
+                <div class="badge-pill"><i class="fa-solid fa-globe"></i> https://dalor-sigop.onrender.com</div>
+                <div class="badge-pill"><i class="fa-solid fa-building"></i> Guacara, Estado Carabobo, Venezuela</div>
+            </div>
         </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-scale-balanced"></i> Presupuesto vs Gasto Real</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Compara lo que se cotizó al cliente contra lo que realmente se ha gastado en acero, insumos y horas de trabajo.</p>
-        </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-money-bill-trend-up"></i> Dinero en Mano (Flujo de Caja)</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Muestra lo que está por cobrar y lo que está por pagar, asegurando que siempre haya dinero disponible para compras y nómina.</p>
-        </div>
-      </div>
-    </section>
 
-    <!-- SLIDE 8: ACCESO SEGURO POR CARGOS -->
-    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Seguridad & Privacidad">
-      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">07. SEGURIDAD & PRIVACIDAD</div>
-      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Cada persona ve solo lo que necesita</h2>
-      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">Los costos financieros y las ganancias de la empresa se mantienen 100% confidenciales:</p>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-purple-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-crown"></i> Dirección General</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Acceso completo a ganancias, cuentas bancarias, aprobación de compras mayores y reportes consolidados.</p>
-        </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-cyan-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-compass-drafting"></i> Ingenieros de Taller / Obra</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Gestionan el avance técnico, fotos y solicitudes de material. <b>Los precios de compra y las ganancias están completamente ocultos.</b></p>
-        </div>
-        <div class="feature-card p-7 rounded-3xl">
-          <div class="card-title text-amber-400 font-bold text-lg md:text-xl mb-3"><i class="fa-solid fa-boxes-stacked"></i> Almacén & Logística</div>
-          <p class="card-text text-sm md:text-base text-slate-300 leading-relaxed">Registran entradas y salidas de material y horas de maquinaria. <b>Sin acceso a montos de dinero ni finanzas.</b></p>
-        </div>
-      </div>
-    </section>
-
-    <!-- SLIDE 9: BENEFICIOS DIRECTOS -->
-    <section class="slide flex-col justify-center max-w-6xl w-full mx-auto" data-title="Beneficios y Ahorro">
-      <div class="text-sm font-mono font-bold text-amber-400 uppercase tracking-wider mb-2">08. RESULTADOS</div>
-      <h2 class="slide-title text-3xl md:text-5xl font-extrabold text-white mb-3">Ahorros y beneficios tangibles</h2>
-      <p class="slide-subtitle text-base md:text-xl text-slate-300 mb-8">El impacto inmediato de modernizar el control de las operaciones:</p>
-
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
-        <div class="feature-card p-6 rounded-3xl text-center">
-          <div class="stat-num text-4xl md:text-5xl font-black text-emerald-400 mb-2">85%</div>
-          <div class="stat-label text-base md:text-lg font-bold text-white mb-2">Menos Tiempo</div>
-          <p class="card-text text-xs md:text-sm text-slate-300">En procesar y registrar facturas de proveedores.</p>
-        </div>
-        <div class="feature-card p-6 rounded-3xl text-center">
-          <div class="stat-num text-4xl md:text-5xl font-black text-amber-400 mb-2">100%</div>
-          <div class="stat-label text-base md:text-lg font-bold text-white mb-2">Cuidado de Equipos</div>
-          <p class="card-text text-xs md:text-sm text-slate-300">Sin herramientas extraviadas en taller ni campo.</p>
-        </div>
-        <div class="feature-card p-6 rounded-3xl text-center">
-          <div class="stat-num text-4xl md:text-5xl font-black text-cyan-400 mb-2">14 Días</div>
-          <div class="stat-label text-base md:text-lg font-bold text-white mb-2">Cobro más Rápido</div>
-          <p class="card-text text-xs md:text-sm text-slate-300">Entrega rápida de valuaciones respaldadas al cliente.</p>
-        </div>
-        <div class="feature-card p-6 rounded-3xl text-center">
-          <div class="stat-num text-4xl md:text-5xl font-black text-purple-400 mb-2">24/7</div>
-          <div class="stat-label text-base md:text-lg font-bold text-white mb-2">Disponibilidad</div>
-          <p class="card-text text-xs md:text-sm text-slate-300">Acceso desde cualquier celular o PC sin caídas.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- SLIDE 10: DEMOSTRACIÓN EN VIVO -->
-    <section class="slide flex-col justify-center items-center text-center max-w-5xl mx-auto py-8" data-title="Demostración en Vivo">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-sm font-bold uppercase tracking-wider mb-6">
-        <span>✅ Plataforma Activa y Lista para Operar</span>
-      </div>
-      <h2 class="hero-title text-4xl md:text-6xl font-black text-white mb-4">DALOR SIGO-P en Acción</h2>
-      <p class="hero-sub text-lg md:text-2xl text-slate-200 max-w-2xl mx-auto mb-10 font-medium">
-        Veamos una demostración práctica en vivo ingresando con los diferentes roles del sistema.
-      </p>
-
-      <div class="flex flex-wrap items-center justify-center gap-5">
-        <a href="/" target="_blank" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-base md:text-lg transition shadow-xl flex items-center gap-3">
-          <i class="fa-solid fa-play"></i> Iniciar Demostración en Vivo
-        </a>
-        <a href="/manual" target="_blank" class="px-8 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-base md:text-lg border border-slate-700 transition flex items-center gap-3">
-          <i class="fa-solid fa-book-open"></i> Ver Manuales de Usuario
-        </a>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Bottom Navigation & Controls Bar -->
-  <footer class="w-full border-t border-slate-800/80 bg-slate-900/95 backdrop-blur-md px-6 py-4 flex items-center justify-between z-50">
-    <div class="flex items-center gap-3">
-      <span class="text-sm text-slate-400 font-medium hidden sm:inline">Navega con las flechas del teclado (◀ ▶) o los botones</span>
     </div>
 
-    <!-- Mini Slide Bullets -->
-    <div class="flex items-center gap-2.5" id="bulletContainer">
-      <!-- Bullets generated by JS -->
+    <div class="progress-bar-container">
+        <div class="progress-fill" id="progressBar"></div>
     </div>
 
-    <div class="text-sm text-slate-400 font-mono font-bold">
-      DALOR &copy; 2026
-    </div>
-  </footer>
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const indicator = document.getElementById('slideIndicator');
+        const progressBar = document.getElementById('progressBar');
+        let currentSlide = 0;
+        const totalSlides = slides.length;
 
-  <script>
-    let currentSlide = 0;
-    const slides = document.querySelectorAll('.slide');
-    const totalSlides = slides.length;
-    const slideIndicator = document.getElementById('slideIndicator');
-    const bulletContainer = document.getElementById('bulletContainer');
-
-    // Create navigation dots/bullets
-    for (let i = 0; i < totalSlides; i++) {
-      const dot = document.createElement('button');
-      dot.className = `w-3.5 h-3.5 rounded-full transition-all ${i === 0 ? 'bg-amber-400 w-8' : 'bg-slate-700 hover:bg-slate-500'}`;
-      dot.title = `Ir a lámina ${i + 1}: ${slides[i].dataset.title || ''}`;
-      dot.onclick = () => goToSlide(i);
-      bulletContainer.appendChild(dot);
-    }
-
-    function updateSlides() {
-      slides.forEach((slide, idx) => {
-        if (idx === currentSlide) {
-          slide.classList.add('active');
-        } else {
-          slide.classList.remove('active');
+        function updateSlide(index) {
+            slides.forEach((s, i) => {
+                s.classList.toggle('active', i === index);
+            });
+            indicator.textContent = `${index + 1} / ${totalSlides}`;
+            progressBar.style.width = `${((index + 1) / totalSlides) * 100}%`;
+            currentSlide = index;
         }
-      });
 
-      slideIndicator.innerText = `${String(currentSlide + 1).padStart(2, '0')} / ${String(totalSlides).padStart(2, '0')}`;
-
-      // Update dots
-      const dots = bulletContainer.children;
-      for (let i = 0; i < dots.length; i++) {
-        if (i === currentSlide) {
-          dots[i].className = 'w-8 h-3.5 rounded-full bg-amber-400 transition-all';
-        } else {
-          dots[i].className = 'w-3.5 h-3.5 rounded-full bg-slate-700 hover:bg-slate-500 transition-all';
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                updateSlide(currentSlide + 1);
+            }
         }
-      }
-    }
 
-    function nextSlide() {
-      if (currentSlide < totalSlides - 1) {
-        currentSlide++;
-        updateSlides();
-      }
-    }
+        function prevSlide() {
+            if (currentSlide > 0) {
+                updateSlide(currentSlide - 1);
+            }
+        }
 
-    function prevSlide() {
-      if (currentSlide > 0) {
-        currentSlide--;
-        updateSlides();
-      }
-    }
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {});
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
 
-    function goToSlide(idx) {
-      if (idx >= 0 && idx < totalSlides) {
-        currentSlide = idx;
-        updateSlides();
-      }
-    }
-
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-          console.log(`Error al activar pantalla completa: ${err.message}`);
+        // Navegación con teclado
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                prevSlide();
+            } else if (e.key === 'f' || e.key === 'F') {
+                toggleFullScreen();
+            } else if (e.key === 'Home') {
+                updateSlide(0);
+            } else if (e.key === 'End') {
+                updateSlide(totalSlides - 1);
+            }
         });
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-      }
-    }
-
-    // Zoom Controls for Smart TV
-    function setZoom(level) {
-      document.body.classList.remove('zoom-tv-large', 'zoom-tv-huge');
-      document.getElementById('btnZoomNormal').className = 'px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition';
-      document.getElementById('btnZoomLarge').className = 'px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition';
-      document.getElementById('btnZoomHuge').className = 'px-2.5 py-1 rounded text-slate-300 font-bold hover:bg-slate-600 transition';
-
-      if (level === 'large') {
-        document.body.classList.add('zoom-tv-large');
-        document.getElementById('btnZoomLarge').className = 'px-2.5 py-1 rounded bg-amber-500 text-slate-950 font-bold transition';
-      } else if (level === 'huge') {
-        document.body.classList.add('zoom-tv-huge');
-        document.getElementById('btnZoomHuge').className = 'px-2.5 py-1 rounded bg-amber-500 text-slate-950 font-bold transition';
-      } else {
-        document.getElementById('btnZoomNormal').className = 'px-2.5 py-1 rounded bg-slate-700 text-white font-bold transition';
-      }
-    }
-
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'PageDown') {
-        nextSlide();
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        prevSlide();
-      } else if (e.key === 'f' || e.key === 'F') {
-        toggleFullscreen();
-      } else if (e.key >= '1' && e.key <= '9') {
-        const target = parseInt(e.key) - 1;
-        if (target < totalSlides) goToSlide(target);
-      } else if (e.key === '0') {
-        if (totalSlides >= 10) goToSlide(9);
-      }
-    });
-  </script>
+    </script>
 </body>
 </html>

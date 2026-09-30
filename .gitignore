@@ -23,3 +23,7 @@ scratch/
 *.png
 *.jpg
 *.jpeg
+!frontend_v2/public/icons/**
+!frontend_v2/dist/icons/**
+!frontend_v2/public/logo_dalor.jpg
+!frontend_v2/dist/logo_dalor.jpg

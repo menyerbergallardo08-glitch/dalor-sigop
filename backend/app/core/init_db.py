@@ -511,7 +511,7 @@ def init_db():
 
         # 5.1 Deduplicación Defensiva: Migrar y eliminar categorías con código entero redundante ('1', '2', ..., '20')
         try:
-            from app.models.models import AccountPayable
+            from app.models.models import AccountPayable, Expense
             legacy_int_codes = [str(i) for i in range(1, 21)]
             legacy_cats = db.query(ExpenseCategory).filter(ExpenseCategory.code.in_(legacy_int_codes)).all()
             for leg in legacy_cats:

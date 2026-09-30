@@ -226,6 +226,7 @@ if os.path.exists(FRONTEND_DIR):
         return {"error": "PDF not found"}
 
     @app.get("/{full_path:path}")
+    @app.head("/{full_path:path}")
     def serve_spa_fallback(full_path: str):
         if full_path.startswith("api/"):
             raise HTTPException(status_code=404, detail="API route not found")

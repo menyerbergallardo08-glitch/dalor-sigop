@@ -87,19 +87,24 @@ function switchFinancialSubtab(subtabName) {
         const isDirector = uname === 'director' || role.includes('director') || user.is_superuser === true;
 
         if (!isDirector) {
-            const canCxc = p.cxc_view !== undefined ? !!(p.cxc_view || p.cxc_pay) : true;
-            const canCxp = p.cxp_view !== undefined ? !!(p.cxp_view || p.cxp_pay) : true;
-            const canBancos = p.bancos_view !== undefined ? !!p.bancos_view : true;
-            const canPartners = p.retiros_view !== undefined ? !!p.retiros_view : isDirector;
+            const hasGranularFin = p.cxc_view !== undefined || p.cxp_view !== undefined || p.bancos_view !== undefined || p.retiros_view !== undefined;
+            const canCxc = p.cxc_view !== undefined ? !!(p.cxc_view || p.cxc_pay) : (hasGranularFin ? false : true);
+            const canCxp = p.cxp_view !== undefined ? !!(p.cxp_view || p.cxp_pay) : (hasGranularFin ? false : true);
+            const canBancos = p.bancos_view !== undefined ? !!p.bancos_view : (hasGranularFin ? false : true);
+            const canPartners = p.retiros_view !== undefined ? !!p.retiros_view : false;
 
-            if (subtabName === 'cxp' && !canCxp) {
-                subtabName = canCxc ? 'cxc' : (canBancos ? 'summary' : 'cxc');
-            } else if (subtabName === 'cxc' && !canCxc) {
-                subtabName = canCxp ? 'cxp' : (canBancos ? 'summary' : 'cxp');
-            } else if (subtabName === 'summary' && !canBancos) {
-                subtabName = canCxc ? 'cxc' : (canCxp ? 'cxp' : 'cxc');
-            } else if (subtabName === 'partners' && !canPartners) {
-                subtabName = canCxc ? 'cxc' : (canCxp ? 'cxp' : 'summary');
+            let validSubtab = 'cxc';
+            if (canCxc) validSubtab = 'cxc';
+            else if (canCxp) validSubtab = 'cxp';
+            else if (canBancos) validSubtab = 'summary';
+            else if (canPartners) validSubtab = 'partners';
+
+            const isAllowed = (subtabName === 'cxc' && canCxc) ||
+                              (subtabName === 'cxp' && canCxp) ||
+                              (subtabName === 'summary' && canBancos) ||
+                              (subtabName === 'partners' && canPartners);
+            if (!isAllowed) {
+                subtabName = validSubtab;
             }
         }
     }

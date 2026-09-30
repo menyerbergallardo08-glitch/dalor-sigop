@@ -589,7 +589,28 @@ function switchView(viewName, moduleCategory, targetSubtab = null) {
 
     if (viewName === 'executive' && typeof window.loadExecutiveDashboard === 'function') window.loadExecutiveDashboard();
     if (viewName === 'financial') {
-        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_financial') || sessionStorage.getItem('dalor_active_subtab_financial') || 'cxc';
+        let sub = targetSubtab || localStorage.getItem('dalor_active_subtab_financial') || sessionStorage.getItem('dalor_active_subtab_financial') || 'cxc';
+        const u = window.currentUser || (window.State && window.State.currentUser);
+        if (u) {
+            let p = {};
+            try { p = typeof u.permissions_json === 'string' ? JSON.parse(u.permissions_json) : (u.permissions_json || u.permissions || {}); } catch(e){}
+            const isDir = (u.username||'').toLowerCase() === 'director' || (u.role_name||'').toLowerCase().includes('director') || u.is_superuser === true;
+            if (!isDir) {
+                const hasGranularFin = p.cxc_view !== undefined || p.cxp_view !== undefined || p.bancos_view !== undefined || p.retiros_view !== undefined;
+                const canCxc = p.cxc_view !== undefined ? !!(p.cxc_view || p.cxc_pay) : (hasGranularFin ? false : true);
+                const canCxp = p.cxp_view !== undefined ? !!(p.cxp_view || p.cxp_pay) : (hasGranularFin ? false : true);
+                const canBancos = p.bancos_view !== undefined ? !!p.bancos_view : (hasGranularFin ? false : true);
+                const canPartners = p.retiros_view !== undefined ? !!p.retiros_view : false;
+
+                const isAllowed = (sub === 'cxc' && canCxc) || (sub === 'cxp' && canCxp) || (sub === 'summary' && canBancos) || (sub === 'partners' && canPartners);
+                if (!isAllowed) {
+                    if (canCxc) sub = 'cxc';
+                    else if (canCxp) sub = 'cxp';
+                    else if (canBancos) sub = 'summary';
+                    else if (canPartners) sub = 'partners';
+                }
+            }
+        }
         if (typeof window.switchFinancialSubtab === 'function') window.switchFinancialSubtab(sub);
         else if (typeof window.openFinancialSubtab === 'function') window.openFinancialSubtab(sub);
     }

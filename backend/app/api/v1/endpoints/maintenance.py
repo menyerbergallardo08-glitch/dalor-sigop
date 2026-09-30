@@ -97,18 +97,23 @@ def update_role(role_id: int, role_in: RoleUpdate, db: Session = Depends(get_db)
         role.description = role_in.description.strip()
     if role_in.permissions_json is not None:
         role.permissions_json = role_in.permissions_json
+        # Propagar inmediatamente a todos los usuarios asignados a este rol
+        db.query(User).filter(User.role_name == role.name).update(
+            {"permissions_json": role_in.permissions_json},
+            synchronize_session=False
+        )
     db.commit()
 
     audit = AuditLog(
         username="director_general",
         module="mantenimiento",
         action="actualizar_rol",
-        details=f"Rol '{role.display_name}' ({role.name}) actualizado"
+        details=f"Rol '{role.display_name}' ({role.name}) actualizado y sincronizado a sus usuarios"
     )
     db.add(audit)
     db.commit()
 
-    return {"success": True, "message": f"Rol '{role.display_name}' actualizado con éxito."}
+    return {"success": True, "message": f"Rol '{role.display_name}' actualizado y sincronizado con éxito."}
 
 @router.delete("/roles/{role_id}", dependencies=[Depends(require_roles(["director_general"]))])
 def delete_role(role_id: int, db: Session = Depends(get_db)):
@@ -230,6 +235,10 @@ def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)
     if user_in.role_name is not None:
         user.role_name = user_in.role_name.strip()
         user.is_superuser = (user.role_name == "director_general")
+        if user_in.permissions_json is None:
+            assigned_role = db.query(Role).filter(Role.name == user.role_name).first()
+            if assigned_role and assigned_role.permissions_json:
+                user.permissions_json = assigned_role.permissions_json
     if user_in.permissions_json is not None:
         user.permissions_json = user_in.permissions_json
     if user_in.password:

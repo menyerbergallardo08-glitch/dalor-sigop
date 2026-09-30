@@ -21,9 +21,32 @@ export function checkAuthStatus() {
             localStorage.setItem('dalor_token', State.authToken);
             sessionStorage.setItem('dalor_session_active', 'true');
             sessionStorage.setItem('dalor_user', JSON.stringify(State.currentUser));
-            sessionStorage.setItem('dalor_token', State.authToken);
             try { renderUserBadge(); } catch(e) { console.warn("renderUserBadge warn:", e); }
             try { applyPermissionMap(State.currentUser); } catch(e) { console.warn("applyPermissionMap warn:", e); }
+
+            // Sincronización transparente en segundo plano con /api/v1/auth/me para refrescar permisos si cambió el rol
+            if (State.authToken) {
+                const apiBase = window.API_BASE || (window.location.origin + '/api/v1');
+                fetch(`${apiBase}/auth/me`, {
+                    headers: { 'Authorization': 'Bearer ' + State.authToken }
+                }).then(res => {
+                    if (res.ok) return res.json();
+                    if (res.status === 401 || res.status === 403) {
+                        handleLogout();
+                    }
+                    return null;
+                }).then(freshData => {
+                    if (freshData && freshData.username) {
+                        State.currentUser = { ...State.currentUser, ...freshData };
+                        window.currentUser = State.currentUser;
+                        localStorage.setItem('dalor_user', JSON.stringify(State.currentUser));
+                        sessionStorage.setItem('dalor_user', JSON.stringify(State.currentUser));
+                        try { renderUserBadge(); } catch(e) {}
+                        try { applyPermissionMap(State.currentUser); } catch(e) {}
+                    }
+                }).catch(() => {});
+            }
+
             return true;
         } catch (e) {
             console.error("JSON parse error in checkAuthStatus:", e);
@@ -155,7 +178,37 @@ export function applyPermissionMap(user) {
     const dGer = document.getElementById('dropdown-gerencia');
     if (dGer) dGer.style.display = hasBI ? 'inline-block' : 'none';
 
-    // Subpestañas y Botones de Acción de Finanzas
+    // 1. Dropdown Menú de Comercial
+    const itmComQuotes = document.getElementById('nav-item-com-quotes');
+    if (itmComQuotes) itmComQuotes.style.display = (isDirector || p.quotations_create || p.comercial_view || !hasExplicitGranular) ? 'flex' : 'none';
+
+    const itmComClients = document.getElementById('nav-item-com-clients');
+    if (itmComClients) itmComClients.style.display = (isDirector || p.clients_manage || p.comercial_view || !hasExplicitGranular) ? 'flex' : 'none';
+
+    const itmComServices = document.getElementById('nav-item-com-services');
+    if (itmComServices) itmComServices.style.display = (isDirector || p.services_view || p.comercial_view || !hasExplicitGranular) ? 'flex' : 'none';
+
+    // 2. Dropdown Menú de Proyectos
+    const itmProProjects = document.getElementById('nav-item-pro-projects');
+    if (itmProProjects) itmProProjects.style.display = (isDirector || p.proyectos_view || p.proyectos_edit || !hasExplicitGranular) ? 'flex' : 'none';
+
+    const itmProDashboard = document.getElementById('nav-item-pro-dashboard');
+    if (itmProDashboard) itmProDashboard.style.display = (isDirector || p.proyectos_view || p.proyectos_edit || !hasExplicitGranular) ? 'flex' : 'none';
+
+    // 3. Dropdown Menú de Finanzas (Navbar Superior)
+    const itmFinCxc = document.getElementById('nav-item-fin-cxc');
+    if (itmFinCxc) itmFinCxc.style.display = canCxc ? 'flex' : 'none';
+
+    const itmFinCxp = document.getElementById('nav-item-fin-cxp');
+    if (itmFinCxp) itmFinCxp.style.display = canCxp ? 'flex' : 'none';
+
+    const itmFinSummary = document.getElementById('nav-item-fin-summary');
+    if (itmFinSummary) itmFinSummary.style.display = canBancos ? 'flex' : 'none';
+
+    const itmFinPartners = document.getElementById('nav-item-fin-partners');
+    if (itmFinPartners) itmFinPartners.style.display = canPartners ? 'flex' : 'none';
+
+    // 4. Subpestañas y Botones de Acción de Finanzas (Dentro de view-financial)
     const tabCxc = document.getElementById('tabbtn-fin-cxc');
     if (tabCxc) tabCxc.style.display = canCxc ? '' : 'none';
 
@@ -177,7 +230,39 @@ export function applyPermissionMap(user) {
     const btnNewPay = document.getElementById('btnFinNewPayable');
     if (btnNewPay) btnNewPay.style.display = canCxp ? '' : 'none';
 
-    // Opciones del Menú Gastos
+    // 5. Dropdown Menú de Recursos
+    const canAlmacen = isDirector || !!(p.almacen_view || p.almacen_adjust || p.recursos_view || !hasExplicitGranular);
+    const canPersonal = isDirector || !!(p.personal_view || p.personal_edit || p.recursos_view || !hasExplicitGranular);
+    const canEquipos = isDirector || !!(p.recursos_view || p.recursos_edit || !hasExplicitGranular);
+
+    const itmRecDashboard = document.getElementById('nav-item-rec-dashboard');
+    if (itmRecDashboard) itmRecDashboard.style.display = canEquipos ? 'flex' : 'none';
+
+    const itmRecFleet = document.getElementById('nav-item-rec-fleet');
+    if (itmRecFleet) itmRecFleet.style.display = canEquipos ? 'flex' : 'none';
+
+    const itmRecMachinery = document.getElementById('nav-item-rec-machinery');
+    if (itmRecMachinery) itmRecMachinery.style.display = canEquipos ? 'flex' : 'none';
+
+    const itmRecTools = document.getElementById('nav-item-rec-tools');
+    if (itmRecTools) itmRecTools.style.display = canEquipos ? 'flex' : 'none';
+
+    const itmRecMaterials = document.getElementById('nav-item-rec-materials');
+    if (itmRecMaterials) itmRecMaterials.style.display = canAlmacen ? 'flex' : 'none';
+
+    const itmRecPersonnel = document.getElementById('nav-item-rec-personnel');
+    if (itmRecPersonnel) itmRecPersonnel.style.display = canPersonal ? 'flex' : 'none';
+
+    const itmRecReqs = document.getElementById('nav-item-rec-reqs');
+    if (itmRecReqs) itmRecReqs.style.display = (isDirector || p.requisiciones_view || p.requisiciones_create || !hasExplicitGranular) ? 'flex' : 'none';
+
+    const itmRecDispatch = document.getElementById('nav-item-rec-dispatch');
+    if (itmRecDispatch) itmRecDispatch.style.display = (isDirector || p.despacho_view || p.despacho_create || !hasExplicitGranular) ? 'flex' : 'none';
+
+    const itmRecRentals = document.getElementById('nav-item-rec-rentals');
+    if (itmRecRentals) itmRecRentals.style.display = (isDirector || p.alquileres_view || p.alquileres_create || !hasExplicitGranular) ? 'flex' : 'none';
+
+    // 6. Opciones del Menú Gastos
     const itmInbox = document.getElementById('item-gasto-inbox');
     if (itmInbox) itmInbox.style.display = (isDirector || p.gastos_approve || p.gastos_view) ? 'flex' : 'none';
 
@@ -205,15 +290,22 @@ export function applyPermissionMap(user) {
     document.querySelectorAll('.role-admin-only').forEach(el => el.style.display = (isDirector || hasFinanzas) ? '' : 'none');
     document.querySelectorAll('.role-eng-only').forEach(el => el.style.display = (isDirector || hasProyectos) ? '' : 'none');
 
-    // Auto-ajustar subtab financiero si el actual no tiene permiso
+    // Auto-ajustar subtab financiero al primer tab autorizado si el actual no tiene permiso
     try {
+        let validFinTab = 'cxc';
+        if (canCxc) validFinTab = 'cxc';
+        else if (canCxp) validFinTab = 'cxp';
+        else if (canBancos) validFinTab = 'summary';
+        else if (canPartners) validFinTab = 'partners';
+
         const currentFinTab = sessionStorage.getItem('dalor_active_subtab_financial') || localStorage.getItem('dalor_active_subtab_financial') || 'cxc';
-        if (currentFinTab === 'cxp' && !canCxp && canCxc) {
-            sessionStorage.setItem('dalor_active_subtab_financial', 'cxc');
-            localStorage.setItem('dalor_active_subtab_financial', 'cxc');
-        } else if (currentFinTab === 'summary' && !canBancos && canCxc) {
-            sessionStorage.setItem('dalor_active_subtab_financial', 'cxc');
-            localStorage.setItem('dalor_active_subtab_financial', 'cxc');
+        const isCurrentAllowed = (currentFinTab === 'cxc' && canCxc) ||
+                                 (currentFinTab === 'cxp' && canCxp) ||
+                                 (currentFinTab === 'summary' && canBancos) ||
+                                 (currentFinTab === 'partners' && canPartners);
+        if (!isCurrentAllowed) {
+            sessionStorage.setItem('dalor_active_subtab_financial', validFinTab);
+            localStorage.setItem('dalor_active_subtab_financial', validFinTab);
         }
     } catch(e) {}
 

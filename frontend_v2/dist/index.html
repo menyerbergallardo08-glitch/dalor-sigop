@@ -104,12 +104,12 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-BCukkXqX.js"></script>
+  <script type="module" crossorigin src="/assets/main-JO1Wk1Bp.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-CavyAXRB.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-xY25HaJ1.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-Da4p262h.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-C6pP-hMr.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-BG-fhTT4.js">
-  <link rel="modulepreload" crossorigin href="/assets/expenses-dn8Ea59p.js">
+  <link rel="modulepreload" crossorigin href="/assets/expenses-CVykDcAG.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-BkUaoia_.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-CQqaFuID.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-B3rKVl3S.js">
@@ -10067,43 +10067,35 @@
 
 
     <!-- MODAL: VISOR DE COMPROBANTE / FACTURA -->
-
     <div id="modalReceiptViewer" class="modal-overlay hidden" style="z-index: 100000;">
-
-        <div class="modal-content" style="max-width: 600px; text-align: center;">
-
+        <div class="modal-content" style="max-width: 650px; text-align: center;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
-
                 <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
-
                     <i class="fa-solid fa-receipt" style="color: var(--dalor-blue);"></i> Comprobante / Factura Digital
-
                 </h3>
-
                 <button onclick="closeModal('modalReceiptViewer')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-
             </div>
 
-            <div style="max-height: 70vh; overflow: auto; background: #0f172a; border-radius: 8px; padding: 8px; display: flex; justify-content: center; align-items: center;">
-
+            <div style="max-height: 70vh; overflow: auto; background: #0f172a; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 220px;">
                 <img id="receiptViewerImg" src="" alt="Comprobante" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 4px;">
-
+                <div id="receiptViewerError" class="hidden" style="width: 100%;"></div>
             </div>
 
-            <div style="margin-top: 10px; display: flex; justify-content: flex-end; gap: 8px;">
-
-                <a id="receiptViewerDownload" href="" target="_blank" class="btn-primary" style="background: #0284c7; font-size: 12px; text-decoration: none;">
-
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Pestaña Nueva
-
-                </a>
-
-                <button onclick="closeModal('modalReceiptViewer')" class="btn-secondary" style="font-size: 12px;">Cerrar</button>
-
+            <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <div>
+                    <label id="receiptViewerUploadBtn" class="btn-secondary" style="font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; color: #334155;">
+                        <i class="fa-solid fa-cloud-arrow-up" style="color: #0284c7;"></i> <span id="receiptViewerUploadText">Adjuntar / Reemplazar Foto</span>
+                        <input type="file" id="receiptViewerFileInput" accept="image/*,.pdf" style="display: none;" onchange="handleModalReceiptUpload(this.files[0])">
+                    </label>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <a id="receiptViewerDownload" href="" target="_blank" class="btn-primary" style="background: #0284c7; font-size: 12px; text-decoration: none;">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Pestaña Nueva
+                    </a>
+                    <button onclick="closeModal('modalReceiptViewer')" class="btn-secondary" style="font-size: 12px;">Cerrar</button>
+                </div>
             </div>
-
         </div>
-
     </div>
 
 

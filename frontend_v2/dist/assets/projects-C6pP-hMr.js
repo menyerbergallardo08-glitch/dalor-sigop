@@ -570,10 +570,14 @@ var h=window.API_BASE||window.location.origin+"/api/v1",_e=window.allClients=win
                         </td>
                         <td style="padding: 6px 8px; text-align: center;">
                             ${y.receipt_image_path?`
-                                <a href="${y.receipt_image_path}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="font-size: 10px; padding: 2px 7px; color: #0284c7; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Ver Foto / Comprobante">
+                                <button onclick="viewReceiptImage('${y.receipt_image_path}', ${y.id})" class="btn-secondary" style="font-size: 10px; padding: 2px 7px; color: #0284c7; border: 1px solid #bae6fd; background: #f0f9ff; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Ver Foto / Comprobante">
                                     <i class="fa-solid fa-image"></i> Ver
-                                </a>
-                            `:'<span style="color: #cbd5e1; font-size: 10px;">-</span>'}
+                                </button>
+                            `:`
+                                <button onclick="viewReceiptImage('', ${y.id})" class="btn-secondary" style="font-size: 10px; padding: 2px 5px; color: #94a3b8; border: 1px dashed #cbd5e1; background: transparent; border-radius: 4px; cursor: pointer;" title="Adjuntar Comprobante">
+                                    <i class="fa-solid fa-plus"></i> Foto
+                                </button>
+                            `}
                         </td>
                         <td style="padding: 6px 8px; color: #64748b; font-size: 10.5px;">${y.reported_by_name||"Admin"}</td>
                     </tr>

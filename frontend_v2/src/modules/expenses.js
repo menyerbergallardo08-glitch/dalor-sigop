@@ -1031,10 +1031,10 @@ async function loadPendingExpensesInbox() {
 
 
         tbody.innerHTML = allPendingExpenses.map(exp => {
-
             const hasImg = !!exp.receipt_image_path;
-
-            const imgThumb = hasImg ? `<img src="${exp.receipt_image_path}" style="height: 38px; width: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;" onclick="openValidateExpenseModal(${exp.id})">` : `<span style="font-size: 10px; color: #94a3b8;">Sin foto</span>`;
+            const imgThumb = hasImg 
+                ? `<img src="${resolveReceiptUrl(exp.receipt_image_path)}" style="height: 38px; width: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;" onclick="openValidateExpenseModal(${exp.id})" onerror="this.onerror=null; this.src='/icons/icon-192.png'; this.title='Comprobante no disponible en disco';">` 
+                : `<span style="font-size: 10px; color: #94a3b8;">Sin foto</span>`;
 
 
 
@@ -1132,16 +1132,29 @@ async function openValidateExpenseModal(expenseId) {
     const phEl = document.getElementById("val_receipt_placeholder");
 
     if (imgEl && exp.receipt_image_path) {
-        imgEl.src = exp.receipt_image_path;
+        const fullUrl = resolveReceiptUrl(exp.receipt_image_path);
+        imgEl.src = fullUrl;
         imgEl.style.display = "block";
         if (phEl) phEl.style.display = "none";
-        linkEl.href = exp.receipt_image_path;
-        linkEl.style.display = "inline-block";
+        if (linkEl) {
+            linkEl.href = fullUrl;
+            linkEl.style.display = "inline-block";
+        }
+        imgEl.onerror = function() {
+            imgEl.style.display = "none";
+            if (phEl) {
+                phEl.style.display = "block";
+                phEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b; font-size: 24px;"></i><p style="margin: 4px 0 0 0; font-size: 11px; color: #b45309;">Comprobante no disponible en disco<br><span style="font-size:10px; color:#64748b;">(Reiniciado tras actualización de servidor)</span></p>`;
+            }
+        };
     } else if (imgEl) {
         imgEl.src = "";
         imgEl.style.display = "none";
-        if (phEl) phEl.style.display = "block";
-        linkEl.style.display = "none";
+        if (phEl) {
+            phEl.style.display = "block";
+            phEl.innerHTML = `<i class="fa-regular fa-image" style="font-size: 28px; color: #94a3b8;"></i><p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Sin comprobante digital</p>`;
+        }
+        if (linkEl) linkEl.style.display = "none";
     }
 
     if (document.getElementById("val_is_tax_exempt")) {
@@ -1615,7 +1628,7 @@ function renderExpensesLogTable(list) {
 
         const viewBtn = e.receipt_image_path
             ? `<button onclick="viewReceiptImageById(${e.id})" class="btn-primary" style="padding:3px 8px; font-size:11px; background:#0284c7; cursor:pointer;" title="Ver Comprobante Digital"><i class="fa-solid fa-eye"></i></button>`
-            : `<span style="color:#cbd5e1; font-size:11px;">-</span>`;
+            : `<button onclick="viewReceiptImageById(${e.id})" class="btn-secondary" style="padding:2px 6px; font-size:10px; color:#94a3b8; border:1px dashed #cbd5e1; background:transparent; cursor:pointer;" title="Adjuntar Comprobante"><i class="fa-solid fa-plus"></i></button>`;
 
         return `
             <tr>
@@ -1677,81 +1690,156 @@ window.changeExpensesLogPageSize = changeExpensesLogPageSize;
 
 
 
-window.viewReceiptImageById = function(expId) {
-
-    const exp = (allExpensesCache || []).find(e => e.id === expId);
-
-    if (!exp || !exp.receipt_image_path) {
-
-        alert("Este gasto no tiene imagen de comprobante digital adjunta.");
-
-        return;
-
+function resolveReceiptUrl(path) {
+    if (!path) return '';
+    if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
     }
+    const backendBase = (window.API_BASE || window.location.origin).replace(/\/api\/v1\/?$/, '');
+    return path.startsWith('/') ? (backendBase + path) : (backendBase + '/' + path);
+}
+window.resolveReceiptUrl = resolveReceiptUrl;
 
-    viewReceiptImage(exp.receipt_image_path);
-
+window.viewReceiptImageById = function(expId) {
+    const exp = (allExpensesCache || []).find(e => e.id === expId);
+    if (!exp) {
+        alert("Gasto no encontrado.");
+        return;
+    }
+    viewReceiptImage(exp.receipt_image_path || '', expId);
 };
 
-
+window.handleModalReceiptUpload = async function(file) {
+    if (!file) return;
+    const expId = window.currentViewingExpenseId;
+    if (!expId) {
+        alert("No se ha seleccionado ningún gasto.");
+        return;
+    }
+    const btnText = document.getElementById("receiptViewerUploadText");
+    try {
+        if (btnText) btnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Subiendo...';
+        
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await authFetch(`${API_BASE}/expenses/${expId}/receipt`, {
+            method: "POST",
+            body: formData
+        });
+        if (!res.ok) throw new Error("Error en servidor al guardar comprobante");
+        const data = await res.json();
+        
+        // Actualizar caché en memoria
+        if (window.allExpensesCache) {
+            const exp = window.allExpensesCache.find(e => e.id === expId);
+            if (exp) {
+                exp.receipt_image_path = data.receipt_image_path;
+                exp.has_receipt = true;
+            }
+        }
+        
+        // Actualizar modal
+        viewReceiptImage(data.receipt_image_path, expId);
+        
+        // Refrescar listados
+        if (typeof window.loadExpensesLog === 'function') {
+            window.loadExpensesLog();
+        }
+        if (typeof window.loadExpensesInbox === 'function') {
+            window.loadExpensesInbox();
+        }
+        
+        alert("¡Comprobante digital actualizado y respaldado permanentemente en la base de datos!");
+    } catch (err) {
+        console.error(err);
+        alert("Error al subir el comprobante: " + err.message);
+    } finally {
+        if (btnText) btnText.innerHTML = 'Adjuntar / Reemplazar Foto';
+    }
+};
 
 window.openReceiptInNewTab = function() {
-
     const imgEl = document.getElementById("receiptViewerImg");
-
     if (!imgEl || !imgEl.src) return;
-
     const src = imgEl.src;
-
     if (src.startsWith("data:")) {
-
         const w = window.open("");
-
         w.document.write(`<html><head><title>Comprobante DALOR</title><style>body{margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;}img{max-width:98%;max-height:98vh;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);}</style></head><body><img src="${src}"></body></html>`);
-
     } else {
-
         window.open(src, "_blank");
-
     }
-
 };
 
-
-
-function viewReceiptImage(imagePath) {
-
-    if (!imagePath) return;
-
-    const fullUrl = (imagePath.startsWith('http') || imagePath.startsWith('data:')) ? imagePath : (imagePath.startsWith('/') ? imagePath : '/' + imagePath);
-
+function viewReceiptImage(imagePath, expId = null) {
+    window.currentViewingExpenseId = expId;
+    const fullUrl = imagePath ? resolveReceiptUrl(imagePath) : '';
     const imgEl = document.getElementById("receiptViewerImg");
-
     const linkEl = document.getElementById("receiptViewerDownload");
+    const errContainer = document.getElementById("receiptViewerError");
+    const uploadBtn = document.getElementById("receiptViewerUploadBtn");
 
-    if (imgEl) imgEl.src = fullUrl;
+    if (uploadBtn) {
+        uploadBtn.style.display = expId ? "inline-flex" : "none";
+    }
+
+    if (errContainer) {
+        errContainer.classList.add("hidden");
+        errContainer.innerHTML = '';
+    }
+
+    if (imgEl) {
+        if (!fullUrl) {
+            imgEl.style.display = "none";
+            if (errContainer) {
+                errContainer.classList.remove("hidden");
+                errContainer.innerHTML = `
+                    <div style="padding: 24px; text-align: center; color: #94a3b8;">
+                        <i class="fa-solid fa-receipt" style="font-size: 40px; color: #64748b; margin-bottom: 12px; display: block;"></i>
+                        <h4 style="color: #f1f5f9; margin-bottom: 6px; font-size: 14px;">Este gasto no tiene comprobante adjunto</h4>
+                        <p style="font-size: 12px; margin-bottom: 16px;">Puedes adjuntar una foto o factura en PDF usando el botón inferior.</p>
+                    </div>
+                `;
+            }
+        } else {
+            imgEl.style.display = "block";
+            imgEl.src = fullUrl;
+            imgEl.onerror = function() {
+                imgEl.style.display = "none";
+                if (errContainer) {
+                    errContainer.classList.remove("hidden");
+                    errContainer.innerHTML = `
+                        <div style="padding: 20px; text-align: center;">
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 36px; color: #f59e0b; margin-bottom: 10px; display: block;"></i>
+                            <h4 style="color: #fbbf24; margin-bottom: 6px; font-size: 13px;">Comprobante físico no encontrado en disco</h4>
+                            <p style="font-size: 11px; color: #94a3b8; max-width: 420px; margin: 0 auto 14px auto;">
+                                El archivo temporal se reinició tras la actualización del servidor en la nube. 
+                                Adjunta la foto nuevamente para resguardarla <strong>permanentemente</strong> en la base de datos.
+                            </p>
+                        </div>
+                    `;
+                }
+            };
+        }
+    }
 
     if (linkEl) {
-
-        linkEl.href = fullUrl;
-
-        if (fullUrl.startsWith('data:')) {
-
-            linkEl.setAttribute('download', `Comprobante_DALOR_${Date.now()}.jpg`);
-
-            linkEl.onclick = function(e) { e.preventDefault(); openReceiptInNewTab(); };
-
+        if (fullUrl) {
+            linkEl.style.display = "inline-flex";
+            linkEl.href = fullUrl;
+            if (fullUrl.startsWith('data:')) {
+                linkEl.setAttribute('download', `Comprobante_DALOR_${Date.now()}.jpg`);
+                linkEl.onclick = function(e) { e.preventDefault(); openReceiptInNewTab(); };
+            } else {
+                linkEl.onclick = null;
+            }
         } else {
-
-            linkEl.onclick = null;
-
+            linkEl.style.display = "none";
         }
-
     }
 
     openModal("modalReceiptViewer");
-
 }
+window.viewReceiptImage = viewReceiptImage;
 
 
 

@@ -95,6 +95,23 @@ def init_db():
         except Exception:
             pass
 
+    # Migración de resguardo permanente de comprobantes en disco a Base64 en PostgreSQL
+    try:
+        import base64
+        with engine.begin() as conn:
+            rows = conn.execute(text("SELECT id, receipt_image_path FROM expenses WHERE receipt_image_path LIKE '/uploads/%'")).fetchall()
+            for r in rows:
+                exp_id, rpath = r[0], r[1]
+                local_fname = rpath.replace("/uploads/", "")
+                local_fpath = os.path.join(settings.UPLOAD_DIR, local_fname)
+                if os.path.exists(local_fpath):
+                    with open(local_fpath, "rb") as f_img:
+                        b = f_img.read()
+                        mime = "application/pdf" if local_fname.lower().endswith(".pdf") else "image/jpeg"
+                        b64_url = f"data:{mime};base64,{base64.b64encode(b).decode('ascii')}"
+                        conn.execute(text("UPDATE expenses SET receipt_image_path = :b64 WHERE id = :id"), {"b64": b64_url, "id": exp_id})
+    except Exception as mig_img_err:
+        print(f"--> Warning during receipt image migration: {mig_img_err}")
 
     db = SessionLocal()
     try:

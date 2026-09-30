@@ -46,11 +46,47 @@ class ManualExpenseCreate(BaseModel):
 
 @router.get("/{expense_id}/receipt")
 def get_expense_receipt(expense_id: int, db: Session = Depends(get_db)):
-    exp = db.query(Expense.receipt_image_path).filter(Expense.id == expense_id).first()
-    if not exp or not exp[0]:
+    exp = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not exp or not exp.receipt_image_path:
         raise HTTPException(status_code=404, detail="Comprobante digital no encontrado.")
-    fresh_url = R2StorageService.get_file_url(exp[0])
+    fresh_url = R2StorageService.get_file_url(exp.receipt_image_path)
+    if fresh_url and fresh_url.startswith("data:") and exp.receipt_image_path.startswith("/uploads/"):
+        try:
+            exp.receipt_image_path = fresh_url
+            db.commit()
+        except Exception:
+            pass
     return {"receipt_image_path": fresh_url}
+
+@router.post("/{expense_id}/receipt")
+async def upload_expense_receipt(
+    expense_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Adjunta o actualiza el comprobante/factura de un gasto existente,
+    resguardándolo de forma permanente e inmune a reinicios.
+    """
+    exp = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not exp:
+        raise HTTPException(status_code=404, detail="Gasto no encontrado.")
+    
+    contents = await file.read()
+    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    unique_name = f"receipt_{expense_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    
+    image_url, _ = R2StorageService.upload_receipt_image(contents, unique_name)
+    exp.receipt_image_path = image_url
+    exp.has_receipt = True
+    db.commit()
+    db.refresh(exp)
+    
+    return {
+        "success": True,
+        "message": "Comprobante digital actualizado y respaldado exitosamente.",
+        "receipt_image_path": image_url
+    }
 
 @router.get("/", response_model=List[ExpenseOut])
 def get_expenses(
@@ -269,11 +305,9 @@ async def quick_upload_receipt(
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
     unique_name = f"campo_{uuid.uuid4().hex[:8]}.{ext}"
-    saved_path = os.path.join(settings.UPLOAD_DIR, unique_name)
 
     contents = await file.read()
-    with open(saved_path, "wb") as f:
-        f.write(contents)
+    image_url, _ = R2StorageService.upload_receipt_image(contents, unique_name)
 
     # Buscar categoría default operativa (10.0 Honorarios/Insumos)
     cat = db.query(ExpenseCategory).first()
@@ -299,7 +333,7 @@ async def quick_upload_receipt(
         amount_usd=amount_usd_est or 0.0,
         status="pendiente_validacion",
         has_receipt=True,
-        receipt_image_path=f"/uploads/{unique_name}"
+        receipt_image_path=image_url
     )
     db.add(new_pending)
     db.commit()
@@ -319,7 +353,7 @@ async def quick_upload_receipt(
         "success": True,
         "message": "¡Comprobante enviado con éxito a la Bandeja de Administración!",
         "id": new_pending.id,
-        "image_url": f"/uploads/{unique_name}"
+        "image_url": image_url
     }
 
 @router.put("/inbox/{expense_id}/validate-impute")

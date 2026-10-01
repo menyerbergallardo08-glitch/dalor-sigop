@@ -719,7 +719,7 @@ function renderAssignedTags() {
 
 // Creador Dinámico de Etapas / Fases con Sub-campos de Tareas Operativas
 
-function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 0) {
+function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 0, defUnit = "dias") {
 
     phaseRowsCount++;
 
@@ -729,21 +729,13 @@ function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 
 
     const pNum = phaseRowsCount;
 
-
-
     if (typeof defTasks === 'string') {
-
         defTasks = defTasks.split(/[,;\.]\s+/).filter(t => t.trim().length > 0);
-
     }
 
     if (!Array.isArray(defTasks) || defTasks.length === 0) {
-
         defTasks = ["Tarea inicial de la etapa"];
-
     }
-
-
 
     const card = document.createElement("div");
 
@@ -752,8 +744,6 @@ function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 
     card.className = "project-phase-card";
 
     card.style.cssText = "background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px;";
-
-
 
     card.innerHTML = `
 
@@ -779,48 +769,32 @@ function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 
 
         </div>
 
-
-
         <!-- Campos de la Fase -->
-
-        <div style="display: grid; grid-template-columns: 3fr 1fr 1.2fr; gap: 10px;">
-
+        <div style="display: grid; grid-template-columns: 2.5fr 1.5fr 1.2fr; gap: 10px;">
             <div>
-
                 <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
-
                     Nombre de la Etapa / Hito
-
                 </label>
-
                 <input type="text" class="form-input ph-name" placeholder="Ej: Fase 1: Movilización & Permisos" value="${defName}" style="font-size: 12px; font-weight: 700;" required>
-
             </div>
-
             <div>
-
                 <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
-
-                    Duración (Días)
-
+                    Duración Estimada
                 </label>
-
-                <input type="number" class="form-input ph-days" placeholder="Días" value="${defDays}" style="font-size: 12px; font-weight: bold;">
-
+                <div style="display: flex; gap: 4px;">
+                    <input type="text" inputmode="decimal" class="form-input ph-duration-val" placeholder="Ej: 7" value="${defDays}" style="font-size: 12px; font-weight: bold; width: 55%;">
+                    <select class="form-select ph-duration-unit" style="font-size: 10.5px; padding: 4px 2px; width: 45%; font-weight: 700;">
+                        <option value="dias" ${defUnit === 'dias' ? 'selected' : ''}>Días</option>
+                        <option value="horas" ${defUnit === 'horas' ? 'selected' : ''}>Horas</option>
+                    </select>
+                </div>
             </div>
-
             <div>
-
                 <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
-
                     Presupuesto Fase ($)
-
                 </label>
-
-                <input type="number" step="0.01" class="form-input ph-cost" placeholder="Ppto ($)" value="${defCost}" style="font-size: 12px; font-weight: 800; color: var(--dalor-blue);">
-
+                <input type="text" inputmode="decimal" class="form-input ph-cost" placeholder="Ppto ($)" value="${defCost}" style="font-size: 12px; font-weight: 800; color: var(--dalor-blue);">
             </div>
-
         </div>
 
 
@@ -1036,69 +1010,43 @@ async function submitCreateProject(event) {
     let phases = [];
 
     phaseCards.forEach((card, idx) => {
-
-        const name = card.querySelector(".ph-name").value.trim();
-
-        const days = parseInt(card.querySelector(".ph-days").value) || 7;
-
-        const cost = parseFloat(card.querySelector(".ph-cost").value) || 0.0;
-
+        const name = card.querySelector(".ph-name")?.value.trim() || `Fase ${idx + 1}`;
+        const rawDur = card.querySelector(".ph-duration-val")?.value || card.querySelector(".ph-days")?.value || "7";
+        const durVal = parseLocalizedNumber(rawDur) || 7;
+        const durUnit = card.querySelector(".ph-duration-unit")?.value || "dias";
+        const cost = parseLocalizedNumber(card.querySelector(".ph-cost")?.value) || 0.0;
+        const days = durUnit === "horas" ? Math.max(1, Math.round(durVal / 8)) : Math.max(1, Math.round(durVal));
         
-
         const taskInputs = card.querySelectorAll(".ph-task-input");
-
         const tasksList = Array.from(taskInputs).map(inp => inp.value.trim()).filter(Boolean);
-
         const description = tasksList.length > 0 ? tasksList.join("; ") : name;
 
-
-
         phases.push({
-
             phase_number: idx + 1,
-
             name: name,
-
             description: description,
-
             duration_days: days,
-
+            duration_unit: durUnit,
+            estimated_duration: durVal,
             estimated_cost_usd: cost,
-
             status: "pendiente"
-
         });
-
     });
 
-
-
     const payload = {
-
         code: document.getElementById("new_proj_code").value,
-
         name: document.getElementById("new_proj_name").value,
-
         client_id: parseInt(document.getElementById("new_proj_client_id").value) || null,
-
         location: document.getElementById("new_proj_location").value,
-
         duration_days: parseInt(document.getElementById("new_proj_duration").value) || 30,
-
-        contract_amount_usd: parseFloat(document.getElementById("new_proj_contract").value) || 0.0,
-
+        execution_time: (document.getElementById("new_proj_execution_time")?.value || "").trim() || "15 días hábiles",
+        contract_amount_usd: parseLocalizedNumber(document.getElementById("new_proj_contract").value),
         scope_of_work: document.getElementById("new_proj_scope").value,
-
-        estimated_labor_usd: parseFloat(document.getElementById("new_proj_labor").value) || 0.0,
-
-        estimated_fuel_usd: parseFloat(document.getElementById("new_proj_fuel").value) || 0.0,
-
-        estimated_materials_usd: parseFloat(document.getElementById("new_proj_materials").value) || 0.0,
-
-        estimated_tools_usd: parseFloat(document.getElementById("new_proj_tools").value) || 0.0,
-
-        estimated_services_usd: parseFloat(document.getElementById("new_proj_services").value) || 0.0,
-
+        estimated_labor_usd: parseLocalizedNumber(document.getElementById("new_proj_labor")?.value),
+        estimated_fuel_usd: parseLocalizedNumber(document.getElementById("new_proj_fuel")?.value),
+        estimated_materials_usd: parseLocalizedNumber(document.getElementById("new_proj_materials")?.value),
+        estimated_tools_usd: parseLocalizedNumber(document.getElementById("new_proj_tools")?.value),
+        estimated_services_usd: parseLocalizedNumber(document.getElementById("new_proj_services")?.value),
         phases: phases,
 
         assigned_personnel_ids: selectedPersonnelIds,
@@ -1631,6 +1579,10 @@ function renderProjectCardHtml(p, canSeeFinances, isDirector) {
 
                 <button type="button" onclick="navigateToProjectGuides(${p.id}, '${p.code}')" class="btn-secondary" style="padding: 6px 4px; font-size: 10.5px; background: #f8fafc; color: #0284c7; border: 1px solid #cbd5e1; text-align: center; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;" title="Consultar Guías de Despacho emitidas para esta obra">
                     <i class="fa-solid fa-truck"></i> Guías
+                </button>
+
+                <button type="button" onclick="openEditProjectModal(${p.id})" class="btn-secondary" style="padding: 6px 4px; font-size: 10.5px; background: #fffbeb; color: #b45309; border: 1.5px solid #fde68a; font-weight: 800; text-align: center; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;" title="Reabrir / Editar Proyecto">
+                    <i class="fa-solid fa-pen-to-square"></i> Editar
                 </button>
 
                 <button type="button" onclick="viewProjectDetails(${p.id})" class="btn-primary" style="padding: 6px 4px; font-size: 10.5px; text-align: center; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;" title="Ver Ficha y Etapas del Proyecto">
@@ -3374,8 +3326,11 @@ async function submitAddProjectPhase(event) {
     if (event) event.preventDefault();
     const pId = document.getElementById("add_phase_project_id")?.value;
     const name = document.getElementById("add_phase_name")?.value?.trim();
-    const days = parseInt(document.getElementById("add_phase_days")?.value) || 7;
-    const cost = parseFloat(document.getElementById("add_phase_cost")?.value) || 0.0;
+    const rawDur = document.getElementById("add_phase_duration_val")?.value || document.getElementById("add_phase_days")?.value || "7";
+    const durVal = parseLocalizedNumber(rawDur) || 7;
+    const durUnit = document.getElementById("add_phase_duration_unit")?.value || "dias";
+    const days = durUnit === "horas" ? Math.max(1, Math.round(durVal / 8)) : Math.max(1, Math.round(durVal));
+    const cost = parseLocalizedNumber(document.getElementById("add_phase_cost")?.value) || 0.0;
     const resp = document.getElementById("add_phase_responsible")?.value?.trim() || "";
 
     if (!pId || !name) {
@@ -3390,6 +3345,8 @@ async function submitAddProjectPhase(event) {
             body: JSON.stringify({
                 name: name,
                 duration_days: days,
+                duration_unit: durUnit,
+                estimated_duration: durVal,
                 estimated_cost_usd: cost,
                 responsible_person: resp
             })
@@ -3554,8 +3511,215 @@ async function releaseProjectResource(resourceType, resourceId, resourceName, ta
     }
 }
 
+// ==============================================================================
+// PUNTO 8: REABRIR Y EDITAR PROYECTO GUARDADO (MODAL & SUBMIT)
+// ==============================================================================
+let editPhaseCount = 0;
+
+function addEditProjectPhaseRow(defName = "", defDuration = 7, defUnit = "dias", defCost = 0, defDesc = "") {
+    editPhaseCount++;
+    const container = document.getElementById("editProjectPhasesContainer");
+    if (!container) return;
+
+    const rowId = `edit_phase_row_${editPhaseCount}`;
+    const div = document.createElement("div");
+    div.id = rowId;
+    div.className = "edit-phase-row";
+    div.style.cssText = "background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; display: grid; grid-template-columns: 2fr 1fr 1fr 24px; gap: 8px; align-items: center;";
+
+    div.innerHTML = `
+        <div>
+            <label style="font-size: 9.5px; font-weight: 700; color: #64748b; display: block;">Hito / Etapa:</label>
+            <input type="text" class="form-input eph-name" value="${(defName || '').replaceAll('"', '&quot;')}" placeholder="Nombre de etapa" style="font-size: 11px; padding: 4px 6px; font-weight: 700;" required>
+            <input type="hidden" class="eph-desc" value="${(defDesc || defName || '').replaceAll('"', '&quot;')}">
+        </div>
+        <div>
+            <label style="font-size: 9.5px; font-weight: 700; color: #64748b; display: block;">Duración:</label>
+            <div style="display: flex; gap: 3px;">
+                <input type="text" inputmode="decimal" class="form-input eph-dur-val" value="${defDuration}" style="font-size: 11px; padding: 4px 4px; font-weight: bold; width: 55%;">
+                <select class="form-select eph-dur-unit" style="font-size: 10px; padding: 3px 2px; width: 45%; font-weight: 700;">
+                    <option value="dias" ${defUnit === 'dias' ? 'selected' : ''}>Días</option>
+                    <option value="horas" ${defUnit === 'horas' ? 'selected' : ''}>Horas</option>
+                </select>
+            </div>
+        </div>
+        <div>
+            <label style="font-size: 9.5px; font-weight: 700; color: #64748b; display: block;">Ppto ($):</label>
+            <input type="text" inputmode="decimal" class="form-input eph-cost" value="${defCost}" style="font-size: 11px; padding: 4px 6px; font-weight: 800; color: var(--dalor-blue);">
+        </div>
+        <button type="button" onclick="document.getElementById('${rowId}')?.remove()" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding-top: 10px;">&times;</button>
+    `;
+    container.appendChild(div);
+}
+
+async function openEditProjectModal(projectId) {
+    try {
+        const token = window.authToken || localStorage.getItem('dalor_token') || null;
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        const res = await authFetch(`${API_BASE}/projects/${projectId}/details`, { headers });
+        if (!res.ok) throw new Error("No se pudo cargar la información del proyecto.");
+        const p = await res.json();
+
+        document.getElementById("edit_project_id").value = p.id;
+        document.getElementById("edit_project_code").value = p.code || "";
+        document.getElementById("edit_project_name").value = p.name || "";
+        document.getElementById("edit_project_location").value = p.location || "Sede Central";
+        document.getElementById("edit_project_status").value = (p.status || "activo").toLowerCase();
+        document.getElementById("edit_project_duration").value = p.duration_days || 30;
+        document.getElementById("edit_project_execution_time").value = p.execution_time || `${p.duration_days || 15} días hábiles`;
+        document.getElementById("edit_project_contract").value = p.contract_amount_usd || 0;
+        document.getElementById("edit_project_scope").value = p.scope_of_work || "";
+
+        // Bolsas
+        document.getElementById("edit_project_labor").value = p.estimated_labor_usd || 0;
+        document.getElementById("edit_project_fuel").value = p.estimated_fuel_usd || 0;
+        document.getElementById("edit_project_materials").value = p.estimated_materials_usd || 0;
+        document.getElementById("edit_project_tools").value = p.estimated_tools_usd || 0;
+        document.getElementById("edit_project_services").value = p.estimated_services_usd || 0;
+
+        // Clientes dropdown
+        const clientSel = document.getElementById("edit_project_client_id");
+        if (clientSel) {
+            const listCli = (window.allClients && window.allClients.length > 0) ? window.allClients : (allClients || []);
+            let opts = `<option value="">-- Seleccionar Cliente --</option>` +
+                listCli.map(c => `<option value="${c.id}" ${c.id === p.client_id ? 'selected' : ''}>[${c.code}] ${c.name}</option>`).join('');
+            clientSel.innerHTML = opts;
+            if (p.client_id) clientSel.value = String(p.client_id);
+        }
+
+        // Fases
+        const phasesContainer = document.getElementById("editProjectPhasesContainer");
+        if (phasesContainer) {
+            phasesContainer.innerHTML = "";
+            editPhaseCount = 0;
+            if (p.phases && p.phases.length > 0) {
+                p.phases.forEach(ph => {
+                    const durUnit = ph.duration_unit || "dias";
+                    const durVal = ph.estimated_duration !== undefined ? ph.estimated_duration : (ph.duration_days || 7);
+                    addEditProjectPhaseRow(ph.name, durVal, durUnit, ph.estimated_cost_usd || 0, ph.description || ph.name);
+                });
+            } else {
+                addEditProjectPhaseRow("Fase 1: Ejecución Inicial", 7, "dias", 0);
+            }
+        }
+
+        if (typeof window.openModal === 'function') {
+            window.openModal("modalEditProject");
+        } else {
+            document.getElementById("modalEditProject")?.classList.remove("hidden");
+        }
+    } catch (err) {
+        console.error("Error abriendo modal de edición de proyecto:", err);
+        alert("Error cargando proyecto para edición: " + err.message);
+    }
+}
+
+async function submitEditProject(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    const projId = document.getElementById("edit_project_id")?.value;
+    if (!projId) return;
+
+    const clientId = parseInt(document.getElementById("edit_project_client_id")?.value) || null;
+    const name = (document.getElementById("edit_project_name")?.value || "").trim();
+    if (!name) {
+        alert("El nombre de la obra es obligatorio.");
+        return;
+    }
+
+    // Colectar fases
+    const phaseRows = document.querySelectorAll("#editProjectPhasesContainer .edit-phase-row");
+    let phases = [];
+    phaseRows.forEach((row, idx) => {
+        const phName = row.querySelector(".eph-name")?.value.trim() || `Fase ${idx + 1}`;
+        const rawDur = row.querySelector(".eph-dur-val")?.value || "7";
+        const durVal = parseLocalizedNumber(rawDur) || 7;
+        const durUnit = row.querySelector(".eph-dur-unit")?.value || "dias";
+        const cost = parseLocalizedNumber(row.querySelector(".eph-cost")?.value) || 0.0;
+        const desc = row.querySelector(".eph-desc")?.value || phName;
+        const days = durUnit === "horas" ? Math.max(1, Math.round(durVal / 8)) : Math.max(1, Math.round(durVal));
+
+        phases.push({
+            phase_number: idx + 1,
+            name: phName,
+            description: desc,
+            duration_days: days,
+            duration_unit: durUnit,
+            estimated_duration: durVal,
+            estimated_cost_usd: cost,
+            status: "pendiente"
+        });
+    });
+
+    const payload = {
+        name: name,
+        client_id: clientId,
+        location: (document.getElementById("edit_project_location")?.value || "Sede Central").trim(),
+        status: document.getElementById("edit_project_status")?.value || "activo",
+        duration_days: parseInt(document.getElementById("edit_project_duration")?.value) || 30,
+        execution_time: (document.getElementById("edit_project_execution_time")?.value || "").trim() || "15 días hábiles",
+        contract_amount_usd: parseLocalizedNumber(document.getElementById("edit_project_contract")?.value),
+        scope_of_work: document.getElementById("edit_project_scope")?.value || "",
+        estimated_labor_usd: parseLocalizedNumber(document.getElementById("edit_project_labor")?.value),
+        estimated_fuel_usd: parseLocalizedNumber(document.getElementById("edit_project_fuel")?.value),
+        estimated_materials_usd: parseLocalizedNumber(document.getElementById("edit_project_materials")?.value),
+        estimated_tools_usd: parseLocalizedNumber(document.getElementById("edit_project_tools")?.value),
+        estimated_services_usd: parseLocalizedNumber(document.getElementById("edit_project_services")?.value),
+        phases: phases
+    };
+
+    const btnSubmit = document.getElementById("btnSubmitEditProject");
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+    }
+
+    try {
+        const token = window.authToken || localStorage.getItem('dalor_token') || null;
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await authFetch(`${API_BASE}/projects/${projId}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al actualizar el proyecto");
+        }
+
+        if (typeof window.closeModal === 'function') {
+            window.closeModal("modalEditProject");
+        } else {
+            document.getElementById("modalEditProject")?.classList.add("hidden");
+        }
+
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(`✅ Proyecto actualizado exitosamente.`, "success");
+        } else {
+            alert("Proyecto actualizado exitosamente.");
+        }
+
+        await loadProjectsList();
+    } catch (err) {
+        console.error("Error guardando edición de proyecto:", err);
+        alert("Error al actualizar proyecto: " + err.message);
+    } finally {
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Obra';
+        }
+    }
+}
+
 // --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
 if (typeof window !== 'undefined') {
+    window.openEditProjectModal = openEditProjectModal;
+    window.addEditProjectPhaseRow = addEditProjectPhaseRow;
+    window.submitEditProject = submitEditProject;
     window.addPlanResource = addPlanResource;
     window.addProjectPhaseRow = addProjectPhaseRow;
     window.addProjectPhaseTask = addProjectPhaseTask;
@@ -3637,5 +3801,6 @@ export {
     submitProjectAddendum, goToProjectCxC,
     openAddPhaseModal, submitAddProjectPhase, addProjectTask, deleteProjectTask,
     openDirectResourceAssignModal, submitDirectResourceAssign, releaseProjectResource,
-    onPlanMaterialSelected, updatePlanMaterialsCostTotal, filterPlanSelect
+    onPlanMaterialSelected, updatePlanMaterialsCostTotal, filterPlanSelect,
+    openEditProjectModal, addEditProjectPhaseRow, submitEditProject
 };

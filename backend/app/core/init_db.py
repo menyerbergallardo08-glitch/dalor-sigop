@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import text, func
 from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
+import app.models.models
 from app.models.models import (
     User, Role, Client, Project, ProjectPhase, Asset, Personnel, Material,
     ExpenseCategory, CostCenter, ServiceItem, FinancialAccount
@@ -86,7 +87,22 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_personnel_project_id ON personnel (current_project_id);",
         "CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);",
         "CREATE INDEX IF NOT EXISTS idx_expenses_asset_id ON expenses (asset_id);",
-        "CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id);"
+        "CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id);",
+        f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_rate FLOAT DEFAULT 0.0;",
+        f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_withholding_usd FLOAT DEFAULT 0.0;",
+        f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_voucher_number VARCHAR(50);",
+        f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_voucher_date TIMESTAMP;",
+        f"ALTER TABLE quotations ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}coletilla_divisas BOOLEAN DEFAULT TRUE;",
+        f"ALTER TABLE quotations ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}coletilla_modalidad BOOLEAN DEFAULT TRUE;",
+        f"ALTER TABLE project_phases ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}duration_unit VARCHAR(20) DEFAULT 'dias';",
+        f"ALTER TABLE project_phases ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}estimated_duration FLOAT DEFAULT 7.0;",
+        f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}guide_type VARCHAR(50) DEFAULT 'traslado_externo';",
+        f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}delivered_by_staff VARCHAR(150);",
+        f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}received_by_staff VARCHAR(150);",
+        "ALTER TABLE dispatch_guides ALTER COLUMN destination_address DROP NOT NULL;",
+        "ALTER TABLE dispatch_guides ALTER COLUMN driver_name DROP NOT NULL;",
+        "ALTER TABLE dispatch_guides ALTER COLUMN driver_id_doc DROP NOT NULL;",
+        "ALTER TABLE dispatch_guides ALTER COLUMN vehicle_plate DROP NOT NULL;"
     ]
     for stmt in extra_stmts:
         try:

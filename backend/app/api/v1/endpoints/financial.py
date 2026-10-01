@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File
+import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func, text
 from datetime import datetime, timedelta
@@ -73,6 +76,9 @@ class PayableCreate(BaseModel):
     is_withholding_applied: Optional[bool] = True
     islr_rate: Optional[float] = 2.0
     islr_withholding_usd: Optional[float] = 0.0
+    municipal_rate: Optional[float] = 0.0
+    municipal_withholding_usd: Optional[float] = 0.0
+    municipal_voucher_number: Optional[str] = None
     tax_retained_usd: Optional[float] = 0.0
     net_amount_usd: Optional[float] = 0.0
     exchange_rate: float = 800.0
@@ -99,6 +105,9 @@ class PayableUpdate(BaseModel):
     withholding_voucher_number: Optional[str] = None
     islr_rate: Optional[float] = None
     islr_withholding_usd: Optional[float] = None
+    municipal_rate: Optional[float] = None
+    municipal_withholding_usd: Optional[float] = None
+    municipal_voucher_number: Optional[str] = None
     amount_usd: Optional[float] = None
     exchange_rate: Optional[float] = None
     notes: Optional[str] = None
@@ -1023,6 +1032,9 @@ def get_payables(
             "tax_withholding_usd": p.tax_withholding_usd,
             "islr_rate": p.islr_rate,
             "islr_withholding_usd": p.islr_withholding_usd,
+            "municipal_rate": p.municipal_rate or 0.0,
+            "municipal_withholding_usd": p.municipal_withholding_usd or 0.0,
+            "municipal_voucher_number": p.municipal_voucher_number,
             "net_amount_usd": p.net_amount_usd,
             "paid_amount_usd": p.paid_amount_usd,
             "balance_usd": p.balance_usd,
@@ -1190,7 +1202,9 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
         ret_iva_usd = p_in.tax_withholding_usd if (p_in.tax_withholding_usd and p_in.tax_withholding_usd > 0) else round(tax_usd * (ret_rate / 100.0), 2)
         islr_r = p_in.islr_rate if p_in.islr_rate is not None else 0.0
         ret_islr_usd = p_in.islr_withholding_usd if (p_in.islr_withholding_usd and p_in.islr_withholding_usd > 0) else (round(base_usd * (islr_r / 100.0), 2) if islr_r > 0 else 0.0)
-        net_usd = round(p_in.amount_usd - ret_iva_usd - ret_islr_usd, 2)
+        mun_r = p_in.municipal_rate if p_in.municipal_rate is not None else 0.0
+        ret_mun_usd = p_in.municipal_withholding_usd if (p_in.municipal_withholding_usd and p_in.municipal_withholding_usd > 0) else (round(base_usd * (mun_r / 100.0), 2) if mun_r > 0 else 0.0)
+        net_usd = round(p_in.amount_usd - ret_iva_usd - ret_islr_usd - ret_mun_usd, 2)
         
         # Correlativo normativo SENIAT YYYYMM + 8 dígitos
         now = datetime.utcnow()
@@ -1239,6 +1253,10 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
         tax_withholding_usd=ret_iva_usd,
         islr_rate=islr_r,
         islr_withholding_usd=ret_islr_usd,
+        municipal_rate=p_in.municipal_rate or 0.0,
+        municipal_withholding_usd=p_in.municipal_withholding_usd or 0.0,
+        municipal_voucher_number=p_in.municipal_voucher_number,
+        municipal_voucher_date=datetime.utcnow() if (p_in.municipal_withholding_usd and p_in.municipal_withholding_usd > 0) else None,
         net_amount_usd=net_usd,
         amount_usd=p_in.amount_usd,
         amount_bs=amount_bs,
@@ -1418,6 +1436,81 @@ def get_payable_islr_withholding_voucher(payable_id: int, db: Session = Depends(
                 "islr_withholding_usd": islr_usd,
                 "islr_withholding_bs": islr_bs,
                 "net_payable_bs": net_bs,
+                "exchange_rate": rate_bcv
+            }
+        }
+    }
+
+@router.get("/cxp/{payable_id}/municipal-withholding-voucher")
+def get_payable_municipal_withholding_voucher(payable_id: int, db: Session = Depends(get_db)):
+    """
+    Retorna la Constancia Oficial de Retención de Impuesto Municipal
+    (Alcaldía del Municipio Guacara, Estado Carabobo) para imprimir o exportar a PDF.
+    """
+    p = db.query(AccountPayable).filter(AccountPayable.id == payable_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Factura o cuenta por pagar no encontrada.")
+
+    v_date = p.municipal_voucher_date or p.withholding_voucher_date or p.issue_date or datetime.utcnow()
+    v_num = p.municipal_voucher_number or f"{v_date.strftime('%Y%m')}{p.id:04d}"
+
+    rate_bcv = p.exchange_rate or 859.06
+    base_usd = p.taxable_base_usd if (p.taxable_base_usd and p.taxable_base_usd > 0) else round(p.amount_usd / 1.16, 2)
+    base_bs = round(base_usd * rate_bcv, 2)
+    
+    mun_rate = p.municipal_rate if (p.municipal_rate is not None and p.municipal_rate > 0) else 3.0
+    mun_usd = p.municipal_withholding_usd if (p.municipal_withholding_usd and p.municipal_withholding_usd > 0) else round(base_usd * (mun_rate / 100.0), 2)
+    mun_bs = round(mun_usd * rate_bcv, 2)
+    
+    total_bs = round(p.amount_usd * rate_bcv, 2)
+    tax_bs = round((p.tax_amount_usd or (p.amount_usd - base_usd)) * rate_bcv, 2)
+
+    meses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"]
+    mes_nombre = meses[v_date.month - 1]
+
+    # Domicilio o teléfono del proveedor
+    prov_address = "CLLE 64. SECTOR TIERRA NEGRA. MARACAIBO, EDO. ZULIA." if "GANDALF" in p.supplier_name.upper() else "ZONA INDUSTRIAL EL TIGRE, GUACARA, EDO. CARABOBO"
+    prov_phone = "0261-2009662" if "GANDALF" in p.supplier_name.upper() else "0245-5648911"
+
+    return {
+        "success": True,
+        "voucher": {
+            "voucher_number": v_num,
+            "period": {
+                "year": v_date.year,
+                "month": mes_nombre,
+                "day": v_date.day
+            },
+            "legal_base": "Reglamento y Ordenanza sobre Actividades Económicas de Industria, Comercio, Servicios o de Índole Similar del Municipio Guacara, Estado Carabobo.",
+            "legal_article": "Articulo 24: Los Agentes de retencion estan obligados a entregar a los contribuyentes, un comprobante por cada retencion de impuesto que les practiquen en el cual se indique, entre otra informacion, el monto de lo pagado o abonado en cuenta y la cantidad retenida (...)",
+            "agent": {
+                "name": "METALMECANICA DALOR, C.A.",
+                "rif": "J-31601195-0",
+                "address": "AV. CAMARA DE LAS INDUSTRIAS ZONA INDUSTRIAL EL TIGRE GALPON N° 10 GUACARA EDO. CARABOBO",
+                "email": "metalmecanicadalorca@yahoo.com"
+            },
+            "supplier": {
+                "name": p.supplier_name,
+                "rif": p.supplier_rif or "J-00000000-0",
+                "address": prov_address,
+                "phone": prov_phone
+            },
+            "invoice": {
+                "invoice_date": p.issue_date.strftime("%d/%m/%Y") if p.issue_date else v_date.strftime("%d/%m/%Y"),
+                "invoice_number": p.invoice_number or f"FAC-{p.id}",
+                "control_number": p.control_number or p.invoice_number or f"00-{p.id}",
+                "total_bs": total_bs,
+                "total_usd": p.amount_usd,
+                "base_bs": base_bs,
+                "base_usd": base_usd,
+                "tax_bs": tax_bs,
+                "tax_usd": p.tax_amount_usd or round(p.amount_usd - base_usd, 2)
+            },
+            "withholding": {
+                "base_bs": base_bs,
+                "rate_pct": mun_rate,
+                "amount_bs": mun_bs,
+                "amount_usd": mun_usd,
                 "exchange_rate": rate_bcv
             }
         }
@@ -2559,5 +2652,595 @@ def get_bi_metrics(
         "payment_methods": payment_methods_list,
         "service_lines": service_lines_list,
         "projects_pnl": projects_pnl
+    }
+
+
+# ==============================================================================
+# 5. LIBROS FISCALES OFICIALES SENIAT (VENTAS Y COMPRAS EN EXCEL Y PDF)
+# ==============================================================================
+
+@router.get("/reports/libro-ventas/data")
+def get_libro_ventas_data(
+    month: Optional[int] = Query(None, ge=1, le=12),
+    year: Optional[int] = Query(None, ge=2020, le=2040),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna los datos del Libro de Ventas en formato oficial SENIAT para renderizado y PDF.
+    """
+    query = db.query(AccountReceivable).options(
+        joinedload(AccountReceivable.client),
+        joinedload(AccountReceivable.project)
+    )
+    if year:
+        query = query.filter(func.extract('year', AccountReceivable.issue_date) == year)
+    if month:
+        query = query.filter(func.extract('month', AccountReceivable.issue_date) == month)
+
+    receivables = query.order_by(AccountReceivable.issue_date.asc(), AccountReceivable.id.asc()).all()
+
+    items = []
+    tot_ventas_bs = 0.0
+    tot_base_bs = 0.0
+    tot_iva_bs = 0.0
+    tot_ret_iva_bs = 0.0
+    tot_ret_islr_bs = 0.0
+
+    for r in receivables:
+        rate = r.exchange_rate or 859.06
+        total_bs = round(r.amount_usd * rate, 2)
+        base_bs = round(r.taxable_base_usd * rate, 2) if r.taxable_base_usd else round(total_bs / 1.16, 2)
+        iva_bs = round(r.tax_amount_usd * rate, 2) if r.tax_amount_usd else round(total_bs - base_bs, 2)
+        ret_iva_bs = round((r.tax_withholding_usd or 0.0) * rate, 2)
+        ret_islr_bs = round((r.islr_withholding_usd or 0.0) * rate, 2)
+
+        tot_ventas_bs += total_bs
+        tot_base_bs += base_bs
+        tot_iva_bs += iva_bs
+        tot_ret_iva_bs += ret_iva_bs
+        tot_ret_islr_bs += ret_islr_bs
+
+        items.append({
+            "id": r.id,
+            "fecha": r.issue_date.strftime("%d/%m/%Y") if r.issue_date else "-",
+            "dia": r.issue_date.day if r.issue_date else 1,
+            "factura": r.invoice_number,
+            "control": r.invoice_number or f"00-{r.id:06d}",
+            "tipo_transaccion": "01",
+            "cliente": r.client.name if r.client else "Cliente General",
+            "rif": r.client.rif if r.client else "J-00000000-0",
+            "cbt_retencion": r.notes or "-",
+            "ret_iva_bs": ret_iva_bs,
+            "ret_islr_bs": ret_islr_bs,
+            "total_ventas_bs": total_bs,
+            "base_imponible_bs": base_bs,
+            "alicuota_pct": 16.0,
+            "iva_bs": iva_bs,
+            "total_ventas_usd": r.amount_usd,
+            "exchange_rate": rate
+        })
+
+    return {
+        "success": True,
+        "company": {
+            "name": "METALMECANICA DALOR, C.A.",
+            "rif": "J-31601195-0",
+            "address": "AV. CAMARA DE LAS INDUSTRIAS ZONA INDUSTRIAL EL TIGRE GALPON N° 10 GUACARA EDO. CARABOBO",
+            "period": f"{month or 'Todos'}/{year or '2026'}"
+        },
+        "totals": {
+            "total_ventas_bs": round(tot_ventas_bs, 2),
+            "base_imponible_bs": round(tot_base_bs, 2),
+            "iva_bs": round(tot_iva_bs, 2),
+            "ret_iva_bs": round(tot_ret_iva_bs, 2),
+            "ret_islr_bs": round(tot_ret_islr_bs, 2)
+        },
+        "items": items
+    }
+
+@router.get("/reports/libro-ventas/excel")
+def export_libro_ventas_excel(
+    month: Optional[int] = Query(None, ge=1, le=12),
+    year: Optional[int] = Query(None, ge=2020, le=2040),
+    db: Session = Depends(get_db)
+):
+    """
+    Exporta el Libro de Ventas en formato oficial de Excel idéntico al estándar SENIAT.
+    """
+    data = get_libro_ventas_data(month, year, db)
+    items = data["items"]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Ventas"
+
+    font_bold = Font(name="Calibri", size=10, bold=True)
+    font_regular = Font(name="Calibri", size=9)
+    font_title = Font(name="Calibri", size=11, bold=True)
+    fill_header = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    fill_totals = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    border_thin = Border(
+        left=Side(style='thin', color='B0B0B0'),
+        right=Side(style='thin', color='B0B0B0'),
+        top=Side(style='thin', color='B0B0B0'),
+        bottom=Side(style='thin', color='B0B0B0')
+    )
+
+    ws['A1'] = "Empresa: METALMECANICA DALOR, C.A."
+    ws['A1'].font = font_title
+    ws['A2'] = "Dirección: AV. CAMARA DE LAS INDUSTRIAS ZONA INDUSTRIAL EL TIGRE GALPON N° 10 GUACARA CARABOBO"
+    ws['A2'].font = font_regular
+    ws['A3'] = "RIF: J-316011950"
+    ws['A3'].font = font_bold
+    ws['E3'] = "LIBRO DE VENTAS"
+    ws['E3'].font = Font(name="Calibri", size=14, bold=True, color="1F4E79")
+    ws['K3'] = "FECHA:"
+    ws['K3'].font = font_bold
+    ws['L3'] = f"{month or 'MES'}/{year or '2026'}"
+    ws['L3'].font = font_bold
+
+    headers_row4 = [None, "NÚMERO", "NÚMERO", None, None, "NÚMERO", "MONTO", "MONTO", None, "TOTAL", None, "A CONTRIBUYENTES Y", None]
+    headers_row5 = [None, "DE", "DE", None, None, "COMPROBANTE", "DE", "DE RET.", "NUMERO", "VENTAS", None, "NO CONTRIBUYENTES", None]
+    headers_row6 = ["DIA", "FACTURA", "CONTROL", "T", "BENEFICIARIO", "DE RETENCIÓN", "RET. IVA", "I.S.L.R.", "DE R.I.F.", "INCLUIDO I.V.A.", "BASE", "%", "I.V.A."]
+
+    ws.append(headers_row4)
+    ws.append(headers_row5)
+    ws.append(headers_row6)
+
+    for r_idx in range(4, 7):
+        for c_idx in range(1, 14):
+            cell = ws.cell(r_idx, c_idx)
+            cell.font = font_bold
+            cell.fill = fill_header
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = border_thin
+
+    row_num = 7
+    for item in items:
+        ws.append([
+            item["dia"],
+            item["factura"],
+            item["control"],
+            1,
+            item["cliente"],
+            item["cbt_retencion"] if item["cbt_retencion"] != "-" else None,
+            item["ret_iva_bs"],
+            item["ret_islr_bs"],
+            item["rif"],
+            item["total_ventas_bs"],
+            item["base_imponible_bs"],
+            item["alicuota_pct"],
+            item["iva_bs"]
+        ])
+        for c_idx in range(1, 14):
+            c = ws.cell(row_num, c_idx)
+            c.font = font_regular
+            c.border = border_thin
+            if c_idx in [7, 8, 10, 11, 13]:
+                c.number_format = '#,##0.00'
+                c.alignment = Alignment(horizontal="right")
+            elif c_idx in [1, 2, 3, 4, 6, 9, 12]:
+                c.alignment = Alignment(horizontal="center")
+        row_num += 1
+
+    totals = data["totals"]
+    ws.append([
+        None, None, None, None, "VAN Y/O TOTALES", None,
+        totals["ret_iva_bs"], totals["ret_islr_bs"], None,
+        totals["total_ventas_bs"], totals["base_imponible_bs"], 16, totals["iva_bs"]
+    ])
+    for c_idx in range(1, 14):
+        c = ws.cell(row_num, c_idx)
+        c.font = font_bold
+        c.fill = fill_totals
+        c.border = border_thin
+        if c_idx in [7, 8, 10, 11, 13]:
+            c.number_format = '#,##0.00'
+            c.alignment = Alignment(horizontal="right")
+
+    col_widths = [8, 14, 14, 6, 32, 16, 16, 14, 16, 18, 16, 6, 16]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    
+    fname = f"Libro_Ventas_Dalor_{year or 2026}_{month or 'Todos'}.xlsx"
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"}
+    )
+
+
+@router.get("/reports/libro-compras/data")
+def get_libro_compras_data(
+    month: Optional[int] = Query(None, ge=1, le=12),
+    year: Optional[int] = Query(None, ge=2020, le=2040),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna los datos del Libro de Compras en formato oficial SENIAT (21 columnas) para renderizado y PDF.
+    """
+    query = db.query(AccountPayable).options(
+        joinedload(AccountPayable.project)
+    )
+    if year:
+        query = query.filter(func.extract('year', AccountPayable.issue_date) == year)
+    if month:
+        query = query.filter(func.extract('month', AccountPayable.issue_date) == month)
+
+    payables = query.order_by(AccountPayable.issue_date.asc(), AccountPayable.id.asc()).all()
+
+    items = []
+    tot_compras_bs = 0.0
+    tot_ret_iva_bs = 0.0
+    tot_exento_bs = 0.0
+    tot_base_16_bs = 0.0
+    tot_iva_16_bs = 0.0
+
+    for p in payables:
+        rate = p.exchange_rate or 859.06
+        total_bs = round(p.amount_usd * rate, 2)
+        exento_bs = round((p.withholding_exempt_usd or 0.0) * rate, 2)
+        base_16_bs = round(p.taxable_base_usd * rate, 2) if p.taxable_base_usd else round((total_bs - exento_bs) / 1.16, 2)
+        iva_16_bs = round(p.tax_amount_usd * rate, 2) if p.tax_amount_usd else round(total_bs - exento_bs - base_16_bs, 2)
+        ret_iva_bs = round((p.tax_withholding_usd or 0.0) * rate, 2)
+
+        tot_compras_bs += total_bs
+        tot_ret_iva_bs += ret_iva_bs
+        tot_exento_bs += exento_bs
+        tot_base_16_bs += base_16_bs
+        tot_iva_16_bs += iva_16_bs
+
+        items.append({
+            "id": p.id,
+            "fecha": p.issue_date.strftime("%d/%m/%Y") if p.issue_date else "-",
+            "dia": p.issue_date.day if p.issue_date else 1,
+            "factura": p.invoice_number,
+            "control": p.control_number or f"00-{p.id:06d}",
+            "tipo_transaccion": "01",
+            "proveedor": p.supplier_name,
+            "rif": p.supplier_rif or "J-00000000-0",
+            "cbt_retencion": p.withholding_voucher_number or "-",
+            "total_compras_bs": total_bs,
+            "ret_iva_bs": ret_iva_bs,
+            "exento_bs": exento_bs,
+            "base_8_bs": 0.0,
+            "alicuota_8_pct": 8.0,
+            "iva_8_bs": 0.0,
+            "base_12_bs": 0.0,
+            "alicuota_12_pct": 12.0,
+            "iva_12_bs": 0.0,
+            "base_16_bs": base_16_bs,
+            "alicuota_16_pct": 16.0,
+            "iva_16_bs": iva_16_bs,
+            "total_usd": p.amount_usd,
+            "exchange_rate": rate,
+            "municipal_rate": p.municipal_rate or 0.0,
+            "municipal_voucher_number": p.municipal_voucher_number
+        })
+
+    return {
+        "success": True,
+        "company": {
+            "name": "METALMECANICA DALOR, C.A.",
+            "rif": "J-31601195-0",
+            "address": "AV. CAMARA DE LAS INDUSTRIAS ZONA INDUSTRIAL EL TIGRE GUACARA CARABOBO",
+            "period": f"{month or 'Todos'}/{year or '2026'}"
+        },
+        "totals": {
+            "total_compras_bs": round(tot_compras_bs, 2),
+            "ret_iva_bs": round(tot_ret_iva_bs, 2),
+            "exento_bs": round(tot_exento_bs, 2),
+            "base_16_bs": round(tot_base_16_bs, 2),
+            "iva_16_bs": round(tot_iva_16_bs, 2)
+        },
+        "items": items
+    }
+
+@router.get("/reports/libro-compras/excel")
+def export_libro_compras_excel(
+    month: Optional[int] = Query(None, ge=1, le=12),
+    year: Optional[int] = Query(None, ge=2020, le=2040),
+    db: Session = Depends(get_db)
+):
+    """
+    Exporta el Libro de Compras en formato oficial SENIAT con 21 columnas en Excel.
+    """
+    data = get_libro_compras_data(month, year, db)
+    items = data["items"]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Compras"
+
+    font_bold = Font(name="Calibri", size=10, bold=True)
+    font_regular = Font(name="Calibri", size=9)
+    font_title = Font(name="Calibri", size=11, bold=True)
+    fill_header = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    fill_totals = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    border_thin = Border(
+        left=Side(style='thin', color='B0B0B0'),
+        right=Side(style='thin', color='B0B0B0'),
+        top=Side(style='thin', color='B0B0B0'),
+        bottom=Side(style='thin', color='B0B0B0')
+    )
+
+    ws['A1'] = "Empresa: METALMECANICA DALOR, C.A."
+    ws['A1'].font = font_title
+    ws['A2'] = "Dirección: ZONA IND. EL TIGRE. GUACARA, EDO. CARABOBO."
+    ws['A2'].font = font_regular
+    ws['A3'] = "RIF: J-316011950"
+    ws['A3'].font = font_bold
+    ws['E3'] = "LIBRO DE COMPRAS"
+    ws['E3'].font = Font(name="Calibri", size=14, bold=True, color="1F4E79")
+    ws['Q1'] = f"FECHA: {month or 'MES'}/{year or '2026'}"
+    ws['Q1'].font = font_bold
+
+    headers_row4 = [None, None, "NÚMERO", None, None, None, None, "TOTAL", None, "COMPRAS", "SOLO COMPRAS GRAVABLES", None, None, None, None, None, None, None, None]
+    headers_row5 = [None, "FACTURA", "CONTROL O", None, None, "NUMERO", None, "COMPRAS", None, "SIN DERECHO", None, "CUOTA REDUCIDA", None, None, "NACIONALES", None, None, "NACIONALES", None]
+    headers_row6 = ["DIA", "NUMERO", "MAQ. FISCAL", "T", "NOMBRE DEL PROVEEDOR", "DE R.I.F.", "CBT RETENCION", "GRAVADAS", "% RET IVA", "A CREDITO", "BASE", "%", "I.V.A.", "BASE", "%", "I.V.A.", "BASE", "%", "I.V.A."]
+
+    ws.append(headers_row4)
+    ws.append(headers_row5)
+    ws.append(headers_row6)
+
+    for r_idx in range(4, 7):
+        for c_idx in range(1, 20):
+            cell = ws.cell(r_idx, c_idx)
+            cell.font = font_bold
+            cell.fill = fill_header
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = border_thin
+
+    row_num = 7
+    for item in items:
+        ws.append([
+            item["dia"],
+            item["factura"],
+            item["control"],
+            1,
+            item["proveedor"],
+            item["rif"],
+            item["cbt_retencion"] if item["cbt_retencion"] != "-" else None,
+            item["total_compras_bs"],
+            item["ret_iva_bs"],
+            item["exento_bs"],
+            item["base_8_bs"],
+            item["alicuota_8_pct"],
+            item["iva_8_bs"],
+            item["base_12_bs"],
+            item["alicuota_12_pct"],
+            item["iva_12_bs"],
+            item["base_16_bs"],
+            item["alicuota_16_pct"],
+            item["iva_16_bs"]
+        ])
+        for c_idx in range(1, 20):
+            c = ws.cell(row_num, c_idx)
+            c.font = font_regular
+            c.border = border_thin
+            if c_idx in [8, 9, 10, 11, 13, 14, 16, 17, 19]:
+                c.number_format = '#,##0.00'
+                c.alignment = Alignment(horizontal="right")
+            elif c_idx in [1, 2, 3, 4, 6, 7, 12, 15, 18]:
+                c.alignment = Alignment(horizontal="center")
+        row_num += 1
+
+    totals = data["totals"]
+    ws.append([
+        None, None, None, None, "TOTALES GENERALES", None, None,
+        totals["total_compras_bs"], totals["ret_iva_bs"], totals["exento_bs"],
+        0.0, 8.0, 0.0,
+        0.0, 12.0, 0.0,
+        totals["base_16_bs"], 16.0, totals["iva_16_bs"]
+    ])
+    for c_idx in range(1, 20):
+        c = ws.cell(row_num, c_idx)
+        c.font = font_bold
+        c.fill = fill_totals
+        c.border = border_thin
+        if c_idx in [8, 9, 10, 11, 13, 14, 16, 17, 19]:
+            c.number_format = '#,##0.00'
+            c.alignment = Alignment(horizontal="right")
+
+    col_widths = [6, 14, 14, 4, 34, 15, 15, 18, 14, 14, 12, 6, 12, 12, 6, 12, 16, 6, 16]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    fname = f"Libro_Compras_Dalor_{year or 2026}_{month or 'Todos'}.xlsx"
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"}
+    )
+
+@router.post("/import-libros-excel")
+async def import_libros_excel(
+    file: UploadFile = File(...),
+    exchange_rate: float = Query(859.06, ge=1.0),
+    db: Session = Depends(get_db)
+):
+    """
+    Importa masivamente facturas y retenciones desde un archivo Excel de Libros de Compras y Ventas.
+    """
+    contents = await file.read()
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(contents), data_only=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo leer el archivo Excel: {str(e)}")
+
+    def safe_float(v):
+        if v is None: return 0.0
+        try:
+            return float(str(v).replace(',', '.').strip())
+        except:
+            return 0.0
+
+    imported_ventas = 0
+    imported_compras = 0
+    linked_municipal = 0
+
+    rate = exchange_rate or 859.06
+
+    # 1. Procesar Ventas
+    if 'Ventas' in wb.sheetnames:
+        ws_v = wb['Ventas']
+        for r in range(6, ws_v.max_row + 1):
+            factura = ws_v.cell(r, 2).value
+            cliente_nombre = ws_v.cell(r, 5).value
+            if factura and cliente_nombre and str(factura).strip() != 'FACTURA' and 'TOTAL' not in str(cliente_nombre):
+                fact_clean = str(factura).strip()
+                cli_clean = str(cliente_nombre).strip()
+                rif_clean = str(ws_v.cell(r, 9).value or '').strip()
+                control_clean = str(ws_v.cell(r, 3).value or fact_clean).strip()
+                
+                # Buscar o crear Cliente
+                client = db.query(Client).filter(Client.name.ilike(cli_clean)).first()
+                if not client:
+                    client = Client(name=cli_clean, rif=rif_clean or "J-00000000-0", contact_name="Contacto Comercial")
+                    db.add(client)
+                    db.flush()
+
+                # Buscar duplicado en AccountReceivable
+                existing_rec = db.query(AccountReceivable).filter(AccountReceivable.invoice_number == fact_clean).first()
+                if not existing_rec:
+                    dia_val = ws_v.cell(r, 1).value
+                    issue_dt = dia_val if isinstance(dia_val, datetime) else datetime(2026, 9, 9)
+                    
+                    tot_bs = safe_float(ws_v.cell(r, 10).value)
+                    base_bs = safe_float(ws_v.cell(r, 11).value)
+                    ret_iva_bs = safe_float(ws_v.cell(r, 7).value)
+                    ret_islr_bs = safe_float(ws_v.cell(r, 8).value)
+
+                    tot_usd = round(tot_bs / rate, 2)
+                    base_usd = round(base_bs / rate, 2)
+                    tax_usd = round((tot_bs - base_bs) / rate, 2)
+                    ret_iva_usd = round(ret_iva_bs / rate, 2)
+                    ret_islr_usd = round(ret_islr_bs / rate, 2)
+                    net_usd = round(tot_usd - ret_iva_usd - ret_islr_usd, 2)
+
+                    new_rec = AccountReceivable(
+                        invoice_number=fact_clean,
+                        client_id=client.id,
+                        description=f"Facturación según Libro de Ventas SENIAT #{fact_clean}",
+                        issue_date=issue_dt,
+                        due_date=issue_dt + timedelta(days=30),
+                        amount_usd=tot_usd,
+                        amount_bs=tot_bs,
+                        exchange_rate=rate,
+                        taxable_base_usd=base_usd,
+                        tax_amount_usd=tax_usd,
+                        tax_withholding_rate=75.0 if ret_iva_bs > 0 else 0.0,
+                        tax_withholding_usd=ret_iva_usd,
+                        islr_rate=2.0 if ret_islr_bs > 0 else 0.0,
+                        islr_withholding_usd=ret_islr_usd,
+                        net_amount_usd=net_usd,
+                        paid_amount_usd=round(ret_iva_usd + ret_islr_usd, 2),
+                        balance_usd=net_usd,
+                        status="pendiente" if net_usd > 0.01 else "cobrado_total",
+                        notes=f"Control fiscal: {control_clean}. RIF: {rif_clean}"
+                    )
+                    db.add(new_rec)
+                    imported_ventas += 1
+
+    # 2. Procesar Compras
+    if 'Compras' in wb.sheetnames:
+        ws_c = wb['Compras']
+        for r in range(7, ws_c.max_row + 1):
+            factura = ws_c.cell(r, 2).value
+            prov_nombre = ws_c.cell(r, 5).value
+            if factura and prov_nombre and str(factura).strip() != 'NUMERO' and 'TOTAL' not in str(prov_nombre):
+                fact_clean = str(factura).strip()
+                prov_clean = str(prov_nombre).strip()
+                rif_clean = str(ws_c.cell(r, 6).value or '').strip()
+                control_clean = str(ws_c.cell(r, 3).value or fact_clean).strip()
+                cbt_ret = str(ws_c.cell(r, 7).value or '').strip()
+
+                # Buscar duplicado en AccountPayable
+                existing_pay = db.query(AccountPayable).filter(
+                    AccountPayable.invoice_number == fact_clean,
+                    AccountPayable.supplier_name.ilike(prov_clean)
+                ).first()
+                if not existing_pay:
+                    dia_val = ws_c.cell(r, 1).value
+                    issue_dt = dia_val if isinstance(dia_val, datetime) else datetime(2026, 9, 1)
+
+                    tot_bs = safe_float(ws_c.cell(r, 8).value)
+                    ret_iva_bs = safe_float(ws_c.cell(r, 9).value)
+                    exento_bs = safe_float(ws_c.cell(r, 10).value)
+                    base_16_bs = safe_float(ws_c.cell(r, 17).value)
+                    iva_16_bs = safe_float(ws_c.cell(r, 19).value)
+
+                    tot_usd = round(tot_bs / rate, 2)
+                    exento_usd = round(exento_bs / rate, 2)
+                    base_usd = round(base_16_bs / rate, 2) if base_16_bs > 0 else round((tot_bs - exento_bs) / (1.16 * rate), 2)
+                    tax_usd = round(iva_16_bs / rate, 2) if iva_16_bs > 0 else round((tot_bs - exento_bs - (base_usd * rate)) / rate, 2)
+                    ret_iva_usd = round(ret_iva_bs / rate, 2)
+                    net_usd = round(tot_usd - ret_iva_usd, 2)
+
+                    new_pay = AccountPayable(
+                        invoice_number=fact_clean,
+                        control_number=control_clean,
+                        supplier_name=prov_clean,
+                        supplier_rif=rif_clean or None,
+                        doc_type="factura",
+                        description=f"Compra/Insumos según Libro de Compras SENIAT #{fact_clean}",
+                        issue_date=issue_dt,
+                        due_date=issue_dt + timedelta(days=15),
+                        amount_usd=tot_usd,
+                        amount_bs=tot_bs,
+                        exchange_rate=rate,
+                        taxable_base_usd=base_usd,
+                        tax_amount_usd=tax_usd,
+                        withholding_exempt_usd=exento_usd,
+                        tax_withholding_rate=75.0 if ret_iva_bs > 0 else 0.0,
+                        tax_withholding_usd=ret_iva_usd,
+                        withholding_voucher_number=cbt_ret or None,
+                        withholding_voucher_date=issue_dt if cbt_ret else None,
+                        is_withholding_applied=bool(ret_iva_bs > 0),
+                        net_amount_usd=net_usd,
+                        paid_amount_usd=ret_iva_usd,
+                        balance_usd=net_usd,
+                        status="pagado_total" if net_usd <= 0.01 else "pendiente"
+                    )
+                    db.add(new_pay)
+                    imported_compras += 1
+
+    # 3. Procesar Retención Municipal si está presente
+    if 'Municipal' in wb.sheetnames:
+        ws_m = wb['Municipal']
+        fact_mun = str(ws_m.cell(33, 4).value or '').strip()
+        prov_mun = str(ws_m.cell(26, 5).value or '').strip()
+        base_mun_bs = safe_float(ws_m.cell(38, 4).value)
+        ret_mun_bs = safe_float(ws_m.cell(39, 8).value)
+        tasa_mun_pct = safe_float(ws_m.cell(39, 4).value) * 100
+        voucher_mun_raw = str(ws_m.cell(9, 9).value or '00000110').replace('Comprobante  N', '').replace('Comprobante', '').strip()
+
+        if fact_mun or prov_mun:
+            target_pay = db.query(AccountPayable).filter(
+                (AccountPayable.invoice_number == fact_mun) | (AccountPayable.supplier_name.ilike(f"%{prov_mun[:15]}%"))
+            ).first()
+            if target_pay:
+                target_pay.municipal_rate = tasa_mun_pct or 3.0
+                target_pay.municipal_withholding_usd = round(ret_mun_bs / rate, 2)
+                target_pay.municipal_voucher_number = voucher_mun_raw
+                target_pay.municipal_voucher_date = datetime(2026, 9, 10)
+                linked_municipal += 1
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"¡Importación completada! Se registraron {imported_ventas} ventas en CxC, {imported_compras} compras en CxP y se vincularon {linked_municipal} retenciones municipales.",
+        "imported_ventas": imported_ventas,
+        "imported_compras": imported_compras,
+        "linked_municipal": linked_municipal
     }
 

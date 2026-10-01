@@ -56,29 +56,68 @@ async function initDispatchView() {
 }
 
 // ==============================================================================
-// MODALIDAD: POR OBRA / PROYECTO VS FORMATO ABIERTO
+// MODALIDAD: POR OBRA / PROYECTO VS FORMATO ABIERTO VS CONTROL INTERNO
 // ==============================================================================
 function setDispatchMode(mode) {
     const isFreeform = (mode === 'freeform');
-    const hiddenInput = document.getElementById('disp_is_freeform');
-    if (hiddenInput) hiddenInput.value = isFreeform ? '1' : '0';
+    const isInternal = (mode === 'internal');
+
+    const hiddenFreeform = document.getElementById('disp_is_freeform');
+    const hiddenGuideType = document.getElementById('disp_guide_type');
+    if (hiddenFreeform) hiddenFreeform.value = isFreeform ? '1' : '0';
+    if (hiddenGuideType) hiddenGuideType.value = isInternal ? 'control_interno' : 'traslado_externo';
 
     const secProject = document.getElementById('disp_sec_project_mode');
     const secFreeform = document.getElementById('disp_sec_freeform_mode');
+    const secInternal = document.getElementById('disp_sec_internal_mode');
+
+    const secTransExt = document.getElementById('disp_sec_trans_external');
+    const secTransInt = document.getElementById('disp_sec_trans_internal');
+
     const btnProject = document.getElementById('btn_disp_mode_project');
     const btnFreeform = document.getElementById('btn_disp_mode_freeform');
+    const btnInternal = document.getElementById('btn_disp_mode_internal');
+
     const hint = document.getElementById('disp_mode_hint');
+    const step1Title = document.getElementById('disp_step1_title');
+    const step2Title = document.getElementById('disp_step2_title');
+    const step3Title = document.getElementById('disp_step3_title');
 
-    if (secProject) secProject.style.display = isFreeform ? 'none' : 'block';
+    if (secProject) secProject.style.display = (!isFreeform && !isInternal) ? 'block' : 'none';
     if (secFreeform) secFreeform.style.display = isFreeform ? 'block' : 'none';
+    if (secInternal) secInternal.style.display = isInternal ? 'block' : 'none';
 
-    if (btnProject) btnProject.className = isFreeform ? 'btn-secondary' : 'btn-primary';
+    if (secTransExt) secTransExt.style.display = isInternal ? 'none' : 'block';
+    if (secTransInt) secTransInt.style.display = isInternal ? 'block' : 'none';
+
+    if (btnProject) btnProject.className = (!isFreeform && !isInternal) ? 'btn-primary' : 'btn-secondary';
     if (btnFreeform) btnFreeform.className = isFreeform ? 'btn-primary' : 'btn-secondary';
+    if (btnInternal) btnInternal.className = isInternal ? 'btn-primary' : 'btn-secondary';
 
     if (hint) {
-        hint.innerHTML = isFreeform 
-            ? '<i class="fa-solid fa-circle-info" style="color: #0284c7;"></i> <b>Formato Abierto:</b> Destinatario libre sin forzar cliente ni proyecto DALOR preexistente.'
-            : '<i class="fa-solid fa-circle-info" style="color: #0284c7;"></i> <b>Por Obra / Proyecto:</b> Vincula la salida a un cliente y proyecto registrado en el sistema.';
+        if (isInternal) {
+            hint.innerHTML = '<i class="fa-solid fa-circle-info" style="color: #2563eb;"></i> <b>Control Interno Taller Guacara:</b> Nomenclatura <b>GCI-2026-XXXX</b> para custodia de maquinaria, herramientas y salida de insumos a taller en sede.';
+        } else if (isFreeform) {
+            hint.innerHTML = '<i class="fa-solid fa-circle-info" style="color: #0284c7;"></i> <b>Formato Abierto (GD):</b> Traslado legal con correlativo <b>GD-2026-XXXX</b> a destinatario libre.';
+        } else {
+            hint.innerHTML = '<i class="fa-solid fa-circle-info" style="color: #0284c7;"></i> <b>Por Obra / Proyecto (GD):</b> Emisión de guía oficial <b>GD-2026-XXXX</b> vinculada a un cliente y proyecto registrado.';
+        }
+    }
+
+    if (step1Title) {
+        step1Title.textContent = isInternal 
+            ? 'Datos del Traslado Interno & Destino en Sede' 
+            : (isFreeform ? 'Datos del Destinatario & Motivo Libre' : 'Datos del Destinatario & Obra / Motivo');
+    }
+    if (step2Title) {
+        step2Title.textContent = isInternal 
+            ? 'Custodios & Responsables de Entrega Interna' 
+            : 'Modalidad de Transporte, Vehículo & Conductor';
+    }
+    if (step3Title) {
+        step3Title.textContent = isInternal 
+            ? 'Maquinaria, Equipos & Insumos en Movimiento Interno' 
+            : 'Carga / Piezas / Componentes Despachados';
     }
 }
 
@@ -132,22 +171,57 @@ async function initDispatchForm() {
     // Cargar Proyectos
     try {
         const projSel = document.getElementById('disp_project_id');
+        const ciProjSel = document.getElementById('disp_ci_project_id');
+        let projects = window.allProjects || [];
+        if (projects.length === 0) {
+            const res = await authFetch(`${API_BASE}/projects/`);
+            if (res.ok) projects = window.allProjects = await res.json();
+        }
+        const openProjects = (projects || []).filter(p => {
+            const st = (p.status || '').toLowerCase().trim();
+            return !['culminado', 'completado', 'cerrado', 'cancelado', 'finalizado', 'inactivo'].includes(st);
+        });
+
         if (projSel) {
-            let projects = window.allProjects || [];
-            if (projects.length === 0) {
-                const res = await authFetch(`${API_BASE}/projects/`);
-                if (res.ok) projects = window.allProjects = await res.json();
-            }
-            const openProjects = (projects || []).filter(p => {
-                const st = (p.status || '').toLowerCase().trim();
-                return !['culminado', 'completado', 'cerrado', 'cancelado', 'finalizado', 'inactivo'].includes(st);
-            });
             projSel.innerHTML = '<option value="">-- Seleccionar Proyecto Activo DALOR --</option>' +
                 openProjects.map(p => `<option value="${p.id}" data-client-id="${p.client_id || ''}">[${p.code || ('PRJ-' + p.id)}] ${p.name}</option>`).join('');
         }
-
+        if (ciProjSel) {
+            ciProjSel.innerHTML = '<option value="">-- Operación General Sede (Sin Proyecto) --</option>' +
+                openProjects.map(p => `<option value="${p.id}">[${p.code || ('PRJ-' + p.id)}] ${p.name}</option>`).join('');
+        }
     } catch (err) {
         console.warn('Error cargando proyectos para despacho:', err);
+    }
+
+    // Cargar Personal DALOR (para choferes y custodios internos)
+    try {
+        let personnel = window.allPersonnel || [];
+        if (personnel.length === 0) {
+            const resPers = await authFetch(`${API_BASE}/personnel/`);
+            if (resPers.ok) personnel = window.allPersonnel = await resPers.json();
+        }
+
+        const driverSel = document.getElementById('disp_select_driver_personnel');
+        if (driverSel && personnel.length > 0) {
+            driverSel.innerHTML = '<option value="">-- Seleccionar Chofer del Personal (Opcional) --</option>' +
+                '<option value="__MANUAL__">➕ Escribir Chofer Manualmente / Flete Externo</option>' +
+                personnel.map(p => `<option value="${p.id}" data-name="${p.full_name}" data-id-doc="${p.id_document || ''}">[${p.code}] ${p.full_name} (${p.id_document || 'S/C'})</option>`).join('');
+        }
+
+        const delSel = document.getElementById('disp_ci_delivered_select');
+        if (delSel && personnel.length > 0) {
+            delSel.innerHTML = '<option value="">-- Seleccionar de Personal DALOR --</option>' +
+                personnel.map(p => `<option value="${p.id}" data-name="${p.full_name}">[${p.code}] ${p.full_name} (${p.role_title || 'Almacén'})</option>`).join('');
+        }
+
+        const recSel = document.getElementById('disp_ci_received_select');
+        if (recSel && personnel.length > 0) {
+            recSel.innerHTML = '<option value="">-- Seleccionar de Personal DALOR --</option>' +
+                personnel.map(p => `<option value="${p.id}" data-name="${p.full_name}">[${p.code}] ${p.full_name} (${p.role_title || 'Taller'})</option>`).join('');
+        }
+    } catch (err) {
+        console.warn('Error cargando personal para despacho:', err);
     }
 
     // Cargar Vehículos DALOR (Flota) filtrando disponibilidad operativa
@@ -218,6 +292,73 @@ async function initDispatchForm() {
     const tableBody = document.getElementById('dispatchItemsTableBody');
     if (tableBody && tableBody.children.length === 0) {
         addDispatchItemRow();
+    }
+}
+
+function onDispatchDriverPersonnelChanged() {
+    const sel = document.getElementById('disp_select_driver_personnel');
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value || opt.value === '__MANUAL__') return;
+    const name = opt.getAttribute('data-name') || '';
+    const idDoc = opt.getAttribute('data-id-doc') || '';
+    const nameInp = document.getElementById('disp_driver_name_propio');
+    const idInp = document.getElementById('disp_driver_id_propio');
+    if (nameInp && name) nameInp.value = name;
+    if (idInp && idDoc) idInp.value = idDoc;
+}
+
+function onDispatchCiDeliveredChanged() {
+    const sel = document.getElementById('disp_ci_delivered_select');
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    const name = opt.getAttribute('data-name') || '';
+    const inp = document.getElementById('disp_ci_delivered_staff');
+    if (inp && name) inp.value = name + ' (Almacén Central DALOR)';
+}
+
+function onDispatchCiReceivedChanged() {
+    const sel = document.getElementById('disp_ci_received_select');
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    const name = opt.getAttribute('data-name') || '';
+    const inp = document.getElementById('disp_ci_received_staff');
+    if (inp && name) inp.value = name + ' (Taller Metalmecánico)';
+}
+
+async function loadDalorAssetsIntoDispatch() {
+    try {
+        let assets = window.allAssets || [];
+        if (assets.length === 0) {
+            const res = await authFetch(`${API_BASE}/assets/`);
+            if (res.ok) assets = window.allAssets = await res.json();
+        }
+        if (assets.length === 0) {
+            alert('No se encontraron activos o herramientas registradas.');
+            return;
+        }
+
+        const promptText = "Ingresa el nombre o código de la maquinaria/equipo DALOR a agregar:\n(Ej: Máquina de Soldar Miller, Torno Paralelo, Esmeril 9\"):";
+        const inputVal = prompt(promptText);
+        if (!inputVal) return;
+
+        const match = assets.find(a => 
+            (a.name && a.name.toLowerCase().includes(inputVal.toLowerCase())) ||
+            (a.asset_code && a.asset_code.toLowerCase().includes(inputVal.toLowerCase()))
+        );
+
+        const desc = match 
+            ? `Equipo DALOR: ${match.name} (${match.asset_code || match.internal_code || 'S/C'})`
+            : `Equipo DALOR: ${inputVal}`;
+
+        addDispatchItemRow(desc, 1, "Unid", "Operativo / En Custodia", 0);
+        if (typeof window.showToast === 'function') {
+            window.showToast('Equipo agregado a los ítems del vale.', 'success');
+        }
+    } catch (err) {
+        console.error('Error cargando maquinaria DALOR en despacho:', err);
     }
 }
 
@@ -431,6 +572,7 @@ function reindexDispatchRows() {
 async function submitCreateDispatchGuide(event) {
     if (event && event.preventDefault) event.preventDefault();
 
+    const guideType = document.getElementById('disp_guide_type')?.value || 'traslado_externo';
     const isFreeform = document.getElementById('disp_is_freeform')?.value === '1';
     let clientId = null;
     let projectId = null;
@@ -438,8 +580,19 @@ async function submitCreateDispatchGuide(event) {
     let transferReason = "Despacho de Producción";
     let destPlant = "";
     let destAddress = "";
+    let deliveredByStaff = null;
+    let receivedByStaff = null;
 
-    if (!isFreeform) {
+    if (guideType === 'control_interno') {
+        recipientName = "Metalmecánica Dalor - Sede Guacara";
+        transferReason = (document.getElementById('disp_ci_reason')?.value || "Uso Operativo en Taller").trim();
+        destPlant = (document.getElementById('disp_ci_destination_area')?.value || "Taller Metalmecánico").trim();
+        destAddress = "Sede Dalor Guacara, Av. Cámara de las Industrias, Galpón 10";
+        deliveredByStaff = (document.getElementById('disp_ci_delivered_staff')?.value || "Almacén Central Guacara").trim();
+        receivedByStaff = (document.getElementById('disp_ci_received_staff')?.value || "Operario de Taller").trim();
+        const ciProjVal = document.getElementById('disp_ci_project_id')?.value;
+        projectId = ciProjVal ? parseInt(ciProjVal) : null;
+    } else if (!isFreeform) {
         // Modalidad Por Obra / Proyecto
         clientId = document.getElementById('disp_client_id')?.value || null;
         projectId = document.getElementById('disp_project_id')?.value || null;
@@ -471,7 +624,9 @@ async function submitCreateDispatchGuide(event) {
     }
 
     // Modalidad de Transporte
-    const transportType = document.getElementById('disp_transport_type')?.value || "propio_dalor";
+    const transportType = (guideType === 'control_interno') 
+        ? 'propio_dalor' 
+        : (document.getElementById('disp_transport_type')?.value || "propio_dalor");
     let driverName = "";
     let driverIdDoc = "";
     let vehiclePlate = "";
@@ -480,7 +635,12 @@ async function submitCreateDispatchGuide(event) {
     let freightPrice = 0.0;
     let assetId = null;
 
-    if (transportType === 'propio_dalor') {
+    if (guideType === 'control_interno') {
+        driverName = (document.getElementById('disp_ci_movement_type')?.value || "Personal Interno DALOR").trim();
+        driverIdDoc = "V-00000000";
+        vehiclePlate = "INTERNO";
+        carrierCompany = "Control Interno DALOR";
+    } else if (transportType === 'propio_dalor') {
         assetId = document.getElementById('disp_select_asset')?.value || null;
         if (assetId) {
             const selectedVeh = (window.allAssets || []).find(a => String(a.id) === String(assetId));
@@ -494,35 +654,23 @@ async function submitCreateDispatchGuide(event) {
                 }
             }
         }
-        driverName = (document.getElementById('disp_driver_name_propio')?.value || "").trim();
-        driverIdDoc = (document.getElementById('disp_driver_id_propio')?.value || "").trim();
-        vehiclePlate = (document.getElementById('disp_plate_propio')?.value || "").trim();
+        driverName = (document.getElementById('disp_driver_name_propio')?.value || "").trim() || "Personal DALOR";
+        driverIdDoc = (document.getElementById('disp_driver_id_propio')?.value || "").trim() || "V-00000000";
+        vehiclePlate = (document.getElementById('disp_plate_propio')?.value || "").trim() || "S/P";
         carrierCompany = "Transporte Propio DALOR";
-        if (!driverName || !vehiclePlate) {
-            alert("Completa el nombre del chofer y la placa del vehículo DALOR.");
-            return;
-        }
     } else if (transportType === 'flete_tercerizado') {
-        carrierCompany = (document.getElementById('disp_carrier_company')?.value || "").trim();
-        driverName = (document.getElementById('disp_driver_name_ext')?.value || "").trim();
-        driverIdDoc = (document.getElementById('disp_driver_id_ext')?.value || "").trim();
-        vehiclePlate = (document.getElementById('disp_plate_ext')?.value || "").trim();
+        carrierCompany = (document.getElementById('disp_carrier_company')?.value || "Flete Tercerizado").trim();
+        driverName = (document.getElementById('disp_driver_name_ext')?.value || "").trim() || "Chofer Flete Externo";
+        driverIdDoc = (document.getElementById('disp_driver_id_ext')?.value || "").trim() || "V-00000000";
+        vehiclePlate = (document.getElementById('disp_plate_ext')?.value || "").trim() || "S/P";
         freightCost = parseFloat(document.getElementById('disp_freight_cost_usd')?.value || 0) || 0.0;
         freightPrice = parseFloat(document.getElementById('disp_freight_price_charged')?.value || 0) || 0.0;
-        if (!carrierCompany || !driverName || !vehiclePlate) {
-            alert("Completa la empresa fletera, nombre del chofer y placa para flete tercerizado.");
-            return;
-        }
     } else {
         // Retiro por cliente
-        driverName = (document.getElementById('disp_driver_name_ret')?.value || "").trim();
-        driverIdDoc = (document.getElementById('disp_driver_id_ret')?.value || "").trim();
-        vehiclePlate = (document.getElementById('disp_plate_ret')?.value || "").trim();
+        driverName = (document.getElementById('disp_driver_name_ret')?.value || "").trim() || "Receptor Autorizado";
+        driverIdDoc = (document.getElementById('disp_driver_id_ret')?.value || "").trim() || "V-00000000";
+        vehiclePlate = (document.getElementById('disp_plate_ret')?.value || "").trim() || "S/P";
         carrierCompany = "Retiro Directo por Cliente";
-        if (!driverName) {
-            alert("Indica el nombre de la persona autorizada que retira.");
-            return;
-        }
     }
 
     // Recolectar renglones de carga
@@ -547,24 +695,27 @@ async function submitCreateDispatchGuide(event) {
     });
 
     if (items.length === 0) {
-        alert("Debes agregar al menos un renglón con la descripción del material o pieza despachada.");
+        alert("Debes agregar al menos un renglón con la descripción del material, equipo o pieza despachada.");
         return;
     }
 
     const payload = {
+        guide_type: guideType,
+        delivered_by_staff: deliveredByStaff,
+        received_by_staff: receivedByStaff,
         project_id: projectId ? parseInt(projectId) : null,
         client_id: clientId ? parseInt(clientId) : null,
         recipient_name: recipientName,
         transfer_reason: transferReason,
-        is_freeform: isFreeform,
+        is_freeform: (guideType === 'control_interno' ? false : isFreeform),
         destination_plant: destPlant || null,
         destination_address: destAddress,
         transport_type: transportType,
         asset_id: assetId ? parseInt(assetId) : null,
         carrier_company: carrierCompany,
         driver_name: driverName,
-        driver_id_doc: driverIdDoc || "V-00000000",
-        vehicle_plate: vehiclePlate || "S/P",
+        driver_id_doc: driverIdDoc,
+        vehicle_plate: vehiclePlate,
         freight_cost_usd: freightCost,
         freight_price_charged_usd: freightPrice,
         dispatcher_name: (document.getElementById('disp_dispatcher_name')?.value || "Despacho Taller Guacara").trim(),
@@ -586,21 +737,22 @@ async function submitCreateDispatchGuide(event) {
         }
 
         const data = await res.json();
+        const docLabel = (guideType === 'control_interno') ? 'Vale de Control Interno' : 'Guía de Despacho';
         if (typeof window.showToast === 'function') {
-            window.showToast(`Guía de Despacho N° ${data.guide_number} emitida con éxito.`, 'success');
+            window.showToast(`${docLabel} N° ${data.guide_number} emitida con éxito.`, 'success');
         } else {
-            alert(`Guía de Despacho N° ${data.guide_number} emitida con éxito.`);
+            alert(`${docLabel} N° ${data.guide_number} emitida con éxito.`);
         }
 
         switchDispatchSubtab('list');
         await loadDispatchGuidesList();
 
         // Ofrecer vista de impresión oficial
-        if (confirm(`¿Deseas abrir la Guía Oficial N° ${data.guide_number} para imprimir o guardar en PDF?`)) {
+        if (confirm(`¿Deseas abrir el documento oficial N° ${data.guide_number} para imprimir o guardar en PDF?`)) {
             printOfficialDispatchGuide(data.id);
         }
     } catch (err) {
-        console.error('Error al emitir guía:', err);
+        console.error('Error al emitir documento de despacho:', err);
         alert('Error: ' + err.message);
     }
 }
@@ -634,27 +786,30 @@ async function loadDispatchGuidesList() {
 function updateFilterCounters() {
     const guides = allDispatchGuides || [];
     const countAll = guides.length;
-    const countProject = guides.filter(g => !g.is_freeform).length;
-    const countFreeform = guides.filter(g => g.is_freeform).length;
+    const countProject = guides.filter(g => !g.is_freeform && g.guide_type !== 'control_interno' && !(g.guide_number && g.guide_number.startsWith('GCI-'))).length;
+    const countFreeform = guides.filter(g => g.is_freeform && g.guide_type !== 'control_interno' && !(g.guide_number && g.guide_number.startsWith('GCI-'))).length;
+    const countInternal = guides.filter(g => g.guide_type === 'control_interno' || (g.guide_number && g.guide_number.startsWith('GCI-'))).length;
     const countTransit = guides.filter(g => g.status === 'en_transito').length;
     const countDelivered = guides.filter(g => g.status === 'entregada' || g.status === 'entregado_conforme').length;
 
     const elAll = document.getElementById('count_disp_all');
     const elProj = document.getElementById('count_disp_project');
     const elFree = document.getElementById('count_disp_freeform');
+    const elInt = document.getElementById('count_disp_internal');
     const elTrans = document.getElementById('count_disp_transit');
     const elDel = document.getElementById('count_disp_delivered');
 
     if (elAll) elAll.textContent = countAll;
     if (elProj) elProj.textContent = countProject;
     if (elFree) elFree.textContent = countFreeform;
+    if (elInt) elInt.textContent = countInternal;
     if (elTrans) elTrans.textContent = countTransit;
     if (elDel) elDel.textContent = countDelivered;
 }
 
 function setDispatchFilter(filter) {
     currentDispatchFilter = filter;
-    const filterButtons = ['all', 'project', 'freeform', 'transit', 'delivered'];
+    const filterButtons = ['all', 'project', 'freeform', 'internal', 'transit', 'delivered'];
     filterButtons.forEach(f => {
         const btn = document.getElementById(`btn_disp_filter_${f}`);
         if (btn) {
@@ -690,9 +845,11 @@ function renderDispatchTable(searchQuery = "") {
 
     // 1. Filtro de Categoría / Modalidad
     if (currentDispatchFilter === 'project') {
-        guides = guides.filter(g => !g.is_freeform);
+        guides = guides.filter(g => !g.is_freeform && g.guide_type !== 'control_interno' && !(g.guide_number && g.guide_number.startsWith('GCI-')));
     } else if (currentDispatchFilter === 'freeform') {
-        guides = guides.filter(g => g.is_freeform);
+        guides = guides.filter(g => g.is_freeform && g.guide_type !== 'control_interno' && !(g.guide_number && g.guide_number.startsWith('GCI-')));
+    } else if (currentDispatchFilter === 'internal') {
+        guides = guides.filter(g => g.guide_type === 'control_interno' || (g.guide_number && g.guide_number.startsWith('GCI-')));
     } else if (currentDispatchFilter === 'transit') {
         guides = guides.filter(g => g.status === 'en_transito');
     } else if (currentDispatchFilter === 'delivered') {
@@ -710,7 +867,9 @@ function renderDispatchTable(searchQuery = "") {
             (g.project_name && g.project_name.toLowerCase().includes(q)) ||
             (g.transfer_reason && g.transfer_reason.toLowerCase().includes(q)) ||
             (g.driver_name && g.driver_name.toLowerCase().includes(q)) ||
-            (g.vehicle_plate && g.vehicle_plate.toLowerCase().includes(q))
+            (g.vehicle_plate && g.vehicle_plate.toLowerCase().includes(q)) ||
+            (g.delivered_by_staff && g.delivered_by_staff.toLowerCase().includes(q)) ||
+            (g.received_by_staff && g.received_by_staff.toLowerCase().includes(q))
         );
     }
 
@@ -755,18 +914,37 @@ function renderDispatchPaginated() {
     const pageItems = guides.slice(startIndex, endIndex);
 
     tbody.innerHTML = pageItems.map(g => {
+        const isInternal = (g.guide_type === 'control_interno' || (g.guide_number && g.guide_number.startsWith('GCI-')));
         const isFreeform = !!g.is_freeform;
         const isDelivered = (g.status === 'entregada' || g.status === 'entregado_conforme');
         const statusBadge = isDelivered
-            ? `<span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-circle-check"></i> Entregada</span>`
+            ? `<span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-circle-check"></i> ${isInternal ? 'Conforme Sede' : 'Entregada'}</span>`
             : `<span style="background: #fff7ed; color: #c2410c; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fed7aa;"><i class="fa-solid fa-truck-fast"></i> En Tránsito</span>`;
 
-        const typeBadge = isFreeform
-            ? `<span style="background: #fef3c7; color: #92400e; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10px; border: 1px solid #fde68a;"><i class="fa-solid fa-feather-pointed"></i> Libre</span>`
-            : `<span style="background: #e0f2fe; color: #0369a1; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10px; border: 1px solid #bae6fd;"><i class="fa-solid fa-building"></i> Obra</span>`;
+        let typeBadge = '';
+        if (isInternal) {
+            typeBadge = `<span style="background: #eff6ff; color: #1e40af; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10px; border: 1px solid #bfdbfe;"><i class="fa-solid fa-warehouse"></i> Interno GCI</span>`;
+        } else if (isFreeform) {
+            typeBadge = `<span style="background: #fef3c7; color: #92400e; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10px; border: 1px solid #fde68a;"><i class="fa-solid fa-feather-pointed"></i> Libre</span>`;
+        } else {
+            typeBadge = `<span style="background: #e0f2fe; color: #0369a1; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10px; border: 1px solid #bae6fd;"><i class="fa-solid fa-building"></i> Obra</span>`;
+        }
 
-        const clientDisplay = isFreeform ? (g.recipient_name || 'Destinatario Libre') : (g.client_name || 'Cliente DALOR');
-        const projectDisplay = isFreeform ? (g.transfer_reason || 'Traslado Libre') : (g.project_code ? `${g.project_code} - ${g.project_name}` : 'Servicio Directo');
+        let clientDisplay = '';
+        let projectDisplay = '';
+        let transportDisplay = '';
+
+        if (isInternal) {
+            const area = g.destination_plant || 'Taller Metalmecánico';
+            clientDisplay = `<div><b>${area}</b></div><div style="font-size: 10px; color: #64748b;">Sede Central Guacara</div>`;
+            projectDisplay = g.project_name ? `${g.project_code || 'PRJ'} - ${g.project_name}` : (g.transfer_reason || 'Uso en Taller');
+            transportDisplay = `<div><b>${g.delivered_by_staff || 'Almacén'} &rarr; ${g.received_by_staff || 'Taller'}</b></div><div style="font-size: 10px; color: #64748b;">Custodia Interna</div>`;
+        } else {
+            const cName = isFreeform ? (g.recipient_name || 'Destinatario Libre') : (g.client_name || 'Cliente DALOR');
+            clientDisplay = `<div>${cName}</div><div style="font-size: 10px; color: #64748b; font-weight: 400;">${g.destination_plant ? g.destination_plant + ' &bull; ' : ''}${g.destination_address || ''}</div>`;
+            projectDisplay = isFreeform ? (g.transfer_reason || 'Traslado Libre') : (g.project_code ? `${g.project_code} - ${g.project_name}` : 'Servicio Directo');
+            transportDisplay = `<div><b>${g.driver_name || 'Personal DALOR'}</b></div><div style="font-size: 10px; color: #64748b;">${g.vehicle_plate || 'S/P'} &bull; ${g.transport_type === 'flete_tercerizado' ? 'Tercerizado' : (g.transport_type === 'retiro_cliente' ? 'Retiro' : 'DALOR')}</div>`;
+        }
 
         return `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
@@ -780,15 +958,13 @@ function renderDispatchPaginated() {
                     ${typeBadge}
                 </td>
                 <td style="padding: 10px; font-weight: 700; color: #1e293b;">
-                    <div>${clientDisplay}</div>
-                    <div style="font-size: 10px; color: #64748b; font-weight: 400;">${g.destination_plant ? g.destination_plant + ' &bull; ' : ''}${g.destination_address || ''}</div>
+                    ${clientDisplay}
                 </td>
                 <td style="padding: 10px; color: #334155; font-size: 11.5px;">
                     ${projectDisplay}
                 </td>
                 <td style="padding: 10px; font-size: 11.5px; color: #475569;">
-                    <div><b>${g.driver_name}</b></div>
-                    <div style="font-size: 10px; color: #64748b;">${g.vehicle_plate} &bull; ${g.transport_type === 'flete_tercerizado' ? 'Tercerizado' : (g.transport_type === 'retiro_cliente' ? 'Retiro' : 'DALOR')}</div>
+                    ${transportDisplay}
                 </td>
                 <td style="padding: 10px; text-align: center; font-weight: 700;">
                     <span style="background: #f1f5f9; color: #334155; padding: 2px 7px; border-radius: 10px; font-size: 11px;">
@@ -929,6 +1105,7 @@ async function printOfficialDispatchGuide(guideId) {
         if (!res.ok) throw new Error('No se pudo cargar la información de la guía.');
         const g = await res.json();
 
+        const isInternal = (g.guide_type === 'control_interno' || (g.guide_number && g.guide_number.startsWith('GCI-')));
         const isFreeform = !!g.is_freeform;
         const clientName = isFreeform ? (g.recipient_name || 'Destinatario Libre') : (g.client_name || 'Cliente DALOR');
         const motiveDisplay = isFreeform ? (g.transfer_reason || 'Traslado Libre') : (`${g.project_code || 'PRJ'} - ${g.project_name || 'Servicio de Taller'}`);
@@ -939,23 +1116,117 @@ async function printOfficialDispatchGuide(guideId) {
                 <td style="padding: 7px; font-weight: 600;">${it.description}</td>
                 <td style="padding: 7px; text-align: right; font-weight: 800;">${it.quantity}</td>
                 <td style="padding: 7px; text-align: center;">${it.unit || 'Pzas'}</td>
-                <td style="padding: 7px;">${it.condition_status || 'Listo para Montaje'}</td>
+                <td style="padding: 7px;">${it.condition_status || (isInternal ? 'Operativo / En Custodia' : 'Listo para Montaje')}</td>
                 <td style="padding: 7px; text-align: right;">${it.approx_weight_kg ? it.approx_weight_kg.toFixed(2) + ' Kg' : '-'}</td>
             </tr>
         `).join('') : `<tr><td colspan="6" style="padding: 12px; text-align: center; color: #64748b;">Sin renglones especificados</td></tr>`;
 
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
-            alert('Por favor habilita las ventanas emergentes (pop-ups) para imprimir la guía.');
+            alert('Por favor habilita las ventanas emergentes (pop-ups) para imprimir el documento.');
             return;
         }
+
+        const docTitle = isInternal 
+            ? `Vale de Control Interno ${g.guide_number} - DALOR`
+            : `Guía de Despacho ${g.guide_number} - DALOR`;
+
+        const docTypeHeader = isInternal
+            ? `<div style="font-size: 11px; font-weight: 900; color: #1e3a8a; text-transform: uppercase;">VALE DE CONTROL INTERNO (TALLER GUACARA / SEDE)</div>
+               <div style="font-size: 18px; font-weight: 900; color: #2563eb; margin-top: 3px;">N° ${g.guide_number}</div>
+               <div style="font-size: 10.5px; color: #475569; margin-top: 2px;">Fecha: <b>${g.dispatch_date || new Date().toLocaleString('es-VE')}</b></div>`
+            : `<div style="font-size: 11px; font-weight: 900; color: #002B49; text-transform: uppercase;">GUÍA OFICIAL DE TRASLADO Y NOTA DE ENTREGA</div>
+               <div style="font-size: 18px; font-weight: 900; color: #dc2626; margin-top: 3px;">N° ${g.guide_number}</div>
+               <div style="font-size: 10.5px; color: #475569; margin-top: 2px;">Fecha: <b>${g.dispatch_date || new Date().toLocaleString('es-VE')}</b></div>`;
+
+        const infoCardsHtml = isInternal ? `
+            <div class="info-card" style="border-left: 4px solid #2563eb;">
+                <h4>1. Control de Sede & Custodia Interna</h4>
+                <div><b>Sede / Planta Origen:</b> Almacén Central DALOR - Sede Guacara</div>
+                <div><b>Área / Taller Destino:</b> <b style="color: #1e40af;">${g.destination_plant || 'Taller Metalmecánico / Producción'}</b></div>
+                <div><b>Motivo del Movimiento:</b> ${g.transfer_reason || 'Uso Operativo en Taller Central'}</div>
+                <div><b>Proyecto Vinculado:</b> ${g.project_name ? `${g.project_code || 'PRJ'} - ${g.project_name}` : 'Operación Regular DALOR'}</div>
+            </div>
+
+            <div class="info-card" style="border-left: 4px solid #16a34a;">
+                <h4>2. Responsables de Custodia & Traspaso</h4>
+                <div><b>Entregado por (Almacén):</b> <b>${g.delivered_by_staff || 'Almacén Central DALOR'}</b></div>
+                <div><b>Recibido por (Taller):</b> <b>${g.received_by_staff || 'Operario de Taller'}</b></div>
+                <div><b>Medio de Traslado:</b> ${g.driver_name || 'Traslado Interno en Planta'}</div>
+                <div><b>Estatus:</b> <span style="color: #166534; font-weight: 700;">Custodia Asignada / Conforme en Sede</span></div>
+            </div>
+        ` : `
+            <div class="info-card">
+                <h4>1. Datos del Destinatario & Obra / Motivo</h4>
+                <div><b>Destinatario / Razón Social:</b> ${clientName}</div>
+                <div><b>Motivo / Proyecto:</b> ${motiveDisplay}</div>
+                <div><b>Planta / Almacén Destino:</b> ${g.destination_plant || 'Recepción en Sitio'}</div>
+                <div><b>Dirección de Entrega:</b> ${g.destination_address || 'Sin dirección especificada'}</div>
+            </div>
+
+            <div class="info-card">
+                <h4>2. Control de Transporte & Vehículo</h4>
+                <div><b>Modalidad:</b> ${g.transport_type === 'propio_dalor' ? 'Flota Propia DALOR' : (g.transport_type === 'flete_tercerizado' ? 'Flete Tercerizado' : 'Retiro en Taller por Cliente')}</div>
+                <div><b>Empresa / Fletero:</b> ${g.carrier_company || 'DALOR C.A.'}</div>
+                <div><b>Conductor:</b> ${g.driver_name || 'Personal DALOR'} (C.I: ${g.driver_id_doc || 'V-00000000'})</div>
+                <div><b>Placa / Batea:</b> <b style="text-transform: uppercase;">${g.vehicle_plate || 'S/P'}</b> ${g.vehicle_model ? '(' + g.vehicle_model + ')' : ''}</div>
+            </div>
+        `;
+
+        const signaturesHtml = isInternal ? `
+            <div class="signatures-grid">
+                <div class="sig-box">
+                    <span>Entregado por (Almacén Central):</span>
+                    <div class="sig-line">${g.delivered_by_staff || 'Almacén Central Guacara'}</div>
+                </div>
+                <div class="sig-box">
+                    <span>Recibido por (Taller / Operario):</span>
+                    <div class="sig-line">${g.received_by_staff || 'Operario de Taller'}</div>
+                </div>
+                <div class="sig-box">
+                    <span>Supervisor de Taller / Calidad:</span>
+                    <div class="sig-line">${g.quality_inspector || 'DALOR C.A.'}</div>
+                </div>
+                <div class="sig-box">
+                    <span>Gerencia de Operaciones:</span>
+                    <div class="sig-line">Firma y Sello Aprobatorio</div>
+                </div>
+            </div>
+        ` : `
+            <div class="signatures-grid">
+                <div class="sig-box">
+                    <span>Despachado por DALOR:</span>
+                    <div class="sig-line">${g.dispatcher_name || 'Despacho Taller'}</div>
+                </div>
+                <div class="sig-box">
+                    <span>Transportista / Conductor:</span>
+                    <div class="sig-line">${g.driver_name || 'Conductor Asignado'}</div>
+                </div>
+                <div class="sig-box">
+                    <span>Control de Calidad:</span>
+                    <div class="sig-line">${g.quality_inspector || 'DALOR'}</div>
+                </div>
+                <div class="sig-box">
+                    <span>Recibido Conforme (Cliente):</span>
+                    <div class="sig-line">Firma, C.I. y Sello</div>
+                </div>
+            </div>
+        `;
+
+        const tableTitle = isInternal 
+            ? 'Maquinaria, Herramientas, Equipos e Insumos en Custodia Interna'
+            : 'Descripción de la Carga / Pieza Fabricada o Reparada';
+
+        const footerNote = isInternal
+            ? 'DOCUMENTO EXCLUSIVO DE CONTROL INTERNO DALOR &bull; NO CONSTITUYE GUÍA DE TRANSPORTE EN VÍA PÚBLICA &bull; SEDE GUACARA &bull; RIF J-31601195-0'
+            : 'Documento emitido por el Sistema Integrado de Gestión Operativa (DALOR SIGO-P) &bull; RIF J-31601195-0';
 
         printWindow.document.write(`
             <!DOCTYPE html>
             <html lang="es">
             <head>
                 <meta charset="UTF-8">
-                <title>Guía de Despacho ${g.guide_number} - DALOR</title>
+                <title>${docTitle}</title>
                 <style>
                     @page {
                         size: letter portrait;
@@ -970,15 +1241,15 @@ async function printOfficialDispatchGuide(guideId) {
                         -webkit-print-color-adjust: exact; 
                         print-color-adjust: exact;
                     }
-                    .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #002B49; padding-bottom: 14px; margin-bottom: 14px; page-break-inside: avoid; }
+                    .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid ${isInternal ? '#1e3a8a' : '#002B49'}; padding-bottom: 14px; margin-bottom: 14px; page-break-inside: avoid; }
                     .info-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 16px; page-break-inside: avoid; }
                     .info-card { border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; background: #f8fafc; }
-                    .info-card h4 { margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; color: #002B49; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+                    .info-card h4 { margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; color: ${isInternal ? '#1e3a8a' : '#002B49'}; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
                     table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; page-break-inside: auto; }
                     thead { display: table-header-group; }
                     tfoot { display: table-footer-group; }
                     tr { page-break-inside: avoid; page-break-after: auto; }
-                    th { background: #002B49 !important; color: white !important; padding: 7px 8px; text-align: left; font-size: 10.5px; text-transform: uppercase; }
+                    th { background: ${isInternal ? '#1e3a8a' : '#002B49'} !important; color: white !important; padding: 7px 8px; text-align: left; font-size: 10.5px; text-transform: uppercase; }
                     td { padding: 6px 8px; }
                     .signatures-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 24px; text-align: center; page-break-inside: avoid; }
                     .sig-box { border: 1px solid #94a3b8; border-radius: 4px; padding: 8px 6px; height: 95px; display: flex; flex-direction: column; justify-content: space-between; font-size: 10.5px; page-break-inside: avoid; }
@@ -992,8 +1263,8 @@ async function printOfficialDispatchGuide(guideId) {
             </head>
             <body>
                 <div style="text-align: right; margin-bottom: 10px;">
-                    <button onclick="window.print()" style="background: #002B49; color: white; border: none; padding: 8px 16px; font-weight: bold; border-radius: 6px; cursor: pointer;">
-                        🖨️ Imprimir Guía / Guardar PDF
+                    <button onclick="window.print()" style="background: ${isInternal ? '#1e3a8a' : '#002B49'}; color: white; border: none; padding: 8px 16px; font-weight: bold; border-radius: 6px; cursor: pointer;">
+                        🖨️ Imprimir Documento / Guardar PDF
                     </button>
                 </div>
 
@@ -1006,39 +1277,23 @@ async function printOfficialDispatchGuide(guideId) {
                             <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Av. Cámara de las Industrias, Galpón 10, Z.I. El Tigre, Guacara, Edo. Carabobo &bull; Telf: +58 0412-2407079</p>
                         </div>
                     </div>
-                    <div style="text-align: right; border: 2px solid #002B49; padding: 8px 14px; border-radius: 6px; background: #f8fafc; min-width: 220px;">
-                        <div style="font-size: 11px; font-weight: 900; color: #002B49; text-transform: uppercase;">GUÍA OFICIAL DE TRASLADO Y NOTA DE ENTREGA</div>
-                        <div style="font-size: 18px; font-weight: 900; color: #dc2626; margin-top: 3px;">N° ${g.guide_number}</div>
-                        <div style="font-size: 10.5px; color: #475569; margin-top: 2px;">Fecha: <b>${g.dispatch_date || new Date().toLocaleString('es-VE')}</b></div>
+                    <div style="text-align: right; border: 2px solid ${isInternal ? '#1e3a8a' : '#002B49'}; padding: 8px 14px; border-radius: 6px; background: #f8fafc; min-width: 220px;">
+                        ${docTypeHeader}
                     </div>
                 </div>
 
                 <div class="info-grid">
-                    <div class="info-card">
-                        <h4>1. Datos del Destinatario & Obra / Motivo</h4>
-                        <div><b>Destinatario / Razón Social:</b> ${clientName}</div>
-                        <div><b>Motivo / Proyecto:</b> ${motiveDisplay}</div>
-                        <div><b>Planta / Almacén Destino:</b> ${g.destination_plant || 'Recepción en Sitio'}</div>
-                        <div><b>Dirección de Entrega:</b> ${g.destination_address || 'Sin dirección especificada'}</div>
-                    </div>
-
-                    <div class="info-card">
-                        <h4>2. Control de Transporte & Vehículo</h4>
-                        <div><b>Modalidad:</b> ${g.transport_type === 'propio_dalor' ? 'Flota Propia DALOR' : (g.transport_type === 'flete_tercerizado' ? 'Flete Tercerizado' : 'Retiro en Taller por Cliente')}</div>
-                        <div><b>Empresa / Fletero:</b> ${g.carrier_company || 'DALOR C.A.'}</div>
-                        <div><b>Conductor:</b> ${g.driver_name} (C.I: ${g.driver_id_doc})</div>
-                        <div><b>Placa / Batea:</b> <b style="text-transform: uppercase;">${g.vehicle_plate}</b> ${g.vehicle_model ? '(' + g.vehicle_model + ')' : ''}</div>
-                    </div>
+                    ${infoCardsHtml}
                 </div>
 
                 <table>
                     <thead>
                         <tr>
                             <th style="width: 35px; text-align: center;">#</th>
-                            <th>Descripción de la Carga / Pieza Fabricada o Reparada</th>
+                            <th>${tableTitle}</th>
                             <th style="width: 70px; text-align: right;">Cantidad</th>
                             <th style="width: 60px; text-align: center;">Unidad</th>
-                            <th style="width: 170px;">Condición Física</th>
+                            <th style="width: 170px;">Condición Física / Estado</th>
                             <th style="width: 80px; text-align: right;">Peso Aprox</th>
                         </tr>
                     </thead>
@@ -1048,43 +1303,26 @@ async function printOfficialDispatchGuide(guideId) {
                 </table>
 
                 <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; margin-bottom: 20px; background: #fafafa; font-size: 11px;">
-                    <b>Observaciones & Precintos:</b> ${g.notes || 'Carga verificada y apta para despacho.'} &bull; <b>Inspector:</b> ${g.quality_inspector || 'Control de Calidad'}
+                    <b>Observaciones & Precintos:</b> ${g.notes || (isInternal ? 'Equipos verificados e inventariados para custodia interna.' : 'Carga verificada y apta para despacho.')} &bull; <b>Inspector:</b> ${g.quality_inspector || 'Control de Calidad'}
                 </div>
 
-                ${(g.status === 'entregada' || g.status === 'entregado_conforme') ? `
+                ${(!isInternal && (g.status === 'entregada' || g.status === 'entregado_conforme')) ? `
                     <div style="border: 1.5px solid #10b981; border-radius: 6px; padding: 8px 12px; margin-bottom: 20px; background: #ecfdf5; font-size: 11px; color: #065f46;">
                         <i class="fa-solid fa-circle-check"></i> <b>Constancia de Recepción Conforme:</b> Recibido por <b>${g.received_by_client_name}</b> (C.I: ${g.received_by_client_id_doc}) en fecha <b>${g.reception_date}</b>.
                     </div>
                 ` : ''}
 
-                <div class="signatures-grid">
-                    <div class="sig-box">
-                        <span>Despachado por DALOR:</span>
-                        <div class="sig-line">${g.dispatcher_name || 'Despacho Taller'}</div>
-                    </div>
-                    <div class="sig-box">
-                        <span>Transportista / Conductor:</span>
-                        <div class="sig-line">${g.driver_name}</div>
-                    </div>
-                    <div class="sig-box">
-                        <span>Control de Calidad:</span>
-                        <div class="sig-line">${g.quality_inspector || 'DALOR'}</div>
-                    </div>
-                    <div class="sig-box">
-                        <span>Recibido Conforme (Cliente):</span>
-                        <div class="sig-line">Firma, C.I. y Sello</div>
-                    </div>
-                </div>
+                ${signaturesHtml}
 
                 <div style="text-align: center; margin-top: 25px; font-size: 10px; color: #64748b;">
-                    Documento emitido por el Sistema Integrado de Gestión Operativa (DALOR SIGO-P) &bull; RIF J-31601195-0
+                    ${footerNote}
                 </div>
             </body>
             </html>
         `);
         printWindow.document.close();
     } catch (err) {
-        console.error('Error imprimiendo guía de despacho:', err);
+        console.error('Error imprimiendo documento de despacho:', err);
         alert('Error: ' + err.message);
     }
 }
@@ -1105,6 +1343,10 @@ if (typeof window !== 'undefined') {
     window.onDispatchProjectChanged = onDispatchProjectChanged;
     window.loadProjectResourcesIntoDispatch = loadProjectResourcesIntoDispatch;
     window.onDispatchAssetChanged = onDispatchAssetChanged;
+    window.onDispatchDriverPersonnelChanged = onDispatchDriverPersonnelChanged;
+    window.onDispatchCiDeliveredChanged = onDispatchCiDeliveredChanged;
+    window.onDispatchCiReceivedChanged = onDispatchCiReceivedChanged;
+    window.loadDalorAssetsIntoDispatch = loadDalorAssetsIntoDispatch;
     window.addDispatchItemRow = addDispatchItemRow;
     window.removeDispatchItemRow = removeDispatchItemRow;
     window.submitCreateDispatchGuide = submitCreateDispatchGuide;
@@ -1131,6 +1373,10 @@ export {
     onDispatchProjectChanged,
     loadProjectResourcesIntoDispatch,
     onDispatchAssetChanged,
+    onDispatchDriverPersonnelChanged,
+    onDispatchCiDeliveredChanged,
+    onDispatchCiReceivedChanged,
+    loadDalorAssetsIntoDispatch,
     addDispatchItemRow,
     removeDispatchItemRow,
     submitCreateDispatchGuide,

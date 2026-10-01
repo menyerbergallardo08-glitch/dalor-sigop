@@ -144,6 +144,8 @@ class Quotation(Base):
     tax_usd = Column(Float, default=0.0)
     total_usd = Column(Float, default=0.0)
     status = Column(String(50), default="borrador")
+    coletilla_divisas = Column(Boolean, default=True)
+    coletilla_modalidad = Column(Boolean, default=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -227,6 +229,8 @@ class ProjectPhase(Base):
     name = Column(String(150), nullable=False)
     description = Column(Text, nullable=True)
     duration_days = Column(Integer, default=7)
+    duration_unit = Column(String(20), default="dias") # dias, horas
+    estimated_duration = Column(Float, default=7.0)
     estimated_cost_usd = Column(Float, default=0.0)
     status = Column(String(50), default="pendiente")
     responsible_person = Column(String(150), nullable=True)
@@ -512,6 +516,13 @@ class AccountPayable(Base):
     tax_withholding_usd = Column(Float, default=0.0)
     islr_rate = Column(Float, default=2.0) # 0%, 1%, 2%, 3%, 5%
     islr_withholding_usd = Column(Float, default=0.0)
+    
+    # Retención Municipal (Impuesto sobre Actividades Económicas - Alcaldía)
+    municipal_rate = Column(Float, default=0.0) # 0%, 1.5%, 2.0%, 3.0%
+    municipal_withholding_usd = Column(Float, default=0.0)
+    municipal_voucher_number = Column(String(50), nullable=True) # ej: "00000110"
+    municipal_voucher_date = Column(DateTime, nullable=True)
+    
     net_amount_usd = Column(Float, default=0.0)
     
     amount_usd = Column(Float, default=0.0)
@@ -649,19 +660,23 @@ class DispatchGuide(Base):
     transfer_reason = Column(String(100), default="Despacho de Producción") # Traslado entre obras, Taller externo, etc.
     is_freeform = Column(Boolean, default=False)
     
+    guide_type = Column(String(50), default="traslado_externo") # traslado_externo, control_interno
+    delivered_by_staff = Column(String(150), nullable=True) # Entregado por Almacén / Responsable
+    received_by_staff = Column(String(150), nullable=True) # Recibido por Taller / Responsable
+
     dispatch_date = Column(DateTime, default=datetime.utcnow)
-    destination_address = Column(String(255), nullable=False)
+    destination_address = Column(String(255), nullable=True)
     destination_plant = Column(String(150), nullable=True)
     
     # Modalidad de Transporte (Propio DALOR vs Tercerizado Flete vs Retiro Cliente)
     transport_type = Column(String(50), default="propio_dalor") # propio_dalor, tercerizado_flete, retiro_cliente
     asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True, index=True)
     carrier_company = Column(String(150), nullable=True)
-    driver_name = Column(String(150), nullable=False)
-    driver_id_doc = Column(String(50), nullable=False) # C.I.
+    driver_name = Column(String(150), nullable=True)
+    driver_id_doc = Column(String(50), nullable=True) # C.I.
     driver_phone = Column(String(50), nullable=True)
     vehicle_model = Column(String(100), nullable=True)
-    vehicle_plate = Column(String(50), nullable=False)
+    vehicle_plate = Column(String(50), nullable=True)
     
     # Aspectos Financieros del Flete/Servicio Tercerizado
     freight_cost_usd = Column(Float, default=0.0) # Costo del transportista (CxP)

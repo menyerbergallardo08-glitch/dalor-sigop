@@ -8,14 +8,18 @@
     <meta http-equiv="Expires" content="0">
     <title>DALOR SIGO-P | ERP Modular (Vite Engine)</title>
     
-    <!-- 📱 Identidad PWA Oficial -->
+    <!-- 📱 Identidad PWA Oficial (Android, Chrome, Safari iOS) -->
     <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0F172A">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DALOR SIGO-P">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192.png">
     <link rel="icon" type="image/png" href="/icons/icon-192.png">
 
     <!-- ⚙️ Service Worker Registro -->
@@ -104,15 +108,15 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-JO1Wk1Bp.js"></script>
+  <script type="module" crossorigin src="/assets/main-C5vfXG_G.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-CavyAXRB.js">
-  <link rel="modulepreload" crossorigin href="/assets/quotations-xY25HaJ1.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-C6pP-hMr.js">
+  <link rel="modulepreload" crossorigin href="/assets/quotations-DfGnRH8z.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-_ZM5Mg12.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-BG-fhTT4.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-CVykDcAG.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-BkUaoia_.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-DHkx8Cxk.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-CQqaFuID.js">
-  <link rel="modulepreload" crossorigin href="/assets/dispatch-B3rKVl3S.js">
+  <link rel="modulepreload" crossorigin href="/assets/dispatch-DJSATowB.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-CZAvUzlu.js">
 </head>
 <body>
@@ -1919,6 +1923,12 @@
 
                 </button>
 
+                <button class="subtab-btn" id="tabbtn-fin-fiscal" onclick="switchFinancialSubtab('fiscal')">
+
+                    <i class="fa-solid fa-book-journal-whills" style="color: #c2410c;"></i> Libros Fiscales SENIAT
+
+                </button>
+
             </div>
 
 
@@ -2019,7 +2029,9 @@
                             </h3>
                             <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Control de pasivos comerciales, fletes, retenciones oficiales SENIAT (Providencia SNAT/2015/0049) y notas de entrega.</p>
                         </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button onclick="switchFinancialSubtab('fiscal')" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; font-weight: 700; color: #c2410c; border-color: #fdba74; background: #fff7ed;" title="Consultar Libros de Ventas y Compras SENIAT">
+                                <i class="fa-solid fa-book-journal-whills"></i> Libros Fiscales SENIAT
+                            </button>
                             <button onclick="openNewPayableModal()" class="btn-primary" style="background: #e11d48; font-size: 11px; font-weight: 700; padding: 6px 14px;">
                                 <i class="fa-solid fa-plus-circle"></i> + Registrar Factura / Nota CxP
                             </button>
@@ -2510,6 +2522,193 @@
                         </table>
                     </div>
                     <div id="partnersPaginationContainer"></div>
+                </div>
+            </div>
+
+            <!-- SUB-TAB 5: LIBROS FISCALES SENIAT (VENTAS, COMPRAS & RETENCIÓN MUNICIPAL) -->
+            <div id="subtab-fin-fiscal" class="hidden">
+                <div class="card" style="padding: 16px;">
+                    <!-- Cabecera y Controles de Período -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 14px;">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-book-journal-whills" style="color: #c2410c;"></i> Libros Fiscales Oficiales SENIAT & Retenciones
+                            </h3>
+                            <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">
+                                Generación y control de Libro de Ventas (Art. 75-77 RLIVA), Libro de Compras (21 Columnas Oficiales) y Comprobantes Municipales Guacara.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;">
+                                <label style="font-size: 11px; font-weight: 700; color: #334155;">Período:</label>
+                                <select id="fiscal_month_select" onchange="loadFiscalBooksView()" class="form-select" style="font-size: 11px; font-weight: 700; padding: 3px 8px; height: 28px;">
+                                    <option value="1">Enero</option>
+                                    <option value="2">Febrero</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Mayo</option>
+                                    <option value="6">Junio</option>
+                                    <option value="7">Julio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9" selected>Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                </select>
+                                <select id="fiscal_year_select" onchange="loadFiscalBooksView()" class="form-select" style="font-size: 11px; font-weight: 700; padding: 3px 8px; height: 28px;">
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                            </div>
+                            <button onclick="loadFiscalBooksView()" class="btn-secondary" style="font-size: 11px; padding: 6px 10px;">
+                                <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                            </button>
+                            <button onclick="openImportLibrosExcelModal()" class="btn-primary" style="background: #059669; font-size: 11px; font-weight: 700; padding: 6px 14px;">
+                                <i class="fa-solid fa-file-excel"></i> Importar Libros Excel (.xlsx)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Navegación Interna: Ventas vs Compras -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <button type="button" id="btn-fiscal-sub-ventas" onclick="switchFiscalInnerTab('ventas')" class="btn-primary" style="background: #0284c7; font-size: 12px; font-weight: 700; padding: 6px 16px;">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> Libro de Ventas SENIAT
+                        </button>
+                        <button type="button" id="btn-fiscal-sub-compras" onclick="switchFiscalInnerTab('compras')" class="btn-secondary" style="font-size: 12px; font-weight: 700; padding: 6px 16px;">
+                            <i class="fa-solid fa-arrow-down-left-and-up-to-right"></i> Libro de Compras SENIAT (21 Col.)
+                        </button>
+                    </div>
+
+                    <!-- SECCIÓN: LIBRO DE VENTAS -->
+                    <div id="section-fiscal-ventas">
+                        <!-- KPI Cards Ventas -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #0369a1; text-transform: uppercase;">Total Ventas (Bs.)</span>
+                                <div id="kpi_lv_total" style="font-size: 18px; font-weight: 900; color: #0284c7; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase;">Base Gravada (Bs.)</span>
+                                <div id="kpi_lv_base" style="font-size: 18px; font-weight: 900; color: #1e293b; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #047857; text-transform: uppercase;">Débito Fiscal IVA 16%</span>
+                                <div id="kpi_lv_tax" style="font-size: 18px; font-weight: 900; color: #059669; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #be185d; text-transform: uppercase;">Ret. IVA Recibidas (Bs.)</span>
+                                <div id="kpi_lv_ret_iva" style="font-size: 18px; font-weight: 900; color: #e11d48; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #7e22ce; text-transform: uppercase;">Ret. ISLR Recibidas (Bs.)</span>
+                                <div id="kpi_lv_ret_islr" style="font-size: 18px; font-weight: 900; color: #6b21a8; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                        </div>
+
+                        <!-- Botones de Exportación / Impresión Ventas -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #334155;">Detalle de Facturas de Ventas Emitidas:</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" onclick="downloadLibroVentasExcel()" class="btn-primary" style="background: #15803d; font-size: 11px; font-weight: 700; padding: 5px 12px;">
+                                    <i class="fa-solid fa-file-excel"></i> Descargar Excel (.xlsx)
+                                </button>
+                                <button type="button" onclick="printLibroVentasPDF()" class="btn-secondary" style="font-size: 11px; font-weight: 700; padding: 5px 12px; background: #f8fafc; border-color: #cbd5e1;">
+                                    <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tabla Ventas -->
+                        <div class="table-wrapper" style="margin-bottom: 12px; max-height: 500px; overflow-y: auto;">
+                            <table style="font-size: 10.5px;">
+                                <thead style="background: #0f172a; color: white;">
+                                    <tr>
+                                        <th style="text-align: center;">Op.</th>
+                                        <th style="text-align: center;">Fecha</th>
+                                        <th>RIF Cliente</th>
+                                        <th>Nombre / Razón Social</th>
+                                        <th style="text-align: center;">Nº Factura</th>
+                                        <th style="text-align: center;">Nº Control</th>
+                                        <th style="text-align: right;">Total Factura (Bs.)</th>
+                                        <th style="text-align: right;">Base Gravada (Bs.)</th>
+                                        <th style="text-align: right;">IVA (16%) (Bs.)</th>
+                                        <th style="text-align: right; color: #fbcfe8;">Ret. IVA (Bs.)</th>
+                                        <th style="text-align: right; color: #e9d5ff;">Ret. ISLR (Bs.)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="libroVentasTableBody">
+                                    <tr><td colspan="11" style="text-align: center; padding: 20px; color: #94a3b8;">Cargando Libro de Ventas...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN: LIBRO DE COMPRAS -->
+                    <div id="section-fiscal-compras" class="hidden">
+                        <!-- KPI Cards Compras -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                            <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #be123c; text-transform: uppercase;">Total Compras (Bs.)</span>
+                                <div id="kpi_lc_total" style="font-size: 18px; font-weight: 900; color: #e11d48; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase;">Compras Exentas (Bs.)</span>
+                                <div id="kpi_lc_exento" style="font-size: 18px; font-weight: 900; color: #1e293b; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #15803d; text-transform: uppercase;">Base Imponible 16% (Bs.)</span>
+                                <div id="kpi_lc_base" style="font-size: 18px; font-weight: 900; color: #16a34a; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #1d4ed8; text-transform: uppercase;">Crédito Fiscal IVA 16%</span>
+                                <div id="kpi_lc_tax" style="font-size: 18px; font-weight: 900; color: #2563eb; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #be185d; text-transform: uppercase;">Ret. IVA Efectuadas (Bs.)</span>
+                                <div id="kpi_lc_ret_iva" style="font-size: 18px; font-weight: 900; color: #be123c; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                        </div>
+
+                        <!-- Botones de Exportación / Impresión Compras -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #334155;">Detalle de Compras y Proveedores (21 Columnas Oficiales):</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" onclick="downloadLibroComprasExcel()" class="btn-primary" style="background: #15803d; font-size: 11px; font-weight: 700; padding: 5px 12px;">
+                                    <i class="fa-solid fa-file-excel"></i> Descargar Excel 21 Col (.xlsx)
+                                </button>
+                                <button type="button" onclick="printLibroComprasPDF()" class="btn-secondary" style="font-size: 11px; font-weight: 700; padding: 5px 12px; background: #f8fafc; border-color: #cbd5e1;">
+                                    <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tabla Compras -->
+                        <div class="table-wrapper" style="margin-bottom: 12px; max-height: 500px; overflow-y: auto;">
+                            <table style="font-size: 10px;">
+                                <thead style="background: #0f172a; color: white;">
+                                    <tr>
+                                        <th style="text-align: center;">Op.</th>
+                                        <th style="text-align: center;">Fecha</th>
+                                        <th>RIF Proveedor</th>
+                                        <th>Nombre / Razón Social</th>
+                                        <th style="text-align: center;">Nº Factura</th>
+                                        <th style="text-align: center;">Nº Control</th>
+                                        <th style="text-align: center;">Cbt. Ret.</th>
+                                        <th style="text-align: right;">Total Compras (Bs.)</th>
+                                        <th style="text-align: right;">Exento (Bs.)</th>
+                                        <th style="text-align: right;">Base Gravada (Bs.)</th>
+                                        <th style="text-align: right;">IVA 16% (Bs.)</th>
+                                        <th style="text-align: right; color: #fbcfe8;">Ret. IVA (Bs.)</th>
+                                        <th style="text-align: center;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="libroComprasTableBody">
+                                    <tr><td colspan="13" style="text-align: center; padding: 20px; color: #94a3b8;">Cargando Libro de Compras...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -3076,24 +3275,19 @@
 
                             </div>
 
-                            <div class="grid-2" style="margin-bottom: 10px;">
-
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                                 <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Duración Estimada (Días) *</label>
-
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Duración (Días Calendario) *</label>
                                     <input type="number" id="new_proj_duration" value="30" min="1" required style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
                                 </div>
-
                                 <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Monto Contractual / Venta (USD) *</label>
-
-                                    <input type="number" step="0.01" id="new_proj_contract" required placeholder="0.00" oninput="recalcProjectBudgetPreview()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
-
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Tiempo de Ejecución (Días Hábiles) *</label>
+                                    <input type="text" id="new_proj_execution_time" value="15 días hábiles" placeholder="Ej: 15 días hábiles" required style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600;">
                                 </div>
-
+                                <div>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Monto Contractual / Venta (USD) *</label>
+                                    <input type="text" inputmode="decimal" id="new_proj_contract" required placeholder="0.00" oninput="recalcProjectBudgetPreview()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+                                </div>
                             </div>
 
                             <div>
@@ -3402,6 +3596,9 @@
                     <button type="button" id="btn_disp_filter_freeform" onclick="setDispatchFilter('freeform')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
                         <i class="fa-solid fa-feather-pointed"></i> Formato Abierto (<span id="count_disp_freeform">0</span>)
                     </button>
+                    <button type="button" id="btn_disp_filter_internal" onclick="setDispatchFilter('internal')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700; border-color: #93c5fd; color: #1e40af;">
+                        <i class="fa-solid fa-warehouse"></i> Control Interno GCI (<span id="count_disp_internal">0</span>)
+                    </button>
                     <button type="button" id="btn_disp_filter_transit" onclick="setDispatchFilter('transit')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
                         <i class="fa-solid fa-truck-fast"></i> En Tránsito (<span id="count_disp_transit">0</span>)
                     </button>
@@ -3464,16 +3661,19 @@
                     </div>
 
                     <form id="dispatchCreateForm" onsubmit="submitCreateDispatchGuide(event)">
-                        <!-- SELECTOR DE MODALIDAD: POR OBRA VS FORMATO ABIERTO -->
+                        <!-- SELECTOR DE MODALIDAD: POR OBRA VS FORMATO ABIERTO VS CONTROL INTERNO -->
                         <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">Tipo de Guía:</span>
-                                <div style="display: inline-flex; gap: 6px; background: #e2e8f0; padding: 3px; border-radius: 6px;">
+                                <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">Tipo de Guía / Régimen:</span>
+                                <div style="display: inline-flex; gap: 6px; background: #e2e8f0; padding: 3px; border-radius: 6px; flex-wrap: wrap;">
                                     <button type="button" id="btn_disp_mode_project" onclick="setDispatchMode('project')" class="btn-primary" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 5px;">
-                                        <i class="fa-solid fa-building"></i> 1. Despacho por Proyecto / Obra
+                                        <i class="fa-solid fa-building"></i> 1. Despacho por Obra (GD)
                                     </button>
                                     <button type="button" id="btn_disp_mode_freeform" onclick="setDispatchMode('freeform')" class="btn-secondary" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 5px;">
-                                        <i class="fa-solid fa-feather-pointed"></i> 2. Traslado Libre / Formato Abierto
+                                        <i class="fa-solid fa-feather-pointed"></i> 2. Traslado Libre (GD)
+                                    </button>
+                                    <button type="button" id="btn_disp_mode_internal" onclick="setDispatchMode('internal')" class="btn-secondary" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 5px; border: 1.5px solid #3b82f6;">
+                                        <i class="fa-solid fa-warehouse"></i> 3. Control Interno Taller / Sede (GCI)
                                     </button>
                                 </div>
                             </div>
@@ -3481,13 +3681,14 @@
                                 Vincula la salida a un cliente y proyecto registrado en DALOR SIGO-P.
                             </span>
                             <input type="hidden" id="disp_is_freeform" value="0">
+                            <input type="hidden" id="disp_guide_type" value="traslado_externo">
                         </div>
 
                         <!-- PASO 1: CLIENTE, DESTINO & MOTIVO -->
                         <div style="margin-bottom: 16px;">
                             <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                                 <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">1</span>
-                                Datos del Destinatario & Obra / Motivo
+                                <span id="disp_step1_title">Datos del Destinatario & Obra / Motivo</span>
                             </h4>
 
                             <!-- Modo A: Por Proyecto / Obra -->
@@ -3549,108 +3750,192 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Modo C: Control Interno Taller Guacara / Sede -->
+                            <div id="disp_sec_internal_mode" style="display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                    <span style="background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">
+                                        VALE GCI &bull; CONTROL INTERNO DALOR
+                                    </span>
+                                    <span style="font-size: 11px; color: #1e40af; font-weight: 600;">
+                                        Genera correlativo oficial <b>GCI-2026-XXXX</b> para custodia de maquinaria, herramientas y salida de insumos a taller en sede.
+                                    </span>
+                                </div>
+                                <div class="grid-4" style="margin-bottom: 6px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e3a8a;">Sede / Almacén Origen</label>
+                                        <input type="text" id="disp_ci_origin" value="Almacén Central DALOR - Sede Guacara" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #f8fafc;" readonly>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e3a8a;">Área DALOR Destino en Sede *</label>
+                                        <input list="list_internal_areas" id="disp_ci_destination_area" placeholder="Ej: Taller Metalmecánico / Tornería" value="Taller Metalmecánico / Línea de Fabricación" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700;">
+                                        <datalist id="list_internal_areas">
+                                            <option value="Taller Metalmecánico / Tornería">
+                                            <option value="Área de Soldadura y Calderería">
+                                            <option value="Patio de Ensamble y Granallado">
+                                            <option value="Banco de Ajuste y Mantenimiento">
+                                            <option value="Almacén de Insumos / Custodia">
+                                            <option value="Puesto de Pintura y Acabado">
+                                        </datalist>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e3a8a;">Motivo del Movimiento Interno *</label>
+                                        <input list="list_internal_reasons" id="disp_ci_reason" placeholder="Selecciona motivo..." value="Salida de Insumos y Equipos para Fabricación Interna" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                        <datalist id="list_internal_reasons">
+                                            <option value="Salida de Insumos y Equipos para Fabricación Interna">
+                                            <option value="Custodia de Maquinaria y Equipos en Taller">
+                                            <option value="Mantenimiento y Reparación de Activo Propio">
+                                            <option value="Pruebas de Taller y Calibración">
+                                        </datalist>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e3a8a;">Proyecto Vinculado (Opcional)</label>
+                                        <select id="disp_ci_project_id" class="form-select" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+                                            <option value="">-- Operación General Sede (Sin Proyecto) --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- PASO 2: MODALIDAD DE TRANSPORTE Y CONDUCTOR -->
+                        <!-- PASO 2: TRANSPORTE Y RESPONSABLES -->
                         <div style="margin-bottom: 16px;">
                             <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                                 <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">2</span>
-                                Modalidad de Transporte, Vehículo & Conductor
+                                <span id="disp_step2_title">Modalidad de Transporte, Vehículo & Conductor</span>
                             </h4>
-                            <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                                <button type="button" id="btn_mode_propio" onclick="setDispatchTransportMode('propio_dalor')" class="btn-primary" style="padding: 5px 12px; font-size: 12px;">
-                                    <i class="fa-solid fa-truck"></i> 1. Flota Propia DALOR
-                                </button>
-                                <button type="button" id="btn_mode_tercerizado" onclick="setDispatchTransportMode('flete_tercerizado')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
-                                    <i class="fa-solid fa-handshake"></i> 2. Flete Tercerizado (Genera CxP)
-                                </button>
-                                <button type="button" id="btn_mode_retiro" onclick="setDispatchTransportMode('retiro_cliente')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
-                                    <i class="fa-solid fa-person-walking-luggage"></i> 3. Retiro en Taller por Cliente
-                                </button>
-                            </div>
-                            <input type="hidden" id="disp_transport_type" value="propio_dalor">
 
-                            <!-- Transporte: Flota Propia -->
-                            <div id="disp_sec_propio" class="grid-4" style="margin-bottom: 10px;">
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículo DALOR Registrado</label>
-                                    <select id="disp_select_asset" onchange="onDispatchAssetChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-                                        <option value="">-- Seleccionar Vehículo --</option>
-                                    </select>
+                            <!-- Bloque para Guías Externas (Modo Project o Freeform) -->
+                            <div id="disp_sec_trans_external">
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                                    <button type="button" id="btn_mode_propio" onclick="setDispatchTransportMode('propio_dalor')" class="btn-primary" style="padding: 5px 12px; font-size: 12px;">
+                                        <i class="fa-solid fa-truck"></i> 1. Flota Propia DALOR
+                                    </button>
+                                    <button type="button" id="btn_mode_tercerizado" onclick="setDispatchTransportMode('flete_tercerizado')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
+                                        <i class="fa-solid fa-handshake"></i> 2. Flete Tercerizado (Genera CxP)
+                                    </button>
+                                    <button type="button" id="btn_mode_retiro" onclick="setDispatchTransportMode('retiro_cliente')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
+                                        <i class="fa-solid fa-person-walking-luggage"></i> 3. Retiro en Taller por Cliente
+                                    </button>
                                 </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Conductor *</label>
-                                    <input type="text" id="disp_driver_name_propio" placeholder="Nombre Chofer DALOR" class="form-input" style="font-size: 12px;">
+                                <input type="hidden" id="disp_transport_type" value="propio_dalor">
+
+                                <!-- Transporte: Flota Propia -->
+                                <div id="disp_sec_propio" class="grid-4" style="margin-bottom: 10px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículo DALOR Registrado</label>
+                                        <select id="disp_select_asset" onchange="onDispatchAssetChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+                                            <option value="">-- Seleccionar Vehículo --</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">
+                                            Conductor DALOR (Seleccionar o Escribir)
+                                        </label>
+                                        <select id="disp_select_driver_personnel" onchange="onDispatchDriverPersonnelChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; margin-bottom: 4px;">
+                                            <option value="">-- Seleccionar del Personal DALOR --</option>
+                                        </select>
+                                        <input type="text" id="disp_driver_name_propio" placeholder="Nombre Chofer (Opcional)" class="form-input" style="font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula de Identidad</label>
+                                        <input type="text" id="disp_driver_id_propio" placeholder="V-12345678 (Opcional)" class="form-input" style="font-size: 12px; margin-top: 26px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo</label>
+                                        <input type="text" id="disp_plate_propio" placeholder="A12BC3D (Opcional)" class="form-input" style="font-size: 12px; text-transform: uppercase; margin-top: 26px;">
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula de Identidad *</label>
-                                    <input type="text" id="disp_driver_id_propio" placeholder="V-12345678" class="form-input" style="font-size: 12px;">
+
+                                <!-- Transporte: Tercerizado -->
+                                <div id="disp_sec_tercerizado" class="hidden" style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                                    <div class="grid-4" style="margin-bottom: 8px;">
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Empresa / Fletero *</label>
+                                            <input type="text" id="disp_carrier_company" placeholder="Ej: Transportes Carabobo C.A." class="form-input" style="font-size: 12px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Nombre del Chofer</label>
+                                            <input type="text" id="disp_driver_name_ext" placeholder="Nombre Chofer Externo (Opcional)" class="form-input" style="font-size: 12px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Cédula Conductor</label>
+                                            <input type="text" id="disp_driver_id_ext" placeholder="V-... (Opcional)" class="form-input" style="font-size: 12px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Placa / Batea</label>
+                                            <input type="text" id="disp_plate_ext" placeholder="Placa Batea/Camión" class="form-input" style="font-size: 12px; text-transform: uppercase;">
+                                        </div>
+                                    </div>
+                                    <div class="grid-2">
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Costo del Flete (USD) &rarr; Genera CxP a Fletero</label>
+                                            <input type="number" step="0.01" id="disp_freight_cost_usd" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #b91c1c;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Precio Cobrado al Cliente (USD) &rarr; Facturable</label>
+                                            <input type="number" step="0.01" id="disp_freight_price_charged" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #15803d;">
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo *</label>
-                                    <input type="text" id="disp_plate_propio" placeholder="A12BC3D" class="form-input" style="font-size: 12px; text-transform: uppercase;">
+
+                                <!-- Transporte: Retiro por Cliente -->
+                                <div id="disp_sec_retiro" class="hidden grid-3" style="margin-bottom: 10px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre de Quien Retira</label>
+                                        <input type="text" id="disp_driver_name_ret" placeholder="Nombre Receptor (Opcional)" class="form-input" style="font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula del Receptor</label>
+                                        <input type="text" id="disp_driver_id_ret" placeholder="V-... (Opcional)" style="font-size: 12px;" class="form-input">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo Retirador</label>
+                                        <input type="text" id="disp_plate_ret" placeholder="Placa vehículo (Opcional)" class="form-input" style="font-size: 12px; text-transform: uppercase;">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Transporte: Tercerizado -->
-                            <div id="disp_sec_tercerizado" class="hidden" style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-                                <div class="grid-4" style="margin-bottom: 8px;">
+                            <!-- Bloque para Control Interno (Custodia & Traspaso en Sede) -->
+                            <div id="disp_sec_trans_internal" style="display: none; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                <div class="grid-3" style="margin-bottom: 8px;">
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Empresa / Fletero *</label>
-                                        <input type="text" id="disp_carrier_company" placeholder="Ej: Transportes Carabobo C.A." class="form-input" style="font-size: 12px;">
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e293b;">Entregado por (Personal Almacén Central) *</label>
+                                        <select id="disp_ci_delivered_select" onchange="onDispatchCiDeliveredChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; margin-bottom: 4px;">
+                                            <option value="">-- Seleccionar de Personal DALOR --</option>
+                                        </select>
+                                        <input type="text" id="disp_ci_delivered_staff" value="Almacén Central Guacara" class="form-input" style="font-size: 12px; font-weight: 600;">
                                     </div>
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Nombre del Chofer *</label>
-                                        <input type="text" id="disp_driver_name_ext" placeholder="Nombre Chofer" class="form-input" style="font-size: 12px;">
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e293b;">Recibido por (Personal Taller / Operario) *</label>
+                                        <select id="disp_ci_received_select" onchange="onDispatchCiReceivedChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; margin-bottom: 4px;">
+                                            <option value="">-- Seleccionar de Personal DALOR --</option>
+                                        </select>
+                                        <input type="text" id="disp_ci_received_staff" value="Operario de Taller / Metalmecánica" class="form-input" style="font-size: 12px; font-weight: 600;">
                                     </div>
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Cédula Conductor *</label>
-                                        <input type="text" id="disp_driver_id_ext" placeholder="V-..." class="form-input" style="font-size: 12px;">
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e293b;">Medio de Movimiento Interno</label>
+                                        <input type="text" id="disp_ci_movement_type" value="Traslado Interno / Manual de Planta" class="form-input" style="font-size: 12px; margin-top: 26px;">
                                     </div>
-                                    <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Placa / Batea *</label>
-                                        <input type="text" id="disp_plate_ext" placeholder="Placa Batea/Camión" class="form-input" style="font-size: 12px; text-transform: uppercase;">
-                                    </div>
-                                </div>
-                                <div class="grid-2">
-                                    <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Costo del Flete (USD) &rarr; Genera CxP a Fletero</label>
-                                        <input type="number" step="0.01" id="disp_freight_cost_usd" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #b91c1c;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Precio Cobrado al Cliente (USD) &rarr; Facturable</label>
-                                        <input type="number" step="0.01" id="disp_freight_price_charged" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #15803d;">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Transporte: Retiro por Cliente -->
-                            <div id="disp_sec_retiro" class="hidden grid-3" style="margin-bottom: 10px;">
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre de Quien Retira *</label>
-                                    <input type="text" id="disp_driver_name_ret" placeholder="Nombre Receptor" class="form-input" style="font-size: 12px;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula del Receptor *</label>
-                                    <input type="text" id="disp_driver_id_ret" placeholder="V-..." style="font-size: 12px;" class="form-input">
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo Retirador *</label>
-                                    <input type="text" id="disp_plate_ret" placeholder="Placa vehículo" class="form-input" style="font-size: 12px; text-transform: uppercase;">
                                 </div>
                             </div>
                         </div>
 
                         <!-- PASO 3: DETALLE DE LA CARGA / PIEZAS / PRODUCTOS -->
                         <div style="margin-bottom: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                                 <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
                                     <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">3</span>
-                                    Carga / Piezas / Componentes Despachados
+                                    <span id="disp_step3_title">Carga, Maquinaria & Insumos Despachados</span>
                                 </h4>
-                                <button type="button" onclick="addDispatchItemRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
-                                    <i class="fa-solid fa-plus"></i> Agregar Renglón
-                                </button>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <button type="button" onclick="loadDalorAssetsIntoDispatch()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; font-weight: 700; border-color: #93c5fd; color: #1d4ed8;">
+                                        <i class="fa-solid fa-screwdriver-wrench"></i> Cargar Maquinaria / Activos DALOR
+                                    </button>
+                                    <button type="button" onclick="addDispatchItemRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
+                                        <i class="fa-solid fa-plus"></i> Agregar Renglón
+                                    </button>
+                                </div>
                             </div>
                             <div class="table-container" style="padding: 0; overflow-x: auto;">
                                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
@@ -5947,13 +6232,13 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 8px;">
                     <div>
-                        <label class="form-label">Total Documento ($ USD) *</label>
+                        <label class="form-label">Total Doc ($ USD) *</label>
                         <input type="number" step="0.01" id="cxp_amount_usd" oninput="calcPayablePreview()" placeholder="0.00" class="form-input" style="font-weight: 800; color: #e11d48; font-size: 14px;" required>
                     </div>
                     <div id="cxp_ret_rate_container">
-                        <label class="form-label">Alícuota Ret. IVA</label>
+                        <label class="form-label">Ret. IVA</label>
                         <select id="cxp_tax_withholding_rate" class="form-select" onchange="calcPayablePreview()" style="font-weight: 700;">
                             <option value="75">75% (Especial)</option>
                             <option value="100">100% (Total)</option>
@@ -5961,7 +6246,7 @@
                         </select>
                     </div>
                     <div id="cxp_islr_container">
-                        <label class="form-label">Ret. ISLR (Opcional)</label>
+                        <label class="form-label">Ret. ISLR</label>
                         <select id="cxp_islr_rate" class="form-select" onchange="calcPayablePreview()" style="font-weight: 700;">
                             <option value="0">0% (Materiales)</option>
                             <option value="2">2% (Servicios)</option>
@@ -5970,29 +6255,43 @@
                             <option value="1">1% (Fletes)</option>
                         </select>
                     </div>
+                    <div id="cxp_municipal_container">
+                        <label class="form-label">Ret. Municipal</label>
+                        <select id="cxp_municipal_rate" class="form-select" onchange="calcPayablePreview()" style="font-weight: 700;">
+                            <option value="0">0% (Sin Ret.)</option>
+                            <option value="3">3% (Guacara Servicios)</option>
+                            <option value="2">2% (Comercio General)</option>
+                            <option value="1.5">1.5% (Industria)</option>
+                            <option value="5">5% (Especial)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Desglose Fiscal Dinámico y Neto a Pagar al Proveedor -->
-                <div id="cxp_fiscal_breakdown" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; font-size: 11px;">
+                <div id="cxp_fiscal_breakdown" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; text-align: center; font-size: 10px;">
                     <div>
-                        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 9px;">Base Imponible</span>
+                        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 8.5px;">Base Imponible</span>
                         <p id="cxp_lbl_base" style="font-weight: 800; margin: 2px 0 0 0; color: #1e293b;">$0.00</p>
                     </div>
                     <div>
-                        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 9px;">IVA (16%)</span>
+                        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 8.5px;">IVA (16%)</span>
                         <p id="cxp_lbl_tax" style="font-weight: 800; margin: 2px 0 0 0; color: #2563eb;">$0.00</p>
                     </div>
                     <div>
-                        <span style="color: #b91c1c; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. IVA (Bs.)</span>
+                        <span style="color: #b91c1c; font-weight: 700; text-transform: uppercase; font-size: 8.5px;">Ret. IVA (Bs.)</span>
                         <p id="cxp_lbl_withholding" style="font-weight: 900; margin: 2px 0 0 0; color: #b91c1c;">Bs. 0.00</p>
                     </div>
                     <div>
-                        <span style="color: #6b21a8; font-weight: 700; text-transform: uppercase; font-size: 9px;">Ret. ISLR (Bs.)</span>
+                        <span style="color: #6b21a8; font-weight: 700; text-transform: uppercase; font-size: 8.5px;">Ret. ISLR (Bs.)</span>
                         <p id="cxp_lbl_islr" style="font-weight: 900; margin: 2px 0 0 0; color: #7e22ce;">Bs. 0.00</p>
                     </div>
+                    <div>
+                        <span style="color: #047857; font-weight: 700; text-transform: uppercase; font-size: 8.5px;">Ret. Munic. (Bs.)</span>
+                        <p id="cxp_lbl_municipal" style="font-weight: 900; margin: 2px 0 0 0; color: #047857;">Bs. 0.00</p>
+                    </div>
                     <div style="background: #f0fdf4; border-radius: 6px; padding: 2px;">
-                        <span style="color: #166534; font-weight: 700; text-transform: uppercase; font-size: 9px;">Neto Proveedor</span>
-                        <p id="cxp_lbl_net" style="font-weight: 900; margin: 2px 0 0 0; color: #16a34a; font-size: 13px;">$0.00</p>
+                        <span style="color: #166534; font-weight: 700; text-transform: uppercase; font-size: 8.5px;">Neto Proveedor</span>
+                        <p id="cxp_lbl_net" style="font-weight: 900; margin: 2px 0 0 0; color: #16a34a; font-size: 12px;">$0.00</p>
                     </div>
                 </div>
 
@@ -6218,6 +6517,157 @@
                     Cerrar
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: COMPROBANTE OFICIAL DE RETENCIÓN MUNICIPAL (ALCALDÍA DE GUACARA) -->
+    <div id="modalMunicipalWithholdingVoucher" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 800px; max-height: 92vh; overflow-y: auto; background: white; padding: 24px; font-family: 'Segoe UI', Arial, sans-serif;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #065f46; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <span style="font-size: 10px; font-weight: 800; color: #047857; text-transform: uppercase; letter-spacing: 0.5px; display: block;">
+                        REPÚBLICA BOLIVARIANA DE VENEZUELA &bull; ESTADO CARABOBO &bull; MUNICIPIO GUACARA
+                    </span>
+                    <h2 style="font-size: 15px; font-weight: 900; color: #064e3b; margin: 3px 0 0 0; text-transform: uppercase;">
+                        Comprobante de Retención de Impuesto sobre Actividades Económicas
+                    </h2>
+                    <h3 style="font-size: 12px; font-weight: 800; color: #1e3a8a; margin: 2px 0 0 0;">
+                        METALMECANICA DALOR, C.A. &bull; R.I.F.: J-31601195-0
+                    </h3>
+                </div>
+                <div style="text-align: right;">
+                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 6px 12px; text-align: center;">
+                        <span style="font-size: 9px; color: #047857; font-weight: 800; text-transform: uppercase; display: block;">Nº Comprobante:</span>
+                        <strong id="muni_voucher_doc_number" style="font-size: 14px; color: #065f46; font-family: monospace;">2026090001</strong>
+                    </div>
+                    <span style="font-size: 10px; color: #334155; margin-top: 4px; display: block;">Fecha: <strong id="muni_voucher_doc_date">10/09/2026</strong></span>
+                    <span style="font-size: 10px; color: #334155; display: block;">Período Fiscal: <strong id="muni_voucher_doc_period">2026-09</strong></span>
+                </div>
+            </div>
+
+            <!-- Base Legal Alcaldía de Guacara -->
+            <div style="background: #f0fdf4; border-left: 3px solid #059669; padding: 6px 10px; margin-bottom: 12px; font-size: 9.5px; color: #166534; line-height: 1.3;">
+                <strong>Base Legal:</strong> <span id="muni_voucher_legal_base">Reglamento y Ordenanza sobre Actividades Económicas de Industria, Comercio, Servicios o de Índole Similar del Municipio Guacara, Estado Carabobo.</span><br>
+                <span id="muni_voucher_legal_article" style="font-style: italic; color: #374151;">Artículo 24: Los Agentes de retención están obligados a entregar a los contribuyentes un comprobante por cada retención de impuesto que les practiquen...</span>
+            </div>
+
+            <!-- Datos del Agente y Sujeto Retenido -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; font-size: 11px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
+                    <strong style="color: #065f46; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 2px;">Agente de Retención:</strong>
+                    <div><strong>Nombre:</strong> METALMECANICA DALOR, C.A.</div>
+                    <div><strong>R.I.F.:</strong> J-31601195-0</div>
+                    <div><strong>Dirección:</strong> AV. CÁMARA DE LAS INDUSTRIAS ZONA INDUSTRIAL EL TIGRE GALPÓN Nº 10 GUACARA EDO. CARABOBO</div>
+                    <div><strong>Correo:</strong> metalmecanicadalorca@yahoo.com</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px;">
+                    <strong style="color: #065f46; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 2px;">Sujeto Retenido (Contribuyente / Proveedor):</strong>
+                    <div><strong>Razón Social:</strong> <span id="muni_voucher_supp_name">-</span></div>
+                    <div><strong>R.I.F.:</strong> <span id="muni_voucher_supp_rif">J-00000000-0</span></div>
+                    <div><strong>Dirección:</strong> <span id="muni_voucher_supp_address">-</span></div>
+                    <div><strong>Teléfono:</strong> <span id="muni_voucher_supp_phone">-</span></div>
+                </div>
+            </div>
+
+            <!-- Tabla de Operación de Retención Municipal (Moneda: Bolívares Bs.) -->
+            <div style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 16px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px; text-align: right;">
+                    <thead style="background: #064e3b; color: white; font-weight: 800;">
+                        <tr>
+                            <th style="padding: 6px; text-align: center;">Operación</th>
+                            <th style="padding: 6px; text-align: center;">Fecha Factura</th>
+                            <th style="padding: 6px; text-align: center;">Nº Factura</th>
+                            <th style="padding: 6px; text-align: center;">Nº Control</th>
+                            <th style="padding: 6px;">Total Factura (Bs.)</th>
+                            <th style="padding: 6px;">Base Imponible (Bs.)</th>
+                            <th style="padding: 6px; text-align: center;">% Alícuota Municipal</th>
+                            <th style="padding: 6px; color: #a7f3d0;">Impuesto Retenido (Bs.)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #e2e8f0; font-weight: 700; background: #ffffff;">
+                            <td style="padding: 7px 6px; text-align: center;">001</td>
+                            <td id="muni_v_td_date" style="padding: 7px 6px; text-align: center;">-</td>
+                            <td id="muni_v_td_invoice" style="padding: 7px 6px; text-align: center; font-weight: 900; color: #064e3b;">-</td>
+                            <td id="muni_v_td_control" style="padding: 7px 6px; text-align: center; color: #475569;">-</td>
+                            <td id="muni_v_td_total_bs" style="padding: 7px 6px; font-weight: 800;">Bs. 0.00</td>
+                            <td id="muni_v_td_base_bs" style="padding: 7px 6px;">Bs. 0.00</td>
+                            <td id="muni_v_td_rate" style="padding: 7px 6px; text-align: center; font-weight: 800; color: #065f46;">3.00%</td>
+                            <td id="muni_v_td_withheld_bs" style="padding: 7px 6px; font-weight: 900; color: #047857; font-size: 11px;">Bs. 0.00</td>
+                        </tr>
+                    </tbody>
+                    <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1;">
+                        <tr>
+                            <td colspan="7" style="padding: 6px; text-align: right; text-transform: uppercase;">Total Retenido a Enterar al Municipio:</td>
+                            <td id="muni_v_tfoot_withheld_bs" style="padding: 6px; color: #065f46; font-size: 12px; font-weight: 900;">Bs. 0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Declaración de Firma Legal -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 35px; text-align: center; font-size: 10px;">
+                <div>
+                    <div style="border-top: 1px solid #065f46; padding-top: 4px; font-weight: 700;">
+                        Firma y Sello del Agente de Retención<br>
+                        <span style="font-weight: normal; color: #64748b;">METALMECANICA DALOR, C.A.</span>
+                    </div>
+                </div>
+                <div>
+                    <div style="border-top: 1px solid #065f46; padding-top: 4px; font-weight: 700;">
+                        Firma y Sello del Contribuyente Retenido<br>
+                        <span style="font-weight: normal; color: #64748b;">Fecha de Recepción: _____/_____/_________</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción (No se imprimen) -->
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 12px;" class="no-print">
+                <button type="button" onclick="printMunicipalWithholdingVoucher()" class="btn-primary" style="background: #047857; font-size: 11px; padding: 6px 14px; font-weight: 700;">
+                    <i class="fa-solid fa-print"></i> Imprimir Comprobante Municipal (PDF)
+                </button>
+                <button type="button" onclick="closeModal('modalMunicipalWithholdingVoucher')" class="btn-secondary" style="font-size: 11px; padding: 6px 14px;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: IMPORTAR LIBROS FISCALES EXCEL (VENTAS / COMPRAS / RETENCIÓN MUNICIPAL) -->
+    <div id="modalImportLibrosExcel" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px; background: white; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-file-excel" style="color: #059669;"></i> Importar Libros Fiscales SENIAT desde Excel
+                </h3>
+                <button onclick="closeModal('modalImportLibrosExcel')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="importLibrosExcelForm" onsubmit="submitImportLibrosExcel(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; font-size: 11px; color: #166534; line-height: 1.4;">
+                    <i class="fa-solid fa-circle-info"></i> Importe directamente el archivo Excel de Libros Fiscales (hojas <b>Ventas</b>, <b>Compras</b> y <b>Municipal</b>). El sistema vinculará las ventas a <b>CxC</b>, las compras a <b>CxP</b> y registrará las retenciones oficiales para generar los comprobantes.
+                </div>
+
+                <div>
+                    <label class="form-label">Archivo Excel (.xlsx) *</label>
+                    <input type="file" id="import_libros_file" accept=".xlsx,.xls" class="form-input" required style="padding: 6px;">
+                </div>
+
+                <div>
+                    <label class="form-label">Tasa Oficial BCV del Mes (Bs./USD) *</label>
+                    <input type="number" step="0.01" id="import_libros_rate" class="form-input" value="859.06" style="font-weight: 800; color: #0284c7;" required>
+                    <small style="font-size: 10px; color: #64748b;">Tasa de conversión aplicada para sincronizar montos contables en USD y Bolívares.</small>
+                </div>
+
+                <div id="import_libros_status" style="display: none; padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 700;"></div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                    <button type="button" onclick="closeModal('modalImportLibrosExcel')" class="btn-secondary" style="font-size: 11px; padding: 6px 14px;">Cancelar</button>
+                    <button type="submit" id="btnSubmitImportLibros" class="btn-primary" style="background: #059669; font-size: 11px; padding: 6px 16px; font-weight: 800;">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Procesar e Importar al Sistema
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -6691,6 +7141,9 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" onclick="openEditProjectModal(currentViewingProjectId)" class="btn-primary" style="background: #d97706; font-size: 11px; padding: 5px 12px; font-weight: 700; display: flex; align-items: center; gap: 5px;" title="Editar Parámetros y Fases de la Obra">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar Obra
+                    </button>
                     <button type="button" onclick="openAddendumModal(currentViewingProjectId)" class="btn-primary" style="background: #9333ea; font-size: 11px; padding: 5px 12px; font-weight: 700; display: flex; align-items: center; gap: 5px;" title="Registrar Adenda Contractual / Obra Extra (+USD)">
                         <i class="fa-solid fa-file-circle-plus"></i> + Adenda
                     </button>
@@ -7133,12 +7586,18 @@
                 </div>
                 <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Duración Estimada (días):</label>
-                        <input type="number" id="add_phase_days" class="form-control" value="7" min="1" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Duración Estimada: *</label>
+                        <div style="display: flex; gap: 4px;">
+                            <input type="text" inputmode="decimal" id="add_phase_duration_val" class="form-control" value="7" style="width: 55%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <select id="add_phase_duration_unit" class="form-control" style="width: 45%; font-size: 11px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700;">
+                                <option value="dias">Días</option>
+                                <option value="horas">Horas</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Costo Estimado ($ USD):</label>
-                        <input type="number" id="add_phase_cost" class="form-control" value="0" min="0" step="0.01" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <input type="text" inputmode="decimal" id="add_phase_cost" class="form-control" value="0" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom: 14px;">
@@ -7149,6 +7608,124 @@
                     <button type="button" onclick="closeModal('modalAddProjectPhase')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
                     <button type="submit" class="btn-primary" style="font-size: 12px; padding: 7px 16px; background: var(--dalor-navy); font-weight: 700;">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Etapa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: REABRIR Y EDITAR PROYECTO GUARDADO (PUNTO 8) -->
+    <div id="modalEditProject" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 850px; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 id="modalEditProjectTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-pen-to-square" style="color: var(--dalor-gold);"></i> Reabrir / Editar Proyecto Guardado
+                </h3>
+                <button type="button" onclick="closeModal('modalEditProject')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+            <form id="formEditProject" onsubmit="submitEditProject(event)">
+                <input type="hidden" id="edit_project_id">
+                
+                <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Código de Obra (No editable)</label>
+                        <input type="text" id="edit_project_code" readonly style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #f1f5f9; font-weight: 800; color: #1e3a8a;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Estatus del Proyecto *</label>
+                        <select id="edit_project_status" class="form-select" style="width: 100%; font-size: 12px; padding: 6px 10px; font-weight: 700;">
+                            <option value="activo">🟢 Activo / En Ejecución</option>
+                            <option value="suspendido">🟡 Suspendido / En Espera</option>
+                            <option value="culminado">🏁 Culminado / Finalizado</option>
+                            <option value="cancelado">🔴 Cancelado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Proyecto / Obra *</label>
+                        <input type="text" id="edit_project_name" required class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente Asignado *</label>
+                        <select id="edit_project_client_id" class="form-select" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                            <option value="">-- Seleccionar Cliente --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-3" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Ubicación / Planta / Frente *</label>
+                        <input type="text" id="edit_project_location" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Duración (Días Calendario) *</label>
+                        <input type="number" id="edit_project_duration" class="form-input" min="1" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Tiempo de Ejecución (Días Hábiles) *</label>
+                        <input type="text" id="edit_project_execution_time" class="form-input" placeholder="Ej: 15 días hábiles" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Monto Contractual / Venta (USD) *</label>
+                    <input type="text" inputmode="decimal" id="edit_project_contract" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px; font-weight: 800; color: var(--dalor-navy);">
+                </div>
+
+                <!-- Bolsas de Costo Presupuestario -->
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 6px; text-transform: uppercase;">
+                        <i class="fa-solid fa-coins" style="color: var(--dalor-gold);"></i> Desglose de Bolsas Presupuestarias Techo ($ USD)
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Mano de Obra</label>
+                            <input type="text" inputmode="decimal" id="edit_project_labor" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Combustible</label>
+                            <input type="text" inputmode="decimal" id="edit_project_fuel" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Materiales</label>
+                            <input type="text" inputmode="decimal" id="edit_project_materials" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Herramientas</label>
+                            <input type="text" inputmode="decimal" id="edit_project_tools" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Servicios Ext.</label>
+                            <input type="text" inputmode="decimal" id="edit_project_services" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Alcance Operativo & Especificaciones Técnicas</label>
+                    <textarea id="edit_project_scope" rows="2" class="form-input" style="width: 100%; font-size: 12px;"></textarea>
+                </div>
+
+                <!-- Lista de Fases Editables -->
+                <div style="border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Etapas / Hitos del Proyecto:
+                        </span>
+                        <button type="button" onclick="addEditProjectPhaseRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;">
+                            <i class="fa-solid fa-plus"></i> Añadir Etapa
+                        </button>
+                    </div>
+                    <div id="editProjectPhasesContainer" style="display: flex; flex-direction: column; gap: 8px; max-height: 35vh; overflow-y: auto;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <button type="button" onclick="closeModal('modalEditProject')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
+                    <button type="submit" id="btnSubmitEditProject" class="btn-primary" style="font-size: 12px; padding: 7px 18px; font-weight: 800; background: var(--dalor-navy);">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Obra
                     </button>
                 </div>
             </form>
@@ -7401,7 +7978,26 @@
 
                 </div>
 
-
+                <!-- Punto 4 y 5: Coletillas Opcionales y Notas Comerciales Editables -->
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                    <div style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; text-transform: uppercase;">
+                        <i class="fa-solid fa-file-pen" style="color: var(--dalor-blue);"></i> Coletillas de Pago y Notas Comerciales
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="quote_coletilla_divisas" checked style="accent-color: var(--dalor-blue); width: 16px; height: 16px;">
+                            <span><b>Coletilla:</b> Solo pagadero en divisas (USD)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="quote_coletilla_modalidad" checked style="accent-color: var(--dalor-blue); width: 16px; height: 16px;">
+                            <span><b>Coletilla:</b> Consultar modalidad de pago</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Notas Comerciales / Observaciones del Presupuesto (Opcional):</label>
+                        <textarea id="quote_notes" class="form-input" rows="2" placeholder="Agregue condiciones particulares, alcances adicionales o cláusulas comerciales..." style="font-size: 11.5px; resize: vertical;"></textarea>
+                    </div>
+                </div>
 
                 <div style="background: var(--dalor-navy); color: white; padding: 12px 16px; border-radius: 10px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center;">
 

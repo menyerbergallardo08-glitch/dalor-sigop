@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DALOR SIGO-P | Módulo: QUOTATIONS.JS
  * Extraído y desacoplado del monolito de producción (v94)
  */
@@ -265,6 +265,11 @@ async function openNewQuotationModal() {
     const quoteForm = document.getElementById("quoteForm");
     if (quoteForm) quoteForm.reset();
 
+    if (document.getElementById("quote_coletilla_divisas")) document.getElementById("quote_coletilla_divisas").checked = true;
+    if (document.getElementById("quote_coletilla_modalidad")) document.getElementById("quote_coletilla_modalidad").checked = true;
+    if (document.getElementById("quote_notes")) document.getElementById("quote_notes").value = "";
+    if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "15 días hábiles";
+
     const riskAlert = document.getElementById("quoteClientRiskAlert");
     if (riskAlert) riskAlert.style.display = "none";
 
@@ -436,21 +441,15 @@ function addQuotationRow(itemData = null) {
         </div>
 
         <div>
-
-            <input type="number" step="0.01" class="form-input q-qty" placeholder="Cant" value="${qtyVal}" oninput="recalcQuotationTotals()" autocomplete="off" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
-
+            <input type="text" inputmode="decimal" class="form-input q-qty" placeholder="Cant" value="${qtyVal}" oninput="recalcQuotationTotals()" autocomplete="off" style="font-size: 11px; padding: 5px; font-weight: bold;" required>
         </div>
 
         <div>
-
-            <input type="number" step="0.01" class="form-input q-price" placeholder="P. Unit ($)" value="${priceVal}" oninput="recalcQuotationTotals()" autocomplete="off" style="font-size: 11px; padding: 5px; font-weight: bold; color: var(--dalor-blue);" required>
-
+            <input type="text" inputmode="decimal" class="form-input q-price" placeholder="P. Unit ($)" value="${priceVal}" oninput="recalcQuotationTotals()" autocomplete="off" style="font-size: 11px; padding: 5px; font-weight: bold; color: var(--dalor-blue);" required>
         </div>
 
         <div>
-
             <input type="text" class="form-input q-total" placeholder="Total ($)" value="$${totVal}" style="font-size: 11px; padding: 5px; font-weight: 800;" readonly>
-
         </div>
 
         <div style="text-align: center;">
@@ -514,21 +513,17 @@ function recalcQuotationTotals() {
     rows.forEach(r => {
 
         const qtyInp = r.querySelector(".q-qty");
-
         const priceInp = r.querySelector(".q-price");
-
         const totInp = r.querySelector(".q-total");
 
-        const qty = parseFloat(qtyInp ? qtyInp.value : 0) || 0;
-
-        const price = parseFloat(priceInp ? priceInp.value : 0) || 0;
+        const qty = parseLocalizedNumber(qtyInp ? qtyInp.value : 0);
+        const price = parseLocalizedNumber(priceInp ? priceInp.value : 0);
 
         const lineTot = qty * price;
 
         if (totInp) totInp.value = `$${lineTot.toFixed(2)}`;
 
         subtotal += lineTot;
-
     });
 
 
@@ -636,6 +631,15 @@ async function editQuotation(quoteId) {
         if (document.getElementById("quote_tax_percent")) {
             document.getElementById("quote_tax_percent").value = (q.tax_percent !== undefined && q.tax_percent !== null) ? q.tax_percent : (q.tax_usd > 0 ? 16 : 0);
         }
+        if (document.getElementById("quote_notes")) {
+            document.getElementById("quote_notes").value = q.notes || "";
+        }
+        if (document.getElementById("quote_coletilla_divisas")) {
+            document.getElementById("quote_coletilla_divisas").checked = (q.coletilla_divisas !== false);
+        }
+        if (document.getElementById("quote_coletilla_modalidad")) {
+            document.getElementById("quote_coletilla_modalidad").checked = (q.coletilla_modalidad !== false);
+        }
 
         // 3. Cargar renglones de partidas
         const container = document.getElementById("quoteItemsList");
@@ -710,11 +714,14 @@ async function submitCreateQuotation(event) {
         client_id: clientId,
         project_title: document.getElementById("quote_title").value,
         location: document.getElementById("quote_location").value || "Sede Central",
-        execution_time: (document.getElementById("quote_execution_time").value || "").trim() || "A convenir",
+        execution_time: (document.getElementById("quote_execution_time").value || "").trim() || "15 días hábiles",
         currency: document.getElementById("quote_currency").value || "USD",
         validity_days: parseInt(document.getElementById("quote_validity") ? document.getElementById("quote_validity").value : 15) || 15,
         tax_percent: parseLocalizedNumber(document.getElementById("quote_tax_percent")?.value) || 0.0,
         exchange_rate: typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0,
+        notes: (document.getElementById("quote_notes")?.value || "").trim(),
+        coletilla_divisas: document.getElementById("quote_coletilla_divisas") ? document.getElementById("quote_coletilla_divisas").checked : true,
+        coletilla_modalidad: document.getElementById("quote_coletilla_modalidad") ? document.getElementById("quote_coletilla_modalidad").checked : true,
         items: items
     };
 
@@ -1137,7 +1144,34 @@ async function printQuotation(quoteId) {
 
         }
 
+        let coletillasList = [];
+        if (q.coletilla_divisas !== false) {
+            coletillasList.push('<b>Condición de Divisas:</b> Solo pagadero en Divisas (USD $) o su contravalor en Bolívares (VES) a la Tasa Oficial del Banco Central de Venezuela (BCV) vigente a la fecha efectiva de pago.');
+        }
+        if (q.coletilla_modalidad !== false) {
+            coletillasList.push('<b>Modalidad de Pago:</b> Consultar previamente la modalidad de pago y cuenta bancaria de destino con la Gerencia de Administración antes de procesar transferencias.');
+        }
 
+        let commercialNotesHtml = '';
+        if (q.notes && q.notes.trim()) {
+            commercialNotesHtml = `
+                <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0072B8; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; font-size: 11px; color: #1e293b; line-height: 1.45; page-break-inside: avoid;">
+                    <div style="font-weight: 800; color: #002B49; margin-bottom: 4px; text-transform: uppercase; font-size: 10.5px;">
+                        <i class="fa-solid fa-clipboard-list" style="color: #0072B8;"></i> Notas & Observaciones Comerciales del Presupuesto:
+                    </div>
+                    <p style="margin: 0; white-space: pre-wrap;">${q.notes.trim()}</p>
+                </div>
+            `;
+        }
+
+        let coletillasHtml = '';
+        if (coletillasList.length > 0) {
+            coletillasHtml = `
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #F5B800; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 10.5px; color: #334155; line-height: 1.45; page-break-inside: avoid;">
+                    ${coletillasList.map(c => `<p style="margin: 3px 0;">• ${c}</p>`).join('')}
+                </div>
+            `;
+        }
 
         const itemsRows = (q.items || []).map((item, idx) => {
 
@@ -1307,8 +1341,11 @@ async function printQuotation(quoteId) {
 
 
 
-            <!-- Coletilla de Condiciones Comerciales -->
+            <!-- Notas y Coletillas Comerciales (Punto 4 y 5) -->
+            ${commercialNotesHtml}
+            ${coletillasHtml}
 
+            <!-- Coletilla de Condiciones Cambiarias -->
             ${currencyNotesHtml}
 
 

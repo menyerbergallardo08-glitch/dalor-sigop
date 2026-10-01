@@ -33,23 +33,26 @@ class DispatchItemIn(BaseModel):
 
 class DispatchGuideCreate(BaseModel):
     guide_number: Optional[str] = None
+    guide_type: Optional[str] = "traslado_externo" # traslado_externo, control_interno
+    delivered_by_staff: Optional[str] = None
+    received_by_staff: Optional[str] = None
     project_id: Optional[int] = None
     client_id: Optional[int] = None
     recipient_name: Optional[str] = None # Nombre libre para formato abierto
     transfer_reason: Optional[str] = "Despacho de Producción" # Motivo de traslado
     is_freeform: Optional[bool] = False
     dispatch_date: Optional[datetime] = None
-    destination_address: str
+    destination_address: Optional[str] = "Taller Dalor Guacara"
     destination_plant: Optional[str] = None
     
-    transport_type: str = "propio_dalor" # propio_dalor, tercerizado_flete, retiro_cliente
+    transport_type: Optional[str] = "propio_dalor" # propio_dalor, tercerizado_flete, retiro_cliente
     asset_id: Optional[int] = None
     carrier_company: Optional[str] = None
-    driver_name: str
-    driver_id_doc: str
+    driver_name: Optional[str] = "Personal DALOR"
+    driver_id_doc: Optional[str] = "N/A"
     driver_phone: Optional[str] = None
     vehicle_model: Optional[str] = None
-    vehicle_plate: str
+    vehicle_plate: Optional[str] = "S/P"
     
     freight_cost_usd: Optional[float] = 0.0
     freight_price_charged_usd: Optional[float] = 0.0
@@ -108,6 +111,9 @@ def list_dispatch_guides(
         results.append({
             "id": g.id,
             "guide_number": g.guide_number,
+            "guide_type": getattr(g, "guide_type", "traslado_externo") or "traslado_externo",
+            "delivered_by_staff": getattr(g, "delivered_by_staff", "") or "",
+            "received_by_staff": getattr(g, "received_by_staff", "") or "",
             "project_id": g.project_id,
             "project_code": g.project.code if g.project else "S/P",
             "project_name": g.project.name if g.project else "Servicio Directo de Taller",
@@ -176,6 +182,9 @@ def get_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
     return {
         "id": g.id,
         "guide_number": g.guide_number,
+        "guide_type": getattr(g, "guide_type", "traslado_externo") or "traslado_externo",
+        "delivered_by_staff": getattr(g, "delivered_by_staff", "") or "",
+        "received_by_staff": getattr(g, "received_by_staff", "") or "",
         "project_id": g.project_id,
         "project_code": g.project.code if g.project else "S/P",
         "project_name": g.project.name if g.project else "Servicio Directo de Taller",
@@ -264,41 +273,53 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
 
     client_id_val = client.id if client else None
 
+    guide_type = (g_in.guide_type or "traslado_externo").strip()
+    is_internal = guide_type == "control_interno"
+
     # Correlativo automático si no viene provisto
     guide_num = g_in.guide_number
+    prefix = "GCI-2026" if is_internal else "GD-2026"
     if not guide_num:
-        count = db.query(DispatchGuide).count() + 1
-        guide_num = f"GD-2026-{count:03d}"
+        count = db.query(DispatchGuide).filter(DispatchGuide.guide_number.like(f"{prefix}-%")).count() + 1
+        guide_num = f"{prefix}-{count:04d}" if is_internal else f"{prefix}-{count:03d}"
 
     # Validar unicidad
     existing = db.query(DispatchGuide).filter(DispatchGuide.guide_number == guide_num).first()
     if existing:
-        count = db.query(DispatchGuide).count() + 10
-        guide_num = f"GD-2026-{count:03d}"
+        count = db.query(DispatchGuide).filter(DispatchGuide.guide_number.like(f"{prefix}-%")).count() + 10
+        guide_num = f"{prefix}-{count:04d}" if is_internal else f"{prefix}-{count:03d}"
+
+    dest_addr = (g_in.destination_address or ("Taller DALOR Guacara (Control Interno)" if is_internal else "Sede Central DALOR")).strip()
+    d_name = (g_in.driver_name or ("Personal Dalor Taller" if is_internal else "Chofer")).strip()
+    d_doc = (g_in.driver_id_doc or ("N/A" if is_internal else "-")).strip()
+    v_plate = (g_in.vehicle_plate or "S/P").strip().upper()
 
     new_guide = DispatchGuide(
         guide_number=guide_num,
+        guide_type=guide_type,
+        delivered_by_staff=g_in.delivered_by_staff.strip() if g_in.delivered_by_staff else None,
+        received_by_staff=g_in.received_by_staff.strip() if g_in.received_by_staff else None,
         project_id=g_in.project_id,
         client_id=client_id_val,
         recipient_name=recipient,
-        transfer_reason=(g_in.transfer_reason or "Despacho de Producción").strip(),
+        transfer_reason=(g_in.transfer_reason or ("Control Interno Taller Guacara" if is_internal else "Despacho de Producción")).strip(),
         is_freeform=is_free,
         dispatch_date=g_in.dispatch_date or datetime.utcnow(),
-        destination_address=g_in.destination_address.strip(),
+        destination_address=dest_addr,
         destination_plant=g_in.destination_plant.strip() if g_in.destination_plant else None,
-        transport_type=g_in.transport_type,
+        transport_type=g_in.transport_type or "propio_dalor",
         asset_id=g_in.asset_id,
         carrier_company=g_in.carrier_company.strip() if g_in.carrier_company else None,
-        driver_name=g_in.driver_name.strip(),
-        driver_id_doc=g_in.driver_id_doc.strip(),
+        driver_name=d_name,
+        driver_id_doc=d_doc,
         driver_phone=g_in.driver_phone.strip() if g_in.driver_phone else None,
         vehicle_model=g_in.vehicle_model.strip() if g_in.vehicle_model else None,
-        vehicle_plate=g_in.vehicle_plate.strip().upper(),
+        vehicle_plate=v_plate,
         freight_cost_usd=g_in.freight_cost_usd or 0.0,
         freight_price_charged_usd=g_in.freight_price_charged_usd or 0.0,
-        status="en_transito",
+        status="entregado_conforme" if is_internal else "en_transito",
         quality_inspector=g_in.quality_inspector or "Control de Calidad DALOR",
-        dispatcher_name=g_in.dispatcher_name or "Despacho Taller Guacara",
+        dispatcher_name=g_in.dispatcher_name or ("Almacén Dalor Guacara" if is_internal else "Despacho Taller Guacara"),
         notes=g_in.notes
     )
     db.add(new_guide)

@@ -1,0 +1,37 @@
+{
+  "name": "DALOR SIGO-P ERP",
+  "short_name": "DALOR SIGO-P",
+  "description": "Sistema Integral de Gestión Operativa, Activos, Job Costing y Finanzas — Metalmecánica Dalor C.A.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": [
+    "business",
+    "productivity",
+    "finance"
+  ],
+  "lang": "es-VE"
+}

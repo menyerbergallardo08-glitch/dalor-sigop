@@ -6,7 +6,7 @@ import re
 from pydantic import BaseModel
 from app.core.database import get_db
 from app.models.models import Project, Client, Expense, ProjectPhase, Asset, Personnel, ResourceAssignmentHistory, AccountReceivable, AccountPayable, FinancialPayment, ProjectAddendum, AuditLog, Material, ProjectMaterialRequisition, MaterialMovement
-from app.schemas.schemas import ProjectCreate, ProjectOut, ProjectAddendumCreate, ProjectAddendumOut
+from app.schemas.schemas import ProjectCreate, ProjectUpdate, ProjectOut, ProjectAddendumCreate, ProjectAddendumOut
 from app.services.excel_service import ExcelProjectService
 from sqlalchemy import func
 
@@ -123,6 +123,8 @@ def get_projects(db: Session = Depends(get_db)):
                     "name": ph.name,
                     "description": ph.description,
                     "duration_days": ph.duration_days,
+                    "duration_unit": getattr(ph, "duration_unit", "dias") or "dias",
+                    "estimated_duration": float(getattr(ph, "estimated_duration", ph.duration_days) or ph.duration_days or 0.0),
                     "estimated_cost_usd": ph.estimated_cost_usd,
                     "status": ph.status,
                     "responsible_person": ph.responsible_person
@@ -285,6 +287,8 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
                 "name": ph.name,
                 "description": ph.description,
                 "duration_days": ph.duration_days,
+                "duration_unit": getattr(ph, "duration_unit", "dias") or "dias",
+                "estimated_duration": float(getattr(ph, "estimated_duration", ph.duration_days) or ph.duration_days or 0.0),
                 "estimated_cost_usd": ph.estimated_cost_usd,
                 "status": ph.status,
                 "responsible_person": ph.responsible_person
@@ -548,6 +552,10 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
         if client:
             client_name = client.name
 
+    exec_t = (project_in.execution_time or "15 días hábiles").strip()
+    if "hábil" not in exec_t.lower() and "habil" not in exec_t.lower():
+        exec_t = f"{exec_t} días hábiles"
+
     try:
         new_project = Project(
             code=code,
@@ -558,6 +566,7 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
             status=project_in.status or "activo",
             scope_of_work=project_in.scope_of_work,
             duration_days=project_in.duration_days,
+            execution_time=exec_t,
             contract_amount_usd=project_in.contract_amount_usd,
             estimated_labor_usd=project_in.estimated_labor_usd,
             estimated_fuel_usd=project_in.estimated_fuel_usd,
@@ -573,17 +582,27 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
         # 1. Crear Etapas / Fases del Proyecto
         if project_in.phases and len(project_in.phases) > 0:
             for idx, phase_data in enumerate(project_in.phases, start=1):
+                d_unit = getattr(phase_data, "duration_unit", "dias") or "dias"
+                e_dur = getattr(phase_data, "estimated_duration", None)
+                if e_dur is None:
+                    e_dur = float(phase_data.duration_days or 7.0)
+                d_days = int(round(e_dur / 8.0)) if d_unit == "horas" else int(round(e_dur))
+                d_days = max(1, d_days)
                 phase = ProjectPhase(
                     project_id=new_project.id,
                     phase_number=idx,
                     name=phase_data.name,
                     description=phase_data.description,
-                    duration_days=phase_data.duration_days,
+                    duration_days=d_days,
+                    duration_unit=d_unit,
+                    estimated_duration=e_dur,
                     estimated_cost_usd=phase_data.estimated_cost_usd,
                     status=phase_data.status or "pendiente",
                     responsible_person=phase_data.responsible_person
                 )
                 db.add(phase)
+            db.flush()
+            db.refresh(new_project)
 
         # 2. Asignar Personal Seleccionado
         if project_in.assigned_personnel_ids:
@@ -705,32 +724,6 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_project)
 
-        return {
-            "id": new_project.id,
-            "code": new_project.code,
-            "name": new_project.name,
-            "client_id": new_project.client_id,
-            "client_name": new_project.client_name,
-            "location": new_project.location,
-            "status": new_project.status,
-            "scope_of_work": new_project.scope_of_work,
-            "duration_days": new_project.duration_days,
-            "execution_time": new_project.execution_time,
-            "tracking_token": new_project.tracking_token,
-            "contract_amount_usd": new_project.contract_amount_usd,
-            "estimated_labor_usd": new_project.estimated_labor_usd,
-            "estimated_fuel_usd": new_project.estimated_fuel_usd,
-            "estimated_materials_usd": new_project.estimated_materials_usd,
-            "estimated_tools_usd": new_project.estimated_tools_usd,
-            "estimated_services_usd": new_project.estimated_services_usd,
-            "budget_limit_usd": new_project.budget_limit_usd,
-            "total_spent_usd": 0.0,
-            "progress_pct": 0.0,
-            "is_active": new_project.is_active,
-            "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
-            "phases": []
-        }
-
     except HTTPException:
         db.rollback()
         raise
@@ -767,10 +760,12 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
             "name": ph.name,
             "description": ph.description,
             "duration_days": ph.duration_days,
+            "duration_unit": getattr(ph, "duration_unit", "dias") or "dias",
+            "estimated_duration": getattr(ph, "estimated_duration", None),
             "estimated_cost_usd": ph.estimated_cost_usd,
             "status": ph.status,
             "responsible_person": ph.responsible_person
-        } for ph in new_project.phases]
+        } for ph in (new_project.phases or [])]
     }
 
 class ProjectPhaseAdd(BaseModel):
@@ -778,6 +773,8 @@ class ProjectPhaseAdd(BaseModel):
     name: str
     description: Optional[str] = None
     duration_days: Optional[int] = 7
+    duration_unit: Optional[str] = "dias"
+    estimated_duration: Optional[float] = None
     estimated_cost_usd: Optional[float] = 0.0
     status: Optional[str] = "pendiente"
     responsible_person: Optional[str] = None
@@ -791,12 +788,19 @@ def add_project_phase(project_id: int, phase_in: ProjectPhaseAdd, db: Session = 
     curr_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
     p_num = phase_in.phase_number if (phase_in.phase_number and phase_in.phase_number > 0) else len(curr_phases) + 1
 
+    d_unit = phase_in.duration_unit or "dias"
+    e_dur = phase_in.estimated_duration if phase_in.estimated_duration is not None else float(phase_in.duration_days or 7.0)
+    d_days = int(round(e_dur / 8.0)) if d_unit == "horas" else int(round(e_dur))
+    d_days = max(1, d_days)
+
     new_phase = ProjectPhase(
         project_id=project_id,
         phase_number=p_num,
         name=phase_in.name.strip(),
         description=(phase_in.description or "").strip(),
-        duration_days=phase_in.duration_days or 7,
+        duration_days=d_days,
+        duration_unit=d_unit,
+        estimated_duration=e_dur,
         estimated_cost_usd=round(phase_in.estimated_cost_usd or 0.0, 2),
         status=phase_in.status or "pendiente",
         responsible_person=phase_in.responsible_person or "Residente de Obra"
@@ -989,6 +993,102 @@ async def import_excel_project(file: UploadFile = File(...), db: Session = Depen
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al procesar el archivo Excel: {str(e)}")
+
+@router.put("/{project_id}")
+@router.patch("/{project_id}")
+def update_project(project_id: int, project_in: ProjectUpdate, db: Session = Depends(get_db)):
+    proj = db.query(Project).filter(Project.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+
+    if project_in.name is not None and project_in.name.strip():
+        proj.name = project_in.name.strip()
+    if project_in.client_id is not None:
+        proj.client_id = project_in.client_id
+        client = db.query(Client).filter(Client.id == project_in.client_id).first()
+        if client:
+            proj.client_name = client.name
+    elif project_in.client_name is not None:
+        proj.client_name = project_in.client_name.strip()
+    if project_in.location is not None:
+        proj.location = project_in.location.strip()
+    if project_in.status is not None:
+        proj.status = project_in.status
+    if project_in.scope_of_work is not None:
+        proj.scope_of_work = project_in.scope_of_work
+    if project_in.duration_days is not None:
+        proj.duration_days = project_in.duration_days
+    if project_in.execution_time is not None:
+        exec_t = project_in.execution_time.strip()
+        if "hábil" not in exec_t.lower() and "habil" not in exec_t.lower():
+            exec_t = f"{exec_t} días hábiles"
+        proj.execution_time = exec_t
+    if project_in.contract_amount_usd is not None:
+        proj.contract_amount_usd = project_in.contract_amount_usd
+    if project_in.estimated_labor_usd is not None:
+        proj.estimated_labor_usd = project_in.estimated_labor_usd
+    if project_in.estimated_fuel_usd is not None:
+        proj.estimated_fuel_usd = project_in.estimated_fuel_usd
+    if project_in.estimated_materials_usd is not None:
+        proj.estimated_materials_usd = project_in.estimated_materials_usd
+    if project_in.estimated_tools_usd is not None:
+        proj.estimated_tools_usd = project_in.estimated_tools_usd
+    if project_in.estimated_services_usd is not None:
+        proj.estimated_services_usd = project_in.estimated_services_usd
+
+    # Recalcular límite presupuestario si los rubros cambiaron
+    total_budget = (
+        (proj.estimated_labor_usd or 0.0) +
+        (proj.estimated_fuel_usd or 0.0) +
+        (proj.estimated_materials_usd or 0.0) +
+        (proj.estimated_tools_usd or 0.0) +
+        (proj.estimated_services_usd or 0.0)
+    )
+    if total_budget > 0:
+        proj.budget_limit_usd = total_budget
+
+    # Si se envían fases para actualización/reemplazo
+    if project_in.phases is not None:
+        db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).delete()
+        for idx, phase_data in enumerate(project_in.phases, start=1):
+            d_unit = getattr(phase_data, "duration_unit", "dias") or "dias"
+            e_dur = getattr(phase_data, "estimated_duration", None)
+            if e_dur is None:
+                e_dur = float(phase_data.duration_days or 7.0)
+            d_days = int(round(e_dur / 8.0)) if d_unit == "horas" else int(round(e_dur))
+            d_days = max(1, d_days)
+            new_p = ProjectPhase(
+                project_id=proj.id,
+                phase_number=idx,
+                name=phase_data.name,
+                description=phase_data.description,
+                duration_days=d_days,
+                duration_unit=d_unit,
+                estimated_duration=e_dur,
+                estimated_cost_usd=phase_data.estimated_cost_usd,
+                status=phase_data.status or "pendiente",
+                responsible_person=phase_data.responsible_person
+            )
+            db.add(new_p)
+
+    db.commit()
+    db.refresh(proj)
+    return {
+        "success": True,
+        "message": f"Proyecto [{proj.code}] '{proj.name}' actualizado exitosamente.",
+        "project": {
+            "id": proj.id,
+            "code": proj.code,
+            "name": proj.name,
+            "client_name": proj.client_name,
+            "location": proj.location,
+            "status": proj.status,
+            "duration_days": proj.duration_days,
+            "execution_time": proj.execution_time,
+            "contract_amount_usd": proj.contract_amount_usd,
+            "budget_limit_usd": proj.budget_limit_usd
+        }
+    }
 
 class ProjectStatusUpdate(BaseModel):
     status: str

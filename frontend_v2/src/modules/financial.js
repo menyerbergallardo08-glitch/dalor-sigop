@@ -114,7 +114,7 @@ function switchFinancialSubtab(subtabName) {
         localStorage.setItem('dalor_active_subtab_financial', subtabName); 
     } catch(e) {}
 
-    const subtabs = ['cxc', 'cxp', 'summary', 'partners'];
+    const subtabs = ['cxc', 'cxp', 'summary', 'partners', 'fiscal'];
 
     subtabs.forEach(tab => {
         const pane = document.getElementById(`subtab-fin-${tab}`);
@@ -132,6 +132,7 @@ function switchFinancialSubtab(subtabName) {
     if (subtabName === 'cxp') loadPayablesList();
     if (subtabName === 'summary') loadTreasurySummary();
     if (subtabName === 'partners') loadPartnersWithdrawalsList();
+    if (subtabName === 'fiscal') loadFiscalBooksView();
 }
 
 
@@ -848,6 +849,12 @@ function renderPayablesPaginated() {
                         </button>
                     ` : ''}
 
+                    ${(p.municipal_withholding_usd > 0 || (p.municipal_rate && p.municipal_rate > 0) || p.municipal_voucher_number) ? `
+                        <button onclick="openMunicipalWithholdingVoucherModal(${p.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; background: #ecfdf5; color: #047857; border-color: #a7f3d0; font-weight: 700;" title="Ver e Imprimir Comprobante Oficial de Retención Municipal (Alcaldía de Guacara)">
+                            <i class="fa-solid fa-landmark"></i> Ret. Municipal
+                        </button>
+                    ` : ''}
+
                     <button onclick="openEditPayableModal(${p.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 7px; background: #f8fafc; color: #2563eb;" title="Modificar Factura / Retención">
                         <i class="fa-solid fa-pen"></i>
                     </button>
@@ -871,6 +878,8 @@ function onCxpModalDocTypeChange() {
     const rifReq = document.getElementById("cxp_rif_req");
     const ctrlContainer = document.getElementById("cxp_control_container");
     const retContainer = document.getElementById("cxp_ret_rate_container");
+    const islrContainer = document.getElementById("cxp_islr_container");
+    const muniContainer = document.getElementById("cxp_municipal_container");
     const breakdownBox = document.getElementById("cxp_fiscal_breakdown");
     const invoiceLbl = document.getElementById("lbl_cxp_invoice");
 
@@ -879,18 +888,24 @@ function onCxpModalDocTypeChange() {
         if (rifReq) rifReq.style.display = "none";
         if (ctrlContainer) ctrlContainer.style.display = "none";
         if (retContainer) retContainer.style.display = "none";
+        if (islrContainer) islrContainer.style.display = "none";
+        if (muniContainer) muniContainer.style.display = "none";
         if (breakdownBox) breakdownBox.style.display = "none";
     } else if (docType === 'factura_sin_retencion') {
         if (invoiceLbl) invoiceLbl.textContent = "Nº Factura Fiscal *";
         if (rifReq) rifReq.style.display = "inline";
         if (ctrlContainer) ctrlContainer.style.display = "block";
         if (retContainer) retContainer.style.display = "none";
+        if (islrContainer) islrContainer.style.display = "none";
+        if (muniContainer) muniContainer.style.display = "none";
         if (breakdownBox) breakdownBox.style.display = "grid";
     } else {
         if (invoiceLbl) invoiceLbl.textContent = "Nº Factura Fiscal *";
         if (rifReq) rifReq.style.display = "inline";
         if (ctrlContainer) ctrlContainer.style.display = "block";
         if (retContainer) retContainer.style.display = "block";
+        if (islrContainer) islrContainer.style.display = "block";
+        if (muniContainer) muniContainer.style.display = "block";
         if (breakdownBox) breakdownBox.style.display = "grid";
     }
     calcPayablePreview();
@@ -901,26 +916,30 @@ function calcPayablePreview() {
     const docType = document.getElementById("cxp_doc_type")?.value || 'factura';
     const retRate = (docType === 'factura') ? (parseFloat(document.getElementById("cxp_tax_withholding_rate")?.value) || 75.0) : 0;
     const islrRate = (docType === 'factura') ? (parseFloat(document.getElementById("cxp_islr_rate")?.value) || 0.0) : 0;
+    const muniRate = (docType === 'factura') ? (parseFloat(document.getElementById("cxp_municipal_rate")?.value) || 0.0) : 0;
 
-    let base = 0, tax = 0, ret = 0, islr = 0, net = total;
+    let base = 0, tax = 0, ret = 0, islr = 0, muni = 0, net = total;
     if (docType === 'nota_entrega') {
         base = total;
         tax = 0;
         ret = 0;
         islr = 0;
+        muni = 0;
         net = total;
     } else {
         base = roundFinancial(total / 1.16);
         tax = roundFinancial(total - base);
         ret = (retRate > 0) ? roundFinancial(tax * (retRate / 100.0)) : 0;
         islr = (islrRate > 0) ? roundFinancial(base * (islrRate / 100.0)) : 0;
-        net = roundFinancial(total - ret - islr);
+        muni = (muniRate > 0) ? roundFinancial(base * (muniRate / 100.0)) : 0;
+        net = roundFinancial(total - ret - islr - muni);
     }
 
     const lblBase = document.getElementById("cxp_lbl_base");
     const lblTax = document.getElementById("cxp_lbl_tax");
     const lblRet = document.getElementById("cxp_lbl_withholding");
     const lblIslr = document.getElementById("cxp_lbl_islr");
+    const lblMuni = document.getElementById("cxp_lbl_municipal");
     const lblNet = document.getElementById("cxp_lbl_net");
 
     const activeRate = window.EXCHANGE_RATE || (window.BCV_DATA ? window.BCV_DATA.rate : 850.0) || 850.0;
@@ -928,6 +947,7 @@ function calcPayablePreview() {
     if (lblTax) lblTax.textContent = `$${tax.toFixed(2)}`;
     if (lblRet) lblRet.textContent = `Bs. ${(ret * activeRate).toFixed(2)}`;
     if (lblIslr) lblIslr.textContent = `Bs. ${(islr * activeRate).toFixed(2)}`;
+    if (lblMuni) lblMuni.textContent = `Bs. ${(muni * activeRate).toFixed(2)}`;
     if (lblNet) lblNet.textContent = `$${net.toFixed(2)}`;
 }
 
@@ -1311,6 +1331,8 @@ async function submitCreatePayable(e) {
         tax_withholding_usd: retUsd,
         islr_rate: (docType === 'factura') ? (parseFloat(document.getElementById("cxp_islr_rate")?.value) || 0.0) : 0.0,
         islr_withholding_usd: (docType === 'factura' && parseFloat(document.getElementById("cxp_islr_rate")?.value) > 0) ? roundFinancial(baseUsd * ((parseFloat(document.getElementById("cxp_islr_rate")?.value) || 0) / 100.0)) : 0.0,
+        municipal_rate: (docType === 'factura') ? (parseFloat(document.getElementById("cxp_municipal_rate")?.value) || 0.0) : 0.0,
+        municipal_withholding_usd: (docType === 'factura' && parseFloat(document.getElementById("cxp_municipal_rate")?.value) > 0) ? roundFinancial(baseUsd * ((parseFloat(document.getElementById("cxp_municipal_rate")?.value) || 0) / 100.0)) : 0.0,
         is_withholding_applied: (docType === 'factura' && retRate > 0),
         exchange_rate: (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0),
         notes: document.getElementById("cxp_notes")?.value?.trim() || ''
@@ -1478,6 +1500,318 @@ function printIslrWithholdingVoucher() {
         window.printElementHtml(voucherModal, title);
     } else {
         window.print();
+    }
+}
+
+async function openMunicipalWithholdingVoucherModal(payableId) {
+    try {
+        const res = await authFetch(`${API_BASE}/financial/cxp/${payableId}/municipal-withholding-voucher`);
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || "No se pudo obtener el comprobante de retención municipal");
+        }
+        const data = await res.json();
+        const v = data.voucher;
+        if (!v) throw new Error("Datos de comprobante no disponibles");
+
+        const setTxt = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val !== null && val !== undefined ? val : '-';
+        };
+
+        setTxt("muni_voucher_doc_number", v.voucher_number || '-');
+        const periodStr = v.period ? `${v.period.day ? String(v.period.day).padStart(2, '0') + '/' : ''}${v.period.month || ''}/${v.period.year || ''}` : '-';
+        setTxt("muni_voucher_doc_date", periodStr);
+        setTxt("muni_voucher_doc_period", `${v.period?.month || ''} / ${v.period?.year || ''}`);
+        setTxt("muni_voucher_legal_base", v.legal_base || '');
+        setTxt("muni_voucher_legal_article", v.legal_article || '');
+
+        setTxt("muni_voucher_supp_name", v.supplier?.name || '-');
+        setTxt("muni_voucher_supp_rif", v.supplier?.rif || '-');
+        setTxt("muni_voucher_supp_address", v.supplier?.address || '-');
+        setTxt("muni_voucher_supp_phone", v.supplier?.phone || '-');
+
+        setTxt("muni_v_td_date", v.invoice?.invoice_date || '-');
+        setTxt("muni_v_td_invoice", v.invoice?.invoice_number || '-');
+        setTxt("muni_v_td_control", v.invoice?.control_number || '-');
+        setTxt("muni_v_td_total_bs", `Bs. ${Number(v.invoice?.total_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+        setTxt("muni_v_td_base_bs", `Bs. ${Number(v.invoice?.base_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+        setTxt("muni_v_td_rate", `${v.withholding?.rate_pct || 3.0}%`);
+        setTxt("muni_v_td_withheld_bs", `Bs. ${Number(v.withholding?.amount_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+        setTxt("muni_v_tfoot_withheld_bs", `Bs. ${Number(v.withholding?.amount_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+
+        openModal("modalMunicipalWithholdingVoucher");
+    } catch (err) {
+        alert("Error al cargar comprobante municipal: " + err.message);
+    }
+}
+
+function printMunicipalWithholdingVoucher() {
+    const voucherModal = document.querySelector("#modalMunicipalWithholdingVoucher .modal-content");
+    const docNumber = document.getElementById("muni_voucher_doc_number")?.textContent || "GUACARA_MUNICIPAL";
+    const title = `Comprobante_Retencion_Municipal_${docNumber}`;
+    if (typeof window.printElementHtml === 'function' && voucherModal) {
+        window.printElementHtml(voucherModal, title);
+    } else {
+        window.print();
+    }
+}
+
+let currentFiscalInnerTab = 'ventas';
+
+function switchFiscalInnerTab(tab) {
+    currentFiscalInnerTab = tab;
+    const btnVentas = document.getElementById("btn-fiscal-sub-ventas");
+    const btnCompras = document.getElementById("btn-fiscal-sub-compras");
+    const secVentas = document.getElementById("section-fiscal-ventas");
+    const secCompras = document.getElementById("section-fiscal-compras");
+
+    if (tab === 'ventas') {
+        if (btnVentas) { btnVentas.className = "btn-primary"; btnVentas.style.background = "#0284c7"; }
+        if (btnCompras) { btnCompras.className = "btn-secondary"; btnCompras.style.background = ""; }
+        if (secVentas) secVentas.classList.remove("hidden");
+        if (secCompras) secCompras.classList.add("hidden");
+    } else {
+        if (btnCompras) { btnCompras.className = "btn-primary"; btnCompras.style.background = "#be123c"; }
+        if (btnVentas) { btnVentas.className = "btn-secondary"; btnVentas.style.background = ""; }
+        if (secVentas) secVentas.classList.add("hidden");
+        if (secCompras) secCompras.classList.remove("hidden");
+    }
+}
+
+async function loadFiscalBooksView() {
+    const month = parseInt(document.getElementById("fiscal_month_select")?.value) || 9;
+    const year = parseInt(document.getElementById("fiscal_year_select")?.value) || 2026;
+
+    // Load Libro de Ventas Data
+    try {
+        const resV = await authFetch(`${API_BASE}/financial/reports/libro-ventas/data?month=${month}&year=${year}`);
+        if (resV.ok) {
+            const dataV = await resV.json();
+            const totals = dataV.totals || {};
+            const items = dataV.items || [];
+
+            const fmt = (num) => `Bs. ${Number(num || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+            setTxt("kpi_lv_total", fmt(totals.total_ventas_bs));
+            setTxt("kpi_lv_base", fmt(totals.base_imponible_bs));
+            setTxt("kpi_lv_tax", fmt(totals.iva_bs));
+            setTxt("kpi_lv_ret_iva", fmt(totals.ret_iva_bs));
+            setTxt("kpi_lv_ret_islr", fmt(totals.ret_islr_bs));
+
+            const tbodyV = document.getElementById("libroVentasTableBody");
+            if (tbodyV) {
+                if (items.length === 0) {
+                    tbodyV.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 24px; color: #94a3b8;"><i class="fa-solid fa-folder-open"></i> No hay facturas de ventas registradas en este período.</td></tr>`;
+                } else {
+                    tbodyV.innerHTML = items.map(it => `
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="text-align: center; font-weight: 700;">${it.operacion}</td>
+                            <td style="text-align: center;">${it.fecha}</td>
+                            <td style="font-family: monospace; font-weight: 700;">${it.rif}</td>
+                            <td style="font-weight: 700; color: #1e293b;">${it.cliente}</td>
+                            <td style="text-align: center; font-weight: 800; color: #0284c7;">${it.factura}</td>
+                            <td style="text-align: center; color: #64748b;">${it.control}</td>
+                            <td style="text-align: right; font-weight: 800;">${fmt(it.total_ventas_bs)}</td>
+                            <td style="text-align: right;">${fmt(it.base_imponible_bs)}</td>
+                            <td style="text-align: right; color: #059669; font-weight: 700;">${fmt(it.iva_bs)}</td>
+                            <td style="text-align: right; color: #be185d; font-weight: 700;">${fmt(it.ret_iva_bs)}</td>
+                            <td style="text-align: right; color: #7e22ce; font-weight: 700;">${fmt(it.ret_islr_bs)}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("Error cargando Libro de Ventas:", err);
+    }
+
+    // Load Libro de Compras Data
+    try {
+        const resC = await authFetch(`${API_BASE}/financial/reports/libro-compras/data?month=${month}&year=${year}`);
+        if (resC.ok) {
+            const dataC = await resC.json();
+            const totals = dataC.totals || {};
+            const items = dataC.items || [];
+
+            const fmt = (num) => `Bs. ${Number(num || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+            setTxt("kpi_lc_total", fmt(totals.total_compras_bs));
+            setTxt("kpi_lc_exento", fmt(totals.exento_bs));
+            setTxt("kpi_lc_base", fmt(totals.base_16_bs));
+            setTxt("kpi_lc_tax", fmt(totals.iva_16_bs));
+            setTxt("kpi_lc_ret_iva", fmt(totals.ret_iva_bs));
+
+            const tbodyC = document.getElementById("libroComprasTableBody");
+            if (tbodyC) {
+                if (items.length === 0) {
+                    tbodyC.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 24px; color: #94a3b8;"><i class="fa-solid fa-folder-open"></i> No hay compras registradas en este período.</td></tr>`;
+                } else {
+                    tbodyC.innerHTML = items.map(it => `
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="text-align: center; font-weight: 700;">${it.operacion}</td>
+                            <td style="text-align: center;">${it.fecha}</td>
+                            <td style="font-family: monospace; font-weight: 700;">${it.rif}</td>
+                            <td style="font-weight: 700; color: #1e293b;">${it.proveedor}</td>
+                            <td style="text-align: center; font-weight: 800; color: #e11d48;">${it.factura}</td>
+                            <td style="text-align: center; color: #64748b;">${it.control}</td>
+                            <td style="text-align: center; font-family: monospace; font-size: 9px; color: #be185d;">${it.cbt_retencion || '-'}</td>
+                            <td style="text-align: right; font-weight: 800;">${fmt(it.total_compras_bs)}</td>
+                            <td style="text-align: right;">${fmt(it.exento_bs)}</td>
+                            <td style="text-align: right;">${fmt(it.base_16_bs)}</td>
+                            <td style="text-align: right; color: #2563eb; font-weight: 700;">${fmt(it.iva_16_bs)}</td>
+                            <td style="text-align: right; color: #be185d; font-weight: 700;">${fmt(it.ret_iva_bs)}</td>
+                            <td style="text-align: center;">
+                                ${it.payable_id ? `
+                                    <button onclick="openMunicipalWithholdingVoucherModal(${it.payable_id})" class="btn-secondary" style="font-size: 10px; padding: 3px 6px; background: #ecfdf5; color: #047857; border-color: #a7f3d0;" title="Ver Comprobante Municipal">
+                                        <i class="fa-solid fa-landmark"></i> Ret. Munic.
+                                    </button>
+                                ` : '-'}
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("Error cargando Libro de Compras:", err);
+    }
+}
+
+async function downloadLibroVentasExcel() {
+    const month = parseInt(document.getElementById("fiscal_month_select")?.value) || 9;
+    const year = parseInt(document.getElementById("fiscal_year_select")?.value) || 2026;
+    try {
+        const res = await authFetch(`${API_BASE}/financial/reports/libro-ventas/excel?month=${month}&year=${year}`);
+        if (!res.ok) throw new Error("Error al generar Excel de Libro de Ventas");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Libro_de_Ventas_SENIAT_${year}_${String(month).padStart(2, '0')}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        alert("Error al descargar Excel: " + e.message);
+    }
+}
+
+async function downloadLibroComprasExcel() {
+    const month = parseInt(document.getElementById("fiscal_month_select")?.value) || 9;
+    const year = parseInt(document.getElementById("fiscal_year_select")?.value) || 2026;
+    try {
+        const res = await authFetch(`${API_BASE}/financial/reports/libro-compras/excel?month=${month}&year=${year}`);
+        if (!res.ok) throw new Error("Error al generar Excel de Libro de Compras");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Libro_de_Compras_SENIAT_21_Columnas_${year}_${String(month).padStart(2, '0')}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        alert("Error al descargar Excel: " + e.message);
+    }
+}
+
+function printLibroVentasPDF() {
+    const month = document.getElementById("fiscal_month_select")?.selectedOptions[0]?.text || "Septiembre";
+    const year = document.getElementById("fiscal_year_select")?.value || "2026";
+    const content = document.getElementById("section-fiscal-ventas");
+    if (!content) return;
+    const title = `Libro_de_Ventas_SENIAT_${month}_${year}`;
+    if (typeof window.printElementHtml === 'function') {
+        window.printElementHtml(content, title);
+    } else {
+        window.print();
+    }
+}
+
+function printLibroComprasPDF() {
+    const month = document.getElementById("fiscal_month_select")?.selectedOptions[0]?.text || "Septiembre";
+    const year = document.getElementById("fiscal_year_select")?.value || "2026";
+    const content = document.getElementById("section-fiscal-compras");
+    if (!content) return;
+    const title = `Libro_de_Compras_SENIAT_${month}_${year}`;
+    if (typeof window.printElementHtml === 'function') {
+        window.printElementHtml(content, title);
+    } else {
+        window.print();
+    }
+}
+
+function openImportLibrosExcelModal() {
+    const form = document.getElementById("importLibrosExcelForm");
+    if (form) form.reset();
+    const status = document.getElementById("import_libros_status");
+    if (status) { status.style.display = "none"; status.innerHTML = ""; }
+    openModal("modalImportLibrosExcel");
+}
+
+async function submitImportLibrosExcel(event) {
+    event.preventDefault();
+    const fileInput = document.getElementById("import_libros_file");
+    const rateInput = document.getElementById("import_libros_rate");
+    const status = document.getElementById("import_libros_status");
+    const btn = document.getElementById("btnSubmitImportLibros");
+
+    if (!fileInput?.files?.length) {
+        alert("Por favor seleccione un archivo Excel (.xlsx).");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const rate = parseFloat(rateInput?.value) || 859.06;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (btn) { btn.disabled = true; btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Procesando Archivo...`; }
+    if (status) {
+        status.style.display = "block";
+        status.style.background = "#eff6ff";
+        status.style.color = "#1d4ed8";
+        status.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Leyendo hojas de Ventas, Compras y Retenciones Municipales...`;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/financial/import-libros-excel?exchange_rate=${rate}`, {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || "Error al procesar el archivo Excel");
+        }
+
+        if (status) {
+            status.style.background = "#ecfdf5";
+            status.style.color = "#047857";
+            status.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.message}`;
+        }
+
+        setTimeout(() => {
+            closeModal("modalImportLibrosExcel");
+            loadFiscalBooksView();
+            loadPayablesList();
+            loadReceivablesList();
+        }, 1500);
+
+    } catch (err) {
+        if (status) {
+            status.style.background = "#fff1f2";
+            status.style.color = "#e11d48";
+            status.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${err.message}`;
+        }
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Procesar e Importar al Sistema`; }
     }
 }
 
@@ -4394,6 +4728,16 @@ if (typeof window !== 'undefined') {
     window.printWithholdingVoucher = printWithholdingVoucher;
     window.openIslrWithholdingVoucherModal = openIslrWithholdingVoucherModal;
     window.printIslrWithholdingVoucher = printIslrWithholdingVoucher;
+    window.openMunicipalWithholdingVoucherModal = openMunicipalWithholdingVoucherModal;
+    window.printMunicipalWithholdingVoucher = printMunicipalWithholdingVoucher;
+    window.switchFiscalInnerTab = switchFiscalInnerTab;
+    window.loadFiscalBooksView = loadFiscalBooksView;
+    window.downloadLibroVentasExcel = downloadLibroVentasExcel;
+    window.downloadLibroComprasExcel = downloadLibroComprasExcel;
+    window.printLibroVentasPDF = printLibroVentasPDF;
+    window.printLibroComprasPDF = printLibroComprasPDF;
+    window.openImportLibrosExcelModal = openImportLibrosExcelModal;
+    window.submitImportLibrosExcel = submitImportLibrosExcel;
     window.openEditPayableModal = openEditPayableModal;
     window.submitEditPayable = submitEditPayable;
     window.calcEditPayableBsPreview = calcEditPayableBsPreview;

@@ -46,6 +46,9 @@
                     <button type="button" id="btn_disp_filter_freeform" onclick="setDispatchFilter('freeform')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
                         <i class="fa-solid fa-feather-pointed"></i> Formato Abierto (<span id="count_disp_freeform">0</span>)
                     </button>
+                    <button type="button" id="btn_disp_filter_internal" onclick="setDispatchFilter('internal')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700; border-color: #93c5fd; color: #1e40af;">
+                        <i class="fa-solid fa-warehouse"></i> Control Interno GCI (<span id="count_disp_internal">0</span>)
+                    </button>
                     <button type="button" id="btn_disp_filter_transit" onclick="setDispatchFilter('transit')" class="btn-secondary" style="font-size: 11.5px; padding: 5px 12px; border-radius: 20px; font-weight: 700;">
                         <i class="fa-solid fa-truck-fast"></i> En Tránsito (<span id="count_disp_transit">0</span>)
                     </button>
@@ -108,16 +111,19 @@
                     </div>
 
                     <form id="dispatchCreateForm" onsubmit="submitCreateDispatchGuide(event)">
-                        <!-- SELECTOR DE MODALIDAD: POR OBRA VS FORMATO ABIERTO -->
+                        <!-- SELECTOR DE MODALIDAD: POR OBRA VS FORMATO ABIERTO VS CONTROL INTERNO -->
                         <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">Tipo de Guía:</span>
-                                <div style="display: inline-flex; gap: 6px; background: #e2e8f0; padding: 3px; border-radius: 6px;">
+                                <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">Tipo de Guía / Régimen:</span>
+                                <div style="display: inline-flex; gap: 6px; background: #e2e8f0; padding: 3px; border-radius: 6px; flex-wrap: wrap;">
                                     <button type="button" id="btn_disp_mode_project" onclick="setDispatchMode('project')" class="btn-primary" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 5px;">
-                                        <i class="fa-solid fa-building"></i> 1. Despacho por Proyecto / Obra
+                                        <i class="fa-solid fa-building"></i> 1. Despacho por Obra (GD)
                                     </button>
                                     <button type="button" id="btn_disp_mode_freeform" onclick="setDispatchMode('freeform')" class="btn-secondary" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 5px;">
-                                        <i class="fa-solid fa-feather-pointed"></i> 2. Traslado Libre / Formato Abierto
+                                        <i class="fa-solid fa-feather-pointed"></i> 2. Traslado Libre (GD)
+                                    </button>
+                                    <button type="button" id="btn_disp_mode_internal" onclick="setDispatchMode('internal')" class="btn-secondary" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 5px; border: 1.5px solid #3b82f6;">
+                                        <i class="fa-solid fa-warehouse"></i> 3. Control Interno Taller / Sede (GCI)
                                     </button>
                                 </div>
                             </div>
@@ -125,13 +131,14 @@
                                 Vincula la salida a un cliente y proyecto registrado en DALOR SIGO-P.
                             </span>
                             <input type="hidden" id="disp_is_freeform" value="0">
+                            <input type="hidden" id="disp_guide_type" value="traslado_externo">
                         </div>
 
                         <!-- PASO 1: CLIENTE, DESTINO & MOTIVO -->
                         <div style="margin-bottom: 16px;">
                             <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                                 <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">1</span>
-                                Datos del Destinatario & Obra / Motivo
+                                <span id="disp_step1_title">Datos del Destinatario & Obra / Motivo</span>
                             </h4>
 
                             <!-- Modo A: Por Proyecto / Obra -->
@@ -193,108 +200,192 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Modo C: Control Interno Taller Guacara / Sede -->
+                            <div id="disp_sec_internal_mode" style="display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                    <span style="background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">
+                                        VALE GCI &bull; CONTROL INTERNO DALOR
+                                    </span>
+                                    <span style="font-size: 11px; color: #1e40af; font-weight: 600;">
+                                        Genera correlativo oficial <b>GCI-2026-XXXX</b> para custodia de maquinaria, herramientas y salida de insumos a taller en sede.
+                                    </span>
+                                </div>
+                                <div class="grid-4" style="margin-bottom: 6px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e3a8a;">Sede / Almacén Origen</label>
+                                        <input type="text" id="disp_ci_origin" value="Almacén Central DALOR - Sede Guacara" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #f8fafc;" readonly>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e3a8a;">Área DALOR Destino en Sede *</label>
+                                        <input list="list_internal_areas" id="disp_ci_destination_area" placeholder="Ej: Taller Metalmecánico / Tornería" value="Taller Metalmecánico / Línea de Fabricación" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700;">
+                                        <datalist id="list_internal_areas">
+                                            <option value="Taller Metalmecánico / Tornería">
+                                            <option value="Área de Soldadura y Calderería">
+                                            <option value="Patio de Ensamble y Granallado">
+                                            <option value="Banco de Ajuste y Mantenimiento">
+                                            <option value="Almacén de Insumos / Custodia">
+                                            <option value="Puesto de Pintura y Acabado">
+                                        </datalist>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e3a8a;">Motivo del Movimiento Interno *</label>
+                                        <input list="list_internal_reasons" id="disp_ci_reason" placeholder="Selecciona motivo..." value="Salida de Insumos y Equipos para Fabricación Interna" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                        <datalist id="list_internal_reasons">
+                                            <option value="Salida de Insumos y Equipos para Fabricación Interna">
+                                            <option value="Custodia de Maquinaria y Equipos en Taller">
+                                            <option value="Mantenimiento y Reparación de Activo Propio">
+                                            <option value="Pruebas de Taller y Calibración">
+                                        </datalist>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e3a8a;">Proyecto Vinculado (Opcional)</label>
+                                        <select id="disp_ci_project_id" class="form-select" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+                                            <option value="">-- Operación General Sede (Sin Proyecto) --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- PASO 2: MODALIDAD DE TRANSPORTE Y CONDUCTOR -->
+                        <!-- PASO 2: TRANSPORTE Y RESPONSABLES -->
                         <div style="margin-bottom: 16px;">
                             <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                                 <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">2</span>
-                                Modalidad de Transporte, Vehículo & Conductor
+                                <span id="disp_step2_title">Modalidad de Transporte, Vehículo & Conductor</span>
                             </h4>
-                            <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                                <button type="button" id="btn_mode_propio" onclick="setDispatchTransportMode('propio_dalor')" class="btn-primary" style="padding: 5px 12px; font-size: 12px;">
-                                    <i class="fa-solid fa-truck"></i> 1. Flota Propia DALOR
-                                </button>
-                                <button type="button" id="btn_mode_tercerizado" onclick="setDispatchTransportMode('flete_tercerizado')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
-                                    <i class="fa-solid fa-handshake"></i> 2. Flete Tercerizado (Genera CxP)
-                                </button>
-                                <button type="button" id="btn_mode_retiro" onclick="setDispatchTransportMode('retiro_cliente')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
-                                    <i class="fa-solid fa-person-walking-luggage"></i> 3. Retiro en Taller por Cliente
-                                </button>
-                            </div>
-                            <input type="hidden" id="disp_transport_type" value="propio_dalor">
 
-                            <!-- Transporte: Flota Propia -->
-                            <div id="disp_sec_propio" class="grid-4" style="margin-bottom: 10px;">
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículo DALOR Registrado</label>
-                                    <select id="disp_select_asset" onchange="onDispatchAssetChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-                                        <option value="">-- Seleccionar Vehículo --</option>
-                                    </select>
+                            <!-- Bloque para Guías Externas (Modo Project o Freeform) -->
+                            <div id="disp_sec_trans_external">
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                                    <button type="button" id="btn_mode_propio" onclick="setDispatchTransportMode('propio_dalor')" class="btn-primary" style="padding: 5px 12px; font-size: 12px;">
+                                        <i class="fa-solid fa-truck"></i> 1. Flota Propia DALOR
+                                    </button>
+                                    <button type="button" id="btn_mode_tercerizado" onclick="setDispatchTransportMode('flete_tercerizado')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
+                                        <i class="fa-solid fa-handshake"></i> 2. Flete Tercerizado (Genera CxP)
+                                    </button>
+                                    <button type="button" id="btn_mode_retiro" onclick="setDispatchTransportMode('retiro_cliente')" class="btn-secondary" style="padding: 5px 12px; font-size: 12px;">
+                                        <i class="fa-solid fa-person-walking-luggage"></i> 3. Retiro en Taller por Cliente
+                                    </button>
                                 </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Conductor *</label>
-                                    <input type="text" id="disp_driver_name_propio" placeholder="Nombre Chofer DALOR" class="form-input" style="font-size: 12px;">
+                                <input type="hidden" id="disp_transport_type" value="propio_dalor">
+
+                                <!-- Transporte: Flota Propia -->
+                                <div id="disp_sec_propio" class="grid-4" style="margin-bottom: 10px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículo DALOR Registrado</label>
+                                        <select id="disp_select_asset" onchange="onDispatchAssetChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
+                                            <option value="">-- Seleccionar Vehículo --</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">
+                                            Conductor DALOR (Seleccionar o Escribir)
+                                        </label>
+                                        <select id="disp_select_driver_personnel" onchange="onDispatchDriverPersonnelChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; margin-bottom: 4px;">
+                                            <option value="">-- Seleccionar del Personal DALOR --</option>
+                                        </select>
+                                        <input type="text" id="disp_driver_name_propio" placeholder="Nombre Chofer (Opcional)" class="form-input" style="font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula de Identidad</label>
+                                        <input type="text" id="disp_driver_id_propio" placeholder="V-12345678 (Opcional)" class="form-input" style="font-size: 12px; margin-top: 26px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo</label>
+                                        <input type="text" id="disp_plate_propio" placeholder="A12BC3D (Opcional)" class="form-input" style="font-size: 12px; text-transform: uppercase; margin-top: 26px;">
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula de Identidad *</label>
-                                    <input type="text" id="disp_driver_id_propio" placeholder="V-12345678" class="form-input" style="font-size: 12px;">
+
+                                <!-- Transporte: Tercerizado -->
+                                <div id="disp_sec_tercerizado" class="hidden" style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                                    <div class="grid-4" style="margin-bottom: 8px;">
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Empresa / Fletero *</label>
+                                            <input type="text" id="disp_carrier_company" placeholder="Ej: Transportes Carabobo C.A." class="form-input" style="font-size: 12px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Nombre del Chofer</label>
+                                            <input type="text" id="disp_driver_name_ext" placeholder="Nombre Chofer Externo (Opcional)" class="form-input" style="font-size: 12px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Cédula Conductor</label>
+                                            <input type="text" id="disp_driver_id_ext" placeholder="V-... (Opcional)" class="form-input" style="font-size: 12px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Placa / Batea</label>
+                                            <input type="text" id="disp_plate_ext" placeholder="Placa Batea/Camión" class="form-input" style="font-size: 12px; text-transform: uppercase;">
+                                        </div>
+                                    </div>
+                                    <div class="grid-2">
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Costo del Flete (USD) &rarr; Genera CxP a Fletero</label>
+                                            <input type="number" step="0.01" id="disp_freight_cost_usd" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #b91c1c;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #166534;">Precio Cobrado al Cliente (USD) &rarr; Facturable</label>
+                                            <input type="number" step="0.01" id="disp_freight_price_charged" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #15803d;">
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo *</label>
-                                    <input type="text" id="disp_plate_propio" placeholder="A12BC3D" class="form-input" style="font-size: 12px; text-transform: uppercase;">
+
+                                <!-- Transporte: Retiro por Cliente -->
+                                <div id="disp_sec_retiro" class="hidden grid-3" style="margin-bottom: 10px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre de Quien Retira</label>
+                                        <input type="text" id="disp_driver_name_ret" placeholder="Nombre Receptor (Opcional)" class="form-input" style="font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula del Receptor</label>
+                                        <input type="text" id="disp_driver_id_ret" placeholder="V-... (Opcional)" style="font-size: 12px;" class="form-input">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo Retirador</label>
+                                        <input type="text" id="disp_plate_ret" placeholder="Placa vehículo (Opcional)" class="form-input" style="font-size: 12px; text-transform: uppercase;">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Transporte: Tercerizado -->
-                            <div id="disp_sec_tercerizado" class="hidden" style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-                                <div class="grid-4" style="margin-bottom: 8px;">
+                            <!-- Bloque para Control Interno (Custodia & Traspaso en Sede) -->
+                            <div id="disp_sec_trans_internal" style="display: none; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                <div class="grid-3" style="margin-bottom: 8px;">
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Empresa / Fletero *</label>
-                                        <input type="text" id="disp_carrier_company" placeholder="Ej: Transportes Carabobo C.A." class="form-input" style="font-size: 12px;">
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e293b;">Entregado por (Personal Almacén Central) *</label>
+                                        <select id="disp_ci_delivered_select" onchange="onDispatchCiDeliveredChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; margin-bottom: 4px;">
+                                            <option value="">-- Seleccionar de Personal DALOR --</option>
+                                        </select>
+                                        <input type="text" id="disp_ci_delivered_staff" value="Almacén Central Guacara" class="form-input" style="font-size: 12px; font-weight: 600;">
                                     </div>
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Nombre del Chofer *</label>
-                                        <input type="text" id="disp_driver_name_ext" placeholder="Nombre Chofer" class="form-input" style="font-size: 12px;">
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e293b;">Recibido por (Personal Taller / Operario) *</label>
+                                        <select id="disp_ci_received_select" onchange="onDispatchCiReceivedChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; margin-bottom: 4px;">
+                                            <option value="">-- Seleccionar de Personal DALOR --</option>
+                                        </select>
+                                        <input type="text" id="disp_ci_received_staff" value="Operario de Taller / Metalmecánica" class="form-input" style="font-size: 12px; font-weight: 600;">
                                     </div>
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Cédula Conductor *</label>
-                                        <input type="text" id="disp_driver_id_ext" placeholder="V-..." class="form-input" style="font-size: 12px;">
+                                        <label style="font-size: 11px; font-weight: 700; color: #1e293b;">Medio de Movimiento Interno</label>
+                                        <input type="text" id="disp_ci_movement_type" value="Traslado Interno / Manual de Planta" class="form-input" style="font-size: 12px; margin-top: 26px;">
                                     </div>
-                                    <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Placa / Batea *</label>
-                                        <input type="text" id="disp_plate_ext" placeholder="Placa Batea/Camión" class="form-input" style="font-size: 12px; text-transform: uppercase;">
-                                    </div>
-                                </div>
-                                <div class="grid-2">
-                                    <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Costo del Flete (USD) &rarr; Genera CxP a Fletero</label>
-                                        <input type="number" step="0.01" id="disp_freight_cost_usd" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #b91c1c;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #166534;">Precio Cobrado al Cliente (USD) &rarr; Facturable</label>
-                                        <input type="number" step="0.01" id="disp_freight_price_charged" placeholder="0.00" class="form-input" style="font-size: 12px; font-weight: 700; color: #15803d;">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Transporte: Retiro por Cliente -->
-                            <div id="disp_sec_retiro" class="hidden grid-3" style="margin-bottom: 10px;">
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre de Quien Retira *</label>
-                                    <input type="text" id="disp_driver_name_ret" placeholder="Nombre Receptor" class="form-input" style="font-size: 12px;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Cédula del Receptor *</label>
-                                    <input type="text" id="disp_driver_id_ret" placeholder="V-..." style="font-size: 12px;" class="form-input">
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Placa del Vehículo Retirador *</label>
-                                    <input type="text" id="disp_plate_ret" placeholder="Placa vehículo" class="form-input" style="font-size: 12px; text-transform: uppercase;">
                                 </div>
                             </div>
                         </div>
 
                         <!-- PASO 3: DETALLE DE LA CARGA / PIEZAS / PRODUCTOS -->
                         <div style="margin-bottom: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                                 <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
                                     <span style="background: var(--dalor-navy); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">3</span>
-                                    Carga / Piezas / Componentes Despachados
+                                    <span id="disp_step3_title">Carga, Maquinaria & Insumos Despachados</span>
                                 </h4>
-                                <button type="button" onclick="addDispatchItemRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
-                                    <i class="fa-solid fa-plus"></i> Agregar Renglón
-                                </button>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <button type="button" onclick="loadDalorAssetsIntoDispatch()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; font-weight: 700; border-color: #93c5fd; color: #1d4ed8;">
+                                        <i class="fa-solid fa-screwdriver-wrench"></i> Cargar Maquinaria / Activos DALOR
+                                    </button>
+                                    <button type="button" onclick="addDispatchItemRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
+                                        <i class="fa-solid fa-plus"></i> Agregar Renglón
+                                    </button>
+                                </div>
                             </div>
                             <div class="table-container" style="padding: 0; overflow-x: auto;">
                                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">

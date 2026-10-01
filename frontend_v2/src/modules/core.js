@@ -31,6 +31,8 @@ function parseLocalizedNumber(val) {
     const num = parseFloat(s);
     return isNaN(num) ? 0 : num;
 }
+window.parseLocalizedNumber = parseLocalizedNumber;
+window.parseDecimal = parseLocalizedNumber;
 
 
 

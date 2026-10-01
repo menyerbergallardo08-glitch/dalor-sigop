@@ -60,6 +60,8 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
         tax_usd=tax_usd,
         total_usd=total_usd,
         status="borrador",
+        coletilla_divisas=quote_in.coletilla_divisas if quote_in.coletilla_divisas is not None else True,
+        coletilla_modalidad=quote_in.coletilla_modalidad if quote_in.coletilla_modalidad is not None else True,
         notes=quote_in.notes,
         items=items_objs
     )
@@ -106,6 +108,10 @@ def update_quotation(quotation_id: int, quote_in: QuotationUpdate, db: Session =
         quote.tax_percent = quote_in.tax_percent
     if quote_in.notes is not None:
         quote.notes = quote_in.notes
+    if quote_in.coletilla_divisas is not None:
+        quote.coletilla_divisas = quote_in.coletilla_divisas
+    if quote_in.coletilla_modalidad is not None:
+        quote.coletilla_modalidad = quote_in.coletilla_modalidad
     if quote_in.status is not None:
         quote.status = quote_in.status
 

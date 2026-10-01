@@ -15,10 +15,21 @@ elif db_url.startswith("postgresql+psycopg://"):
 
 connect_args = {"check_same_thread": False, "timeout": 15} if "sqlite" in db_url else {}
 
+engine_kwargs = {
+    "connect_args": connect_args,
+    "pool_pre_ping": True,
+}
+if "sqlite" not in db_url.lower():
+    engine_kwargs.update({
+        "pool_size": 20,
+        "max_overflow": 20,
+        "pool_recycle": 300,
+        "pool_timeout": 30
+    })
+
 engine = create_engine(
     db_url,
-    connect_args=connect_args,
-    pool_pre_ping=True
+    **engine_kwargs
 )
 
 if "sqlite" in db_url:

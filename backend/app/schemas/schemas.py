@@ -76,6 +76,8 @@ class QuotationCreate(BaseModel):
     exchange_rate: float = 800.0
     tax_percent: float = 16.0
     notes: Optional[str] = None
+    coletilla_divisas: Optional[bool] = True
+    coletilla_modalidad: Optional[bool] = True
     items: List[QuotationItemCreate]
 
 class QuotationUpdate(BaseModel):
@@ -88,6 +90,8 @@ class QuotationUpdate(BaseModel):
     exchange_rate: Optional[float] = None
     tax_percent: Optional[float] = None
     notes: Optional[str] = None
+    coletilla_divisas: Optional[bool] = None
+    coletilla_modalidad: Optional[bool] = None
     status: Optional[str] = None
     items: Optional[List[QuotationItemCreate]] = None
 
@@ -106,6 +110,8 @@ class QuotationOut(BaseModel):
     tax_usd: float
     total_usd: float
     status: str
+    coletilla_divisas: Optional[bool] = True
+    coletilla_modalidad: Optional[bool] = True
     notes: Optional[str]
     created_at: datetime
     client: Optional[ClientOut] = None
@@ -120,6 +126,8 @@ class ProjectPhaseCreate(BaseModel):
     name: str
     description: Optional[str] = None
     duration_days: int = 7
+    duration_unit: Optional[str] = "dias"
+    estimated_duration: Optional[float] = 7.0
     estimated_cost_usd: float = 0.0
     status: str = "pendiente"
     responsible_person: Optional[str] = None
@@ -130,6 +138,8 @@ class ProjectPhaseOut(BaseModel):
     name: str
     description: Optional[str]
     duration_days: int
+    duration_unit: Optional[str] = "dias"
+    estimated_duration: Optional[float] = 7.0
     estimated_cost_usd: float
     status: str
     responsible_person: Optional[str]
@@ -188,6 +198,23 @@ class ProjectCreate(BaseModel):
     assigned_tool_ids: Optional[List[int]] = []
     assigned_material_items: Optional[List[dict]] = []
     origin_quotation_id: Optional[int] = None
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    client_id: Optional[int] = None
+    client_name: Optional[str] = None
+    location: Optional[str] = None
+    status: Optional[str] = None
+    scope_of_work: Optional[str] = None
+    duration_days: Optional[int] = None
+    execution_time: Optional[str] = None
+    contract_amount_usd: Optional[float] = None
+    estimated_labor_usd: Optional[float] = None
+    estimated_fuel_usd: Optional[float] = None
+    estimated_materials_usd: Optional[float] = None
+    estimated_tools_usd: Optional[float] = None
+    estimated_services_usd: Optional[float] = None
+    phases: Optional[List[ProjectPhaseCreate]] = None
 
 class ProjectOut(BaseModel):
     id: int

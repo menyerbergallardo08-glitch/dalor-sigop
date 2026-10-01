@@ -66,6 +66,12 @@
 
                 </button>
 
+                <button class="subtab-btn" id="tabbtn-fin-fiscal" onclick="switchFinancialSubtab('fiscal')">
+
+                    <i class="fa-solid fa-book-journal-whills" style="color: #c2410c;"></i> Libros Fiscales SENIAT
+
+                </button>
+
             </div>
 
 
@@ -166,7 +172,9 @@
                             </h3>
                             <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Control de pasivos comerciales, fletes, retenciones oficiales SENIAT (Providencia SNAT/2015/0049) y notas de entrega.</p>
                         </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button onclick="switchFinancialSubtab('fiscal')" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; font-weight: 700; color: #c2410c; border-color: #fdba74; background: #fff7ed;" title="Consultar Libros de Ventas y Compras SENIAT">
+                                <i class="fa-solid fa-book-journal-whills"></i> Libros Fiscales SENIAT
+                            </button>
                             <button onclick="openNewPayableModal()" class="btn-primary" style="background: #e11d48; font-size: 11px; font-weight: 700; padding: 6px 14px;">
                                 <i class="fa-solid fa-plus-circle"></i> + Registrar Factura / Nota CxP
                             </button>
@@ -657,6 +665,193 @@
                         </table>
                     </div>
                     <div id="partnersPaginationContainer"></div>
+                </div>
+            </div>
+
+            <!-- SUB-TAB 5: LIBROS FISCALES SENIAT (VENTAS, COMPRAS & RETENCIÓN MUNICIPAL) -->
+            <div id="subtab-fin-fiscal" class="hidden">
+                <div class="card" style="padding: 16px;">
+                    <!-- Cabecera y Controles de Período -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 14px;">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-book-journal-whills" style="color: #c2410c;"></i> Libros Fiscales Oficiales SENIAT & Retenciones
+                            </h3>
+                            <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">
+                                Generación y control de Libro de Ventas (Art. 75-77 RLIVA), Libro de Compras (21 Columnas Oficiales) y Comprobantes Municipales Guacara.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;">
+                                <label style="font-size: 11px; font-weight: 700; color: #334155;">Período:</label>
+                                <select id="fiscal_month_select" onchange="loadFiscalBooksView()" class="form-select" style="font-size: 11px; font-weight: 700; padding: 3px 8px; height: 28px;">
+                                    <option value="1">Enero</option>
+                                    <option value="2">Febrero</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Mayo</option>
+                                    <option value="6">Junio</option>
+                                    <option value="7">Julio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9" selected>Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                </select>
+                                <select id="fiscal_year_select" onchange="loadFiscalBooksView()" class="form-select" style="font-size: 11px; font-weight: 700; padding: 3px 8px; height: 28px;">
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                            </div>
+                            <button onclick="loadFiscalBooksView()" class="btn-secondary" style="font-size: 11px; padding: 6px 10px;">
+                                <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                            </button>
+                            <button onclick="openImportLibrosExcelModal()" class="btn-primary" style="background: #059669; font-size: 11px; font-weight: 700; padding: 6px 14px;">
+                                <i class="fa-solid fa-file-excel"></i> Importar Libros Excel (.xlsx)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Navegación Interna: Ventas vs Compras -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <button type="button" id="btn-fiscal-sub-ventas" onclick="switchFiscalInnerTab('ventas')" class="btn-primary" style="background: #0284c7; font-size: 12px; font-weight: 700; padding: 6px 16px;">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> Libro de Ventas SENIAT
+                        </button>
+                        <button type="button" id="btn-fiscal-sub-compras" onclick="switchFiscalInnerTab('compras')" class="btn-secondary" style="font-size: 12px; font-weight: 700; padding: 6px 16px;">
+                            <i class="fa-solid fa-arrow-down-left-and-up-to-right"></i> Libro de Compras SENIAT (21 Col.)
+                        </button>
+                    </div>
+
+                    <!-- SECCIÓN: LIBRO DE VENTAS -->
+                    <div id="section-fiscal-ventas">
+                        <!-- KPI Cards Ventas -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #0369a1; text-transform: uppercase;">Total Ventas (Bs.)</span>
+                                <div id="kpi_lv_total" style="font-size: 18px; font-weight: 900; color: #0284c7; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase;">Base Gravada (Bs.)</span>
+                                <div id="kpi_lv_base" style="font-size: 18px; font-weight: 900; color: #1e293b; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #047857; text-transform: uppercase;">Débito Fiscal IVA 16%</span>
+                                <div id="kpi_lv_tax" style="font-size: 18px; font-weight: 900; color: #059669; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #be185d; text-transform: uppercase;">Ret. IVA Recibidas (Bs.)</span>
+                                <div id="kpi_lv_ret_iva" style="font-size: 18px; font-weight: 900; color: #e11d48; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #7e22ce; text-transform: uppercase;">Ret. ISLR Recibidas (Bs.)</span>
+                                <div id="kpi_lv_ret_islr" style="font-size: 18px; font-weight: 900; color: #6b21a8; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                        </div>
+
+                        <!-- Botones de Exportación / Impresión Ventas -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #334155;">Detalle de Facturas de Ventas Emitidas:</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" onclick="downloadLibroVentasExcel()" class="btn-primary" style="background: #15803d; font-size: 11px; font-weight: 700; padding: 5px 12px;">
+                                    <i class="fa-solid fa-file-excel"></i> Descargar Excel (.xlsx)
+                                </button>
+                                <button type="button" onclick="printLibroVentasPDF()" class="btn-secondary" style="font-size: 11px; font-weight: 700; padding: 5px 12px; background: #f8fafc; border-color: #cbd5e1;">
+                                    <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tabla Ventas -->
+                        <div class="table-wrapper" style="margin-bottom: 12px; max-height: 500px; overflow-y: auto;">
+                            <table style="font-size: 10.5px;">
+                                <thead style="background: #0f172a; color: white;">
+                                    <tr>
+                                        <th style="text-align: center;">Op.</th>
+                                        <th style="text-align: center;">Fecha</th>
+                                        <th>RIF Cliente</th>
+                                        <th>Nombre / Razón Social</th>
+                                        <th style="text-align: center;">Nº Factura</th>
+                                        <th style="text-align: center;">Nº Control</th>
+                                        <th style="text-align: right;">Total Factura (Bs.)</th>
+                                        <th style="text-align: right;">Base Gravada (Bs.)</th>
+                                        <th style="text-align: right;">IVA (16%) (Bs.)</th>
+                                        <th style="text-align: right; color: #fbcfe8;">Ret. IVA (Bs.)</th>
+                                        <th style="text-align: right; color: #e9d5ff;">Ret. ISLR (Bs.)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="libroVentasTableBody">
+                                    <tr><td colspan="11" style="text-align: center; padding: 20px; color: #94a3b8;">Cargando Libro de Ventas...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN: LIBRO DE COMPRAS -->
+                    <div id="section-fiscal-compras" class="hidden">
+                        <!-- KPI Cards Compras -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                            <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #be123c; text-transform: uppercase;">Total Compras (Bs.)</span>
+                                <div id="kpi_lc_total" style="font-size: 18px; font-weight: 900; color: #e11d48; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase;">Compras Exentas (Bs.)</span>
+                                <div id="kpi_lc_exento" style="font-size: 18px; font-weight: 900; color: #1e293b; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #15803d; text-transform: uppercase;">Base Imponible 16% (Bs.)</span>
+                                <div id="kpi_lc_base" style="font-size: 18px; font-weight: 900; color: #16a34a; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #1d4ed8; text-transform: uppercase;">Crédito Fiscal IVA 16%</span>
+                                <div id="kpi_lc_tax" style="font-size: 18px; font-weight: 900; color: #2563eb; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                            <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 12px;">
+                                <span style="font-size: 10px; font-weight: 800; color: #be185d; text-transform: uppercase;">Ret. IVA Efectuadas (Bs.)</span>
+                                <div id="kpi_lc_ret_iva" style="font-size: 18px; font-weight: 900; color: #be123c; margin-top: 4px;">Bs. 0.00</div>
+                            </div>
+                        </div>
+
+                        <!-- Botones de Exportación / Impresión Compras -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #334155;">Detalle de Compras y Proveedores (21 Columnas Oficiales):</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" onclick="downloadLibroComprasExcel()" class="btn-primary" style="background: #15803d; font-size: 11px; font-weight: 700; padding: 5px 12px;">
+                                    <i class="fa-solid fa-file-excel"></i> Descargar Excel 21 Col (.xlsx)
+                                </button>
+                                <button type="button" onclick="printLibroComprasPDF()" class="btn-secondary" style="font-size: 11px; font-weight: 700; padding: 5px 12px; background: #f8fafc; border-color: #cbd5e1;">
+                                    <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tabla Compras -->
+                        <div class="table-wrapper" style="margin-bottom: 12px; max-height: 500px; overflow-y: auto;">
+                            <table style="font-size: 10px;">
+                                <thead style="background: #0f172a; color: white;">
+                                    <tr>
+                                        <th style="text-align: center;">Op.</th>
+                                        <th style="text-align: center;">Fecha</th>
+                                        <th>RIF Proveedor</th>
+                                        <th>Nombre / Razón Social</th>
+                                        <th style="text-align: center;">Nº Factura</th>
+                                        <th style="text-align: center;">Nº Control</th>
+                                        <th style="text-align: center;">Cbt. Ret.</th>
+                                        <th style="text-align: right;">Total Compras (Bs.)</th>
+                                        <th style="text-align: right;">Exento (Bs.)</th>
+                                        <th style="text-align: right;">Base Gravada (Bs.)</th>
+                                        <th style="text-align: right;">IVA 16% (Bs.)</th>
+                                        <th style="text-align: right; color: #fbcfe8;">Ret. IVA (Bs.)</th>
+                                        <th style="text-align: center;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="libroComprasTableBody">
+                                    <tr><td colspan="13" style="text-align: center; padding: 20px; color: #94a3b8;">Cargando Libro de Compras...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

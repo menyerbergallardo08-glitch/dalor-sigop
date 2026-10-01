@@ -1069,11 +1069,7 @@ async function printQuotation(quoteId) {
 
 
 
-            currencyNotesHtml = `
-                <div style="background: #fefce8; border: 1.5px solid #facc15; border-left: 5px solid #d97706; padding: 10px 14px; border-radius: 6px; margin-bottom: 18px; font-size: 11px; color: #713f12; line-height: 1.45;">
-                    <p style="margin: 0;"><b><i class="fa-solid fa-scale-balanced" style="color: #b45309;"></i> Membrete Oficial & Cláusula Cambiaria BCV:</b> Monto cotizado expresado en USD y pagadero en Bolívares (VES) a la Tasa Oficial del Banco Central de Venezuela (BCV) vigente a la fecha efectiva de pago. Operación amparada bajo el régimen cambiario y fiscal venezolano vigente.</p>
-                </div>
-            `;
+            currencyNotesHtml = '';
 
         } else {
 

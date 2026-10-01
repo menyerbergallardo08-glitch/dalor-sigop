@@ -343,6 +343,9 @@ async function openNewQuotationModal() {
     if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "";
 
     if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = "USD";
+    if (document.getElementById("quote_coletilla_divisas")) document.getElementById("quote_coletilla_divisas").checked = false;
+    if (document.getElementById("quote_coletilla_modalidad")) document.getElementById("quote_coletilla_modalidad").checked = false;
+    if (document.getElementById("quote_notes")) document.getElementById("quote_notes").value = "";
 
     addQuotationRow();
 
@@ -720,8 +723,8 @@ async function submitCreateQuotation(event) {
         tax_percent: parseLocalizedNumber(document.getElementById("quote_tax_percent")?.value) || 0.0,
         exchange_rate: typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0,
         notes: (document.getElementById("quote_notes")?.value || "").trim(),
-        coletilla_divisas: document.getElementById("quote_coletilla_divisas") ? document.getElementById("quote_coletilla_divisas").checked : true,
-        coletilla_modalidad: document.getElementById("quote_coletilla_modalidad") ? document.getElementById("quote_coletilla_modalidad").checked : true,
+        coletilla_divisas: document.getElementById("quote_coletilla_divisas") ? document.getElementById("quote_coletilla_divisas").checked : false,
+        coletilla_modalidad: document.getElementById("quote_coletilla_modalidad") ? document.getElementById("quote_coletilla_modalidad").checked : false,
         items: items
     };
 
@@ -1006,15 +1009,7 @@ async function printQuotation(quoteId) {
 
 
 
-            currencyNotesHtml = `
-
-                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
-
-                    <p style="margin: 0;"><b>Condición de Pago & Cláusula Cambiaria:</b> Precios expresados en Dólares Americanos (USD). En caso de liquidación o pago en Bolívares (VES), los importes se calcularán a la tasa oficial de cambio publicada por el Banco Central de Venezuela (BCV) vigente a la fecha efectiva del pago.</p>
-
-                </div>
-
-            `;
+            currencyNotesHtml = '';
 
         } else if (curr === 'VES') {
 
@@ -1132,24 +1127,16 @@ async function printQuotation(quoteId) {
 
 
 
-            currencyNotesHtml = `
-
-                <div style="background: #f8fafc; border-left: 4px solid var(--dalor-navy); padding: 8px 12px; border-radius: 4px; margin-bottom: 18px; font-size: 10px; color: #334155; line-height: 1.45;">
-
-                    <p style="margin: 0;"><b>Condición de Pago & Cláusula Cambiaria:</b> Precios expresados en Euros (EUR). Pagaderos en Bolívares (VES) a la tasa oficial BCV vigente a la fecha efectiva del pago.</p>
-
-                </div>
-
-            `;
+            currencyNotesHtml = '';
 
         }
 
         let coletillasList = [];
-        if (q.coletilla_divisas !== false) {
-            coletillasList.push('<b>Condición de Divisas:</b> Solo pagadero en Divisas (USD $) o su contravalor en Bolívares (VES) a la Tasa Oficial del Banco Central de Venezuela (BCV) vigente a la fecha efectiva de pago.');
+        if (q.coletilla_divisas === true || q.terms_currency_usd_only === true) {
+            coletillasList.push('<b>Condición de Pago:</b> Solo pagadero en divisas (USD).');
         }
-        if (q.coletilla_modalidad !== false) {
-            coletillasList.push('<b>Modalidad de Pago:</b> Consultar previamente la modalidad de pago y cuenta bancaria de destino con la Gerencia de Administración antes de procesar transferencias.');
+        if (q.coletilla_modalidad === true || q.terms_check_payment_mode === true) {
+            coletillasList.push('<b>Modalidad de Pago:</b> Consultar modalidad de pago.');
         }
 
         let commercialNotesHtml = '';

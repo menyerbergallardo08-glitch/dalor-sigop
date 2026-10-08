@@ -211,6 +211,9 @@ class BackupService:
         except Exception:
             pass
 
+        # 5. Aplicar política de retención automática (conservar estrictamente los últimos 7 respaldos)
+        BackupService.rotate_backups(max_keep=7)
+
         return {
             "success": True,
             "primary_file": json_filename,
@@ -223,8 +226,58 @@ class BackupService:
             "timestamp": timestamp,
             "replicated_to_r2": r2_uploaded,
             "tables_backed_up": list(dump_data["tables"].keys()),
-            "message": f"Copia de seguridad '{json_filename}' generada exitosamente y {'asegurada en Cloudflare R2' if r2_uploaded else 'almacenada localmente'}."
+            "message": f"Copia de seguridad '{json_filename}' generada exitosamente (política FIFO 7 días activa)."
         }
+
+    @staticmethod
+    def rotate_backups(max_keep: int = 7) -> int:
+        """
+        Mantiene estrictamente los últimos `max_keep` respaldos JSON (y sus .sha256 / .db asociados),
+        eliminando automáticamente los más antiguos de forma segura.
+        """
+        deleted_count = 0
+        try:
+            json_files = glob.glob(os.path.join(BACKUP_DIR, "dalor_backup_*.json"))
+            if len(json_files) > max_keep:
+                # Ordenar por fecha de modificación (los más viejos primero)
+                json_files.sort(key=os.path.getmtime)
+                excess_files = json_files[:-max_keep]
+                for old_json in excess_files:
+                    base_prefix = old_json[:-5] # quitar '.json'
+                    try:
+                        if os.path.exists(old_json):
+                            os.remove(old_json)
+                            deleted_count += 1
+                    except Exception:
+                        pass
+                    
+                    sha_file = f"{old_json}.sha256"
+                    if os.path.exists(sha_file):
+                        try:
+                            os.remove(sha_file)
+                        except Exception:
+                            pass
+                    
+                    db_file = f"{base_prefix}.db"
+                    if os.path.exists(db_file):
+                        try:
+                            os.remove(db_file)
+                        except Exception:
+                            pass
+                    
+                    # Eliminar de Cloudflare R2 si aplica
+                    try:
+                        from app.services.storage import R2StorageService, R2_BUCKET
+                        r2_client = R2StorageService.get_client()
+                        if r2_client:
+                            fname = os.path.basename(old_json)
+                            r2_client.delete_object(Bucket=R2_BUCKET, Key=f"backups/{fname}")
+                    except Exception:
+                        pass
+                print(f"[BackupRotation] Rotación aplicada: {deleted_count} respaldo(s) antiguo(s) purgados. Máximo permitido: {max_keep}.")
+        except Exception as e:
+            print(f"[BackupRotation] Error durante la rotación de respaldos: {e}")
+        return deleted_count
 
     @staticmethod
     def get_backup_path(filename: str) -> Optional[str]:

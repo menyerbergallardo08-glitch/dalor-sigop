@@ -57,6 +57,39 @@ def on_startup():
     t = threading.Thread(target=keep_alive_heartbeat, daemon=True)
     t.start()
 
+    # Worker de Respaldo Automático Diario (Política FIFO: Últimos 7 Días)
+    def daily_backup_worker():
+        import time
+        from app.core.database import SessionLocal
+        from app.services.backup_service import BackupService
+
+        # Esperar 90 segundos iniciales tras el arranque
+        time.sleep(90)
+        while True:
+            try:
+                # Comprobar si se requiere generar un respaldo diario
+                db = SessionLocal()
+                try:
+                    recent_backups = BackupService.list_backups()
+                    has_recent = False
+                    for b in recent_backups:
+                        if (time.time() - b.get("timestamp_epoch", 0)) < (20 * 3600): # Menos de 20 horas
+                            has_recent = True
+                            break
+                    if not has_recent:
+                        print("[AutoBackup] Ejecutando respaldo automático diario de DALOR...")
+                        BackupService.create_backup(db=db, initiator_username="sistema_auto")
+                        print("[AutoBackup] Respaldo diario creado con éxito y rotación FIFO (7 días) aplicada.")
+                finally:
+                    db.close()
+            except Exception as e_bk:
+                print(f"[AutoBackup Error] {e_bk}")
+            # Verificar cada 1 hora
+            time.sleep(3600)
+
+    t_bk = threading.Thread(target=daily_backup_worker, daemon=True)
+    t_bk.start()
+
 from fastapi.middleware.gzip import GZipMiddleware
 
 # Habilitar CORS seguro y restringido (SEC-04)

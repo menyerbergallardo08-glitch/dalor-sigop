@@ -1115,7 +1115,14 @@ var lastFilteredProjects = [];
 async function loadProjectsList() {
     const container = document.getElementById("projectsCardsContainer");
     if (!container) return;
-    container.innerHTML = `<div style="grid-column: span 2; text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando proyectos...</div>`;
+
+    // Si ya tenemos proyectos en memoria de una visita previa, renderizar de inmediato (0ms de espera)
+    if (Array.isArray(window.allProjects) && window.allProjects.length > 0) {
+        allProjects = window.allProjects;
+        renderProjectsWithPagination(false);
+    } else {
+        container.innerHTML = `<div style="grid-column: span 2; text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando proyectos...</div>`;
+    }
 
     try {
         const res = await authFetch(`${API_BASE}/projects/`);

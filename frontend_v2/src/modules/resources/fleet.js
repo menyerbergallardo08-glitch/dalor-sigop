@@ -22,7 +22,13 @@ async function loadFleetList() {
     const tbody = document.getElementById("fleetTableBody");
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando flota...</td></tr>`;
+    // Si ya tenemos datos en memoria de una visita previa, renderizar de inmediato (0ms de espera)
+    if (Array.isArray(window.rawFleetList) && window.rawFleetList.length > 0) {
+        rawFleetList = window.rawFleetList;
+        filterFleetList();
+    } else {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando flota...</td></tr>`;
+    }
 
     try {
         const token = window.authToken || localStorage.getItem('dalor_token');

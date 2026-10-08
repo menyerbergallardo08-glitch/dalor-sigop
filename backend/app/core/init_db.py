@@ -687,87 +687,104 @@ def init_db():
         # 9. Purga quirúrgica de registros de prueba de emergencia en producción
         try:
             with engine.begin() as isolated_conn:
+                test_prj_filter = "(code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%' OR id = 104)"
+                
                 # 1. Liberar activos y personal asignados al proyecto de prueba
-                isolated_conn.execute(text("""
+                isolated_conn.execute(text(f"""
                     UPDATE assets 
                     SET current_project_id = NULL, status = 'disponible_base', current_location = 'Sede Central Dalor (Guacara)'
-                    WHERE current_project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
-                """))
-                isolated_conn.execute(text("""
+                    WHERE current_project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                    
                     UPDATE personnel 
                     SET current_project_id = NULL, status = 'disponible_base', current_location = 'Sede Central Dalor (Guacara)'
-                    WHERE current_project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                    WHERE current_project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
                 """))
 
-                # 2. Eliminar cobros/pagos vinculados a las facturas y anticipos de prueba
-                isolated_conn.execute(text("""
+                # 2. Desvincular alquileres y préstamos de activos del proyecto
+                isolated_conn.execute(text(f"""
+                    DELETE FROM asset_rentals_loans 
+                    WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                """))
+
+                # 3. Eliminar pagos financieros vinculados a CxC o CxP del proyecto de prueba
+                isolated_conn.execute(text(f"""
                     DELETE FROM financial_payments 
                     WHERE receivable_id IN (
                         SELECT id FROM accounts_receivable 
                         WHERE invoice_number IN ('FAC-2026-001', 'FAC-2026-002', 'ANT-CLI-23-01')
-                           OR project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001')
+                           OR project_id IN (SELECT id FROM projects WHERE {test_prj_filter})
+                    )
+                    OR payable_id IN (
+                        SELECT id FROM accounts_payable 
+                        WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter})
                     );
                 """))
 
-                # 3. Eliminar Cuentas por Cobrar de prueba
-                isolated_conn.execute(text("""
+                # 4. Eliminar Cuentas por Cobrar (CxC) de prueba
+                isolated_conn.execute(text(f"""
                     DELETE FROM accounts_receivable 
                     WHERE invoice_number IN ('FAC-2026-001', 'FAC-2026-002', 'ANT-CLI-23-01')
-                       OR project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001');
+                       OR project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
                 """))
 
-                # 4. Eliminar gastos, guías, ítems de guías, movimientos, asignaciones y fases del proyecto de prueba
-                isolated_conn.execute(text("""
+                # 5. Eliminar Cuentas por Pagar (CxP / Compras) del proyecto de prueba
+                isolated_conn.execute(text(f"""
+                    DELETE FROM accounts_payable 
+                    WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                """))
+
+                # 6. Eliminar requisiciones de materiales del proyecto de prueba
+                isolated_conn.execute(text(f"""
+                    DELETE FROM project_material_requisitions 
+                    WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                """))
+
+                # 7. Eliminar adendas de contrato del proyecto de prueba
+                isolated_conn.execute(text(f"""
+                    DELETE FROM project_addendums 
+                    WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                """))
+
+                # 8. Eliminar guías de despacho e ítems de guías del proyecto de prueba
+                isolated_conn.execute(text(f"""
                     DELETE FROM dispatch_guide_items 
                     WHERE dispatch_guide_id IN (
                         SELECT id FROM dispatch_guides 
-                        WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%')
+                        WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter})
                     );
-                """))
-                isolated_conn.execute(text("""
                     DELETE FROM dispatch_guides 
-                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
-                """))
-                isolated_conn.execute(text("""
-                    DELETE FROM expenses 
-                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
-                """))
-                isolated_conn.execute(text("""
-                    DELETE FROM material_movements 
-                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
-                """))
-                isolated_conn.execute(text("""
-                    DELETE FROM project_phases 
-                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
-                """))
-                isolated_conn.execute(text("""
-                    DELETE FROM resource_assignment_history 
-                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                    WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
                 """))
 
-                # 5. Eliminar cotización de prueba COT-2026-0001 y sus ítems
+                # 9. Eliminar gastos, movimientos de inventario, fases y bitácora de asignación
+                isolated_conn.execute(text(f"""
+                    DELETE FROM expenses WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                    DELETE FROM material_movements WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                    DELETE FROM project_phases WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                    DELETE FROM resource_assignment_history WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
+                """))
+
+                # 10. Eliminar cotización de prueba COT-2026-0001 y sus renglones
                 isolated_conn.execute(text("""
                     DELETE FROM quotation_items 
                     WHERE quotation_id IN (SELECT id FROM quotations WHERE quote_number = 'COT-2026-0001');
-                """))
-                isolated_conn.execute(text("""
                     DELETE FROM quotations 
                     WHERE quote_number = 'COT-2026-0001';
                 """))
 
-                # 6. Eliminar el proyecto padre PRJ-2026-001
-                isolated_conn.execute(text("""
+                # 11. Eliminar el proyecto padre PRJ-2026-001
+                isolated_conn.execute(text(f"""
                     DELETE FROM projects 
-                    WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%';
+                    WHERE {test_prj_filter};
                 """))
 
-                # 7. Eliminar partida APU de prueba APU-001
+                # 12. Eliminar partida APU de prueba APU-001
                 isolated_conn.execute(text("""
                     DELETE FROM service_items 
                     WHERE code = 'APU-001' OR description LIKE '%PRUEBA DE DESARROLLO%';
                 """))
 
-                # 8. Eliminar clientes de prueba si no tienen proyectos reales
+                # 13. Eliminar clientes de prueba si no tienen proyectos reales
                 isolated_conn.execute(text("""
                     DELETE FROM clients 
                     WHERE name IN ('JESUS GALLARDO', 'MENYERBER GALLARDO')

@@ -204,12 +204,7 @@ function renderClientsPaginated() {
 
 async function loadClients() {
     const tbody = document.getElementById("clientsTableBody");
-    if (Array.isArray(allClients) && allClients.length > 0) {
-        lastClientsList = allClients;
-        renderClientsPaginated();
-    } else if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando clientes...</td></tr>`;
-    }
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando clientes...</td></tr>`;
 
     try {
         const res = await authFetch(`${API_BASE}/clients/`);

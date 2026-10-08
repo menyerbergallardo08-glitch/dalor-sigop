@@ -207,12 +207,7 @@ function renderQuotationsPaginated() {
 
 async function loadQuotations() {
     const tbody = document.getElementById("quotationsTableBody");
-    if (Array.isArray(allQuotations) && allQuotations.length > 0) {
-        lastQuotationsList = allQuotations;
-        renderQuotationsPaginated();
-    } else if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cotizaciones...</td></tr>`;
-    }
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cotizaciones...</td></tr>`;
 
     try {
         // Carga fresca paralela de cotizaciones, clientes y servicios
@@ -1501,10 +1496,7 @@ function renderServicesPaginated() {
 
 async function loadServices() {
     const tbody = document.getElementById("servicesTableBody");
-    if (Array.isArray(allServices) && allServices.length > 0) {
-        lastServicesList = allServices;
-        renderServicesPaginated();
-    } else if (tbody) {
+    if (tbody) {
         tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando partidas...</td></tr>`;
     }
 

@@ -46,11 +46,7 @@ let unbilledWarehouseEntriesCache = [];
 async function loadPayablesList() {
     const tbody = document.getElementById("cxpTableBody");
     if (tbody) {
-        if (Array.isArray(allPayablesList) && allPayablesList.length > 0) {
-            renderPayablesPaginated();
-        } else {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cuentas por pagar...</td></tr>`;
-        }
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cuentas por pagar...</td></tr>`;
     }
 
     try {

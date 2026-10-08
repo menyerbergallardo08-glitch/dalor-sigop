@@ -26,11 +26,7 @@ let currentPersonnelTimelinePageSize = 6;
 
 async function loadPersonnelTableList() {
     const tbody = document.getElementById("matrixPersonnelTableBody");
-    if (Array.isArray(rawPersonnelList) && rawPersonnelList.length > 0) {
-        filterPersonnelList();
-    } else if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando personal...</td></tr>`;
-    }
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando personal...</td></tr>`;
 
     try {
         const res = await authFetch(`${API_BASE}/personnel/?include_inactive=true`);

@@ -1035,7 +1035,7 @@ let allSystemRoles = [];
 function switchMaintenanceSubtab(subtab) {
     try { sessionStorage.setItem('dalor_active_subtab_maintenance', subtab); } catch(e) {}
 
-    ['users', 'roles', 'audit', 'clean'].forEach(t => {
+    ['users', 'roles', 'audit', 'backups', 'clean'].forEach(t => {
         const pane = document.getElementById(`subtab-maint-${t}`);
         const btn = document.getElementById(`tabbtn-maint-${t}`);
         if (pane) pane.classList.add('hidden');
@@ -1050,6 +1050,7 @@ function switchMaintenanceSubtab(subtab) {
     if (subtab === 'users') loadMaintenanceUsersList();
     if (subtab === 'roles') loadMaintenanceRolesList();
     if (subtab === 'audit') loadMaintenanceAuditLogs();
+    if (subtab === 'backups') loadBackupsList();
 }
 
 async function loadMaintenanceUsersList() {
@@ -1611,16 +1612,32 @@ async function loadMaintenanceAuditLogs() {
     }
 }
 
+let auditCurrentPage = 1;
+let auditPageSize = 25;
+let currentFilteredAuditLogs = [];
+
 function renderMaintenanceAuditLogs(logs) {
     const tbody = document.getElementById('maintenanceAuditTableBody');
     if (!tbody) return;
 
-    if (!logs || logs.length === 0) {
+    currentFilteredAuditLogs = Array.isArray(logs) ? logs : [];
+
+    if (currentFilteredAuditLogs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">No hay eventos registrados que coincidan con la búsqueda.</td></tr>`;
+        updateAuditPaginationControls(0, 0, 0, 0);
         return;
     }
 
-    tbody.innerHTML = logs.map(l => {
+    const totalItems = currentFilteredAuditLogs.length;
+    const totalPages = Math.ceil(totalItems / auditPageSize) || 1;
+    if (auditCurrentPage > totalPages) auditCurrentPage = totalPages;
+    if (auditCurrentPage < 1) auditCurrentPage = 1;
+
+    const startIdx = (auditCurrentPage - 1) * auditPageSize;
+    const endIdx = Math.min(startIdx + auditPageSize, totalItems);
+    const pageItems = currentFilteredAuditLogs.slice(startIdx, endIdx);
+
+    tbody.innerHTML = pageItems.map(l => {
         const rawDate = l.created_at || l.timestamp || '';
         let displayDate = rawDate;
         if (rawDate) {
@@ -1654,9 +1671,49 @@ function renderMaintenanceAuditLogs(logs) {
             </tr>
         `;
     }).join('');
+
+    updateAuditPaginationControls(startIdx + 1, endIdx, totalItems, totalPages);
+}
+
+function updateAuditPaginationControls(start, end, total, totalPages) {
+    const countInfo = document.getElementById('auditPageCountInfo');
+    if (countInfo) {
+        countInfo.textContent = total > 0 ? `Mostrando ${start} - ${end} de ${total}` : 'Mostrando 0 - 0 de 0';
+    }
+
+    const container = document.getElementById('auditPaginationControls');
+    if (!container) return;
+
+    if (total <= auditPageSize) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = `
+        <button onclick="goToAuditPage(${auditCurrentPage - 1})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;" ${auditCurrentPage <= 1 ? 'disabled' : ''}>
+            <i class="fa-solid fa-chevron-left"></i> Anterior
+        </button>
+        <span style="font-size: 11px; font-weight: 700; color: #334155; padding: 0 4px;">Pág. ${auditCurrentPage} / ${totalPages}</span>
+        <button onclick="goToAuditPage(${auditCurrentPage + 1})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;" ${auditCurrentPage >= totalPages ? 'disabled' : ''}>
+            Siguiente <i class="fa-solid fa-chevron-right"></i>
+        </button>
+    `;
+    container.innerHTML = html;
+}
+
+function goToAuditPage(page) {
+    auditCurrentPage = page;
+    renderMaintenanceAuditLogs(currentFilteredAuditLogs);
+}
+
+function changeAuditPageSize(newSize) {
+    auditPageSize = parseInt(newSize, 10) || 25;
+    auditCurrentPage = 1;
+    renderMaintenanceAuditLogs(currentFilteredAuditLogs);
 }
 
 function filterMaintenanceAuditLogs() {
+    auditCurrentPage = 1;
     const userFilter = (document.getElementById('auditFilterUser')?.value || '').toLowerCase().trim();
     const dateFrom = document.getElementById('auditFilterDateFrom')?.value || '';
     const dateTo = document.getElementById('auditFilterDateTo')?.value || '';
@@ -1683,6 +1740,7 @@ function filterMaintenanceAuditLogs() {
 }
 
 function resetMaintenanceAuditFilters() {
+    auditCurrentPage = 1;
     if (document.getElementById('auditFilterUser')) document.getElementById('auditFilterUser').value = '';
     if (document.getElementById('auditFilterDateFrom')) document.getElementById('auditFilterDateFrom').value = '';
     if (document.getElementById('auditFilterDateTo')) document.getElementById('auditFilterDateTo').value = '';
@@ -2650,6 +2708,8 @@ if (typeof window !== 'undefined') {
     window.onNewUserRoleChanged = onNewUserRoleChanged;
     window.toggleAllRoleCheckboxes = toggleAllRoleCheckboxes;
     window.toggleAllUserCheckboxes = toggleAllUserCheckboxes;
+    window.goToAuditPage = goToAuditPage;
+    window.changeAuditPageSize = changeAuditPageSize;
 }
 
-export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterBIExtended, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, debouncedFilterComparisonDashboard, filterComparisonDashboard, goToComparisonPage, changeComparisonPageSize, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadMaintenanceRolesList, openNewRoleModal, openEditRoleModal, autoGenerateRoleSlug, submitRoleForm, deleteRole, onNewUserRoleChanged, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, goToBiPnlPage, changeBiPnlPageSize, renderBIPnlTablePaginated, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus, goToClientsPage, changeClientsPageSize, renderClientsPaginated, onClientSearchInput, openEditClientModal, submitEditClient, openClientHistoryModal, openCategoryHistoryModal, debouncedFilterCategoryHistory, filterCategoryHistory, goToCategoryHistoryPage, changeCategoryHistoryPageSize, openCreateCategoryModal, submitCreateCategory, toggleCategoryActive };
+export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterBIExtended, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, debouncedFilterComparisonDashboard, filterComparisonDashboard, goToComparisonPage, changeComparisonPageSize, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadMaintenanceRolesList, openNewRoleModal, openEditRoleModal, autoGenerateRoleSlug, submitRoleForm, deleteRole, onNewUserRoleChanged, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, goToBiPnlPage, changeBiPnlPageSize, renderBIPnlTablePaginated, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus, goToClientsPage, changeClientsPageSize, renderClientsPaginated, onClientSearchInput, openEditClientModal, submitEditClient, openClientHistoryModal, openCategoryHistoryModal, debouncedFilterCategoryHistory, filterCategoryHistory, goToCategoryHistoryPage, changeCategoryHistoryPageSize, openCreateCategoryModal, submitCreateCategory, toggleCategoryActive, goToAuditPage, changeAuditPageSize };

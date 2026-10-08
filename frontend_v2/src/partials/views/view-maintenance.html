@@ -39,17 +39,16 @@
                 </button>
 
                 <button class="subtab-btn" id="tabbtn-maint-audit" onclick="switchMaintenanceSubtab('audit')">
-
                     <i class="fa-solid fa-clock-rotate-left" style="color: #059669;"></i> Bitácora de Auditoría del Sistema
+                </button>
 
+                <button class="subtab-btn" id="tabbtn-maint-backups" onclick="switchMaintenanceSubtab('backups')">
+                    <i class="fa-solid fa-hard-drive" style="color: #10b981;"></i> Copias de Seguridad & Respaldos
                 </button>
 
                 <button class="subtab-btn" id="tabbtn-maint-clean" onclick="switchMaintenanceSubtab('clean')">
-
                     <i class="fa-solid fa-broom" style="color: #e11d48;"></i> Puesta a Cero (Arranque Real)
-
                 </button>
-
             </div>
 
 
@@ -206,6 +205,21 @@
 
                         </table>
 
+                    </div>
+
+                    <!-- PAGINACIÓN DE BITÁCORA DE AUDITORÍA -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 4px 2px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #64748b;">
+                            <span>Mostrar:</span>
+                            <select id="auditPageSize" onchange="changeAuditPageSize(this.value)" class="form-input" style="padding: 2px 8px; font-size: 11px; width: auto;">
+                                <option value="15">15 por página</option>
+                                <option value="25" selected>25 por página</option>
+                                <option value="50">50 por página</option>
+                                <option value="100">100 por página</option>
+                            </select>
+                            <span id="auditPageCountInfo">Mostrando 0 - 0 de 0</span>
+                        </div>
+                        <div id="auditPaginationControls" style="display: flex; gap: 4px; align-items: center;"></div>
                     </div>
 
                 </div>

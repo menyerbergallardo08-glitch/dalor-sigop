@@ -22,16 +22,33 @@
     <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192.png">
     <link rel="icon" type="image/png" href="/icons/icon-192.png">
 
-    <!-- ⚙️ Service Worker Registro -->
+    <!-- ⚙️ Service Worker Registro Seguro Anti-Bucles -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                    console.log('[PWA] Service Worker registrado exitosamente:', reg.scope);
-                }).catch(function(err) {
-                    console.warn('[PWA] Fallo registro SW:', err);
+            var isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (isLocalDev) {
+                // En entorno local de desarrollo / laboratorio, purgar SW para evitar caché fantasma o recargas continuas
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for (var i = 0; i < registrations.length; i++) {
+                        registrations[i].unregister();
+                    }
                 });
-            });
+                if (window.caches) {
+                    caches.keys().then(function(names) {
+                        for (var i = 0; i < names.length; i++) {
+                            caches.delete(names[i]);
+                        }
+                    });
+                }
+            } else {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                        console.log('[PWA] Service Worker registrado exitosamente:', reg.scope);
+                    }).catch(function(err) {
+                        console.warn('[PWA] Fallo registro SW:', err);
+                    });
+                });
+            }
         }
     </script>
 
@@ -140,9 +157,20 @@
             <load ="src/partials/views/view-expenses-log.html" />
         </main>
 
-        <!-- BATERÍA DE MODALES EMBEBIDOS (37 MODALES) -->
+        <!-- BATERÍA DE MODALES EMBEBIDOS ATÓMICOS Y DESACOPLADOS -->
         <div id="modals-container">
-            <load ="src/partials/modals.html" />
+            <load ="src/partials/modals/modals-common.html" />
+            <load ="src/partials/modals/modals-cxc.html" />
+            <load ="src/partials/modals/modals-cxp.html" />
+            <load ="src/partials/modals/modals-withholdings.html" />
+            <load ="src/partials/modals/modals-treasury.html" />
+            <load ="src/partials/modals/modals-fleet.html" />
+            <load ="src/partials/modals/modals-assets.html" />
+            <load ="src/partials/modals/modals-personnel.html" />
+            <load ="src/partials/modals/modals-materials.html" />
+            <load ="src/partials/modals/modals-dispatch.html" />
+            <load ="src/partials/modals/modals-projects.html" />
+            <load ="src/partials/modals/modals-commercial.html" />
         </div>
     </div>
 

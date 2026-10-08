@@ -85,11 +85,30 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 async def add_strict_no_cache_headers(request, call_next):
     response = await call_next(request)
     # Evitar caché en navegadores para archivos estáticos y rutas web durante desarrollo y producción
-    if request.url.path.startswith(("/static", "/src", "/css", "/api")) or request.url.path in ("/", "/app.js", "/index.html"):
+    if request.url.path.startswith(("/static", "/src", "/css", "/api", "/assets")) or request.url.path in ("/", "/app.js", "/index.html", "/sw.js", "/manifest.webmanifest"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
     return response
+
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": str(exc.detail)}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Error del servidor: {str(exc)}", "error_type": type(exc).__name__}
+    )
 
 # Rutas de Frontend y Uploads
 ROOT_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -233,4 +252,6 @@ if os.path.exists(FRONTEND_DIR):
         target_file = os.path.join(FRONTEND_DIR, full_path)
         if os.path.exists(target_file) and os.path.isfile(target_file):
             return FileResponse(target_file, headers=NO_CACHE_HEADERS)
+        if full_path.startswith("assets/") or full_path.endswith((".js", ".css", ".map", ".ico", ".png", ".jpg", ".jpeg", ".svg", ".woff", ".woff2", ".json", ".webmanifest")):
+            raise HTTPException(status_code=404, detail="Static asset not found")
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), headers=NO_CACHE_HEADERS)

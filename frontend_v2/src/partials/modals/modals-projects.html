@@ -1,0 +1,888 @@
+<div id="modalProjectDetail" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <div>
+
+                    <span id="detail_proj_code" style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 8px; border-radius: 4px;">PRJ-CODE</span>
+
+                    <h3 id="detail_proj_name" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">Nombre del Proyecto</h3>
+
+                    <p id="detail_proj_subtitle" style="font-size: 12px; color: #64748b;">Cliente | Ubicación</p>
+
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+                    <button type="button" onclick="openEditProjectModal(currentViewingProjectId)" class="btn-primary" style="background: #d97706; font-size: 10.5px; padding: 4px 10px; font-weight: 700; display: flex; align-items: center; gap: 4px;" title="Editar Parámetros y Fases de la Obra">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar Obra
+                    </button>
+                    <button type="button" onclick="openAddendumModal(currentViewingProjectId)" class="btn-primary" style="background: #9333ea; font-size: 10.5px; padding: 4px 10px; font-weight: 700; display: flex; align-items: center; gap: 4px;" title="Registrar Adenda Contractual / Obra Extra (+USD)">
+                        <i class="fa-solid fa-file-circle-plus"></i> + Adenda
+                    </button>
+                    <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="background: #0284c7; font-size: 10.5px; padding: 4px 10px; font-weight: 700; display: flex; align-items: center; gap: 4px;" title="Pedir Recursos y Materiales a Almacén para esta obra">
+                        <i class="fa-solid fa-truck-ramp-box"></i> Pedir Insumos
+                    </button>
+                    <button type="button" onclick="openReturnMaterialModal()" class="btn-primary" style="background: #16a34a; font-size: 10.5px; padding: 4px 10px; font-weight: 700; display: flex; align-items: center; gap: 4px;" title="Devolver sobrante de materiales de esta obra a almacén central">
+                        <i class="fa-solid fa-arrow-rotate-left"></i> Devolver Sobrante
+                    </button>
+                    <button type="button" onclick="copyProjectClientTrackingLink()" class="btn-primary" style="background: #059669; font-size: 10.5px; padding: 4px 8px;" title="Copiar enlace web de seguimiento">
+                        <i class="fa-solid fa-link"></i> Link
+                    </button>
+                    <button type="button" onclick="printProjectProgressReport()" class="btn-secondary" style="font-size: 10.5px; padding: 4px 8px; font-weight: 700;" title="Descargar e Imprimir Reporte de Avance">
+                        <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i> PDF
+                    </button>
+                    <button onclick="closeModal('modalProjectDetail')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b; margin-left: 4px;">&times;</button>
+                </div>
+
+            </div>
+
+
+
+            <div id="detail_proj_financial_box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; text-align: center;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Monto Contrato</span>
+                    <p id="detail_proj_contract" style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Facturado CxC</span>
+                    <p id="detail_proj_billed" style="font-size: 13px; font-weight: 800; color: #0284c7; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Por Facturar</span>
+                    <p id="detail_proj_unbilled" style="font-size: 13px; font-weight: 800; color: #059669; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Ppto Límite Costo</span>
+                    <p id="detail_proj_budget" style="font-size: 13px; font-weight: 800; color: #e11d48; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Gasto Incurrido</span>
+                    <p id="detail_proj_spent" style="font-size: 13px; font-weight: 800; color: #d97706; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cobrado Real</span>
+                    <p id="detail_proj_collected" style="font-size: 13px; font-weight: 800; color: #059669; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div onclick="goToProjectCxC(currentViewingProjectId)" style="cursor: pointer; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 4px 8px; transition: transform 0.15s ease;" title="Haga clic para ver o cobrar las Cuentas por Cobrar de esta obra en Finanzas">
+                    <span style="font-size: 10px; color: #be123c; text-transform: uppercase; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+                        Saldo x Cobrar <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px;"></i>
+                    </span>
+                    <p id="detail_proj_receivable_bal" style="font-size: 13px; font-weight: 800; color: #dc2626; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Margen Real ($)</span>
+                    <p id="detail_proj_margin" style="font-size: 13px; font-weight: 800; color: #2563eb; margin: 3px 0 0 0;">$0.00</p>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: ADENDAS Y OBRAS EXTRAS CONTRACTUALES -->
+            <div id="detail_proj_addendums_box" style="margin-bottom: 14px; background: #faf5ff; border: 1px solid #d8b4fe; border-radius: 10px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="font-size: 12px; font-weight: 800; color: #9333ea; text-transform: uppercase; margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-file-circle-plus"></i> Adendas Contractuales & Obras Extras
+                        </h4>
+                        <span style="font-size: 10px; color: #7e22ce;">Ampliaciones de contrato, nuevas capas y adicionales autorizados</span>
+                    </div>
+                    <button type="button" onclick="openAddendumModal(currentViewingProjectId)" class="btn-primary" style="background: #9333ea; font-size: 11px; padding: 4px 10px; font-weight: 700; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-plus"></i> Registrar Adenda
+                    </button>
+                </div>
+                <div id="detail_proj_addendums_list">
+                    <p style="font-size: 11px; color: #94a3b8; margin: 0;">No se han registrado adendas contractuales en esta obra.</p>
+                </div>
+            </div>
+
+
+
+            <div style="margin-bottom: 14px; background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+
+                <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin-bottom: 6px;">
+
+                    <i class="fa-solid fa-file-contract" style="color: var(--dalor-blue);"></i> Alcance Técnico del Trabajo
+
+                </h4>
+
+                <p id="detail_proj_scope" style="font-size: 12px; color: #334155; line-height: 1.5; white-space: pre-line;">Sin descripción de alcance.</p>
+
+            </div>
+
+
+
+            <div style="margin-bottom: 14px; background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                        <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Etapas & Hitos de Obra (EDT / Cronograma)
+                    </h4>
+                    <button type="button" onclick="openAddPhaseModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #0284c7; font-weight: 700; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-plus"></i> + Nueva Etapa
+                    </button>
+                </div>
+                <div id="detail_proj_phases_list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+            </div>
+
+            <div class="grid-3" style="margin-bottom: 14px;">
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                            <i class="fa-solid fa-users" style="color: var(--dalor-blue);"></i> Cuadrilla Asignada
+                        </h4>
+                    </div>
+                    <ul id="detail_proj_personnel" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
+                </div>
+
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                            <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Vehículos en Obra
+                        </h4>
+                    </div>
+                    <ul id="detail_proj_fleet" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
+                </div>
+
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <h4 style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                            <i class="fa-solid fa-toolbox" style="color: #0d9488;"></i> Herramientas en Obra
+                        </h4>
+                    </div>
+                    <ul id="detail_proj_tools" style="list-style: none; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></ul>
+                </div>
+            </div>
+
+
+
+            
+            <!-- SECCIÓN: TRAZABILIDAD DE COBROS & ABONOS DE LA OBRA -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                        <i class="fa-solid fa-receipt" style="color: #059669;"></i> Trazabilidad de Cobros & Abonos Recibidos de la Obra
+                    </h4>
+                    <span id="detail_proj_collections_count" style="font-size: 11px; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">0 abonos registrados</span>
+                </div>
+                <div class="table-wrapper" style="max-height: 180px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">Fecha Cobro</th>
+                                <th style="padding: 6px 8px; text-align: left;">Factura / Valuación</th>
+                                <th style="padding: 6px 8px; text-align: left;">Método / Canal</th>
+                                <th style="padding: 6px 8px; text-align: left;">Ref. Bancaria / Recibo</th>
+                                <th style="padding: 6px 8px; text-align: right;">Monto ($ USD)</th>
+                                <th style="padding: 6px 8px; text-align: left;">Notas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_collections_body">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran abonos ni cobros para esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: MATERIALES E INSUMOS SOLICITADOS A ALMACÉN (REQUISICIONES / ARMADO DE OBRA) -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                            <i class="fa-solid fa-boxes-stacked" style="color: #0d9488;"></i> Insumos & Materiales Solicitados a Almacén (Lista de Preparación)
+                        </h4>
+                        <small style="font-size: 10.5px; color: #64748b;">Insumos vinculados al armado del proyecto para que almacén prepare el pedido y emita Guía de Traslado.</small>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span id="detail_proj_materials_count" style="font-size: 11px; font-weight: 700; color: #0d9488; background: #ccfbf1; padding: 2px 8px; border-radius: 4px;">0 insumos listados</span>
+                        <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 3px 8px; background: #0d9488;" title="Solicitar más insumos a almacén">
+                            <i class="fa-solid fa-plus"></i> + Solicitar Insumos
+                        </button>
+                        <button type="button" onclick="openReturnMaterialModal()" class="btn-secondary" style="font-size: 11px; padding: 3px 8px; color: #0284c7; border-color: #bae6fd;" title="Devolver sobrante de materiales a almacén">
+                            <i class="fa-solid fa-arrow-rotate-left"></i> Devolver a Almacén
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">Código</th>
+                                <th style="padding: 6px 8px; text-align: left;">Material / Descripción</th>
+                                <th style="padding: 6px 8px; text-align: center;">Unidad</th>
+                                <th style="padding: 6px 8px; text-align: right;">Requerido</th>
+                                <th style="padding: 6px 8px; text-align: right;">Despachado</th>
+                                <th style="padding: 6px 8px; text-align: right;">Pendiente</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estatus Almacén</th>
+                                <th style="padding: 6px 8px; text-align: left;">Notas / Fase</th>
+                                <th style="padding: 6px 8px; text-align: center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_materials_body">
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran materiales solicitados para esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: GUÍAS DE DESPACHO & SALIDAS DE ALMACÉN DE LA OBRA -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="font-size: 12px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase; margin: 0;">
+                        <i class="fa-solid fa-truck-ramp-box" style="color: #0284c7;"></i> Guías de Despacho & Salidas de Almacén de esta Obra
+                    </h4>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span id="detail_proj_dispatch_count" style="font-size: 11px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;">0 guías emitidas</span>
+                        <button type="button" onclick="openProjectRequisitionsInboxModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 3px 10px; background: #059669; font-weight: 700;" title="Despachar insumos y emitir guía de esta obra">
+                            <i class="fa-solid fa-dolly"></i> Despachar Insumos
+                        </button>
+                        <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="font-size: 11px; padding: 3px 8px; background: #0284c7;" title="Pedir más insumos">
+                            <i class="fa-solid fa-plus"></i> Pedir Insumos
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="max-height: 200px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">N° Guía</th>
+                                <th style="padding: 6px 8px; text-align: left;">Fecha Despacho</th>
+                                <th style="padding: 6px 8px; text-align: left;">Destino</th>
+                                <th style="padding: 6px 8px; text-align: left;">Transporte / Conductor</th>
+                                <th style="padding: 6px 8px; text-align: center;">Ítems</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estatus</th>
+                                <th style="padding: 6px 8px; text-align: center;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_dispatch_body">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran guías de despacho para esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- GASTOS IMPUTADOS A LA OBRA (AUDITORÍA DE FACTURAS Y RECIBOS) -->
+            <div class="card" style="margin-bottom: 14px; border-left: 4px solid #f59e0b; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-receipt" style="color: #f59e0b;"></i> Gastos Imputados a la Obra (Auditoría de Egresos)
+                        </h4>
+                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Facturas, compras y rendiciones de campo cargadas a este centro de costos.</p>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span id="detail_proj_expenses_count_badge" style="font-size: 11px; font-weight: 800; background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px;">0 gastos ($0.00 USD)</span>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">Fecha</th>
+                                <th style="padding: 6px 8px; text-align: left;">Proveedor / Comercio</th>
+                                <th style="padding: 6px 8px; text-align: left;">Concepto / Descripción</th>
+                                <th style="padding: 6px 8px; text-align: left;">Partida / Categoría</th>
+                                <th style="padding: 6px 8px; text-align: right;">Monto ($)</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estado</th>
+                                <th style="padding: 6px 8px; text-align: center;">Comprobante</th>
+                                <th style="padding: 6px 8px; text-align: left;">Registrado Por</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_expenses_body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran gastos imputados a esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- COMPRAS Y FACTURAS CXP IMPUTADAS A LA OBRA -->
+            <div class="card" style="margin-bottom: 14px; border-left: 4px solid #0284c7; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="font-size: 13px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-file-invoice-dollar" style="color: #0284c7;"></i> Compras y Facturas CxP Imputadas a la Obra
+                        </h4>
+                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Materiales, suministros y servicios facturados en Cuentas por Pagar para este proyecto.</p>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span id="detail_proj_payables_count_badge" style="font-size: 11px; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 6px;">0 compras ($0.00 USD)</span>
+                    </div>
+                </div>
+                <div class="table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 6px 8px; text-align: left;">Fecha</th>
+                                <th style="padding: 6px 8px; text-align: left;">Factura / Doc</th>
+                                <th style="padding: 6px 8px; text-align: left;">Proveedor</th>
+                                <th style="padding: 6px 8px; text-align: left;">Descripción</th>
+                                <th style="padding: 6px 8px; text-align: right;">Total Doc ($)</th>
+                                <th style="padding: 6px 8px; text-align: right;">Pagado ($)</th>
+                                <th style="padding: 6px 8px; text-align: right;">Saldo ($)</th>
+                                <th style="padding: 6px 8px; text-align: center;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_proj_payables_body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran compras por CxP imputadas a esta obra.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+
+                <button type="button" onclick="openProjectRequisitionsInboxModal(currentViewingProjectId)" class="btn-primary" style="background: #0d9488; font-size: 12px; padding: 6px 14px; font-weight: 700;">
+                    <i class="fa-solid fa-dolly"></i> Despachar Insumos de esta Obra
+                </button>
+
+                <button type="button" onclick="openAddendumModal(currentViewingProjectId)" class="btn-primary" style="background: #9333ea; font-size: 12px; padding: 6px 14px; font-weight: 700;">
+                    <i class="fa-solid fa-file-circle-plus"></i> + Adenda Contractual
+                </button>
+
+                <button type="button" onclick="openRequestProjectResourcesModal(currentViewingProjectId)" class="btn-primary" style="background: #0284c7; font-size: 12px; padding: 6px 14px;">
+                    <i class="fa-solid fa-truck-ramp-box"></i> Solicitar Recursos y Materiales a Almacén
+                </button>
+
+                <button type="button" id="btn_detail_facturar_cxc" onclick="navigateToProjectCxC(currentViewingProjectId)" class="btn-primary" style="background: #059669; font-size: 12px; padding: 6px 14px; font-weight: 700;" title="Facturar o registrar cobro de esta obra en Cuentas por Cobrar">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Facturar / Cobrar Obra
+                </button>
+
+                <button type="button" onclick="closeModal('modalProjectDetail')" class="btn-secondary">Cerrar Ficha</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL: REGISTRAR ADENDA CONTRACTUAL / OBRA EXTRA (+USD) -->
+    
+
+<div id="modalProjectAddendum" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 560px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-file-circle-plus" style="color: #9333ea;"></i> Registrar Adenda Contractual / Obra Extra
+                    </h3>
+                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">Ampliación de alcance y monto contractual acordado con el cliente.</p>
+                </div>
+                <button type="button" onclick="closeModal('modalProjectAddendum')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Banner Info del Proyecto -->
+            <div style="background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                    <span id="addendum_project_code" style="font-size: 12px; font-weight: 800; color: #9333ea; font-family: monospace;">PRJ-2026-XXX</span>
+                    <div id="addendum_project_name" style="font-size: 13px; font-weight: 700; color: #1e293b;">Nombre de la Obra</div>
+                </div>
+                <div style="text-align: right; font-size: 11px;">
+                    <span style="color: #64748b;">Contrato Actual:</span>
+                    <strong id="addendum_current_contract" style="color: #0f172a; font-size: 13px; display: block;">$0.00 USD</strong>
+                </div>
+            </div>
+
+            <form id="formProjectAddendum" onsubmit="submitProjectAddendum(event)">
+                <input type="hidden" id="addendum_project_id" value="">
+
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Título de la Adenda / Ampliación <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="addendum_title" required placeholder="Ej: Ampliación: Nuevas Capas de Pintura Epóxica & Refuerzo" style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+                    </div>
+
+                    <div class="grid-2" style="gap: 12px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Monto Adicional Contrato (USD) <span style="color: #ef4444;">*</span></label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-weight: 800; color: #059669; font-size: 13px;">$</span>
+                                <input type="number" id="addendum_amount_usd" step="0.01" min="0.01" required placeholder="0.00" style="width: 100%; padding: 8px 10px 8px 24px; font-size: 13px; font-weight: 800; color: #059669; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+                            </div>
+                            <span style="font-size: 10px; color: #64748b;">Aumentará el saldo por facturar en CxC</span>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Autorizado por</label>
+                            <input type="text" id="addendum_authorized_by" value="Dirección General" style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Alcance Técnico & Justificación</label>
+                        <textarea id="addendum_scope" rows="2" placeholder="Especificaciones de las nuevas capas, metraje extra o trabajos requeridos por el cliente..." style="width: 100%; padding: 8px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; resize: vertical;"></textarea>
+                    </div>
+
+                    <!-- Cronograma EDT y Presupuesto de la Adenda -->
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 11px;">
+                        <div style="font-weight: 800; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-list-check" style="color: #9333ea;"></i> Programación de la Obra Extra en Cronograma (EDT/WBS)
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-size: 10.5px; color: #475569; font-weight: 700; display: block; margin-bottom: 3px;">Nombre de la Nueva Etapa en Cronograma:</label>
+                            <input type="text" id="addendum_new_phase" placeholder="Ej: Adenda N° X: Ejecución de Capas Epóxicas Adicionales" style="width: 100%; padding: 7px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; background: white;">
+                            <span style="font-size: 10px; color: #64748b;">(Si se deja vacío, el sistema creará automáticamente la etapa vinculada a esta adenda para evitar tareas huérfanas)</span>
+                        </div>
+                        <div class="grid-2" style="gap: 10px;">
+                            <div>
+                                <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Materiales Extra (USD):</label>
+                                <input type="number" id="addendum_mat_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; background: white;">
+                            </div>
+                            <div>
+                                <label style="font-size: 10px; color: #64748b; font-weight: 600;">Presupuesto Mano de Obra Extra (USD):</label>
+                                <input type="number" id="addendum_labor_usd" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; background: white;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <button type="button" onclick="closeModal('modalProjectAddendum')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="font-size: 12px; padding: 7px 16px; background: #9333ea; border-color: #9333ea; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-check"></i> Aplicar Adenda Contractual
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: AGREGAR NUEVA ETAPA AL PROYECTO -->
+    
+
+<div id="modalAddProjectPhase" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-layer-group" style="color: var(--dalor-blue);"></i> Nueva Etapa en Cronograma
+                </h3>
+                <button type="button" onclick="closeModal('modalAddProjectPhase')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+            <form id="formAddProjectPhase" onsubmit="submitAddProjectPhase(event)">
+                <input type="hidden" id="add_phase_project_id">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Nombre de la Etapa / Hito: *</label>
+                    <input type="text" id="add_phase_name" class="form-control" placeholder="Ej: Montaje Mecánico Estructura Central" required style="width: 100%; font-size: 12px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Duración Estimada: *</label>
+                        <div style="display: flex; gap: 4px;">
+                            <input type="text" inputmode="decimal" id="add_phase_duration_val" class="form-control" value="7" style="width: 55%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <select id="add_phase_duration_unit" class="form-control" style="width: 45%; font-size: 11px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700;">
+                                <option value="dias">Días</option>
+                                <option value="horas">Horas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Costo Estimado ($ USD):</label>
+                        <input type="text" inputmode="decimal" id="add_phase_cost" class="form-control" value="0" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Responsable / Cuadrilla a Cargo:</label>
+                    <input type="text" id="add_phase_responsible" class="form-control" placeholder="Ej: Ing. Residente / Cuadrilla Mecánica" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <button type="button" onclick="closeModal('modalAddProjectPhase')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="font-size: 12px; padding: 7px 16px; background: var(--dalor-navy); font-weight: 700;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Etapa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: REABRIR Y EDITAR PROYECTO GUARDADO (PUNTO 8) -->
+    
+
+<div id="modalEditProject" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 850px; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 id="modalEditProjectTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-pen-to-square" style="color: var(--dalor-gold);"></i> Reabrir / Editar Proyecto Guardado
+                </h3>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" onclick="openRequestProjectResourcesModal(document.getElementById('edit_project_id').value)" class="btn-primary" style="background: #0284c7; font-size: 11px; padding: 5px 12px; font-weight: 700;" title="Pedir Recursos y Materiales a Almacén para esta obra">
+                        <i class="fa-solid fa-truck-ramp-box"></i> Solicitar Insumos a Almacén
+                    </button>
+                    <button type="button" onclick="closeModal('modalEditProject')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+                </div>
+            </div>
+            <form id="formEditProject" onsubmit="submitEditProject(event)">
+                <input type="hidden" id="edit_project_id">
+                
+                <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Código de Obra (No editable)</label>
+                        <input type="text" id="edit_project_code" readonly style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #f1f5f9; font-weight: 800; color: #1e3a8a;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Estatus del Proyecto *</label>
+                        <select id="edit_project_status" class="form-select" style="width: 100%; font-size: 12px; padding: 6px 10px; font-weight: 700;">
+                            <option value="activo">🟢 Activo / En Ejecución</option>
+                            <option value="suspendido">🟡 Suspendido / En Espera</option>
+                            <option value="culminado">🏁 Culminado / Finalizado</option>
+                            <option value="cancelado">🔴 Cancelado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Proyecto / Obra *</label>
+                        <input type="text" id="edit_project_name" required class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente Asignado *</label>
+                        <select id="edit_project_client_id" class="form-select" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                            <option value="">-- Seleccionar Cliente --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-3" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Ubicación / Planta / Frente *</label>
+                        <input type="text" id="edit_project_location" oninput="onEditProjectLocationInput(this.value)" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Duración (Días Calendario) *</label>
+                        <input type="number" id="edit_project_duration" class="form-input" min="1" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Tiempo de Ejecución (Días Hábiles) *</label>
+                        <input type="text" id="edit_project_execution_time" class="form-input" placeholder="Ej: 15 días hábiles" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Monto Contractual / Venta (USD) *</label>
+                    <input type="text" inputmode="decimal" id="edit_project_contract" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px; font-weight: 800; color: var(--dalor-navy);">
+                </div>
+
+                <!-- Bolsas de Costo Presupuestario -->
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 6px; text-transform: uppercase;">
+                        <i class="fa-solid fa-coins" style="color: var(--dalor-gold);"></i> Desglose de Bolsas Presupuestarias Techo ($ USD)
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Mano de Obra</label>
+                            <input type="text" inputmode="decimal" id="edit_project_labor" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div id="edit_fuel_wrapper">
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Combustible</label>
+                            <input type="text" inputmode="decimal" id="edit_project_fuel" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Materiales</label>
+                            <input type="text" inputmode="decimal" id="edit_project_materials" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Herramientas</label>
+                            <input type="text" inputmode="decimal" id="edit_project_tools" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748b; font-weight: 700; display: block;">Servicios Ext.</label>
+                            <input type="text" inputmode="decimal" id="edit_project_services" class="form-input" placeholder="0.00" style="font-size: 11px; padding: 5px;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Alcance Operativo & Especificaciones Técnicas</label>
+                    <textarea id="edit_project_scope" rows="2" class="form-input" style="width: 100%; font-size: 12px;"></textarea>
+                </div>
+
+                <!-- Lista de Fases Editables -->
+                <div style="border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Etapas / Hitos del Proyecto:
+                        </span>
+                        <button type="button" onclick="addEditProjectPhaseRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;">
+                            <i class="fa-solid fa-plus"></i> Añadir Etapa
+                        </button>
+                    </div>
+                    <div id="editProjectPhasesContainer" style="display: flex; flex-direction: column; gap: 8px; max-height: 35vh; overflow-y: auto;"></div>
+                </div>
+
+                <!-- SECCIÓN: ASIGNACIÓN DIRECTA DE RECURSOS & MATERIALES EN RE-EDICIÓN -->
+                <div style="border-top: 1.5px solid #e2e8f0; padding-top: 12px; margin-bottom: 14px; background: #f8fafc; border-radius: 8px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                        <div>
+                            <h4 style="font-size: 12.5px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-people-carry-box" style="color: #0284c7;"></i> Recursos Asignados & Insumos de Obra
+                            </h4>
+                            <span style="font-size: 10.5px; color: #64748b;">Asigna o desasigna personal, flota, herramientas y materiales directamente sin salir de la edición.</span>
+                        </div>
+                        <button type="button" onclick="openRequestProjectResourcesModal(document.getElementById('edit_project_id').value)" class="btn-primary" style="background: #0284c7; font-size: 11px; padding: 4px 10px; font-weight: 700;">
+                            <i class="fa-solid fa-truck-ramp-box"></i> Pedido Formal a Almacén
+                        </button>
+                    </div>
+
+                    <!-- Grid de Recursos: Personal, Flota, Herramientas -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                        <!-- 1. Personal -->
+                        <div style="background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                            <label style="font-size: 11px; font-weight: 800; color: #1e40af; display: flex; justify-content: space-between;">
+                                <span><i class="fa-solid fa-users"></i> Personal / Cuadrilla</span>
+                                <span id="edit_pers_counter" style="font-size: 10px; color: #64748b;">0 asignados</span>
+                            </label>
+                            <input type="text" placeholder="🔍 Filtrar trabajador..." oninput="filterPlanSelect('edit_select_personnel', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 6px; font-size: 10px; margin-top: 4px; margin-bottom: 4px;">
+                            <div style="display: flex; gap: 4px;">
+                                <select id="edit_select_personnel" class="form-select" style="font-size: 11px; padding: 5px; flex: 1;">
+                                    <option value="">-- Seleccionar Trabajador --</option>
+                                </select>
+                                <button type="button" onclick="addEditProjectResource('personnel')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800; color: #1e40af;">+ Asignar</button>
+                            </div>
+                            <div id="edit_tags_personnel" style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
+                        </div>
+
+                        <!-- 2. Flota / Vehículos -->
+                        <div id="edit_fleet_wrapper" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                            <label style="font-size: 11px; font-weight: 800; color: #166534; display: flex; justify-content: space-between;">
+                                <span><i class="fa-solid fa-truck"></i> Flota & Vehículos</span>
+                                <span id="edit_fleet_counter" style="font-size: 10px; color: #64748b;">0 asignados</span>
+                            </label>
+                            <input type="text" placeholder="🔍 Filtrar vehículo..." oninput="filterPlanSelect('edit_select_fleet', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 6px; font-size: 10px; margin-top: 4px; margin-bottom: 4px;">
+                            <div style="display: flex; gap: 4px;">
+                                <select id="edit_select_fleet" class="form-select" style="font-size: 11px; padding: 5px; flex: 1;">
+                                    <option value="">-- Seleccionar Unidad --</option>
+                                </select>
+                                <button type="button" onclick="addEditProjectResource('fleet')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800; color: #166534;">+ Asignar</button>
+                            </div>
+                            <div id="edit_tags_fleet" style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
+                        </div>
+                        <div id="edit_fleet_sede_banner" style="display: none; background: #f0fdf4; border: 1.5px dashed #86efac; border-radius: 8px; padding: 12px; font-size: 11px; color: #166534; align-items: center; gap: 8px; grid-column: span 1;">
+                            <i class="fa-solid fa-building" style="font-size: 18px; color: #15803d; flex-shrink: 0;"></i>
+                            <div>
+                                <strong style="display: block; color: #14532d; font-size: 11.5px;">Obra en Sede Central (Taller Guacara)</strong>
+                                <span>No requiere asignación de flota de vehículos ni viáticos de combustible en vía pública.</span>
+                            </div>
+                        </div>
+
+                        <!-- 3. Herramientas & Equipos -->
+                        <div style="background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                            <label style="font-size: 11px; font-weight: 800; color: #92400e; display: flex; justify-content: space-between;">
+                                <span><i class="fa-solid fa-toolbox"></i> Herramientas & Equipos</span>
+                                <span id="edit_tools_counter" style="font-size: 10px; color: #64748b;">0 asignados</span>
+                            </label>
+                            <input type="text" placeholder="🔍 Buscar maquinaria/herramienta..." oninput="filterPlanSelect('edit_select_tools', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 6px; font-size: 10px; margin-top: 4px; margin-bottom: 4px;">
+                            <div style="display: flex; gap: 4px;">
+                                <select id="edit_select_tools" class="form-select" style="font-size: 11px; padding: 5px; flex: 1;">
+                                    <option value="">-- Seleccionar Herramienta --</option>
+                                </select>
+                                <button type="button" onclick="addEditProjectResource('tools')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800; color: #92400e;">+ Asignar</button>
+                            </div>
+                            <div id="edit_tags_tools" style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Materiales & Insumos Requeridos -->
+                    <div style="background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 800; color: #0f766e; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-boxes-stacked"></i> Materiales & Insumos de Almacén para la Obra
+                            </label>
+                            <span id="edit_mats_total_badge" style="font-size: 11px; font-weight: 700; color: #0f766e; background: #ccfbf1; padding: 2px 8px; border-radius: 6px;">0 ítems</span>
+                        </div>
+                        <input type="text" placeholder="🔍 Filtrar catálogo de insumos..." oninput="filterPlanSelect('edit_select_materials', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 6px; font-size: 10px; margin-bottom: 4px;">
+                        <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 6px; margin-bottom: 8px;">
+                            <select id="edit_select_materials" onchange="onEditProjectMaterialChanged(this)" class="form-select" style="font-size: 11px; padding: 5px;">
+                                <option value="">-- Seleccionar Material / Consumible --</option>
+                            </select>
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <input type="number" step="0.01" min="0.01" id="edit_mat_quantity" placeholder="Cant." value="1" class="form-input" style="font-size: 11px; padding: 5px; width: 70px; text-align: center;">
+                                <span id="edit_mat_unit_label" style="font-size: 10px; font-weight: 700; color: #0284c7;">UND</span>
+                            </div>
+                            <button type="button" onclick="addEditProjectResource('material')" class="btn-primary" style="padding: 4px 10px; font-size: 11px; font-weight: 800; background: #0f766e;">+ Agregar Insumo</button>
+                        </div>
+                        <div id="edit_tags_materials" style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <button type="button" onclick="closeModal('modalEditProject')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
+                    <button type="submit" id="btnSubmitEditProject" class="btn-primary" style="font-size: 12px; padding: 7px 18px; font-weight: 800; background: var(--dalor-navy);">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Obra
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: SOLICITAR RECURSOS Y MATERIALES A ALMACÉN (FLUJO OBRA -> DESPACHO) -->
+    
+
+<div id="modalRequestProjectResources" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 650px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="reqProjModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-truck-ramp-box" style="color: #0284c7;"></i> Solicitar Recursos y Materiales a Almacén
+                    </h3>
+                    <p id="reqProjModalSubtitle" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">Proyecto</p>
+                </div>
+                <button type="button" onclick="closeModal('modalRequestProjectResources')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="requestProjectResourcesForm" onsubmit="submitRequestProjectResources(event); return false;" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="req_proj_id" value="">
+
+                <!-- Alerta informativa si la obra ya tiene guías emitidas -->
+                <div id="req_proj_existing_guides" style="display: none; margin-bottom: 2px;"></div>
+
+                <div class="grid-2">
+                    <div>
+                        <label class="form-label">Destino / Obra de Entrega (Bloqueado) *</label>
+                        <input type="text" id="req_proj_destination" class="form-input" required readonly style="background-color: #f1f5f9; font-weight: 700; cursor: not-allowed; color: #1e293b;" placeholder="Planta Cliente / Obra">
+                    </div>
+                    <div>
+                        <label class="form-label">Notas / Instrucciones Especiales</label>
+                        <input type="text" id="req_proj_notes" class="form-input" placeholder="Ej: Entrega urgente en turno mañana">
+                    </div>
+                </div>
+
+                <!-- Selector de Tipo de Guía / Destino -->
+                <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); text-transform: uppercase;">
+                            <i class="fa-solid fa-route"></i> Tipo de Despacho / Formato de Guía
+                        </span>
+                        <span id="req_guide_badge" style="font-size: 10.5px; font-weight: 800; background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 4px;">
+                            GD-2026-XXXX (Guía Oficial)
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button type="button" id="btn_req_mode_foranea" onclick="setRequestDispatchMode('foranea')" class="btn-primary" style="font-size: 11px; padding: 6px 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i class="fa-solid fa-truck"></i> Obra Foránea / Planta Cliente (GD)
+                        </button>
+                        <button type="button" id="btn_req_mode_sede" onclick="setRequestDispatchMode('sede')" class="btn-secondary" style="font-size: 11px; padding: 6px 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i class="fa-solid fa-warehouse"></i> Obra en Sede / Taller Guacara (GCI)
+                        </button>
+                    </div>
+                    <input type="hidden" id="req_is_internal" value="0">
+                </div>
+
+                <!-- SELECTOR DE CHOFER (OBLIGATORIO Y SELECCIONABLE EN MODO OBRA FORÁNEA) -->
+                <div id="req_driver_container" style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; text-transform: uppercase;">
+                            <i class="fa-solid fa-id-card"></i> Conductor / Chofer Responsable del Traslado *
+                        </label>
+                        <span style="font-size: 10px; color: #0284c7; font-weight: 700;">Selección obligatoria para despacho a obra</span>
+                    </div>
+                    <select id="req_driver_id" class="form-select" style="font-size: 12px; background: white;" onchange="onRequestDriverChanged(this)"></select>
+                    <div id="req_manual_driver_box" style="display: none; margin-top: 6px;">
+                        <input type="text" id="req_manual_driver_name" placeholder="Nombre completo, cédula y teléfono del chofer externo / fletero..." class="form-input" style="font-size: 11.5px; background: white;">
+                    </div>
+                </div>
+
+                <!-- RESPONSABLES DE TRASLADO INTERNO (MODO SEDE / TALLER GUACARA) -->
+                <div id="req_internal_custody_container" style="display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 10px;">
+                    <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 6px;">
+                        <i class="fa-solid fa-handshake"></i> Custodios de Traslado Interno (Vale GCI-2026-XXXX)
+                    </div>
+                    <div class="grid-2">
+                        <div>
+                            <label class="form-label" style="font-size: 10.5px;">Entrega (Almacén Central Guacara)</label>
+                            <input type="text" id="req_delivered_by" class="form-input" value="Almacén Central DALOR (Guacara)" style="font-size: 11.5px; background: white;">
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10.5px;">Recibe (Taller Guacara / Cuadrilla)</label>
+                            <input type="text" id="req_received_by" class="form-input" placeholder="Nombre del responsable en taller..." style="font-size: 11.5px; background: white;">
+                        </div>
+                    </div>
+                    <small style="font-size: 10px; color: #3b82f6; margin-top: 4px; display: block;">
+                        * Los movimientos en sede no requieren asignación de vehículo ni chofer en vía pública.
+                    </small>
+                </div>
+
+                <!-- 1. Personal Operativo -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase;">
+                            <i class="fa-solid fa-users"></i> 1. Personal & Cuadrilla (Solo Disponibles en Base)
+                        </label>
+                        <span id="req_pers_counter" style="font-size: 10px; font-weight: 700; color: #1e40af; background: #dbeafe; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
+                    </div>
+                    <input type="text" id="req_search_personnel" oninput="filterReqDropdown('personnel', this.value)" placeholder="🔍 Buscar por nombre, cédula o cargo..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
+                    <div style="display: flex; gap: 6px;">
+                        <select id="req_select_personnel" onchange="if(this.value) addReqResource('personnel')" class="form-select" style="font-size: 12px;"></select>
+                        <button type="button" onclick="addReqResource('personnel')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800;" title="Agregar personal">+ Agregar</button>
+                    </div>
+                    <div id="req_tags_personnel" style="margin-top: 6px; min-height: 24px;"></div>
+                </div>
+
+                <!-- 2. Vehículos y Flota -->
+                <div id="req_fleet_section" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase;">
+                            <i class="fa-solid fa-truck"></i> 2. Flota & Vehículos (Solo Disponibles en Base)
+                        </label>
+                        <span id="req_fleet_counter" style="font-size: 10px; font-weight: 700; color: #166534; background: #dcfce7; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
+                    </div>
+                    <input type="text" id="req_search_fleet" oninput="filterReqDropdown('fleet', this.value)" placeholder="🔍 Buscar por placa, marca o código..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
+                    <div style="display: flex; gap: 6px;">
+                        <select id="req_select_fleet" onchange="if(this.value) addReqResource('fleet')" class="form-select" style="font-size: 12px;"></select>
+                        <button type="button" onclick="addReqResource('fleet')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #166534;" title="Agregar vehículo">+ Agregar</button>
+                    </div>
+                    <div id="req_tags_fleet" style="margin-top: 6px; min-height: 24px;"></div>
+                </div>
+
+                <!-- 3. Herramientas y Equipos -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase;">
+                            <i class="fa-solid fa-toolbox"></i> 3. Herramientas & Equipos (Solo Disponibles en Base)
+                        </label>
+                        <span id="req_tools_counter" style="font-size: 10px; font-weight: 700; color: #92400e; background: #fef3c7; padding: 1px 6px; border-radius: 9999px;">0 elegidos</span>
+                    </div>
+                    <input type="text" id="req_search_tools" oninput="filterReqDropdown('tools', this.value)" placeholder="🔍 Buscar entre 890+ herramientas por código, descripción o serial..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white; border: 1.5px solid #fde68a;">
+                    <div style="display: flex; gap: 6px;">
+                        <select id="req_select_tools" onchange="if(this.value) addReqResource('tools')" class="form-select" style="font-size: 12px;"></select>
+                        <button type="button" onclick="addReqResource('tools')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #d97706;" title="Agregar herramienta">+ Agregar</button>
+                    </div>
+                    <div id="req_tags_tools" style="margin-top: 6px; min-height: 24px;"></div>
+                </div>
+
+                <!-- 4. Materiales de Almacén -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 800; color: #0f766e; text-transform: uppercase;">
+                            <i class="fa-solid fa-boxes-stacked"></i> 4. Materiales & Consumibles (Solo con Stock > 0)
+                        </label>
+                        <span id="req_mats_counter" style="font-size: 10px; font-weight: 700; color: #0f766e; background: #ccfbf1; padding: 1px 6px; border-radius: 9999px;">0 renglones</span>
+                    </div>
+                    <input type="text" id="req_search_materials" oninput="filterReqDropdown('materials', this.value)" placeholder="🔍 Buscar material por nombre o código..." class="form-input" style="font-size: 11.5px; padding: 4px 8px; margin-bottom: 6px; background: white;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 6px;">
+                        <select id="req_select_materials" onchange="onReqMaterialChanged(this)" class="form-select" style="font-size: 12px;"></select>
+                        <input type="number" step="0.01" id="req_mat_quantity" placeholder="Cant." class="form-input" style="font-size: 12px;">
+                        <button type="button" onclick="addReqResource('material')" class="btn-primary" style="padding: 4px 12px; font-size: 12px; font-weight: 800; background: #0f766e;" title="Agregar material">+ Agregar</button>
+                    </div>
+                    <div id="req_tags_materials" style="margin-top: 6px; min-height: 24px;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                    <button type="button" onclick="closeModal('modalRequestProjectResources')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7; font-weight: 800; font-size: 12px; padding: 6px 16px;">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar Solicitud a Almacén
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- MODAL: NUEVA COTIZACIÓN (ESTIMACIONES & APU) -->
+
+    

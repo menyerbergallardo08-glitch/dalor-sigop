@@ -6,7 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.models.models import Asset, AssetService, Expense, Project, Personnel, ResourceAssignmentHistory, AuditLog, User, AssetRentalLoan, DispatchGuide, AssetRentalLoanItem
+from app.models.models import Asset, AssetService, Expense, ExpenseCategory, Project, Personnel, ResourceAssignmentHistory, AuditLog, User, AssetRentalLoan, DispatchGuide, AssetRentalLoanItem
 from app.core.security import verify_password
 
 router = APIRouter()
@@ -90,7 +90,8 @@ def get_tools_summary(db: Session = Depends(get_db)):
             Asset.status,
             Asset.current_location,
             Asset.current_custodian_name,
-            Asset.current_project_id
+            Asset.current_project_id,
+            Asset.category
         )
         .filter(Asset.is_active == True, ~Asset.asset_type.in_(non_tools))
         .all()
@@ -98,12 +99,13 @@ def get_tools_summary(db: Session = Depends(get_db)):
 
     groups = {}
     for t in tools:
-        t_id, code, name, a_type, brand, model, serial, status, loc, cust, proj_id = t
+        t_id, code, name, a_type, brand, model, serial, status, loc, cust, proj_id, cat = t
         key = (name or 'HERRAMIENTA GENERAL').strip().upper()
         if key not in groups:
             groups[key] = {
                 "name": (name or 'Herramienta General').strip(),
                 "asset_type": a_type or 'herramienta',
+                "category": cat or 'General',
                 "total": 0,
                 "available": 0,
                 "in_use": 0,
@@ -127,6 +129,7 @@ def get_tools_summary(db: Session = Depends(get_db)):
             "brand": brand or "",
             "model": model or "",
             "serial_number": serial or "",
+            "category": cat or 'General',
             "status": status,
             "current_location": loc or "Sede Central",
             "current_custodian_name": cust or "Disponible en Base",
@@ -216,15 +219,48 @@ def get_asset_categories(db: Session = Depends(get_db)):
     cleaned = sorted(list(set(c[0] for c in cats if c[0])))
     return cleaned
 
+@router.get("/types/list")
+def get_asset_types(db: Session = Depends(get_db)):
+    types = db.query(Asset.asset_type).filter(Asset.is_active == True, Asset.asset_type != None).distinct().all()
+    cleaned = sorted(list(set(t[0] for t in types if t[0])))
+    default_types = ["herramienta_mayor", "herramienta_menor", "maquinaria", "vehiculo", "equipo_medicion"]
+    for dt in default_types:
+        if dt not in cleaned:
+            cleaned.append(dt)
+    return sorted(cleaned)
+
 @router.get("/fleet-summary")
 def get_fleet_summary(db: Session = Depends(get_db)):
-    assets = db.query(Asset).filter(Asset.is_active == True).all()
-    projects_map = {p.id: p for p in db.query(Project).all()}
+    # Filter only assets that represent fleet vehicles
+    fleet_query = db.query(Asset).filter(
+        Asset.is_active == True,
+        or_(
+            Asset.asset_type.in_(["vehiculo", "camioneta", "camion", "moto", "vehículo", "transporte"]),
+            Asset.asset_code.like("%-V-%"),
+            Asset.category.ilike("%flota%"),
+            Asset.license_plate != None
+        )
+    )
+    assets = fleet_query.all()
+    if not assets:
+        return []
+
+    asset_ids = [a.id for a in assets]
+
+    # Pre-aggregate expenses and services in 2 single queries instead of N*2 queries
+    expenses_raw = db.query(Expense.asset_id, func.sum(Expense.amount_usd)).filter(Expense.asset_id.in_(asset_ids)).group_by(Expense.asset_id).all()
+    exp_map = {r[0]: (float(r[1]) if r[1] else 0.0) for r in expenses_raw}
+
+    services_raw = db.query(AssetService.asset_id, func.count(AssetService.id)).filter(AssetService.asset_id.in_(asset_ids)).group_by(AssetService.asset_id).all()
+    svc_map = {r[0]: (int(r[1]) if r[1] else 0) for r in services_raw}
+
+    proj_ids = [a.current_project_id for a in assets if a.current_project_id]
+    projects_map = {p.id: p for p in db.query(Project).filter(Project.id.in_(proj_ids)).all()} if proj_ids else {}
+
     result = []
-    
     for a in assets:
-        total_exp = db.query(func.sum(Expense.amount_usd)).filter(Expense.asset_id == a.id).scalar() or 0.0
-        services_count = db.query(func.count(AssetService.id)).filter(AssetService.asset_id == a.id).scalar() or 0
+        total_exp = exp_map.get(a.id, 0.0)
+        services_count = svc_map.get(a.id, 0)
         km_since_service = (a.current_odometer or 0.0) - (a.last_service_odometer or 0.0)
         remaining_km = (a.service_interval_km or 5000.0) - km_since_service
         
@@ -240,6 +276,10 @@ def get_fleet_summary(db: Session = Depends(get_db)):
             status_val = "en_obra"
             loc_val = f"[{p.code}] {p.name}" + (f" ({p.location})" if p.location else "")
             cust_val = a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else f"Equipo de Obra ({p.code})"
+        elif a.status in ["en_operacion", "asignado"] or (a.current_custodian_name and "base" not in a.current_custodian_name.lower() and "disponible" not in a.current_custodian_name.lower()):
+            status_val = "en_operacion"
+            loc_val = a.current_location or "Sede Central Dalor (Uso Administrativo / Logística)"
+            cust_val = a.current_custodian_name or "Asignado a Custodio"
         else:
             status_val = "disponible_base"
             loc_val = a.current_location or "Sede Central Dalor (Guacara)"
@@ -311,13 +351,52 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     return {"message": "Activo/Herramienta inactivado exitosamente (traza histórica preservada)."}
 
 
+def get_service_expense_category(db: Session, asset: Asset):
+    is_veh = bool(
+        (asset.asset_type and asset.asset_type.lower() in ["vehiculo", "camioneta", "camion", "moto", "vehículo", "transporte"])
+        or "-V-" in (asset.asset_code or "")
+        or asset.license_plate
+    )
+    if is_veh:
+        cat = db.query(ExpenseCategory).filter(
+            (ExpenseCategory.code == "13.0") | 
+            (ExpenseCategory.name.ilike("%flota%")) | 
+            (ExpenseCategory.name.ilike("%vehiculo%"))
+        ).first()
+    else:
+        cat = db.query(ExpenseCategory).filter(
+            (ExpenseCategory.name.ilike("%maquinaria%")) |
+            (ExpenseCategory.name.ilike("%equipo%")) |
+            (ExpenseCategory.name.ilike("%mantenimiento%")) |
+            (ExpenseCategory.code == "14.0")
+        ).first()
+    if not cat:
+        cat = db.query(ExpenseCategory).filter(ExpenseCategory.is_active == True).first()
+    return cat.id if cat else 1
+
+
 class ServiceRecordCreate(BaseModel):
-    new_odometer: float
-    service_type: str = "cambio_aceite_filtros"
+    new_odometer: Optional[float] = None
+    hours_operated: Optional[float] = None
+    service_type: str = "mantenimiento_preventivo"
     cost_usd: float = 0.0
     performed_by: Optional[str] = "Taller Central / Taller Externo"
     notes: Optional[str] = None
     reset_oil_interval: Optional[bool] = None
+    create_expense: bool = False
+    service_date: Optional[datetime] = None
+
+
+class ServiceRecordUpdate(BaseModel):
+    service_type: Optional[str] = None
+    service_odometer: Optional[float] = None
+    hours_operated: Optional[float] = None
+    cost_usd: Optional[float] = None
+    technician_workshop: Optional[str] = None
+    notes: Optional[str] = None
+    create_expense: Optional[bool] = None
+    service_date: Optional[datetime] = None
+
 
 @router.post("/{asset_id}/record-service")
 def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = Depends(get_db)):
@@ -325,63 +404,77 @@ def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = 
     if not asset:
         raise HTTPException(status_code=404, detail="Vehículo/Activo no encontrado.")
     
-    asset.current_odometer = req.new_odometer
-    
-    # Determinar si reinicia el semáforo del ciclo de lubricación/aceite (5.000 Km)
+    is_veh = bool(
+        (asset.asset_type and asset.asset_type.lower() in ["vehiculo", "camioneta", "camion", "moto", "vehículo", "transporte"])
+        or "-V-" in (asset.asset_code or "")
+        or asset.license_plate
+    )
+
+    reading_val = req.hours_operated if req.hours_operated is not None else (req.new_odometer or 0.0)
+    if reading_val > (asset.current_odometer or 0.0):
+        asset.current_odometer = reading_val
+
     should_reset_oil = req.reset_oil_interval
     if should_reset_oil is None:
-        # Por defecto solo cambio de aceite y preventivo mayor reinician el ciclo de aceite
-        should_reset_oil = req.service_type in ["cambio_aceite_filtros", "mantenimiento_preventivo_mayor"]
+        should_reset_oil = is_veh and req.service_type in ["cambio_aceite_filtros", "mantenimiento_preventivo_mayor"]
 
+    unit_lbl = "Km" if is_veh else "Horas"
     if should_reset_oil:
-        asset.last_service_odometer = req.new_odometer
+        asset.last_service_odometer = reading_val
         remaining_km = asset.service_interval_km or 5000.0
         status_msg = f"Servicio de {req.service_type} registrado. Ciclo de aceite reseteado (5.000 Km restantes - VERDE OK)."
     else:
         km_since = (asset.current_odometer or 0.0) - (asset.last_service_odometer or 0.0)
         remaining_km = max(0.0, (asset.service_interval_km or 5000.0) - km_since)
-        status_msg = f"Servicio de {req.service_type} registrado en bitácora. Odómetro actualizado a {req.new_odometer:,.0f} km. Ciclo de aceite preservado ({remaining_km:,.0f} Km restantes)."
-    
-    if req.cost_usd > 0:
-        cat = db.query(ExpenseCategory).filter(
-            (ExpenseCategory.code == "13.0") | 
-            (ExpenseCategory.name.ilike("%flota%")) | 
-            (ExpenseCategory.name.ilike("%vehiculo%"))
-        ).first()
-        cat_id = cat.id if cat else 13
+        status_msg = f"Servicio de {req.service_type} registrado en bitácora. Lectura: {reading_val:,.0f} {unit_lbl}."
+
+    created_exp_id = None
+    clean_type = req.service_type.replace("_", " ").title()
+
+    # Opción 2: Solo generar Expense si create_expense es True y cost_usd > 0
+    if req.create_expense and req.cost_usd > 0:
+        cat_id = get_service_expense_category(db, asset)
+        desc = f"[SRV-AST-{asset.id}] {clean_type}: {asset.asset_code} ({asset.name}). {req.notes or ''}".strip()
         exp = Expense(
             category_id=cat_id,
             asset_id=asset.id,
-            supplier_vendor=req.performed_by or "Taller Central Automotriz",
+            project_id=asset.current_project_id,
+            supplier_vendor=req.performed_by or "Taller Central",
             amount_usd=req.cost_usd,
             base_amount_usd=req.cost_usd,
             tax_amount_usd=0.0,
             is_tax_exempt=True,
-            description=f"Mantenimiento {req.service_type} a {asset.asset_code} ({asset.name}) a los {req.new_odometer} km. {req.notes or ''}".strip(),
+            description=desc,
             status="aprobado",
             exchange_rate=800.0,
-            amount_bs=req.cost_usd * 800.0
+            amount_bs=req.cost_usd * 800.0,
+            expense_date=req.service_date or datetime.utcnow()
         )
         db.add(exp)
-        
+        db.flush()
+        created_exp_id = exp.id
+
     srv = AssetService(
         asset_id=asset.id,
-        service_date=datetime.utcnow(),
+        service_date=req.service_date or datetime.utcnow(),
         service_type=req.service_type,
-        service_odometer=req.new_odometer,
+        service_odometer=reading_val,
+        hours_operated=reading_val,
         technician_workshop=req.performed_by or req.notes or "Taller Central",
         cost_usd=req.cost_usd,
         cost_bs=req.cost_usd * 800.0,
         notes=req.notes or "",
-        performed_by="almacen"
+        performed_by="almacen",
+        created_expense=bool(created_exp_id),
+        expense_id=created_exp_id
     )
     db.add(srv)
 
     log = AuditLog(
         username="almacen",
         module="activos",
-        action="mantenimiento_vehiculo",
-        details=f"Servicio de {req.service_type} para {asset.asset_code}. Odómetro: {req.new_odometer} km. Reseteo aceite: {'SÍ' if should_reset_oil else 'NO'}. Costo: ${req.cost_usd:,.2f}"
+        action="mantenimiento_activo",
+        details=f"Servicio de {req.service_type} para {asset.asset_code}. Lectura: {reading_val} {unit_lbl}. Costo: ${req.cost_usd:,.2f}. Gasto contable generado: {'SÍ' if created_exp_id else 'NO'}"
     )
     db.add(log)
     db.commit()
@@ -389,41 +482,243 @@ def record_asset_service(asset_id: int, req: ServiceRecordCreate, db: Session = 
         "success": True, 
         "message": status_msg,
         "remaining_km": round(remaining_km, 1),
-        "oil_interval_reset": should_reset_oil
+        "oil_interval_reset": should_reset_oil,
+        "created_expense": bool(created_exp_id)
     }
+
+
+@router.put("/services/{service_id}")
+def update_asset_service(service_id: int, req: ServiceRecordUpdate, db: Session = Depends(get_db)):
+    srv = db.query(AssetService).filter(AssetService.id == service_id).first()
+    if not srv:
+        raise HTTPException(status_code=404, detail="Registro de servicio no encontrado.")
+    
+    asset = db.query(Asset).filter(Asset.id == srv.asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Activo vinculado no encontrado.")
+
+    if req.service_type is not None:
+        srv.service_type = req.service_type.strip()
+    if req.technician_workshop is not None:
+        srv.technician_workshop = req.technician_workshop.strip()
+    if req.notes is not None:
+        srv.notes = req.notes.strip()
+    if req.service_date is not None:
+        srv.service_date = req.service_date
+    if req.service_odometer is not None:
+        srv.service_odometer = req.service_odometer
+        if req.service_odometer > (asset.current_odometer or 0.0):
+            asset.current_odometer = req.service_odometer
+    if req.hours_operated is not None:
+        srv.hours_operated = req.hours_operated
+        if req.hours_operated > (asset.current_odometer or 0.0):
+            asset.current_odometer = req.hours_operated
+    if req.cost_usd is not None:
+        srv.cost_usd = req.cost_usd
+        srv.cost_bs = req.cost_usd * 800.0
+
+    clean_type = (srv.service_type or "Mantenimiento").replace("_", " ").title()
+    desc = f"[SRV-AST-{asset.id}] {clean_type}: {asset.asset_code} ({asset.name}). {srv.notes or ''}".strip()
+
+    should_have_expense = req.create_expense if req.create_expense is not None else srv.created_expense
+
+    if should_have_expense and srv.cost_usd > 0:
+        if srv.expense_id:
+            exp = db.query(Expense).filter(Expense.id == srv.expense_id).first()
+            if exp:
+                exp.amount_usd = srv.cost_usd
+                exp.base_amount_usd = srv.cost_usd
+                exp.amount_bs = round(srv.cost_usd * exp.exchange_rate, 2)
+                exp.supplier_vendor = srv.technician_workshop or exp.supplier_vendor
+                exp.description = desc
+                if srv.service_date:
+                    exp.expense_date = srv.service_date
+            else:
+                cat_id = get_service_expense_category(db, asset)
+                new_exp = Expense(
+                    category_id=cat_id,
+                    asset_id=asset.id,
+                    project_id=asset.current_project_id,
+                    supplier_vendor=srv.technician_workshop or "Taller Central",
+                    amount_usd=srv.cost_usd,
+                    base_amount_usd=srv.cost_usd,
+                    tax_amount_usd=0.0,
+                    is_tax_exempt=True,
+                    description=desc,
+                    status="aprobado",
+                    exchange_rate=800.0,
+                    amount_bs=srv.cost_usd * 800.0,
+                    expense_date=srv.service_date or datetime.utcnow()
+                )
+                db.add(new_exp)
+                db.flush()
+                srv.expense_id = new_exp.id
+        else:
+            cat_id = get_service_expense_category(db, asset)
+            new_exp = Expense(
+                category_id=cat_id,
+                asset_id=asset.id,
+                project_id=asset.current_project_id,
+                supplier_vendor=srv.technician_workshop or "Taller Central",
+                amount_usd=srv.cost_usd,
+                base_amount_usd=srv.cost_usd,
+                tax_amount_usd=0.0,
+                is_tax_exempt=True,
+                description=desc,
+                status="aprobado",
+                exchange_rate=800.0,
+                amount_bs=srv.cost_usd * 800.0,
+                expense_date=srv.service_date or datetime.utcnow()
+            )
+            db.add(new_exp)
+            db.flush()
+            srv.expense_id = new_exp.id
+        srv.created_expense = True
+    elif not should_have_expense or srv.cost_usd <= 0:
+        if srv.expense_id:
+            exp = db.query(Expense).filter(Expense.id == srv.expense_id).first()
+            if exp:
+                db.delete(exp)
+            srv.expense_id = None
+        srv.created_expense = False
+
+    log = AuditLog(
+        username="almacen",
+        module="activos",
+        action="editar_servicio",
+        details=f"Servicio #{srv.id} actualizado para {asset.asset_code}. Tipo: {srv.service_type}. Costo: ${srv.cost_usd:,.2f}"
+    )
+    db.add(log)
+    db.commit()
+    return {"success": True, "message": f"Servicio #{srv.id} actualizado exitosamente.", "service_id": srv.id}
+
+
+class AdminAuthServiceDelete(BaseModel):
+    admin_password: str
+    reason: Optional[str] = "Eliminación de servicio en bitácora"
+
+@router.delete("/services/{service_id}")
+@router.post("/services/{service_id}/delete")
+def delete_asset_service(service_id: int, req: Optional[AdminAuthServiceDelete] = None, admin_password: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    pwd = (req.admin_password if req else None) or admin_password
+    reason = (req.reason if req else None) or "Eliminación de servicio en bitácora"
+
+    authorized = False
+    director = db.query(User).filter(User.username == "director").first()
+    if director and director.hashed_password and pwd and verify_password(pwd, director.hashed_password):
+        authorized = True
+    else:
+        admin = db.query(User).filter(User.username == "admin").first()
+        if admin and admin.hashed_password and pwd and verify_password(pwd, admin.hashed_password):
+            authorized = True
+
+    if not authorized:
+        raise HTTPException(
+            status_code=403,
+            detail="Operación rechazada: Requiere la contraseña de Administrador / Director General para eliminar un registro de la bitácora."
+        )
+
+    srv = db.query(AssetService).filter(AssetService.id == service_id).first()
+    if not srv:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+
+    asset = db.query(Asset).filter(Asset.id == srv.asset_id).first()
+    exp_deleted = False
+    if srv.expense_id:
+        exp = db.query(Expense).filter(Expense.id == srv.expense_id).first()
+        if exp:
+            db.delete(exp)
+            exp_deleted = True
+
+    asset_label = f"[{asset.asset_code}] {asset.name}" if asset else f"Activo ID #{srv.asset_id}"
+    unit_str = "Horas" if getattr(asset, "asset_type", "") in ["maquinaria_pesada", "planta_electrica", "equipo_pesado", "maquinaria"] else "Km"
+    audit_detail = (
+        f"ELIMINACIÓN DE SERVICIO #{srv.id} ({srv.service_type}) para {asset_label}. "
+        f"Costo: ${srv.cost_usd:,.2f}. Lectura: {srv.hours_operated or srv.service_odometer} {unit_str}. "
+        f"Motivo: {reason}. Gasto en Tesorería revertido: {'SÍ' if exp_deleted else 'NO'}."
+    )
+    log = AuditLog(
+        username="director",
+        module="activos",
+        action="eliminar_servicio_activo",
+        details=audit_detail
+    )
+    db.add(log)
+    db.delete(srv)
+    db.commit()
+    return {
+        "success": True, 
+        "message": f"Servicio #{service_id} eliminado exitosamente. Registro de auditoría guardado.",
+        "audit_details": audit_detail
+    }
+
 
 @router.get("/{asset_id}/services")
 def get_asset_services(asset_id: int, db: Session = Depends(get_db)):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Vehículo/Activo no encontrado.")
-    
+
     services = db.query(AssetService).filter(AssetService.asset_id == asset_id).order_by(AssetService.service_date.desc()).all()
     total_cost = sum(s.cost_usd or 0.0 for s in services)
-    
+
+    is_machinery = bool(
+        (asset.asset_type and asset.asset_type.lower() in ["maquinaria", "planta", "generador", "compresor", "equipo_mayor"])
+        or (asset.asset_code == "3-V-1-05")
+        or ("montacarga" in (asset.name or "").lower() and asset.asset_type not in ["herramienta", "herramienta_menor", "herramienta_mayor"])
+    )
+
+    # Consultar trazabilidad visible de auditoría reciente para este activo
+    code_filter = asset.asset_code or f"ID #{asset.id}"
+    audit_logs = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.module == "activos",
+            AuditLog.details.ilike(f"%{code_filter}%")
+        )
+        .order_by(AuditLog.id.desc())
+        .limit(10)
+        .all()
+    )
+
     return {
         "asset": {
             "id": asset.id,
             "asset_code": asset.asset_code,
             "name": asset.name,
+            "asset_type": asset.asset_type,
+            "category": asset.category,
             "brand": asset.brand or "",
             "model": asset.model or "",
             "license_plate": asset.license_plate or "-",
+            "serial_number": asset.serial_number or "-",
             "current_odometer": asset.current_odometer or 0.0,
             "status": asset.status,
-            "current_location": asset.current_location or "Sede Central Dalor (Guacara)"
+            "current_location": asset.current_location or "Sede Central Dalor (Guacara)",
+            "is_machinery": is_machinery
         },
         "services_count": len(services),
         "total_cost_usd": round(total_cost, 2),
         "services": [{
             "id": s.id,
             "service_date": s.service_date.strftime("%Y-%m-%d %H:%M") if s.service_date else "-",
+            "service_date_raw": s.service_date.isoformat() if s.service_date else "",
             "service_type": s.service_type,
             "service_odometer": s.service_odometer,
+            "hours_operated": s.hours_operated or s.service_odometer,
             "technician_workshop": s.technician_workshop or "Taller Central",
             "cost_usd": s.cost_usd or 0.0,
-            "notes": s.notes or ""
-        } for s in services]
+            "notes": s.notes or "",
+            "created_expense": bool(s.created_expense or s.expense_id),
+            "expense_id": s.expense_id
+        } for s in services],
+        "audit_trail": [{
+            "id": a.id,
+            "date": a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "-",
+            "action": a.action,
+            "details": a.details,
+            "username": a.username
+        } for a in audit_logs]
     }
 
 class OdometerUpdate(BaseModel):

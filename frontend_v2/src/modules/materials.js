@@ -84,6 +84,7 @@ async function loadMaterialsList() {
         });
 
         renderMaterialsTable(allMaterials);
+        try { populateMaterialCategories(); } catch(eCat) { console.warn("Error populating material categories:", eCat); }
         loadProjectRequisitionsBadge();
         try {
             if (typeof populateSelectDropdowns === 'function') populateSelectDropdowns();
@@ -176,6 +177,12 @@ function renderMaterialsTablePaginated() {
                 <button onclick="openMaterialConsumeModal(${m.id})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; background: #0284c7; margin-left: 4px;" title="Despachar a Obra o Taller">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i> Despachar
                 </button>
+                <button onclick="openEditMaterialModal(${m.id})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-left: 4px; color: #0284c7; border-color: #bae6fd;" title="Editar Ficha del Material">
+                    <i class="fa-solid fa-pen-to-square"></i> Editar
+                </button>
+                <button onclick="openCalibrateMaterialModal(${m.id})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-left: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Ajustar Stock con Clave de Director">
+                    <i class="fa-solid fa-key"></i> Calibrar
+                </button>
             </td>
         </tr>`;
     }).join('');
@@ -194,16 +201,58 @@ function filterMaterialsTable() {
     renderMaterialsTable(filtered);
 }
 
+function populateMaterialCategories() {
+    const baseCats = [
+        "Planchas de Acero",
+        "Acero Estructural",
+        "Perfiles y Vigas",
+        "Tuberías y Bridas",
+        "Soldadura y Gases",
+        "Abrasivos y Discos",
+        "Tornillería y Fijaciones",
+        "Pinturas y Recubrimientos",
+        "Consumibles de Almacén"
+    ];
+
+    const currentCats = (allMaterials || [])
+        .map(m => (m.category || '').trim())
+        .filter(c => c && c.length > 0);
+
+    const uniqueCats = Array.from(new Set([...baseCats, ...currentCats])).sort((a, b) => a.localeCompare(b, 'es'));
+
+    // Selector de filtro de la tabla de inventario
+    const filterSel = document.getElementById("filterMaterialCategory");
+    if (filterSel) {
+        const prevVal = filterSel.value;
+        filterSel.innerHTML = `<option value="">-- Todas las Categorías (${uniqueCats.length}) --</option>` +
+            uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (prevVal && uniqueCats.includes(prevVal)) filterSel.value = prevVal;
+    }
+
+    // Selector dentro del modal de crear material
+    const modalSel = document.getElementById("nmat_category");
+    if (modalSel) {
+        const prevModalVal = modalSel.value;
+        modalSel.innerHTML = uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('') +
+            `<option value="__NEW__" style="font-weight: bold; color: #2563eb;">➕ Crear Nueva Categoría...</option>`;
+        if (prevModalVal && (uniqueCats.includes(prevModalVal) || prevModalVal === '__NEW__')) {
+            modalSel.value = prevModalVal;
+        }
+    }
+}
+
 function onNewMaterialCategoryChanged() {
     const sel = document.getElementById("nmat_category");
     const customInp = document.getElementById("nmat_category_custom");
     if (!sel || !customInp) return;
     if (sel.value === "__NEW__") {
         customInp.classList.remove("hidden");
+        customInp.style.display = "block";
         customInp.required = true;
         customInp.focus();
     } else {
         customInp.classList.add("hidden");
+        customInp.style.display = "none";
         customInp.required = false;
         customInp.value = "";
     }
@@ -218,9 +267,11 @@ function openNewMaterialModal(fromCxp = false) {
         modalEl.style.zIndex = "2200";
     }
     document.getElementById("newMaterialForm")?.reset();
+    populateMaterialCategories();
     const customInp = document.getElementById("nmat_category_custom");
     if (customInp) {
         customInp.classList.add("hidden");
+        customInp.style.display = "none";
         customInp.required = false;
         customInp.value = "";
     }
@@ -245,7 +296,7 @@ async function submitCreateMaterial(event) {
     }
 
     const payload = {
-        code: document.getElementById("nmat_code").value.trim(),
+        code: document.getElementById("nmat_code").value.trim().toUpperCase(),
         name: document.getElementById("nmat_name").value.trim(),
         category: categoryVal,
         unit_measure: document.getElementById("nmat_unit").value,
@@ -266,8 +317,16 @@ async function submitCreateMaterial(event) {
             const resData = await res.json().catch(() => ({}));
             closeModal("modalNewMaterial");
 
-            try { await loadInitialMasterData(); } catch(e) {}
-            try { loadMaterialsList(); } catch(e) {}
+            // Recargar catálogo y categorías en tiempo real
+            await loadMaterialsList();
+            populateMaterialCategories();
+
+            // Filtrar automáticamente para que el usuario vea de inmediato su nuevo material en pantalla
+            const searchInput = document.getElementById("filterMaterialSearch");
+            if (searchInput) {
+                searchInput.value = payload.code || resData.code || "";
+                filterMaterialsTable();
+            }
 
             if (window.openedMaterialModalFromCxp) {
                 window.openedMaterialModalFromCxp = false;
@@ -275,7 +334,7 @@ async function submitCreateMaterial(event) {
                     window.onMaterialCreatedFromCxp(resData);
                 }
             } else {
-                alert("✅ Material registrado con éxito en el catálogo.");
+                alert(`✅ Material [${payload.code}] "${payload.name}" creado con éxito en categoría "${categoryVal}".`);
             }
         } else {
             const err = await res.json().catch(() => ({}));
@@ -1571,7 +1630,7 @@ async function loadProjectRequisitionsBadge() {
             "badgePendingRequisitionsBanner",
             "badgePendingRequisitionsDispatch",
             "badgePendingRequisitionsNav",
-            "badgeRecursosDropdown"
+            "badgePendingRequisitionsHeader"
         ];
         ids.forEach(id => {
             const el = document.getElementById(id);
@@ -1585,6 +1644,19 @@ async function loadProjectRequisitionsBadge() {
                 }
             }
         });
+
+        const alarmBtn = document.getElementById("btnHeaderRequisitionsAlarm");
+        if (alarmBtn) {
+            if (pendingCount > 0) {
+                alarmBtn.style.color = "#dc2626";
+                alarmBtn.style.fontWeight = "800";
+                alarmBtn.title = `🚨 ¡Atención Almacén! Hay ${pendingCount} obra(s) con solicitudes pendientes de despacho`;
+            } else {
+                alarmBtn.style.color = "";
+                alarmBtn.style.fontWeight = "";
+                alarmBtn.title = "Requisiciones de Materiales";
+            }
+        }
     } catch (e) {
         console.warn("Could not load project requisitions badge:", e);
     }
@@ -1669,25 +1741,45 @@ function onReqVehicleChanged(projectId) {
     const sel = document.getElementById(`req_vehicle_sel_${projectId}`);
     const plateInp = document.getElementById(`req_plate_${projectId}`);
     const modelInp = document.getElementById(`req_vehicle_model_${projectId}`);
-    if (!sel) return;
+    if (!sel || !plateInp || !modelInp) return;
     const opt = sel.options[sel.selectedIndex];
-    if (opt) {
-        if (plateInp) plateInp.value = opt.getAttribute("data-plate") || "DALOR-01";
-        if (modelInp) modelInp.value = opt.getAttribute("data-model") || "";
+    if (!opt || opt.value === "" || opt.value === "externo") {
+        if (opt && opt.value === "externo") {
+            plateInp.value = "";
+            modelInp.value = "";
+            plateInp.placeholder = "Placa flete (ej: A12BC3D)";
+            modelInp.placeholder = "Modelo / Tipo Flete";
+        }
+        return;
     }
+    const plate = opt.getAttribute("data-plate") || "";
+    const model = opt.getAttribute("data-model") || "";
+    plateInp.value = plate !== "S/P" ? plate : "";
+    modelInp.value = model;
 }
+window.onReqVehicleChanged = onReqVehicleChanged;
 
 function onReqDriverChanged(projectId) {
     const sel = document.getElementById(`req_driver_sel_${projectId}`);
     const nameInp = document.getElementById(`req_driver_${projectId}`);
     const ciInp = document.getElementById(`req_driver_ci_${projectId}`);
-    if (!sel) return;
+    if (!sel || !nameInp || !ciInp) return;
     const opt = sel.options[sel.selectedIndex];
-    if (opt) {
-        if (nameInp) nameInp.value = opt.getAttribute("data-name") || "";
-        if (ciInp) ciInp.value = opt.getAttribute("data-ci") || "";
+    if (!opt || opt.value === "" || opt.value === "externo") {
+        if (opt && opt.value === "externo") {
+            nameInp.value = "";
+            ciInp.value = "";
+            nameInp.placeholder = "Nombre del Chofer Contratado";
+            ciInp.placeholder = "C.I. / Cédula";
+        }
+        return;
     }
+    const name = opt.getAttribute("data-name") || "";
+    const ci = opt.getAttribute("data-ci") || "";
+    nameInp.value = name;
+    ciInp.value = ci;
 }
+window.onReqDriverChanged = onReqDriverChanged;
 
 var currentReqPage = window.currentReqPage = 1;
 var reqPageSize = window.reqPageSize = 3;
@@ -1724,13 +1816,25 @@ function renderProjectRequisitionsGroups(reqs, resetPage = true) {
                 project_id: pId,
                 project_code: r.project_code || "S/P",
                 project_name: r.project_name || "Sin Obra Asignada",
+                project_location: r.project_location || "",
+                is_internal: !!r.is_internal,
+                max_req_id: r.id || 0,
                 items: []
             };
         }
         groups[pId].items.push(r);
+        if ((r.id || 0) > groups[pId].max_req_id) {
+            groups[pId].max_req_id = r.id;
+        }
     });
 
     const allGroups = Object.values(groups);
+    // Ordenar proyectos por solicitud más reciente hacia abajo
+    allGroups.sort((a, b) => (b.max_req_id || 0) - (a.max_req_id || 0));
+    allGroups.forEach(grp => {
+        grp.items.sort((a, b) => (b.id || 0) - (a.id || 0));
+    });
+
     const totalGroups = allGroups.length;
     const totalPages = Math.max(1, Math.ceil(totalGroups / reqPageSize));
     if (currentReqPage > totalPages) currentReqPage = totalPages;
@@ -1741,56 +1845,121 @@ function renderProjectRequisitionsGroups(reqs, resetPage = true) {
     pagedGroups.forEach(grp => {
         const pendingCount = grp.items.filter(i => (i.quantity_pending || 0) > 0).length;
         const firstItem = grp.items[0] || {};
-        const projVehs = firstItem.project_vehicles || [];
-        const projPers = firstItem.project_personnel || [];
-        const allFleet = firstItem.all_fleet || [];
-        const allPers = firstItem.all_personnel || [];
+        const locLower = `${firstItem.project_location || grp.project_location || ''} ${grp.project_name || ''} ${grp.project_code || ''}`.toLowerCase();
+        const isInternal = firstItem.is_internal || grp.is_internal || locLower.includes('sede') || locLower.includes('guacara') || locLower.includes('taller');
 
-        // Determinar Vehículo por Defecto
-        const defPlate = projVehs.length > 0 ? (projVehs[0].plate || 'S/P') : 'DALOR-01';
-        const defModel = projVehs.length > 0 ? projVehs[0].name : 'Flota DALOR';
-        
-        let vehOpts = '';
-        if (projVehs.length > 0) {
-            vehOpts += `<optgroup label="🚗 Asignado a esta Obra (Recomendado)">`;
-            projVehs.forEach(v => {
-                vehOpts += `<option value="${v.id}" data-plate="${v.plate}" data-model="${v.name}" selected>[${v.code}] ${v.name} (${v.plate})</option>`;
-            });
+        let logisticsHtml = "";
+        if (isInternal) {
+            // Vertiente 1: Entrega de Materiales en Taller (Control Interno) -> Cero vehículo, cero chofer
+            logisticsHtml = `
+                <input type="hidden" id="req_is_internal_${grp.project_id}" value="1">
+                <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 26px;">🏢</span>
+                        <div>
+                            <strong style="color: #166534; font-size: 13px; display: block;">ENTREGA DE MATERIALES (CONTROL INTERNO - SEDE CENTRAL)</strong>
+                            <span style="color: #4b5563; font-size: 11px;">Trabajo ejecutado dentro de sede central. Almacén certifica la entrega de pañol. No requiere chofer ni vehículo.</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex: 1; max-width: 420px; min-width: 260px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 10px; font-weight: 800; color: #166534; text-transform: uppercase; display: block; margin-bottom: 2px;">Observaciones de Entrega en Pañol:</label>
+                            <input type="text" id="req_notes_${grp.project_id}" placeholder="Ej: Material verificado para trabajo interno en pañol." class="form-input" style="font-size: 11px; padding: 5px 8px; background: white; width: 100%;">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Vertiente 2: Obra Foránea -> Conductor y Transporte seleccionables o ingreso manual (SIN auto-asignación obligada)
+            const projVehs = firstItem.project_vehicles || [];
+            const availFleet = firstItem.available_fleet || firstItem.all_fleet || [];
+            const projPers = firstItem.project_personnel || [];
+            const availPers = firstItem.available_personnel || firstItem.all_personnel || [];
+
+            // Priorizar vehículo de la obra si existe
+            const hasProjVeh = projVehs.length > 0;
+            const defaultPlate = hasProjVeh ? (projVehs[0].plate !== 'S/P' ? projVehs[0].plate : '') : '';
+            const defaultModel = hasProjVeh ? (projVehs[0].name || projVehs[0].model || '') : '';
+
+            let vehOpts = `<option value="">-- Seleccionar Flota DALOR o Externo --</option>`;
+            if (projVehs.length > 0) {
+                vehOpts += `<optgroup label="🚗 Asignado a esta Obra (Prioridad)">`;
+                projVehs.forEach((v, idx) => {
+                    const selAttr = idx === 0 ? 'selected' : '';
+                    vehOpts += `<option value="${v.id}" data-plate="${v.plate}" data-model="${v.name || v.model}" ${selAttr}>[${v.code}] ${v.name} (${v.plate})</option>`;
+                });
+                vehOpts += `</optgroup>`;
+            }
+            if (availFleet.length > 0) {
+                vehOpts += `<optgroup label="🚚 Otros Vehículos Disponibles en Base">`;
+                availFleet.filter(f => !projVehs.some(pv => pv.id === f.id)).forEach(f => {
+                    vehOpts += `<option value="${f.id}" data-plate="${f.plate}" data-model="${f.name || f.model}">[${f.code}] ${f.name} (${f.plate})</option>`;
+                });
+                vehOpts += `</optgroup>`;
+            }
+            vehOpts += `<optgroup label="🏢 Flete Tercerizado / Externo">`;
+            const extSelected = !hasProjVeh ? 'selected' : '';
+            vehOpts += `<option value="externo" data-plate="" data-model="" ${extSelected}>Flete Externo / Retiro Cliente (Ingreso manual)</option>`;
             vehOpts += `</optgroup>`;
-        }
-        if (allFleet.length > 0) {
-            vehOpts += `<optgroup label="🚚 Otros Vehículos Flota DALOR">`;
-            allFleet.filter(f => !projVehs.some(pv => pv.id === f.id)).forEach(f => {
-                vehOpts += `<option value="${f.id}" data-plate="${f.plate}" data-model="${f.name}">[${f.code}] ${f.name} (${f.plate})</option>`;
-            });
-            vehOpts += `</optgroup>`;
-        }
-        vehOpts += `<optgroup label="🏢 Flete Tercerizado">`;
-        vehOpts += `<option value="externo" data-plate="S/P" data-model="Flete Externo">Flete Externo / Retiro Cliente</option>`;
-        vehOpts += `</optgroup>`;
 
-        // Determinar Conductor por Defecto
-        const defDriverName = projPers.length > 0 ? projPers[0].name : 'Transporte DALOR / Conductor Asignado';
-        const defDriverCi = projPers.length > 0 ? projPers[0].ci : 'V-DALOR';
+            // Chofer: Solo personal asignado a esta obra o disponible en base
+            let persOpts = `<option value="">-- Seleccionar Chofer o Externo --</option>`;
+            if (projPers.length > 0) {
+                persOpts += `<optgroup label="🚗 Personal Asignado a esta Obra">`;
+                projPers.forEach(ap => {
+                    persOpts += `<option value="${ap.id}" data-name="${ap.name}" data-ci="${ap.ci}">${ap.name} (C.I: ${ap.ci})</option>`;
+                });
+                persOpts += `</optgroup>`;
+            }
+            if (availPers.length > 0) {
+                persOpts += `<optgroup label="🏢 Chofer / Personal Disponible en Base">`;
+                availPers.filter(f => !projPers.some(pp => pp.id === f.id)).forEach(ap => {
+                    persOpts += `<option value="${ap.id}" data-name="${ap.name}" data-ci="${ap.ci}">${ap.name} (C.I: ${ap.ci})</option>`;
+                });
+                persOpts += `</optgroup>`;
+            }
+            persOpts += `<optgroup label="✍️ Chofer Contratado / Externo">`;
+            persOpts += `<option value="externo" data-name="" data-ci="" selected>✍️ Chofer Externo / Contratado por Fuera (Ingreso manual)</option>`;
+            persOpts += `</optgroup>`;
 
-        let persOpts = '';
-        if (projPers.length > 0) {
-            persOpts += `<optgroup label="👷 Personal de esta Obra (Recomendado)">`;
-            projPers.forEach(p => {
-                persOpts += `<option value="${p.id}" data-name="${p.name}" data-ci="${p.ci}" selected>${p.name} (C.I: ${p.ci} - ${p.role})</option>`;
-            });
-            persOpts += `</optgroup>`;
+            logisticsHtml = `
+                <input type="hidden" id="req_is_internal_${grp.project_id}" value="0">
+                <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; display: grid; grid-template-columns: 1.2fr 1.2fr 1.6fr; gap: 12px; align-items: start;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+                            <span><i class="fa-solid fa-truck-pickup"></i> Vehículo para Obra Foránea</span>
+                            <span style="font-size: 9.5px; color: #0284c7; font-weight: 700;">(Flota o Externo)</span>
+                        </label>
+                        <select id="req_vehicle_sel_${grp.project_id}" onchange="onReqVehicleChanged(${grp.project_id})" class="form-select" style="font-size: 11px; padding: 5px 8px; background: white; margin-bottom: 4px;">
+                            ${vehOpts}
+                        </select>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" id="req_plate_${grp.project_id}" value="${defaultPlate}" placeholder="Placa (ej: A12BC3D)" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 45%;" title="Placa del vehículo">
+                            <input type="text" id="req_vehicle_model_${grp.project_id}" value="${defaultModel}" placeholder="Modelo / Marca" class="form-input" style="font-size: 11px; padding: 4px 6px; width: 55%;" title="Modelo del vehículo">
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+                            <span><i class="fa-solid fa-id-card"></i> Chofer Asignado al Traslado</span>
+                            <span style="font-size: 9.5px; color: #0284c7; font-weight: 700;">(DALOR o Externo)</span>
+                        </label>
+                        <select id="req_driver_sel_${grp.project_id}" onchange="onReqDriverChanged(${grp.project_id})" class="form-select" style="font-size: 11px; padding: 5px 8px; background: white; margin-bottom: 4px;">
+                            ${persOpts}
+                        </select>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" id="req_driver_${grp.project_id}" value="" placeholder="Nombre del Chofer" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 60%;" title="Nombre del chofer">
+                            <input type="text" id="req_driver_ci_${grp.project_id}" value="" placeholder="C.I. / Cédula" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 40%;" title="Cédula de identidad">
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: block; margin-bottom: 3px;">
+                            <i class="fa-solid fa-note-sticky"></i> Observaciones de Despacho & Precinto
+                        </label>
+                        <textarea id="req_notes_${grp.project_id}" rows="2" placeholder="Ej: Material verificado en pañol para traslado de obra." class="form-input" style="font-size: 11px; padding: 5px 8px; background: white; resize: none;"></textarea>
+                    </div>
+                </div>
+            `;
         }
-        if (allPers.length > 0) {
-            persOpts += `<optgroup label="🚛 Choferes & Personal DALOR">`;
-            allPers.filter(ap => !projPers.some(pp => pp.id === ap.id)).forEach(ap => {
-                persOpts += `<option value="${ap.id}" data-name="${ap.name}" data-ci="${ap.ci}">${ap.name} (C.I: ${ap.ci})</option>`;
-            });
-            persOpts += `</optgroup>`;
-        }
-        persOpts += `<optgroup label="✍️ Personalizado">`;
-        persOpts += `<option value="externo" data-name="" data-ci="">Otro Conductor (Ingreso manual)</option>`;
-        persOpts += `</optgroup>`;
 
         html += `
             <div class="card" style="border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 18px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
@@ -1798,10 +1967,13 @@ function renderProjectRequisitionsGroups(reqs, resetPage = true) {
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="background: #1e3a8a; color: white; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px;">
-                                <i class="fa-solid fa-building"></i> ${grp.project_code}
+                            <span style="background: ${isInternal ? '#0284c7' : '#1e3a8a'}; color: white; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px;">
+                                <i class="${isInternal ? 'fa-solid fa-warehouse' : 'fa-solid fa-building'}"></i> ${grp.project_code}
                             </span>
                             <h4 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 0;">${grp.project_name}</h4>
+                            <span style="font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; ${isInternal ? 'background: #dcfce7; color: #15803d;' : 'background: #e0f2fe; color: #0369a1;'}">
+                                ${isInternal ? '🏢 Sede Central' : '📍 Obra Foránea (Traslado Externo)'}
+                            </span>
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
@@ -1812,40 +1984,7 @@ function renderProjectRequisitionsGroups(reqs, resetPage = true) {
                 </div>
 
                 <!-- Datos de Despacho & Logística para esta Obra -->
-                <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; display: grid; grid-template-columns: 1.2fr 1.2fr 1.6fr; gap: 12px; align-items: start;">
-                    <div>
-                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
-                            <span><i class="fa-solid fa-truck-pickup"></i> Vehículo Asignado a la Obra</span>
-                            <span style="font-size: 9.5px; color: #0284c7; font-weight: 700;">(Control Transporte)</span>
-                        </label>
-                        <select id="req_vehicle_sel_${grp.project_id}" onchange="onReqVehicleChanged(${grp.project_id})" class="form-select" style="font-size: 11px; padding: 5px 8px; background: white; margin-bottom: 4px;">
-                            ${vehOpts}
-                        </select>
-                        <div style="display: flex; gap: 6px;">
-                            <input type="text" id="req_plate_${grp.project_id}" value="${defPlate}" placeholder="Placa" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 45%;" title="Placa del vehículo">
-                            <input type="text" id="req_vehicle_model_${grp.project_id}" value="${defModel}" placeholder="Modelo / Marca" class="form-input" style="font-size: 11px; padding: 4px 6px; width: 55%;" title="Modelo del vehículo">
-                        </div>
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
-                            <span><i class="fa-solid fa-id-card"></i> Chofer / Conductor</span>
-                            <span style="font-size: 9.5px; color: #0284c7; font-weight: 700;">(Datos Conductor)</span>
-                        </label>
-                        <select id="req_driver_sel_${grp.project_id}" onchange="onReqDriverChanged(${grp.project_id})" class="form-select" style="font-size: 11px; padding: 5px 8px; background: white; margin-bottom: 4px;">
-                            ${persOpts}
-                        </select>
-                        <div style="display: flex; gap: 6px;">
-                            <input type="text" id="req_driver_${grp.project_id}" value="${defDriverName}" placeholder="Nombre Conductor" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 60%;" title="Nombre del chofer">
-                            <input type="text" id="req_driver_ci_${grp.project_id}" value="${defDriverCi}" placeholder="C.I. / Cédula" class="form-input" style="font-size: 11px; padding: 4px 6px; font-weight: 700; width: 40%;" title="Cédula de identidad">
-                        </div>
-                    </div>
-                    <div>
-                        <label style="font-size: 11px; font-weight: 800; color: #0369a1; display: block; margin-bottom: 3px;">
-                            <i class="fa-solid fa-note-sticky"></i> Observaciones de Carga & Precinto
-                        </label>
-                        <textarea id="req_notes_${grp.project_id}" rows="2" placeholder="Ej: Material y herramientas verificadas en pañol para traslado de obra." class="form-input" style="font-size: 11px; padding: 5px 8px; background: white; resize: none;"></textarea>
-                    </div>
-                </div>
+                ${logisticsHtml}
 
                 <!-- Tabla de Insumos Requeridos -->
                 <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
@@ -1917,7 +2056,17 @@ function renderProjectRequisitionsGroups(reqs, resetPage = true) {
                                         </td>
                                         <td style="padding: 8px 10px; text-align: center;">
                                             ${isDone ? '<span class="badge-tag" style="background:#e2e8f0; color:#475569; font-size:10px;">Completado</span>' :
-                                              hasZeroStock ? '<span style="color: #ef4444; font-size: 10px; font-weight: 700;"><i class="fa-solid fa-ban"></i> Sin Stock</span>' : `
+                                              hasZeroStock ? `
+                                                <div style="display: flex; flex-direction: column; gap: 3px; align-items: center;">
+                                                    <span style="color: #ef4444; font-size: 9.5px; font-weight: 800;"><i class="fa-solid fa-ban"></i> Sin Stock</span>
+                                                    <button type="button" onclick="closeModal('modalProjectRequisitionsInbox'); openSubstituteMaterialModal(${it.id}, ${it.material_id || 0}, '${(it.material_name || '').replace(/'/g, "\\'")}', ${grp.project_id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; background: #fef3c7; color: #b45309; border-color: #fde68a; font-weight: 800;" title="Sustituir por otro insumo con inventario">
+                                                        <i class="fa-solid fa-shuffle"></i> Sustituir
+                                                    </button>
+                                                    <button type="button" onclick="closeModal('modalProjectRequisitionsInbox'); openNewPayableModal(); setTimeout(() => { const pSel = document.getElementById('new_cxp_project_id'); if (pSel) pSel.value = '${grp.project_id}'; const desc = document.getElementById('new_cxp_description'); if (desc) desc.value = 'Compra urgente de ${(it.material_name || '').replace(/'/g, "\\'")} para obra ${grp.project_code}'; }, 200);" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 800;" title="Cargar CxP / Orden de Compra para este material">
+                                                        <i class="fa-solid fa-cart-shopping"></i> Comprar
+                                                    </button>
+                                                </div>
+                                              ` : `
                                                 <button type="button" onclick="quickDispatchSingleRequisition(${it.id}, ${grp.project_id})" class="btn-secondary" style="font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;" title="Despachar solo este ítem ahora">
                                                     ⚡ Rápido
                                                 </button>
@@ -1932,8 +2081,8 @@ function renderProjectRequisitionsGroups(reqs, resetPage = true) {
 
                 <!-- Botón de Despacho de la Obra -->
                 <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 12px; gap: 10px;">
-                    <button type="button" onclick="submitDispatchProjectGroup(${grp.project_id})" class="btn-primary" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); font-weight: 800; font-size: 12px; padding: 8px 18px; border-radius: 6px; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);">
-                        <i class="fa-solid fa-truck-ramp-box"></i> Despachar Ítems Marcados y Emitir Guía de Traslado (${grp.project_code})
+                    <button type="button" onclick="submitDispatchProjectGroup(${grp.project_id})" class="btn-primary" style="${isInternal ? 'background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);' : 'background: linear-gradient(135deg, #059669 0%, #047857 100%);'} font-weight: 800; font-size: 12px; padding: 8px 18px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        ${isInternal ? '<i class="fa-solid fa-clipboard-check"></i> Entregar Ítems en Taller y Emitir Vale de Control Interno' : '<i class="fa-solid fa-truck-ramp-box"></i> Despachar Ítems Marcados y Emitir Guía de Traslado'} (${grp.project_code})
                     </button>
                 </div>
             </div>
@@ -2080,16 +2229,32 @@ async function submitDispatchProjectGroup(projectId) {
         });
     }
 
-    const driverName = (document.getElementById(`req_driver_${projectId}`)?.value || "").trim() || "Transporte DALOR / Conductor Asignado";
-    const driverCi = (document.getElementById(`req_driver_ci_${projectId}`)?.value || "").trim() || "V-DALOR";
-    const vehiclePlate = (document.getElementById(`req_plate_${projectId}`)?.value || "").trim() || "DALOR-01";
-    const vehicleModel = (document.getElementById(`req_vehicle_model_${projectId}`)?.value || "").trim();
-    const vehicleAssetId = document.getElementById(`req_vehicle_sel_${projectId}`)?.value;
+    const isInternal = document.getElementById(`req_is_internal_${projectId}`)?.value === "1";
+    let driverName = null;
+    let driverCi = null;
+    let vehiclePlate = null;
+    let vehicleModel = null;
+    let vehicleAssetId = null;
+
+    if (!isInternal) {
+        driverName = (document.getElementById(`req_driver_${projectId}`)?.value || "").trim();
+        driverCi = (document.getElementById(`req_driver_ci_${projectId}`)?.value || "").trim();
+        vehiclePlate = (document.getElementById(`req_plate_${projectId}`)?.value || "").trim();
+        vehicleModel = (document.getElementById(`req_vehicle_model_${projectId}`)?.value || "").trim();
+        vehicleAssetId = document.getElementById(`req_vehicle_sel_${projectId}`)?.value;
+        if (!driverName) {
+            alert("⚠️ Para despachos a Obra Foránea, por favor ingresa o selecciona el Chofer / Conductor asignado.");
+            document.getElementById(`req_driver_${projectId}`)?.focus();
+            return;
+        }
+    }
     const notes = (document.getElementById(`req_notes_${projectId}`)?.value || "").trim();
 
-    let confirmMsg = `¿Confirmas el despacho de ${items.length} insumo(s) para la obra seleccionada?\n\nSe descontará el stock en Almacén y se emitirá la Guía de Despacho oficial.`;
+    let confirmMsg = isInternal 
+        ? `¿Confirmas la entrega interna de ${items.length} insumo(s) para los trabajos en Taller Guacara?\n\nSe emitirá el Vale de Control Interno de Almacén.`
+        : `¿Confirmas el despacho de ${items.length} insumo(s) para la Obra Foránea?\n\nSe descontará el stock en Almacén y se emitirá la Guía Oficial de Traslado.`;
     if (hasPartial) {
-        confirmMsg += `\n\n⚠️ ADVERTENCIA: Uno o más ítems tienen un despacho menor a lo solicitado por disponibilidad de inventario. El resto quedará como saldo pendiente en la obra.`;
+        confirmMsg += `\n\n⚠️ ADVERTENCIA: Uno o más ítems tienen una entrega menor a lo solicitado por disponibilidad de inventario. El resto quedará como saldo pendiente en la obra.`;
     }
 
     if (!confirm(confirmMsg)) {
@@ -2100,6 +2265,7 @@ async function submitDispatchProjectGroup(projectId) {
         const payload = {
             project_id: projectId,
             items: items,
+            is_internal: isInternal,
             driver_name: driverName,
             driver_id_doc: driverCi,
             vehicle_plate: vehiclePlate,
@@ -2120,7 +2286,7 @@ async function submitDispatchProjectGroup(projectId) {
             await loadProjectRequisitionsInbox(projectId);
 
             const guideNumber = data.guide_number;
-            const openGuide = confirm(`✅ ${data.message || 'Despacho registrado exitosamente.'}\n\nSe ha emitido la Guía Oficial N°: ${guideNumber}\n\n¿Deseas abrir la Guía de Despacho en pantalla completa ahora?`);
+            const openGuide = confirm(`✅ ${data.message || 'Despacho registrado exitosamente.'}\n\nSe ha emitido el documento N°: ${guideNumber}\n\n¿Deseas abrir la Guía en pantalla completa ahora?`);
             if (openGuide && typeof window.navigateToDispatchGuide === 'function') {
                 if (typeof closeModal === 'function') closeModal('modalProjectRequisitionsInbox');
                 window.navigateToDispatchGuide(guideNumber);
@@ -2166,16 +2332,32 @@ async function quickDispatchSingleRequisition(reqId, projectId) {
         return;
     }
 
-    const driverName = (document.getElementById(`req_driver_${projectId}`)?.value || "").trim() || "Transporte DALOR / Conductor Asignado";
-    const driverCi = (document.getElementById(`req_driver_ci_${projectId}`)?.value || "").trim() || "V-DALOR";
-    const vehiclePlate = (document.getElementById(`req_plate_${projectId}`)?.value || "").trim() || "DALOR-01";
-    const vehicleModel = (document.getElementById(`req_vehicle_model_${projectId}`)?.value || "").trim();
-    const vehicleAssetId = document.getElementById(`req_vehicle_sel_${projectId}`)?.value;
+    const isInternal = document.getElementById(`req_is_internal_${projectId}`)?.value === "1";
+    let driverName = null;
+    let driverCi = null;
+    let vehiclePlate = null;
+    let vehicleModel = null;
+    let vehicleAssetId = null;
+
+    if (!isInternal) {
+        driverName = (document.getElementById(`req_driver_${projectId}`)?.value || "").trim();
+        driverCi = (document.getElementById(`req_driver_ci_${projectId}`)?.value || "").trim();
+        vehiclePlate = (document.getElementById(`req_plate_${projectId}`)?.value || "").trim();
+        vehicleModel = (document.getElementById(`req_vehicle_model_${projectId}`)?.value || "").trim();
+        vehicleAssetId = document.getElementById(`req_vehicle_sel_${projectId}`)?.value;
+        if (!driverName) {
+            alert("⚠️ Para despachos a Obra Foránea, por favor ingresa o selecciona el Chofer / Conductor asignado.");
+            document.getElementById(`req_driver_${projectId}`)?.focus();
+            return;
+        }
+    }
     const notes = (document.getElementById(`req_notes_${projectId}`)?.value || "").trim();
 
-    let confirmMsg = `¿Confirmas el despacho rápido de este insumo (${qty} unidades)?\nSe generará la Guía de Despacho oficial de traslado.`;
+    let confirmMsg = isInternal
+        ? `¿Confirmas la entrega rápida de este insumo (${qty} unidades) en Taller Guacara?\nSe generará el Vale de Control Interno.`
+        : `¿Confirmas el despacho rápido de este insumo (${qty} unidades) para la Obra Foránea?\nSe generará la Guía Oficial de Traslado.`;
     if (qty < pending) {
-        confirmMsg += `\n\n⚠️ ADVERTENCIA: La cantidad a despachar (${qty}) es menor a lo solicitado (${pending}) por inventario. Quedarán ${(pending - qty).toFixed(2)} pendientes.`;
+        confirmMsg += `\n\n⚠️ ADVERTENCIA: La cantidad a entregar (${qty}) es menor a lo solicitado (${pending}) por inventario. Quedarán ${(pending - qty).toFixed(2)} pendientes.`;
     }
 
     if (!confirm(confirmMsg)) {
@@ -2186,6 +2368,7 @@ async function quickDispatchSingleRequisition(reqId, projectId) {
         const payload = {
             project_id: projectId,
             items: [{ requisition_id: reqId, quantity_to_dispatch: qty }],
+            is_internal: isInternal,
             driver_name: driverName,
             driver_id_doc: driverCi,
             vehicle_plate: vehiclePlate,
@@ -2219,6 +2402,72 @@ async function quickDispatchSingleRequisition(reqId, projectId) {
         console.error("Error in quick dispatch:", e);
         alert("❌ Error de comunicación: " + e.message);
     }
+}
+
+function openCalibrateMaterialModal(matId) {
+    const m = (allMaterials || []).find(x => x.id === matId);
+    if (!m) return alert("Material no encontrado");
+
+    const idInput = document.getElementById("calib_mat_id");
+    if (idInput) idInput.value = m.id;
+
+    const dispInput = document.getElementById("calib_mat_display");
+    if (dispInput) dispInput.value = `[${m.code}] ${m.name}`;
+
+    const stockInput = document.getElementById("calib_mat_current_stock");
+    if (stockInput) stockInput.value = `${m.stock_quantity} ${m.unit_measure}`;
+
+    const newStockInput = document.getElementById("calib_mat_new_stock");
+    if (newStockInput) newStockInput.value = m.stock_quantity;
+
+    const reasonInput = document.getElementById("calib_mat_reason");
+    if (reasonInput) reasonInput.value = "";
+
+    const passInput = document.getElementById("calib_mat_password");
+    if (passInput) passInput.value = "";
+
+    if (typeof openModal === 'function') openModal("modalCalibrateMaterial");
+}
+
+async function submitCalibrateMaterial(event) {
+    if (event) event.preventDefault();
+
+    const matId = document.getElementById("calib_mat_id")?.value;
+    const newStock = parseFloat(document.getElementById("calib_mat_new_stock")?.value);
+    const reason = document.getElementById("calib_mat_reason")?.value?.trim() || "";
+    const password = document.getElementById("calib_mat_password")?.value || "";
+
+    if (!matId) return alert("Error: ID del material no identificado.");
+    if (isNaN(newStock) || newStock < 0) return alert("Ingrese un nuevo stock válido mayor o igual a 0.");
+    if (!reason) return alert("Debe indicar la justificación o motivo del ajuste físico.");
+    if (!password) return alert("Debe ingresar su contraseña para autorizar la calibración.");
+
+    try {
+        const res = await authFetch(`${API_BASE}/materials/${matId}/calibrate`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                new_stock_quantity: newStock,
+                new_stock: newStock,
+                reason: reason,
+                director_password: password
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: 'Error al calibrar stock' }));
+            throw new Error(err.detail || 'Error al calibrar stock');
+        }
+
+        const data = await res.json();
+        alert(`✅ Stock calibrado exitosamente: nuevo stock ${data.new_stock}`);
+        if (typeof closeModal === 'function') closeModal("modalCalibrateMaterial");
+        loadMaterialsList();
+    } catch(err) {
+        console.error("Error calibrating material:", err);
+        alert(`❌ Error: ${err.message || err}`);
+    }
+
+    return false;
 }
 
 // --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
@@ -2256,6 +2505,7 @@ if (typeof window !== 'undefined') {
     window.onConsumeProjectChanged = onConsumeProjectChanged;
     window.toggleMaterialEntryPaymentBox = toggleMaterialEntryPaymentBox;
     window.onNewMaterialCategoryChanged = onNewMaterialCategoryChanged;
+    window.populateMaterialCategories = populateMaterialCategories;
     window.openNewMaterialModalFromCxp = openNewMaterialModalFromCxp;
     // Requisiciones de Obra
     window.loadProjectRequisitionsBadge = loadProjectRequisitionsBadge;
@@ -2270,6 +2520,93 @@ if (typeof window !== 'undefined') {
     window.onReqQtyChanged = onReqQtyChanged;
     window.onReqVehicleChanged = onReqVehicleChanged;
     window.onReqDriverChanged = onReqDriverChanged;
+    window.openCalibrateMaterialModal = openCalibrateMaterialModal;
+    window.submitCalibrateMaterial = submitCalibrateMaterial;
+    window.openEditMaterialModal = openEditMaterialModal;
+    window.submitEditMaterial = submitEditMaterial;
+}
+
+async function openEditMaterialModal(materialId) {
+    const safeMaterials = (window.allMaterials && window.allMaterials.length > 0) ? window.allMaterials : (allMaterials || []);
+    const mat = safeMaterials.find(m => m.id === materialId);
+    if (!mat) {
+        alert("Material no encontrado en catálogo.");
+        return;
+    }
+    const idInput = document.getElementById("edit_mat_id");
+    const codeInput = document.getElementById("edit_mat_code");
+    const nameInput = document.getElementById("edit_mat_name");
+    const catInput = document.getElementById("edit_mat_category");
+    const unitInput = document.getElementById("edit_mat_unit");
+    const minStockInput = document.getElementById("edit_mat_min_stock");
+    const unitCostInput = document.getElementById("edit_mat_unit_cost");
+    const locInput = document.getElementById("edit_mat_location");
+
+    if (idInput) idInput.value = mat.id;
+    if (codeInput) codeInput.value = mat.code || '';
+    if (nameInput) nameInput.value = mat.name || '';
+    if (catInput) catInput.value = mat.category || 'Acero Estructural';
+    if (unitInput) unitInput.value = (mat.unit_measure || 'UND').toUpperCase();
+    if (minStockInput) minStockInput.value = mat.min_stock_alert !== undefined ? mat.min_stock_alert : 5;
+    if (unitCostInput) unitCostInput.value = mat.unit_cost_usd ? Number(mat.unit_cost_usd).toFixed(2) : '0.00';
+    if (locInput) locInput.value = mat.location || '';
+
+    openModal("modalEditMaterial");
+}
+
+async function submitEditMaterial(event) {
+    if (event) {
+        if (typeof event.preventDefault === 'function') event.preventDefault();
+        if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    const matId = document.getElementById("edit_mat_id")?.value;
+    if (!matId) return;
+
+    const payload = {
+        name: (document.getElementById("edit_mat_name")?.value || "").trim(),
+        category: (document.getElementById("edit_mat_category")?.value || "").trim(),
+        unit_measure: (document.getElementById("edit_mat_unit")?.value || "").trim().toUpperCase(),
+        min_stock_alert: parseFloat(document.getElementById("edit_mat_min_stock")?.value) || 0,
+        unit_cost_usd: parseFloat(document.getElementById("edit_mat_unit_cost")?.value) || 0,
+        location: (document.getElementById("edit_mat_location")?.value || "").trim()
+    };
+
+    if (!payload.name) {
+        alert("Por favor ingrese el nombre del material.");
+        return;
+    }
+
+    const btn = document.getElementById("btnSubmitEditMaterial");
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/materials/${matId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al actualizar material");
+        }
+        closeModal("modalEditMaterial");
+        if (typeof showToastNotification === 'function') {
+            showToastNotification("✅ Ficha de material actualizada correctamente.", "success");
+        } else {
+            alert("✅ Material actualizado con éxito.");
+        }
+        await loadMaterialsList();
+    } catch (e) {
+        alert("Error al actualizar material: " + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios`;
+        }
+    }
 }
 
 export { 
@@ -2318,5 +2655,9 @@ export {
     changeReqPageSize,
     onReqQtyChanged,
     onReqVehicleChanged,
-    onReqDriverChanged
+    onReqDriverChanged,
+    openCalibrateMaterialModal,
+    submitCalibrateMaterial,
+    openEditMaterialModal,
+    submitEditMaterial
 };

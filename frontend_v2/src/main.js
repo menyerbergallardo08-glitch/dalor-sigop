@@ -28,6 +28,18 @@ window.authFetch = function(url, options = {}) {
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 };
 
+// 🛡️ Manejo transparente de despliegues: Si un usuario tiene la app abierta y se publica una nueva versión,
+// Vite dispara 'vite:preloadError' al no encontrar el chunk viejo (404). Recargamos automáticamente una sola vez.
+window.addEventListener('vite:preloadError', (event) => {
+    console.warn('[Vite] Nueva versión detectada en el servidor. Actualizando aplicación...', event);
+    const lastReload = parseInt(sessionStorage.getItem('dalor_chunk_reload_ts') || '0', 10);
+    const now = Date.now();
+    if (now - lastReload > 10000) {
+        sessionStorage.setItem('dalor_chunk_reload_ts', String(now));
+        window.location.reload();
+    }
+});
+
 import { Api } from './api.js';
 import { State } from './state.js';
 import { checkAuthStatus, performLogin, handleLogout, renderUserBadge, applyPermissionMap, redirectUserByRole } from './auth.js';

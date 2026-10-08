@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DALOR SIGO-P | Módulo: QUOTATIONS.JS
  * Extraído y desacoplado del monolito de producción (v94)
  */
@@ -868,43 +868,26 @@ async function convertQuoteToProject(quoteId) {
         }
         if (document.getElementById("new_proj_scope")) document.getElementById("new_proj_scope").value = itemsScope;
 
-        // Auto-distribuir bolsas de costo estimadas respetando el límite financiero (65% del contrato)
-        const subtotal = q.subtotal_usd || q.total_usd || 0;
-        const total = q.total_usd || 0;
-        const targetBudgetLimit = subtotal * 0.65; // Margen protegido 35%
+        // No precargar datos ficticios ni bolsas porcentuales; únicamente el costo del material asociado
+        if (document.getElementById("new_proj_labor")) document.getElementById("new_proj_labor").value = "0.00";
+        if (document.getElementById("new_proj_fuel")) document.getElementById("new_proj_fuel").value = "0.00";
+        if (document.getElementById("new_proj_tools")) document.getElementById("new_proj_tools").value = "0.00";
+        if (document.getElementById("new_proj_services")) document.getElementById("new_proj_services").value = "0.00";
 
-        if (document.getElementById("new_proj_labor")) document.getElementById("new_proj_labor").value = (subtotal * 0.30).toFixed(2);
-        if (document.getElementById("new_proj_fuel")) document.getElementById("new_proj_fuel").value = (subtotal * 0.08).toFixed(2);
-        if (document.getElementById("new_proj_materials")) document.getElementById("new_proj_materials").value = (subtotal * 0.20).toFixed(2);
-        if (document.getElementById("new_proj_tools")) document.getElementById("new_proj_tools").value = (subtotal * 0.04).toFixed(2);
-        if (document.getElementById("new_proj_services")) document.getElementById("new_proj_services").value = (subtotal * 0.03).toFixed(2);
+        if (typeof updatePlanMaterialsCostTotal === 'function') {
+            updatePlanMaterialsCostTotal();
+        } else if (typeof window.updatePlanMaterialsCostTotal === 'function') {
+            window.updatePlanMaterialsCostTotal();
+        } else if (document.getElementById("new_proj_materials")) {
+            document.getElementById("new_proj_materials").value = "0.00";
+        }
 
-        // Reconstruir las fases para que la suma de sus costos no exceda el límite presupuestario
+        // Inicialización limpia de etapas (1 sola fase limpia de inicio, 0 tareas ficticias pre-cargadas)
         const phasesContainer = document.getElementById("projectPhasesContainer");
         if (phasesContainer && typeof addProjectPhaseRow === 'function') {
             phasesContainer.innerHTML = "";
             window.phaseRowsCount = 0;
-            const pDays = Math.max(7, Math.round(durDays / 4));
-            addProjectPhaseRow("Fase 1: Movilización, Permisos & Seguridad SHA", [
-                "Gestión de pases y autorizaciones",
-                "Charla de inducción y seguridad industrial SHA",
-                "Movilización de cuadrilla y equipos a planta"
-            ], pDays, Number((targetBudgetLimit * 0.20).toFixed(2)));
-
-            addProjectPhaseRow("Fase 2: Ejecución Operativa / Desmontaje", [
-                "Desmontaje, cortes y maniobras mecánicas",
-                "Alineación y preparación de superficies"
-            ], pDays, Number((targetBudgetLimit * 0.35).toFixed(2)));
-
-            addProjectPhaseRow("Fase 3: Montaje, Armado & Ajustes", [
-                "Soldadura, calderería e instalación de piezas nuevas",
-                "Torque y fijación de soportería estructural"
-            ], pDays, Number((targetBudgetLimit * 0.30).toFixed(2)));
-
-            addProjectPhaseRow("Fase 4: Ensayos, Pintura & Entrega Conforme", [
-                "Inspección de calidad y recubrimiento anticorrosivo",
-                "Pruebas de servicio y firma de acta de entrega"
-            ], pDays, Number((targetBudgetLimit * 0.15).toFixed(2)));
+            addProjectPhaseRow("Fase 1: Ejecución del Proyecto", [], durDays, 0);
         }
 
         recalcProjectBudgetPreview();

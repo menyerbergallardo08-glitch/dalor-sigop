@@ -14,15 +14,15 @@
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
 
-                    <button id="btnFinReceiveClientPayment" onclick="openReceiveClientPaymentModal()" class="btn-primary" style="background-color: #10b981; color: #ffffff; font-weight: 800; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+                    <button id="btnFinReceiveClientPayment" onclick="openReceiveClientPaymentModal()" class="btn-primary" style="display: none; background-color: #10b981; color: #ffffff; font-weight: 800; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
 
                         <i class="fa-solid fa-money-bill-wave"></i> 💵 + Registrar Cobro / Abono de Cliente
 
                     </button>
 
-                    <button id="btnFinNewReceivable" onclick="openNewReceivableModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px;">
+                    <button id="btnFinNewReceivable" onclick="openNewReceivableModal()" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px; font-weight: 800;">
 
-                        <i class="fa-solid fa-plus"></i> Facturar a Cliente (CxC)
+                        <i class="fa-solid fa-file-invoice-dollar"></i> + Facturar Obra / Servicio
 
                     </button>
 
@@ -87,8 +87,8 @@
                             <i class="fa-solid fa-hand-holding-dollar" style="color: #059669;"></i> Cartera de Facturas y Valuaciones por Cobrar
                         </h3>
                         <div style="display: flex; gap: 8px;">
-                            <button type="button" onclick="openNewReceivableModal()" class="btn-primary" style="font-size: 11px; padding: 5px 10px;">
-                                <i class="fa-solid fa-plus"></i> Nueva Factura / Valuación
+                            <button type="button" onclick="openNewReceivableModal()" class="btn-primary" style="font-size: 11px; padding: 5px 10px; background: #059669; font-weight: 700;">
+                                <i class="fa-solid fa-file-invoice-dollar"></i> + Facturar Obra / Servicio
                             </button>
                             <button type="button" onclick="loadReceivablesList()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px;">
                                 <i class="fa-solid fa-arrows-rotate"></i> Actualizar
@@ -703,6 +703,16 @@
                                     <option value="2025">2025</option>
                                     <option value="2026" selected>2026</option>
                                     <option value="2027">2027</option>
+                                </select>
+                            </div>
+                            <!-- Selector de Facturas Fiscales SENIAT vs No Fiscales / Notas de Entrega -->
+                            <div style="display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px;">
+                                <label style="font-size: 11px; font-weight: 700; color: #334155;"><i class="fa-solid fa-filter" style="color: #c2410c;"></i> Tipo:</label>
+                                <select id="fiscal_doc_filter" onchange="loadFiscalBooksView()" class="form-select" style="font-size: 11px; font-weight: 700; padding: 3px 8px; height: 28px; min-width: 175px;">
+                                    <option value="con_iva" selected>Solo Facturas con IVA (Crédito Fiscal 16%)</option>
+                                    <option value="sin_iva">Solo Facturas Sin IVA / Exentas (0% IVA)</option>
+                                    <option value="no_fiscales">Solo No Fiscales / Notas de Entrega</option>
+                                    <option value="all">Todos los Documentos</option>
                                 </select>
                             </div>
                             <button onclick="loadFiscalBooksView()" class="btn-secondary" style="font-size: 11px; padding: 6px 10px;">

@@ -1,0 +1,714 @@
+<div id="modalQuotation" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 id="modalQuotationTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-calculator" style="color: var(--dalor-blue);"></i> Armar Presupuesto / Cotización Formal (APU)
+
+                </h3>
+
+                <button onclick="closeModal('modalQuotation')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+
+
+            <form id="quoteForm" onsubmit="submitCreateQuotation(event)" autocomplete="off">
+
+                <input type="hidden" id="edit_quotation_id" value="">
+
+                <div class="grid-2" style="margin-bottom: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cliente *</label>
+
+                        <select id="quote_client_id" class="form-select" required onchange="onQuoteClientChanged(this.value)">
+                            <option value="">-- Seleccione Cliente --</option>
+                        </select>
+
+                        <!-- Banner de Alerta de Riesgo Crediticio (Sin bloqueo automático) -->
+                        <div id="quoteClientRiskAlert" style="display: none; margin-top: 8px; padding: 10px 12px; background: #fff1f2; border: 1.5px solid #f43f5e; border-radius: 8px; box-shadow: 0 2px 6px rgba(244, 63, 94, 0.15);">
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <i class="fa-solid fa-triangle-exclamation" style="color: #e11d48; font-size: 16px; margin-top: 2px;"></i>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 800; color: #9f1239; font-size: 12px;">ALERTA DE RIESGO CREDITICIO</div>
+                                    <div id="quoteClientRiskDetails" style="font-size: 11px; color: #881337; margin-top: 3px; line-height: 1.4;"></div>
+                                    <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                        <button type="button" onclick="confirmQuoteClientRisk()" class="btn-primary" style="background: #e11d48; font-size: 10.5px; padding: 4px 10px; border-radius: 5px; font-weight: 700;">
+                                            <i class="fa-solid fa-user-shield"></i> Autorizar y Continuar Cotización
+                                        </button>
+                                        <button type="button" onclick="cancelQuoteClientRisk()" class="btn-secondary" style="font-size: 10.5px; padding: 4px 10px; border-radius: 5px;">
+                                            <i class="fa-solid fa-xmark"></i> Cancelar / Cambiar Cliente
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Título del Proyecto / Obra *</label>
+
+                        <input type="text" id="quote_title" placeholder="Ej: Fabricación de Tanque" class="form-input" required autocomplete="off">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+
+                    <div>
+
+                        <label class="form-label">Ubicación de la Obra</label>
+
+                        <input type="text" id="quote_location" placeholder="Ciudad / Planta" class="form-input" autocomplete="off">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Tiempo de Ejecución *</label>
+
+                        <input type="text" id="quote_execution_time" value="" placeholder="Ej: 15 días hábiles" class="form-input" autocomplete="off" required>
+
+                    </div>
+
+                    <div>
+                        <label class="form-label">Moneda de Emisión *</label>
+                        <select id="quote_currency" class="form-select" onchange="onQuotationCurrencyChanged()">
+                            <option value="USD">Dólares (USD $)</option>
+                            <option value="VES">Bolívares (Bs. BCV)</option>
+                            <option value="EUR">Euros (EUR €)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Tratamiento de IVA</label>
+                        <select id="quote_tax_type" class="form-select" onchange="onTaxTypeChanged()">
+                            <option value="16">IVA General (16%)</option>
+                            <option value="8">IVA Reducido (8%)</option>
+                            <option value="0">Exento de IVA (0% - Sin IVA)</option>
+                        </select>
+                        <input type="hidden" id="quote_tax_percent" value="16">
+                    </div>
+
+                </div>
+
+                <!-- Banner Cláusula Cambiaria Oficial BCV para Presupuestos en Bolívares -->
+                <div id="quote_bcv_banner_box" style="display: none; background: #fefce8; border: 1.5px solid #facc15; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-scale-balanced" style="color: #b45309; font-size: 18px;"></i>
+                        <div>
+                            <span style="color: #854d0e; font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">Cláusula de Conversión Oficial BCV:</span>
+                            <p style="margin: 2px 0 0 0; color: #713f12; font-size: 11px; font-weight: 600; line-height: 1.35;">
+                                Monto cotizado expresado en USD y pagadero en Bolívares (VES) a la Tasa Oficial del Banco Central de Venezuela (BCV) vigente a la fecha efectiva de pago.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+
+                        <span style="font-size: 12px; font-weight: 800; color: #334155;">Partidas de Servicios Cotizadas (Ilimitadas):</span>
+
+                        <button type="button" onclick="addQuotationRow()" class="btn-primary" style="font-size: 11px; padding: 5px 12px; background-color: var(--dalor-gold); color: var(--dalor-navy);">
+
+                            <i class="fa-solid fa-plus"></i> Añadir Renglón / Partida
+
+                        </button>
+
+                    </div>
+
+                    <div id="quoteItemsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; padding-right: 4px;"></div>
+
+                </div>
+
+                <!-- Punto 4 y 5: Coletillas Opcionales y Notas Comerciales Editables -->
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                    <div style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy); margin-bottom: 8px; text-transform: uppercase;">
+                        <i class="fa-solid fa-file-pen" style="color: var(--dalor-blue);"></i> Coletillas de Pago y Notas Comerciales
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #334155; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="quote_coletilla_divisas" style="accent-color: var(--dalor-blue); width: 16px; height: 16px;">
+                            <span><b>Coletilla:</b> Solo divisas (USD)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #334155; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="quote_coletilla_modalidad" style="accent-color: var(--dalor-blue); width: 16px; height: 16px;">
+                            <span><b>Coletilla:</b> Consultar modalidad</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #334155; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <input type="checkbox" id="quote_coletilla_bolivares" style="accent-color: var(--dalor-blue); width: 16px; height: 16px;">
+                            <span><b>Coletilla:</b> Pago Bs. Tasa BCV</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Notas Comerciales / Observaciones del Presupuesto (Opcional):</label>
+                        <textarea id="quote_notes" class="form-input" rows="2" placeholder="Agregue condiciones particulares, alcances adicionales o cláusulas comerciales..." style="font-size: 11.5px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+
+                <div style="background: var(--dalor-navy); color: white; padding: 12px 16px; border-radius: 10px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center;">
+
+                    <div>
+
+                        <span style="font-size: 10px; text-transform: uppercase; color: #94a3b8;">Subtotal ($)</span>
+
+                        <p id="quote_subtotal_display" style="font-size: 16px; font-weight: 800;">$0.00</p>
+
+                    </div>
+
+                    <div>
+
+                        <span style="font-size: 10px; text-transform: uppercase; color: #94a3b8;">IVA Calculado</span>
+
+                        <p id="quote_tax_display" style="font-size: 16px; font-weight: 800; color: var(--dalor-gold);">$0.00</p>
+
+                    </div>
+
+                    <div>
+
+                        <span style="font-size: 10px; text-transform: uppercase; color: #94a3b8;">Total Cotizado ($)</span>
+
+                        <p id="quote_total_display" style="font-size: 18px; font-weight: 900; color: #38bdf8;">$0.00</p>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+
+                    <button type="button" onclick="closeModal('modalQuotation')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" id="btnSubmitQuotation" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> Guardar Presupuesto</button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVA HERRAMIENTA / EQUIPO -->
+
+    
+
+<div id="modalService" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Crear Nueva Partida de Servicio</h3>
+
+                <button onclick="closeModal('modalService')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="serviceForm" onsubmit="submitCreateService(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div>
+
+                    <label class="form-label">Código de Partida (Correlativo Automático) *</label>
+
+                    <input type="text" id="srv_code" placeholder="Generando..." class="form-input" readonly style="background-color: #f1f5f9; color: var(--dalor-navy); font-weight: 700; cursor: not-allowed; border: 1px solid #cbd5e1;" required title="El correlativo es asignado automáticamente por el sistema">
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Nombre del Servicio *</label>
+
+                    <input type="text" id="srv_name" placeholder="Ej: Fabricación de Estructura de Tolva" class="form-input" autocomplete="off" required>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Categoría *</label>
+                        <select id="srv_category" class="form-select" onchange="onServiceCategoryChanged(this.value)" required>
+                            <option value="Fabricación Metalmecánica">Fabricación Metalmecánica</option>
+                            <option value="Montaje e Instalación en Sitio">Montaje e Instalación en Sitio</option>
+                            <option value="Mantenimiento Industrial & Paradas">Mantenimiento Industrial & Paradas</option>
+                            <option value="Soldadura Especializada & Pailería">Soldadura Especializada & Pailería</option>
+                            <option value="Mecanizado & Torno">Mecanizado & Torno</option>
+                            <option value="Arenado y Pintura Industrial">Arenado y Pintura Industrial</option>
+                            <option value="Obras Civiles & Eléctricas Asociadas">Obras Civiles & Eléctricas Asociadas</option>
+                            <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Categoría...</option>
+                        </select>
+                        <input type="text" id="srv_new_category" placeholder="Escribe el nombre de la nueva categoría..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+                    </div>
+
+                    <div>
+                        <label class="form-label">Unidad de Medida *</label>
+                        <select id="srv_unit" class="form-select" onchange="onServiceUnitChanged(this.value)" required>
+                            <option value="Kilogramo (kg)">Kilogramo (kg)</option>
+                            <option value="Tonelada (ton)">Tonelada (ton)</option>
+                            <option value="Metro (m)">Metro (m)</option>
+                            <option value="Metro Cuadrado (m²)">Metro Cuadrado (m²)</option>
+                            <option value="Metro Cúbico (m³)">Metro Cúbico (m³)</option>
+                            <option value="Pieza (und)">Pieza (und)</option>
+                            <option value="Global (gl)">Global (gl)</option>
+                            <option value="Hora-Hombre (hh)">Hora-Hombre (hh)</option>
+                            <option value="Día (dia)">Día (dia)</option>
+                            <option value="Pulgada-Diámetro (pulg-diam)">Pulgada-Diámetro (pulg-diam)</option>
+                            <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Unidad...</option>
+                        </select>
+                        <input type="text" id="srv_new_unit" placeholder="Escribe la unidad (ej: Galón, Paquete, etc.)..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Costo Base ($)</label>
+
+                        <input type="number" step="0.01" id="srv_cost" placeholder="0.00" class="form-input" autocomplete="off" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Precio de Venta ($) *</label>
+
+                        <input type="number" step="0.01" id="srv_price" placeholder="0.00" class="form-input" autocomplete="off" style="font-weight: 800; color: var(--dalor-blue);" required>
+
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Partida</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL: EDITAR SERVICIO / PARTIDA -->
+    
+
+<div id="modalEditService" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Editar Partida de Servicio</h3>
+                <button onclick="closeModal('modalEditService')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editServiceForm" onsubmit="submitEditService(event)" autocomplete="off" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_srv_id">
+                <div>
+                    <label class="form-label">Código (Inmutable)</label>
+                    <input type="text" id="edit_srv_code" class="form-input" readonly style="background-color: #f1f5f9; color: var(--dalor-navy); font-weight: 700; cursor: not-allowed; border: 1px solid #cbd5e1;">
+                </div>
+                <div>
+                    <label class="form-label">Nombre del Servicio *</label>
+                    <input type="text" id="edit_srv_name" class="form-input" autocomplete="off" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Categoría *</label>
+                        <select id="edit_srv_category" class="form-select" onchange="onEditServiceCategoryChanged(this.value)" required>
+                            <option value="Fabricación Metalmecánica">Fabricación Metalmecánica</option>
+                            <option value="Montaje e Instalación en Sitio">Montaje e Instalación en Sitio</option>
+                            <option value="Mantenimiento Industrial & Paradas">Mantenimiento Industrial & Paradas</option>
+                            <option value="Soldadura Especializada & Pailería">Soldadura Especializada & Pailería</option>
+                            <option value="Mecanizado & Torno">Mecanizado & Torno</option>
+                            <option value="Arenado y Pintura Industrial">Arenado y Pintura Industrial</option>
+                            <option value="Obras Civiles & Eléctricas Asociadas">Obras Civiles & Eléctricas Asociadas</option>
+                            <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Categoría...</option>
+                        </select>
+                        <input type="text" id="edit_srv_new_category" placeholder="Escribe el nombre de la nueva categoría..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+                    </div>
+                    <div>
+                        <label class="form-label">Unidad de Medida *</label>
+                        <select id="edit_srv_unit" class="form-select" onchange="onEditServiceUnitChanged(this.value)" required>
+                            <option value="Kilogramo (kg)">Kilogramo (kg)</option>
+                            <option value="Tonelada (ton)">Tonelada (ton)</option>
+                            <option value="Metro (m)">Metro (m)</option>
+                            <option value="Metro Cuadrado (m²)">Metro Cuadrado (m²)</option>
+                            <option value="Metro Cúbico (m³)">Metro Cúbico (m³)</option>
+                            <option value="Pieza (und)">Pieza (und)</option>
+                            <option value="Global (gl)">Global (gl)</option>
+                            <option value="Hora-Hombre (hh)">Hora-Hombre (hh)</option>
+                            <option value="Día (dia)">Día (dia)</option>
+                            <option value="Pulgada-Diámetro (pulg-diam)">Pulgada-Diámetro (pulg-diam)</option>
+                            <option value="__NEW__" style="color: #0284c7; font-weight: 800;">➕ Escribir Nueva Unidad...</option>
+                        </select>
+                        <input type="text" id="edit_srv_new_unit" placeholder="Escribe la nueva unidad..." class="form-input hidden" autocomplete="off" style="margin-top: 6px;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Costo Base ($)</label>
+                        <input type="number" step="0.01" id="edit_srv_cost" class="form-input" autocomplete="off" required oninput="calcEditServiceMargin()">
+                    </div>
+                    <div>
+                        <label class="form-label">Precio de Venta ($) *</label>
+                        <input type="number" step="0.01" id="edit_srv_price" class="form-input" autocomplete="off" style="font-weight: 800; color: var(--dalor-blue);" required oninput="calcEditServiceMargin()">
+                    </div>
+                </div>
+                <div id="editSrvMarginBadge" style="margin-top: 6px; font-size: 12px; font-weight: 700; min-height: 20px;"></div>
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- MODAL: NUEVO CLIENTE -->
+
+    
+
+<div id="modalClient" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Nuevo Cliente</h3>
+
+                <button onclick="closeModal('modalClient')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="clientForm" onsubmit="submitCreateClient(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código (Correlativo Obligatorio) *</label>
+
+                        <input type="text" id="cli_code" placeholder="Generando..." class="form-input" readonly style="background-color: #f1f5f9; color: var(--dalor-navy); font-weight: 700; cursor: not-allowed; border: 1px solid #cbd5e1;" required title="El correlativo es asignado automáticamente para preservar el orden y no puede modificarse">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Razón Social / Empresa *</label>
+
+                        <input type="text" id="cli_name" placeholder="Nombre de la Empresa" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">RIF / Identificación Fiscal</label>
+
+                        <input type="text" id="cli_rif" placeholder="J-12345678-9" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Sector / Industria</label>
+
+                        <input type="text" id="cli_industry" placeholder="Manufactura / Energía" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Persona de Contacto</label>
+
+                        <input type="text" id="cli_contact" placeholder="Nombre y Cargo" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Teléfono</label>
+
+                        <input type="text" id="cli_phone" placeholder="+58 414 0000000" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Correo Electrónico</label>
+
+                    <input type="email" id="cli_email" placeholder="contacto@cliente.com" class="form-input">
+
+                </div>
+
+                <div>
+
+                    <label class="form-label">Dirección / Planta</label>
+
+                    <input type="text" id="cli_address" placeholder="Ciudad, Estado, Dirección" class="form-input">
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Cliente</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL: EDITAR CLIENTE -->
+    
+
+<div id="modalEditClient" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Editar Cliente</h3>
+                <button onclick="closeModal('modalEditClient')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editClientForm" onsubmit="submitEditClient(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_cli_id">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Código (Inmutable)</label>
+                        <input type="text" id="edit_cli_code" class="form-input" readonly style="background-color: #f1f5f9; color: var(--dalor-navy); font-weight: 700; cursor: not-allowed; border: 1px solid #cbd5e1;">
+                    </div>
+                    <div>
+                        <label class="form-label">Razón Social / Empresa *</label>
+                        <input type="text" id="edit_cli_name" class="form-input" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">RIF / Identificación Fiscal</label>
+                        <input type="text" id="edit_cli_rif" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Sector / Industria</label>
+                        <input type="text" id="edit_cli_industry" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Persona de Contacto</label>
+                        <input type="text" id="edit_cli_contact" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Teléfono</label>
+                        <input type="text" id="edit_cli_phone" class="form-input">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Correo Electrónico</label>
+                    <input type="email" id="edit_cli_email" class="form-input">
+                </div>
+                <div>
+                    <label class="form-label">Dirección / Planta</label>
+                    <input type="text" id="edit_cli_address" class="form-input">
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: FICHA HISTÓRICA DEL CLIENTE (LAZY LOAD) -->
+    
+
+<div id="modalClientHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 780px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <h3 id="clientHistoryTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Ficha Histórica del Cliente</h3>
+                    <p id="clientHistorySubtitle" style="font-size: 11px; color: #64748b; margin-top: 2px;">Cargando historial...</p>
+                </div>
+                <button onclick="closeModal('modalClientHistory')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div id="clientHistoryBody" style="max-height: 70vh; overflow-y: auto;">
+                <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px;"></i> Cargando obras y cotizaciones...
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- MODAL: ASIGNACIÓN / MOVIMIENTO DE RECURSO -->
+
+    
+
+<div id="modalEditRental" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 560px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #d97706;">
+                    <i class="fa-solid fa-handshake" style="color: #d97706;"></i> Editar Orden de Alquiler / Préstamo
+                </h3>
+                <button onclick="closeModal('modalEditRental')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editRentalForm" onsubmit="submitEditRental(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_rent_id">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Código (Protegido)</label>
+                        <input type="text" id="edit_rent_code" class="form-input" readonly style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 700; color: #002B49;">
+                    </div>
+                    <div>
+                        <label class="form-label">Entidad / Cliente / Proveedor *</label>
+                        <input type="text" id="edit_rent_entity" class="form-input" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Persona de Contacto</label>
+                        <input type="text" id="edit_rent_contact" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Teléfono de Contacto</label>
+                        <input type="text" id="edit_rent_phone" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Tarifa ($ USD)</label>
+                        <input type="number" step="0.01" id="edit_rent_rate" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Período de Tarifa</label>
+                        <select id="edit_rent_period" class="form-select">
+                            <option value="dia">Por Día</option>
+                            <option value="semana">Por Semana</option>
+                            <option value="mes">Por Mes</option>
+                            <option value="global">Monto Global Fijo</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Fecha de Inicio</label>
+                        <input type="date" id="edit_rent_start" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Fecha Estimada de Retorno</label>
+                        <input type="date" id="edit_rent_return" class="form-input">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Destino / Lugar de Uso</label>
+                    <input type="text" id="edit_rent_dest" class="form-input">
+                </div>
+                <div>
+                    <label class="form-label">Notas / Observaciones</label>
+                    <textarea id="edit_rent_notes" class="form-input" rows="2"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalEditRental')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #d97706; color: white;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL SALDO INICIAL CUENTAS (PUNTO 10) -->
+    
+
+<div id="modalCategoryHistory" class="modal-overlay hidden" style="z-index: 100000;">
+        <div class="modal-content" style="max-width: 950px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="background: var(--dalor-navy); color: white; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <div>
+                        <h3 id="catHistTitle" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">Bitácora de Partida Contable</h3>
+                        <p id="catHistSubtitle" style="font-size: 12px; color: #64748b; margin: 2px 0 0 0;">Histórico de comprobantes y egresos imputados</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal('modalCategoryHistory')" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Resumen Superior / KPIs de Partida -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Gasto Real Acumulado</span>
+                    <p id="catHistTotalSpent" style="font-size: 17px; font-weight: 900; color: #e11d48; margin: 2px 0 0 0;">$0.00</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Equivalente Oficial (Bs)</span>
+                    <p id="catHistTotalBs" style="font-size: 15px; font-weight: 800; color: #334155; margin: 2px 0 0 0;">0.00 Bs</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Comprobantes Registrados</span>
+                    <p id="catHistCountBadge" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 2px 0 0 0;">0 registros</p>
+                </div>
+            </div>
+
+            <!-- Barra de Filtro Predictivo en Modal -->
+            <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                    <input type="text" id="catHistSearchInput" placeholder="Buscar por comercio, proyecto, descripción..." class="form-input" style="font-size: 12px; padding: 6px 10px;" oninput="debouncedFilterCategoryHistory()">
+                </div>
+                <div style="width: 180px;">
+                    <select id="catHistStatusFilter" class="form-select" style="font-size: 12px; padding: 6px 10px;" onchange="filterCategoryHistory()">
+                        <option value="">-- Todos los Estados --</option>
+                        <option value="aprobado">Aprobado / Validado</option>
+                        <option value="pendiente">Pendiente Validación</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tabla de Historial -->
+            <div class="table-wrapper">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 8px; text-align: left;">Comercio / Proveedor</th>
+                            <th style="padding: 8px; text-align: left;">Destino / Proyecto</th>
+                            <th style="padding: 8px; text-align: left;">Tipo de Gasto</th>
+                            <th style="padding: 8px; text-align: right;">Monto ($)</th>
+                            <th style="padding: 8px; text-align: right;">Monto (Bs)</th>
+                            <th style="padding: 8px; text-align: center;">Estado</th>
+                            <th style="padding: 8px; text-align: center;">Adjunto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catHistTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #64748b; padding: 20px;">Cargando historial de la partida...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación -->
+            <div id="catHistPagination" style="margin-top: 10px;"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalCategoryHistory')" class="btn-secondary">Cerrar Bitácora</button>
+            </div>
+        </div>
+    </div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     MODAL: GESTIÓN DE CUENTAS BANCARIAS Y CAJAS
+     ══════════════════════════════════════════════════════════════════════════════ -->

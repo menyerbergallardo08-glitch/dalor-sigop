@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import text, func
 from app.core.database import SessionLocal, engine, Base
 from app.core.security import get_password_hash
+from app.core.config import settings
 import app.models.models
 from app.models.models import (
     User, Role, Client, Project, ProjectPhase, Asset, Personnel, Material,
@@ -93,23 +94,101 @@ def init_db():
         f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_voucher_number VARCHAR(50);",
         f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_voucher_date TIMESTAMP;",
         f"ALTER TABLE quotations ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}coletilla_divisas BOOLEAN DEFAULT TRUE;",
+        f"ALTER TABLE quotations ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}coletilla_bolivares BOOLEAN DEFAULT FALSE;",
         f"ALTER TABLE quotations ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}coletilla_modalidad BOOLEAN DEFAULT TRUE;",
+        f"ALTER TABLE personnel ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}payroll_type VARCHAR(50) DEFAULT 'semanal';",
         f"ALTER TABLE project_phases ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}duration_unit VARCHAR(20) DEFAULT 'dias';",
         f"ALTER TABLE project_phases ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}estimated_duration FLOAT DEFAULT 7.0;",
         f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}guide_type VARCHAR(50) DEFAULT 'traslado_externo';",
         f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}delivered_by_staff VARCHAR(150);",
         f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}received_by_staff VARCHAR(150);",
-        "ALTER TABLE dispatch_guides ALTER COLUMN destination_address DROP NOT NULL;",
-        "ALTER TABLE dispatch_guides ALTER COLUMN driver_name DROP NOT NULL;",
-        "ALTER TABLE dispatch_guides ALTER COLUMN driver_id_doc DROP NOT NULL;",
-        "ALTER TABLE dispatch_guides ALTER COLUMN vehicle_plate DROP NOT NULL;"
+        f"ALTER TABLE expense_categories ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}business_rule VARCHAR(50) DEFAULT 'costo_material_obra';",
     ]
+    if not is_sqlite:
+        extra_stmts.extend([
+            "ALTER TABLE dispatch_guides ALTER COLUMN destination_address DROP NOT NULL;",
+            "ALTER TABLE dispatch_guides ALTER COLUMN driver_name DROP NOT NULL;",
+            "ALTER TABLE dispatch_guides ALTER COLUMN driver_id_doc DROP NOT NULL;",
+            "ALTER TABLE dispatch_guides ALTER COLUMN vehicle_plate DROP NOT NULL;"
+        ])
+    else:
+        # En SQLite no existe ALTER COLUMN DROP NOT NULL. Se verifica y migra la estructura si es necesario.
+        try:
+            with engine.connect() as check_conn:
+                raw_c = check_conn.connection
+                cur = raw_c.cursor()
+                cur.execute("PRAGMA table_info(dispatch_guides)")
+                dg_cols = cur.fetchall()
+                d_col = next((c for c in dg_cols if c[1] == 'driver_name'), None)
+                if d_col and d_col[3] == 1:
+                    cur.execute("PRAGMA foreign_keys=OFF")
+                    cur.execute("""
+                        CREATE TABLE dispatch_guides_new (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            guide_number VARCHAR(50) UNIQUE,
+                            project_id INTEGER REFERENCES projects(id),
+                            client_id INTEGER REFERENCES clients(id),
+                            recipient_name VARCHAR(255),
+                            transfer_reason VARCHAR(255),
+                            is_freeform BOOLEAN DEFAULT 0,
+                            guide_type VARCHAR(50) DEFAULT 'traslado_externo',
+                            delivered_by_staff VARCHAR(150),
+                            received_by_staff VARCHAR(150),
+                            dispatch_date DATETIME,
+                            destination_address VARCHAR(255),
+                            destination_plant VARCHAR(150),
+                            transport_type VARCHAR(50),
+                            asset_id INTEGER REFERENCES assets(id),
+                            carrier_company VARCHAR(150),
+                            driver_name VARCHAR(150),
+                            driver_id_doc VARCHAR(50),
+                            driver_phone VARCHAR(50),
+                            vehicle_model VARCHAR(100),
+                            vehicle_plate VARCHAR(50),
+                            freight_cost_usd FLOAT DEFAULT 0.0,
+                            freight_price_charged_usd FLOAT DEFAULT 0.0,
+                            payable_id INTEGER REFERENCES accounts_payable(id),
+                            receivable_id INTEGER REFERENCES accounts_receivable(id),
+                            status VARCHAR(50),
+                            quality_inspector VARCHAR(150),
+                            dispatcher_name VARCHAR(150),
+                            received_by_client_name VARCHAR(150),
+                            received_by_client_id_doc VARCHAR(50),
+                            reception_date DATETIME,
+                            notes TEXT,
+                            created_at DATETIME
+                        )
+                    """)
+                    cur.execute("PRAGMA table_info(dispatch_guides_new)")
+                    new_cols = [c[1] for c in cur.fetchall()]
+                    old_names = [c[1] for c in dg_cols]
+                    shared_cols = [c for c in new_cols if c in old_names]
+                    cols_str = ', '.join(f'"{c}"' for c in shared_cols)
+                    cur.execute(f"INSERT INTO dispatch_guides_new ({cols_str}) SELECT {cols_str} FROM dispatch_guides")
+                    cur.execute("DROP TABLE dispatch_guides")
+                    cur.execute("ALTER TABLE dispatch_guides_new RENAME TO dispatch_guides")
+                    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_dispatch_guides_guide_number ON dispatch_guides (guide_number)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS ix_dispatch_guides_id ON dispatch_guides (id)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id)")
+                    raw_c.commit()
+                    cur.execute("PRAGMA foreign_keys=ON")
+        except Exception:
+            pass
+
     for stmt in extra_stmts:
         try:
             with engine.begin() as isolated_conn:
                 isolated_conn.execute(text(stmt))
         except Exception:
             pass
+
+    # Normalización de códigos de clientes (MDCLI-001 -> CLI-001, MDCLI-002 -> CLI-002)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE clients SET code = 'CLI-001' WHERE code = 'MDCLI-001'"))
+            conn.execute(text("UPDATE clients SET code = 'CLI-002' WHERE code = 'MDCLI-002'"))
+    except Exception:
+        pass
 
     # Migración de resguardo permanente de comprobantes en disco a Base64 en PostgreSQL
     try:
@@ -604,6 +683,98 @@ def init_db():
             ]
             db.add_all(default_accounts)
             db.commit()
+
+        # 9. Purga quirúrgica de registros de prueba de emergencia en producción
+        try:
+            with engine.begin() as isolated_conn:
+                # 1. Liberar activos y personal asignados al proyecto de prueba
+                isolated_conn.execute(text("""
+                    UPDATE assets 
+                    SET current_project_id = NULL, status = 'disponible_base', current_location = 'Sede Central Dalor (Guacara)'
+                    WHERE current_project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                """))
+                isolated_conn.execute(text("""
+                    UPDATE personnel 
+                    SET current_project_id = NULL, status = 'disponible_base', current_location = 'Sede Central Dalor (Guacara)'
+                    WHERE current_project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                """))
+
+                # 2. Eliminar cobros/pagos vinculados a las facturas y anticipos de prueba
+                isolated_conn.execute(text("""
+                    DELETE FROM financial_payments 
+                    WHERE receivable_id IN (
+                        SELECT id FROM accounts_receivable 
+                        WHERE invoice_number IN ('FAC-2026-001', 'FAC-2026-002', 'ANT-CLI-23-01')
+                           OR project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001')
+                    );
+                """))
+
+                # 3. Eliminar Cuentas por Cobrar de prueba
+                isolated_conn.execute(text("""
+                    DELETE FROM accounts_receivable 
+                    WHERE invoice_number IN ('FAC-2026-001', 'FAC-2026-002', 'ANT-CLI-23-01')
+                       OR project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001');
+                """))
+
+                # 4. Eliminar gastos, guías, ítems de guías, movimientos, asignaciones y fases del proyecto de prueba
+                isolated_conn.execute(text("""
+                    DELETE FROM dispatch_guide_items 
+                    WHERE dispatch_guide_id IN (
+                        SELECT id FROM dispatch_guides 
+                        WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%')
+                    );
+                """))
+                isolated_conn.execute(text("""
+                    DELETE FROM dispatch_guides 
+                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                """))
+                isolated_conn.execute(text("""
+                    DELETE FROM expenses 
+                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                """))
+                isolated_conn.execute(text("""
+                    DELETE FROM material_movements 
+                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                """))
+                isolated_conn.execute(text("""
+                    DELETE FROM project_phases 
+                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                """))
+                isolated_conn.execute(text("""
+                    DELETE FROM resource_assignment_history 
+                    WHERE project_id IN (SELECT id FROM projects WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%');
+                """))
+
+                # 5. Eliminar cotización de prueba COT-2026-0001 y sus ítems
+                isolated_conn.execute(text("""
+                    DELETE FROM quotation_items 
+                    WHERE quotation_id IN (SELECT id FROM quotations WHERE quote_number = 'COT-2026-0001');
+                """))
+                isolated_conn.execute(text("""
+                    DELETE FROM quotations 
+                    WHERE quote_number = 'COT-2026-0001';
+                """))
+
+                # 6. Eliminar el proyecto padre PRJ-2026-001
+                isolated_conn.execute(text("""
+                    DELETE FROM projects 
+                    WHERE code = 'PRJ-2026-001' OR name LIKE '%PRUEBA DE DESARROLLO%';
+                """))
+
+                # 7. Eliminar partida APU de prueba APU-001
+                isolated_conn.execute(text("""
+                    DELETE FROM service_items 
+                    WHERE code = 'APU-001' OR description LIKE '%PRUEBA DE DESARROLLO%';
+                """))
+
+                # 8. Eliminar clientes de prueba si no tienen proyectos reales
+                isolated_conn.execute(text("""
+                    DELETE FROM clients 
+                    WHERE name IN ('JESUS GALLARDO', 'MENYERBER GALLARDO')
+                      AND id NOT IN (SELECT DISTINCT client_id FROM projects WHERE client_id IS NOT NULL);
+                """))
+        except Exception as e_purge:
+            print(f"--> [INFO] Rutina de purga preventiva de pruebas: {e_purge}")
 
         print("--> Dalor SIGO-P Database successfully verified & synced!")
     except Exception as e:

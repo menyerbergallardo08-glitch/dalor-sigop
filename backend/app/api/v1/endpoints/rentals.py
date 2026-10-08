@@ -782,3 +782,33 @@ def delete_rental_loan(item_id: int, db: Session = Depends(get_db)):
     db.delete(item)
     db.commit()
     return {"success": True, "message": f"Registro [{item.operation_code}] anulado con éxito."}
+
+class AssetRentalLoanUpdate(BaseModel):
+    external_entity: Optional[str] = None
+    contact_person: Optional[str] = None
+    contact_phone: Optional[str] = None
+    destination_reference: Optional[str] = None
+    start_date: Optional[datetime] = None
+    expected_return_date: Optional[datetime] = None
+    rate_usd: Optional[float] = None
+    rate_period: Optional[str] = None
+    notes: Optional[str] = None
+
+@router.put("/{item_id}")
+def update_rental_loan(item_id: int, r_in: AssetRentalLoanUpdate, db: Session = Depends(get_db)):
+    item = db.query(AssetRentalLoan).filter(AssetRentalLoan.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Orden de alquiler/préstamo no encontrada.")
+
+    for field, val in r_in.dict(exclude_unset=True).items():
+        if val is not None:
+            setattr(item, field, val)
+            
+    if item.asset_id and r_in.expected_return_date:
+        asset_obj = db.query(Asset).filter(Asset.id == item.asset_id).first()
+        if asset_obj:
+            asset_obj.return_due_date = r_in.expected_return_date
+
+    db.commit()
+    db.refresh(item)
+    return item

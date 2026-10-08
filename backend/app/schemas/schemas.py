@@ -77,6 +77,7 @@ class QuotationCreate(BaseModel):
     tax_percent: float = 16.0
     notes: Optional[str] = None
     coletilla_divisas: Optional[bool] = True
+    coletilla_bolivares: Optional[bool] = False
     coletilla_modalidad: Optional[bool] = True
     items: List[QuotationItemCreate]
 
@@ -91,6 +92,7 @@ class QuotationUpdate(BaseModel):
     tax_percent: Optional[float] = None
     notes: Optional[str] = None
     coletilla_divisas: Optional[bool] = None
+    coletilla_bolivares: Optional[bool] = None
     coletilla_modalidad: Optional[bool] = None
     status: Optional[str] = None
     items: Optional[List[QuotationItemCreate]] = None
@@ -111,6 +113,7 @@ class QuotationOut(BaseModel):
     total_usd: float
     status: str
     coletilla_divisas: Optional[bool] = True
+    coletilla_bolivares: Optional[bool] = False
     coletilla_modalidad: Optional[bool] = True
     notes: Optional[str]
     created_at: datetime
@@ -215,6 +218,10 @@ class ProjectUpdate(BaseModel):
     estimated_tools_usd: Optional[float] = None
     estimated_services_usd: Optional[float] = None
     phases: Optional[List[ProjectPhaseCreate]] = None
+    assigned_personnel_ids: Optional[List[int]] = None
+    assigned_vehicle_ids: Optional[List[int]] = None
+    assigned_tool_ids: Optional[List[int]] = None
+    assigned_material_items: Optional[List[dict]] = None
 
 class ProjectOut(BaseModel):
     id: int
@@ -246,7 +253,7 @@ class ProjectOut(BaseModel):
 
 # --- RECURSOS & MATRIZ ---
 class ResourceAssignRequest(BaseModel):
-    project_id: int
+    project_id: Optional[int] = None
     resource_type: str # asset, personnel
     resource_id: int
     destination_location: Optional[str] = "Sede Central"
@@ -255,7 +262,7 @@ class ResourceAssignRequest(BaseModel):
     notes: Optional[str] = None
 
 class ResourceTransferRequest(BaseModel):
-    target_project_id: int
+    target_project_id: Optional[int] = None
     resource_type: str
     resource_id: int
     destination_location: Optional[str] = "Sede Central"
@@ -465,3 +472,31 @@ class FinancialAccountOut(FinancialAccountBase):
     created_at: datetime
     class Config:
         from_attributes = True
+
+# ─── Bitácora y Seguimiento de Cobranza (CxC) ──────────────────────────────────
+class ReceivableFollowUpLogCreate(BaseModel):
+    receivable_id: Optional[int] = None
+    client_id: Optional[int] = None
+    contact_channel: Optional[str] = "Llamada Telefónica"
+    contact_person: Optional[str] = None
+    promised_payment_date: Optional[str] = None
+    promised_amount_usd: Optional[float] = 0.0
+    notes: str
+    evidence_image_path: Optional[str] = None
+
+class ReceivableFollowUpLogOut(BaseModel):
+    id: int
+    receivable_id: Optional[int] = None
+    client_id: int
+    contact_channel: str
+    contact_person: Optional[str] = None
+    promised_payment_date: Optional[datetime] = None
+    promised_amount_usd: Optional[float] = 0.0
+    notes: str
+    evidence_image_path: Optional[str] = None
+    recorded_by: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

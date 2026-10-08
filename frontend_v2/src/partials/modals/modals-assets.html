@@ -1,0 +1,651 @@
+<div id="modalTool" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Nueva Herramienta / Equipo</h3>
+
+                <button onclick="closeModal('modalTool')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="toolForm" onsubmit="submitCreateTool(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código *</label>
+
+                        <input type="text" id="tool_code" placeholder="HER-005" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre del Equipo *</label>
+
+                        <input type="text" id="tool_name" placeholder="Ej: Generador Eléctrico 10kVA" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Tipo de Recurso</label>
+
+                        <select id="tool_type" class="form-select">
+
+                            <option value="herramienta">Herramienta Menor</option>
+
+                            <option value="maquinaria">Maquinaria Pesada</option>
+
+                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
+
+                            <option value="equipo_especial">Equipo Especial</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Marca / Modelo</label>
+
+                        <input type="text" id="tool_brand" placeholder="Ej: Caterpillar / DeWalt" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Número de Serial</label>
+
+                        <input type="text" id="tool_serial" placeholder="Serial de fábrica" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Ubicación Inicial</label>
+
+                        <input type="text" id="tool_location" value="Sede Central" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Herramienta</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO VEHÍCULO -->
+
+    
+
+<div id="modalToolHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 680px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="modalToolHistoryTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: var(--dalor-blue);"></i> Historial de Traza de Herramienta
+                    </h3>
+                    <p id="modalToolHistorySubtitle" style="font-size: 11px; color: #64748b;">Movimientos, obras, custodios y estados registrados.</p>
+                </div>
+                <button onclick="closeModal('modalToolHistory')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 8px; text-align: left;">Cód. / Unidad</th>
+                            <th style="padding: 8px; text-align: left;">Evento / Movimiento</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Responsable</th>
+                        </tr>
+                    </thead>
+                    <tbody id="toolHistoryTableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">Cargando historial...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Traza de Herramientas -->
+            <div id="toolHistoryPagination"></div>
+
+            <div style="margin-top: 14px; text-align: right;">
+                <button type="button" onclick="closeModal('modalToolHistory')" class="btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GESTIÓN DE USUARIOS DE SISTEMA -->
+    
+
+<div id="modalNewAsset" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 620px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 id="newAssetModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-plus-circle" style="color: var(--dalor-blue);"></i> Registrar Nuevo Activo / Equipo / Vehículo
+
+                </h3>
+
+                <button onclick="closeModal('modalNewAsset')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newAssetForm" onsubmit="submitCreateAsset(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Tipo de Activo / Recurso *</label>
+
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <select id="nass_type" class="form-select" required onchange="onAssetTypeChanged()">
+                                <option value="herramienta_mayor">Herramienta Mayor / Industrial</option>
+                                <option value="herramienta_menor">Herramienta Menor</option>
+                                <option value="maquinaria">Maquinaria Pesada / Planta / Compresor</option>
+                                <option value="vehiculo">Vehículo / Camión de Carga</option>
+                                <option value="camioneta">Camioneta</option>
+                                <option value="equipo_medicion">Equipo de Medición / Calibración</option>
+                                <option value="__NEW__" style="font-weight: 800; color: #2563eb;">+ Crear Nuevo Tipo de Activo...</option>
+                            </select>
+                            <input type="text" id="nass_new_type" class="form-input hidden" placeholder="Escribe el nombre del nuevo tipo (ej: Planta Eléctrica, Embarcación)...">
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Código de Activo *</label>
+
+                        <input type="text" id="nass_code" placeholder="Ej: HERR-0908 / FLT-009" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <!-- Banner Guía de Nomenclatura Dinámica -->
+                <div id="nass_nomenclature_guide" style="font-size: 11px; padding: 6px 10px; border-radius: 6px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span id="nass_nomenclature_text">Nomenclatura Dalor recomendada: Prefijo HERR- o código de pañol.</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Categoría *</label>
+
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <select id="nass_category" class="form-select" onchange="onAssetCategorySelected()">
+                                <option value="Herramientas Manuales">Herramientas Manuales</option>
+                                <option value="Herramientas Eléctricas">Herramientas Eléctricas</option>
+                                <option value="Equipos de Medición">Equipos de Medición</option>
+                                <option value="Seguridad Industrial">Seguridad Industrial</option>
+                                <option value="Consumibles de Taller">Consumibles de Taller</option>
+                                <option value="Flota Vehicular">Flota Vehicular</option>
+                                <option value="Maquinaria Pesada">Maquinaria Pesada</option>
+                                <option value="Herramientas Generales">Herramientas Generales</option>
+                                <option value="__NEW__" style="font-weight: 800; color: #2563eb;">+ Crear Nueva Categoría...</option>
+                            </select>
+                            <input type="text" id="nass_new_category" class="form-input hidden" placeholder="Escribe el nombre de la nueva categoría...">
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Condición de Propiedad *</label>
+
+                        <select id="nass_ownership" class="form-select">
+
+                            <option value="propio">Propio (Activo Fijo DALOR)</option>
+
+                            <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
+
+                            <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
+
+                            <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
+
+                            <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Nombre / Denominación del Equipo *</label>
+
+                        <input type="text" id="nass_name" placeholder="Ej: Máquina de Soldar Miller Big Blue 500X..." class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Empresa / Propietario / Arrendador</label>
+
+                        <input type="text" id="nass_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Marca</label>
+
+                        <input type="text" id="nass_brand" placeholder="Miller / Lincoln / Bosch / Ford..." class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Modelo / Especificación</label>
+
+                        <input type="text" id="nass_model" placeholder="Ej: 500X Diésel / GWS 22-230..." class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label" id="nass_serial_label">Serial / Placa</label>
+
+                        <input type="text" id="nass_serial" placeholder="Serial o Nº de Placa" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label" id="nass_odometer_label">Lectura Inicial (Km / Horas)</label>
+
+                        <input type="number" step="0.1" id="nass_odometer" value="0" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Ubicación Inicial *</label>
+
+                        <input type="text" id="nass_location" value="Sede Central Dalor (Guacara)" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Custodio / Responsable</label>
+
+                        <input type="text" id="nass_custodian" value="Disponible en Base" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+
+                    <button type="button" onclick="closeModal('modalNewAsset')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" class="btn-primary" style="background: var(--dalor-navy);">
+
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Activo en Sistema
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO EMPLEADO / PERSONAL -->
+
+    
+
+<div id="modalEditAsset" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #0284c7;">
+                    <i class="fa-solid fa-pen-to-square" style="color: #0284c7;"></i> Editar Activo / Equipo / Herramienta
+                </h3>
+                <button onclick="closeModal('modalEditAsset')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editAssetForm" onsubmit="submitEditAsset(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_asset_id">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Código (Protegido)</label>
+                        <input type="text" id="edit_asset_code" class="form-input" readonly style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 700; color: #002B49;">
+                    </div>
+                    <div>
+                        <label class="form-label">Nombre del Activo / Equipo *</label>
+                        <input type="text" id="edit_asset_name" class="form-input" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Tipo de Activo</label>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <select id="edit_asset_type" class="form-select" onchange="onEditAssetTypeChanged()">
+                                <option value="herramienta">Herramienta</option>
+                                <option value="herramienta_mayor">Herramienta Mayor</option>
+                                <option value="herramienta_menor">Herramienta Menor</option>
+                                <option value="maquinaria">Maquinaria Pesada</option>
+                                <option value="vehiculo">Vehículo / Camión</option>
+                                <option value="camioneta">Camioneta</option>
+                                <option value="equipo_medicion">Equipo de Medición</option>
+                                <option value="__NEW__" style="font-weight: 800; color: #2563eb;">+ Crear Nuevo Tipo de Activo...</option>
+                            </select>
+                            <input type="text" id="edit_new_asset_type" class="form-input hidden" placeholder="Escribe el nuevo tipo de activo...">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Categoría</label>
+                        <input type="text" id="edit_asset_category" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Marca</label>
+                        <input type="text" id="edit_asset_brand" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Modelo</label>
+                        <input type="text" id="edit_asset_model" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Serial</label>
+                        <input type="text" id="edit_asset_serial" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Placa (Vehículos)</label>
+                        <input type="text" id="edit_asset_plate" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Odómetro / Horómetro Actual</label>
+                        <input type="number" step="0.1" id="edit_asset_odometer" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Ubicación</label>
+                        <input type="text" id="edit_asset_location" class="form-input">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalEditAsset')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CALIBRACIÓN DE INVENTARIO (PUNTO 16) -->
+    
+
+<div id="modalAssignResource" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 id="assignModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Asignar Recurso a Proyecto</h3>
+
+                <button onclick="closeModal('modalAssignResource')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="assignResourceForm" onsubmit="submitResourceAction(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <input type="hidden" id="modal_res_type">
+
+                <input type="hidden" id="modal_res_id">
+
+                <input type="hidden" id="modal_action_type">
+
+
+
+                <div>
+
+                    <label class="form-label">Proyecto Destino *</label>
+
+                    <select id="modal_target_project_id" class="form-select" required></select>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Ubicación Física *</label>
+
+                    <input type="text" id="modal_res_location" placeholder="Ej: Planta Guacara" class="form-input" required>
+
+                </div>
+
+
+
+                <div id="modal_custodian_container">
+
+                    <label class="form-label">Custodio / Responsable</label>
+
+                    <input type="text" id="modal_res_custodian" placeholder="Nombre de la persona a cargo" class="form-input">
+
+                </div>
+
+
+
+                <div id="modal_odometer_container">
+
+                    <label class="form-label">Odómetro (Km/Hrs)</label>
+
+                    <input type="number" id="modal_res_odometer" placeholder="Lectura de odómetro" class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" id="btnConfirmResourceAction" class="btn-primary" style="margin-top: 6px;">
+
+                    Confirmar Movimiento
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: REGISTRAR COBRO / ABONO DIRECTO DE CLIENTE -->
+
+    
+
+<div id="modalAssetHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 880px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="assetHistoryTitle" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: #2563eb;"></i> Bitácora de Uso & Trazabilidad
+                    </h3>
+                    <p id="assetHistorySubtitle" style="font-size: 12px; color: #64748b; margin: 3px 0 0 0;">Cargando información del activo...</p>
+                </div>
+                <button onclick="closeModal('modalAssetHistory')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Asset KPI Card -->
+            <div id="assetHistoryKpiCard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Ubicación Actual</span>
+                    <p id="assetHistCurrentLoc" style="font-size: 12px; font-weight: 800; color: #1e293b; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Custodio / Conductor</span>
+                    <p id="assetHistCustodian" style="font-size: 12px; font-weight: 800; color: #2563eb; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Odómetro / Horómetro</span>
+                    <p id="assetHistOdometer" style="font-size: 13px; font-weight: 800; color: #059669; margin: 2px 0 0 0;">0 Km</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Estado Operativo</span>
+                    <p id="assetHistStatusBadge" style="margin: 2px 0 0 0;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #dcfce7; color: #166534;">DISPONIBLE</span></p>
+                </div>
+            </div>
+
+            <!-- Timeline Table -->
+            <div class="table-wrapper">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px; text-align: left;">Fecha & Hora</th>
+                            <th style="padding: 8px; text-align: left;">Tipo Evento</th>
+                            <th style="padding: 8px; text-align: left;">Cód / Guía</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Chofer / Custodio</th>
+                            <th style="padding: 8px; text-align: right;">Odómetro</th>
+                            <th style="padding: 8px; text-align: left;">Observaciones / Motivo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetHistoryTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #64748b; padding: 20px;">Cargando bitácora del activo...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Bitácora de Activo -->
+            <div id="assetHistoryPagination"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalAssetHistory')" class="btn-secondary">Cerrar Bitácora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: BITÁCORA Y TRAZABILIDAD INTEGRAL DE COLABORADOR / PERSONAL (PUNTO 6) -->
+    
+
+<div id="modalSubstituteResource" class="modal-overlay hidden" style="z-index: 2200;">
+    <div class="modal-content" style="max-width: 540px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+            <div>
+                <h3 id="modalSubstituteResourceTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-arrows-rotate" style="color: #2563eb;"></i> Sustituir Recurso en Obra
+                </h3>
+                <p id="modalSubstituteResourceSubtitle" style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Reemplazar un recurso asignado por otro disponible en Base Central.</p>
+            </div>
+            <button type="button" onclick="closeModal('modalSubstituteResource')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+
+        <form id="substituteResourceForm" onsubmit="submitSubstituteResource(event)" style="display: flex; flex-direction: column; gap: 12px;">
+            <input type="hidden" id="sub_res_type">
+            <input type="hidden" id="sub_res_old_id">
+            <input type="hidden" id="sub_res_project_id">
+
+            <!-- Obra / Proyecto Asociado -->
+            <div id="sub_res_project_banner" style="background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 8px; padding: 10px 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase;">
+                        <i class="fa-solid fa-helmet-safety"></i> Obra / Proyecto Asignado:
+                    </span>
+                    <span id="sub_res_project_badge" style="font-size: 10px; font-weight: 800; background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px;">En Obra</span>
+                </div>
+                <div id="sub_res_project_display" style="font-size: 13.5px; font-weight: 800; color: #1e3a8a; margin-top: 4px;">
+                    Consultando datos del proyecto...
+                </div>
+            </div>
+
+            <!-- Recurso Saliente -->
+            <div style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 12px;">
+                <span style="font-size: 11px; font-weight: 800; color: #991b1b; text-transform: uppercase;">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Recurso Saliente (Retorna a Base Dalor):
+                </span>
+                <div id="sub_res_old_display" style="font-size: 13px; font-weight: 800; color: #7f1d1d; margin-top: 3px;">-</div>
+            </div>
+
+            <!-- Recurso Entrante -->
+            <div>
+                <label class="form-label" style="font-size: 11px; font-weight: 700;">
+                    <i class="fa-solid fa-circle-check" style="color: #16a34a;"></i> Seleccionar Recurso Entrante (Disponible en Base) *
+                </label>
+                <select id="sub_res_new_select" class="form-select" required style="font-size: 12px; font-weight: 700; height: 36px;">
+                    <option value="">-- Cargando recursos disponibles... --</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label" style="font-size: 11px; font-weight: 700;">Motivo de la Sustitución *</label>
+                <select id="sub_res_reason_select" onchange="onSubstituteReasonChange(this.value)" class="form-select" style="font-size: 12px; margin-bottom: 6px;">
+                    <option value="Relevo programado de cuadrilla / turno">Relevo programado de cuadrilla / turno</option>
+                    <option value="Baja médica / Permiso de operario">Baja médica / Permiso de operario</option>
+                    <option value="Equipo / Herramienta averiada (Requiere mantenimiento)">Equipo / Herramienta averiada (Requiere mantenimiento)</option>
+                    <option value="Cambio de especificación técnica de la labor">Cambio de especificación técnica de la labor</option>
+                    <option value="Otro">Otro motivo personalizado...</option>
+                </select>
+                <input type="text" id="sub_res_custom_reason" class="form-input hidden" placeholder="Especifique el motivo de sustitución...">
+            </div>
+
+            <div>
+                <label class="form-label" style="font-size: 11px; font-weight: 700;">Notas u Observaciones de Traza</label>
+                <input type="text" id="sub_res_notes" class="form-input" placeholder="Opcional: detalles adicionales para la bitácora">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalSubstituteResource')" class="btn-secondary">Cancelar</button>
+                <button type="submit" id="btnSubmitSubstituteResource" class="btn-primary" style="background: #2563eb;">
+                    <i class="fa-solid fa-arrows-rotate"></i> Confirmar Sustitución
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: SUSTITUIR MATERIAL / INSUMO EN REQUISICIÓN DE OBRA -->

@@ -143,10 +143,44 @@ def get_expense_categories(db: Session = Depends(get_db)):
             "name": c.name,
             "parent_id": c.parent_id,
             "group_type": c.group_type,
-            "monthly_budget_usd": c.monthly_budget_usd
+            "monthly_budget_usd": c.monthly_budget_usd,
+            "is_active": getattr(c, "is_active", True)
         }
         for c in filtered_cats
     ]
+
+@router.post("/categories")
+def create_expense_category(payload: dict, db: Session = Depends(get_db)):
+    code = (payload.get("code") or "").strip()
+    name = (payload.get("name") or "").strip()
+    group_type = payload.get("group_type") or "general"
+    monthly_budget_usd = float(payload.get("monthly_budget_usd") or 0.0)
+    if not code or not name:
+        raise HTTPException(status_code=400, detail="Código y nombre son obligatorios.")
+    existing = db.query(ExpenseCategory).filter(ExpenseCategory.code == code).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Ya existe una partida con el código [{code}].")
+    new_cat = ExpenseCategory(
+        code=code,
+        name=name,
+        group_type=group_type,
+        monthly_budget_usd=monthly_budget_usd
+    )
+    db.add(new_cat)
+    db.commit()
+    db.refresh(new_cat)
+    return {"success": True, "id": new_cat.id, "code": new_cat.code, "name": new_cat.name, "monthly_budget_usd": new_cat.monthly_budget_usd}
+
+@router.post("/categories/{cat_id}/toggle-active")
+def toggle_category_active(cat_id: int, db: Session = Depends(get_db)):
+    cat = db.query(ExpenseCategory).filter(ExpenseCategory.id == cat_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Partida no encontrada.")
+    current_status = getattr(cat, "is_active", True)
+    if hasattr(cat, "is_active"):
+        cat.is_active = not current_status
+    db.commit()
+    return {"success": True, "id": cat.id, "is_active": getattr(cat, "is_active", True)}
 
 @router.get("/categories-tree")
 def get_categories_tree(db: Session = Depends(get_db)):

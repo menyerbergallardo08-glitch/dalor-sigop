@@ -1,7 +1,7 @@
-// DALOR SIGO-P ERP — Service Worker Oficial (v1.0.0-PROD)
-// Políticas de Resguardo: Network-First para APIs y Stale-While-Revalidate para Interfaz
+// DALOR SIGO-P ERP — Service Worker Oficial (v2.1.0-LIVE)
+// Políticas: Network-First universal con Fallback a Caché Offline para continuidad operativa
 
-const CACHE_NAME = 'dalor-sigop-pwa-v1';
+const CACHE_NAME = 'dalor-sigop-pwa-v2.2.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,18 +12,19 @@ const STATIC_ASSETS = [
   '/logo_dalor.jpg'
 ];
 
-// 1. INSTALACIÓN: Cachear assets fundamentales
+// 1. INSTALACIÓN: Cachear assets fundamentales y activar de inmediato
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[SW] Algunos assets estáticos fallaron en precarga:', err);
+        console.warn('[SW] Precarga inicial omitida:', err);
       });
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// 2. ACTIVACIÓN: Purgar cachés viejos
+// 2. ACTIVACIÓN: Purgar inmediatamente todas las cachés viejas
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -34,13 +35,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. FETCH INTERCEPTOR
+// 3. FETCH INTERCEPTOR: NETWORK-FIRST UNIVERSAL
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // A. ESTRATEGIA PARA APIS (/api/v1/): NETWORK-FIRST ESTRICTO
-  // NUNCA cachear transacciones contables, tasas BCV o datos financieros
+  // A. APIS (/api/v1/): Network-First estricto, nunca cachear transacciones financieras
   if (url.pathname.startsWith('/api/v1/')) {
     event.respondWith(
       fetch(request).catch(() => {
@@ -48,7 +48,7 @@ self.addEventListener('fetch', (event) => {
           JSON.stringify({
             offline: true,
             status: 'offline',
-            message: 'Sin conexión a internet. La acción se ha bloqueado o resguardado localmente.'
+            message: 'Sin conexión al servidor host. La operación fue resguardada o rechazada por seguridad.'
           }),
           {
             status: 503,
@@ -60,38 +60,36 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // B. ESTRATEGIA PARA NAVEGACIÓN (HTML Principal): Network-First con fallback a cache
+  // B. HTML Principal y Navegación: Network-First con fallback a index.html
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return networkResponse;
         })
         .catch(() => {
-          return caches.match('/index.html').then((cached) => {
-            return cached || caches.match('/');
-          });
+          return caches.match('/index.html').then((cached) => cached || caches.match('/'));
         })
     );
     return;
   }
 
-  // C. ESTRATEGIA PARA RECURSOS ESTÁTICOS (JS, CSS, Fuentes, Imágenes): Stale-While-Revalidate
+  // C. Assets (JS, CSS, Fuentes, Imágenes): NETWORK-FIRST para garantizar código siempre fresco
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
+    fetch(request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && request.method === 'GET') {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return networkResponse;
-      }).catch(() => null);
-
-      return cachedResponse || fetchPromise;
-    })
+      })
+      .catch(() => {
+        return caches.match(request);
+      })
   );
 });

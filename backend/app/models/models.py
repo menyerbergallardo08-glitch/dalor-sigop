@@ -112,6 +112,7 @@ class Client(Base):
     projects = relationship("Project", back_populates="client")
     quotations = relationship("Quotation", back_populates="client")
     receivables = relationship("AccountReceivable", back_populates="client")
+    cxc_logs = relationship("ReceivableFollowUpLog", back_populates="client", cascade="all, delete-orphan")
 
 class ServiceItem(Base):
     __tablename__ = "service_items"
@@ -145,6 +146,7 @@ class Quotation(Base):
     total_usd = Column(Float, default=0.0)
     status = Column(String(50), default="borrador")
     coletilla_divisas = Column(Boolean, default=True)
+    coletilla_bolivares = Column(Boolean, default=False)
     coletilla_modalidad = Column(Boolean, default=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -312,7 +314,12 @@ class AssetService(Base):
     performed_by = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    hours_operated = Column(Float, nullable=True, default=0.0)
+    created_expense = Column(Boolean, default=False)
+    expense_id = Column(Integer, ForeignKey("expenses.id", ondelete="SET NULL"), nullable=True)
+
     asset = relationship("Asset", back_populates="services")
+    expense = relationship("Expense")
 
 class Personnel(Base):
     __tablename__ = "personnel"
@@ -328,6 +335,7 @@ class Personnel(Base):
     current_location = Column(String(150), default="Sede Central")
     current_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     roster_type = Column(String(50), default="guacara_fijo")
+    payroll_type = Column(String(50), default="semanal") # semanal, quincenal, mensual, honorarios
     monthly_salary_usd = Column(Float, default=0.0)
     daily_rate_usd = Column(Float, default=0.0)
     is_approver = Column(Boolean, default=False)
@@ -367,6 +375,7 @@ class ExpenseCategory(Base):
     parent_id = Column(Integer, ForeignKey("expense_categories.id"), nullable=True)
     group_type = Column(String(50), default="operativo") # costo_directo, gasto_fijo_sede, retiro_socio
     monthly_budget_usd = Column(Float, default=0.0)
+    business_rule = Column(String(50), default="costo_material_obra", nullable=True) # costo_material_obra, stock_almacen, servicios_honorarios, alquiler_maquinaria_ext, gastos_sede
 
     parent = relationship("ExpenseCategory", remote_side=[id], back_populates="subcategories")
     subcategories = relationship("ExpenseCategory", back_populates="parent")
@@ -483,6 +492,27 @@ class AccountReceivable(Base):
     client = relationship("Client", back_populates="receivables")
     project = relationship("Project", back_populates="receivables")
     payments = relationship("FinancialPayment", back_populates="receivable", cascade="all, delete-orphan")
+    follow_up_logs = relationship("ReceivableFollowUpLog", back_populates="receivable", cascade="all, delete-orphan")
+
+class ReceivableFollowUpLog(Base):
+    __tablename__ = "receivable_follow_up_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    receivable_id = Column(Integer, ForeignKey("accounts_receivable.id", ondelete="CASCADE"), nullable=True)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    
+    contact_channel = Column(String(50), default="Llamada Telefónica") # Llamada Telefónica, WhatsApp, Correo Electrónico, Reunión Presencial, Compromiso de Pago, Nota Interna
+    contact_person = Column(String(150), nullable=True)
+    promised_payment_date = Column(DateTime, nullable=True)
+    promised_amount_usd = Column(Float, nullable=True, default=0.0)
+    
+    notes = Column(Text, nullable=False)
+    evidence_image_path = Column(Text, nullable=True) # Soporte, captura WhatsApp, foto o comprobante alojado en R2
+    recorded_by = Column(String(100), default="Administración")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    receivable = relationship("AccountReceivable", back_populates="follow_up_logs")
+    client = relationship("Client", back_populates="cxc_logs")
 
 class AccountPayable(Base):
     __tablename__ = "accounts_payable"

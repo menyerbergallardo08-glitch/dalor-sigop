@@ -238,6 +238,7 @@ function renderRentalsTablePaginated() {
         if (r.status === 'activo' || r.status === 'retorno_parcial') {
             actionsHtml += `<button type="button" onclick="openReturnRentalModal(${r.id})" class="btn-primary" style="font-size: 11px; padding: 4px 8px; background: #059669; border-radius: 6px; font-weight: 700;" title="Registrar Retorno / Devolución"><i class="fa-solid fa-rotate-left"></i> Retorno</button> `;
         }
+        actionsHtml += `<button type="button" onclick="openEditRentalModal(${r.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; color: #d97706; border-color: #fde68a;" title="Editar Registro"><i class="fa-solid fa-pen"></i></button> `;
         actionsHtml += `<button type="button" onclick="printRentalDeliveryNote(${r.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; color: #0284c7; border-color: #bae6fd;" title="Imprimir Guía de Entrega / Despacho"><i class="fa-solid fa-file-invoice"></i> Guía</button> `;
         actionsHtml += `<button type="button" onclick="deleteRentalRecord(${r.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #ef4444; border-color: #fecaca; border-radius: 6px;" title="Anular Registro"><i class="fa-solid fa-trash-can"></i></button>`;
 
@@ -1463,7 +1464,7 @@ async function printRentalDeliveryNote(rentalId) {
                         <img src="logo_dalor.jpg" alt="DALOR" style="height: 52px; max-width: 140px; object-fit: contain;" onerror="this.style.display='none'">
                         <div>
                             <h2 style="margin: 0; font-size: 18px; font-weight: 900; color: #002B49; letter-spacing: -0.5px; text-transform: uppercase;">Metalmecánica Dalor, C.A.</h2>
-                            <p style="margin: 2px 0 0; font-size: 11px; color: #0284c7; font-weight: 700;">RIF: J-31601195-0 &bull; Zona Ind. Pruinca, Guacara, Edo. Carabobo</p>
+                            <p style="margin: 2px 0 0; font-size: 11px; color: #0284c7; font-weight: 700;">RIF: J-31601195-0 &bull; Av. Cámara de las Industrias, Galpón 10, Zona Industrial El Tigre, Guacara, Edo. Carabobo</p>
                             <p style="margin: 1px 0 0; font-size: 10px; color: #64748b;">Fabricación, Metalmecánica, Montajes Industriales, Equipos & Obras</p>
                         </div>
                     </div>
@@ -1597,6 +1598,57 @@ function openRentalsSubtab() {
     }
 }
 
+function openEditRentalModal(id) {
+    const r = (allRentals || []).find(x => x.id === id);
+    if (!r) return alert("Registro de alquiler no encontrado.");
+    
+    document.getElementById("edit_rent_id").value = r.id;
+    document.getElementById("edit_rent_code").value = r.operation_code || '';
+    document.getElementById("edit_rent_entity").value = r.external_entity || '';
+    document.getElementById("edit_rent_contact").value = r.contact_person || '';
+    document.getElementById("edit_rent_phone").value = r.contact_phone || '';
+    document.getElementById("edit_rent_rate").value = r.rate_usd || 0;
+    document.getElementById("edit_rent_period").value = r.rate_period || 'dia';
+    document.getElementById("edit_rent_start").value = (r.start_date || '').split('T')[0].split(' ')[0];
+    document.getElementById("edit_rent_return").value = (r.expected_return_date || '').split('T')[0].split(' ')[0];
+    document.getElementById("edit_rent_dest").value = r.destination_reference || '';
+    document.getElementById("edit_rent_notes").value = r.notes || '';
+    
+    if (typeof openModal === 'function') openModal('modalEditRental');
+}
+
+async function submitEditRental(e) {
+    if (e) e.preventDefault();
+    const id = document.getElementById("edit_rent_id").value;
+    const payload = {
+        external_entity: document.getElementById("edit_rent_entity").value.trim(),
+        contact_person: document.getElementById("edit_rent_contact").value.trim(),
+        contact_phone: document.getElementById("edit_rent_phone").value.trim(),
+        rate_usd: parseFloat(document.getElementById("edit_rent_rate").value) || 0,
+        rate_period: document.getElementById("edit_rent_period").value,
+        start_date: document.getElementById("edit_rent_start").value || null,
+        expected_return_date: document.getElementById("edit_rent_return").value || null,
+        destination_reference: document.getElementById("edit_rent_dest").value.trim(),
+        notes: document.getElementById("edit_rent_notes").value.trim()
+    };
+    try {
+        const res = await authFetch(`${API_BASE}/rentals/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: 'Error al actualizar orden' }));
+            throw new Error(err.detail || 'Error al actualizar orden');
+        }
+        alert("✅ Orden de alquiler/préstamo actualizada con éxito.");
+        if (typeof closeModal === 'function') closeModal('modalEditRental');
+        loadRentalsList();
+    } catch (err) {
+        alert("❌ Error: " + err.message);
+    }
+    return false;
+}
+
 // Exportar al scope global
 if (typeof window !== 'undefined') {
     window.loadRentalsList = loadRentalsList;
@@ -1631,6 +1683,8 @@ if (typeof window !== 'undefined') {
     window.toggleRentalClientsDropdown = toggleRentalClientsDropdown;
     window.selectRentalPredictiveClient = selectRentalPredictiveClient;
     window.renderRentalClientsList = renderRentalClientsList;
+    window.openEditRentalModal = openEditRentalModal;
+    window.submitEditRental = submitEditRental;
 }
 
 export { 
@@ -1644,5 +1698,6 @@ export {
     selectPredictiveRentalResource, onRentalReturnDateChanged,
     onRentalExtensionModeChanged, updateExtensionCalculatedTotal,
     checkRentalClientCreditRisk, confirmRentalClientRisk, cancelRentalClientRisk,
-    onRentalClientInput, toggleRentalClientsDropdown, selectRentalPredictiveClient, renderRentalClientsList
+    onRentalClientInput, toggleRentalClientsDropdown, selectRentalPredictiveClient, renderRentalClientsList,
+    openEditRentalModal, submitEditRental
 };

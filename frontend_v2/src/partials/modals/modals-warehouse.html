@@ -1,0 +1,484 @@
+<div id="modalMaterialEntry" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 820px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 800; color: #059669; margin: 0;">
+                        <i class="fa-solid fa-cart-plus"></i> + Registrar Entrada de Material a Almacén (Factura / Guía Multi-Renglón)
+                    </h3>
+                    <p style="font-size: 11.5px; color: #64748b; margin: 3px 0 0 0;">Carga masiva de ítems recibidos en almacén central con actualización automática de stock y costos</p>
+                </div>
+                <button onclick="closeModal('modalMaterialEntry')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="materialEntryForm" onsubmit="submitMaterialEntry(event); return false;" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Datos Generales de la Compra -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                    <div>
+                        <label class="form-label">Proveedor / Vendedor *</label>
+                        <input type="text" id="me_supplier" placeholder="Ej: Hierros Guayana C.A." class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Nº Factura / Guía Proveedor *</label>
+                        <input type="text" id="me_doc" placeholder="FAC-00123 / G-9821" class="form-input" required>
+                    </div>
+                </div>
+
+                <!-- Tabla Dinámica Multi-Renglón -->
+                <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-layer-group" style="color: #059669;"></i> Renglones de la Factura / Guía de Entrada:
+                        </span>
+                        <button type="button" onclick="addMaterialEntryRow()" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669; font-weight: 700;">
+                            <i class="fa-solid fa-plus"></i> Añadir Renglón
+                        </button>
+                    </div>
+
+                    <div style="max-height: 260px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <table id="me_materials_table" style="width: 100%; border-collapse: collapse; font-size: 11.5px;">
+                            <thead>
+                                <tr style="background: #f1f5f9; text-align: left; color: #475569; position: sticky; top: 0; z-index: 1;">
+                                    <th style="padding: 6px 8px;">Material / Consumible (Búsqueda Predictiva)</th>
+                                    <th style="padding: 6px 8px; width: 110px; text-align: right;">Cantidad</th>
+                                    <th style="padding: 6px 8px; width: 130px; text-align: right;">Costo Unit. ($)</th>
+                                    <th style="padding: 6px 8px; width: 120px; text-align: right;">Subtotal ($)</th>
+                                    <th style="padding: 6px 8px; width: 36px; text-align: center;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="me_materials_tbody">
+                                <!-- Renglones dinámicos multi-ítem -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Total Inversión Factura -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 2px dashed #e2e8f0;">
+                        <span style="font-size: 12px; font-weight: 700; color: #64748b;">Total Factura / Inversión de Entrada:</span>
+                        <div style="text-align: right;">
+                            <b id="me_total_usd_preview" style="font-size: 16px; font-weight: 900; color: #059669;">$0.00 USD</b>
+                            <span id="me_total_bs_preview" style="font-size: 11px; color: #64748b; display: block;">≈ Bs 0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opciones Financieras (CxP a Crédito vs Contado) -->
+                <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #166534; cursor: pointer;">
+                        <input type="checkbox" id="me_register_cxp" onchange="toggleMaterialEntryPaymentBox()" style="width: 17px; height: 17px; accent-color: #059669;">
+                        <span>Registrar como Deuda Pendiente en Cuentas por Pagar (CxP a Crédito)</span>
+                    </label>
+                    <span style="font-size: 10.5px; color: #15803d; margin-top: 2px; display: block; margin-left: 25px;">
+                        Al marcar esta opción, se creará automáticamente la cuenta por pagar en el módulo de CxP vinculada a esta factura de entrada.
+                    </span>
+                </div>
+
+                <!-- Pago de Contado: Egreso Inmediato de Caja/Banco -->
+                <div id="me_cash_payment_box" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #1e40af; display: block; margin-bottom: 6px;">
+                        <i class="fa-solid fa-money-bill-wave"></i> Compra de Contado: Egreso Inmediato de Caja / Banco
+                    </span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div>
+                            <label class="form-label">Cuenta / Caja de Origen *</label>
+                            <select id="me_payment_channel" class="form-select">
+                                <option value="caja_chica_usd">💵 Caja Chica USD (Efectivo)</option>
+                                <option value="banco_mercantil">🏦 Banco Mercantil (VES/BCV)</option>
+                                <option value="banco_banesco">🏦 Banesco (VES/BCV)</option>
+                                <option value="zelle">📱 Zelle DALOR</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">N° Referencia Pago / Recibo *</label>
+                            <input type="text" id="me_payment_ref" placeholder="Ej: REF-9831 / Efectivo" class="form-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Notas / Ubicación en Galpón</label>
+                    <input type="text" id="me_notes" placeholder="Rack 3, Sector Planchas..." class="form-input">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+                    <button type="button" onclick="closeModal('modalMaterialEntry')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #059669; font-weight: 800; font-size: 12.5px; padding: 7px 18px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Confirmar Ingreso a Almacén
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- MODAL: DESPACHO / CONSUMO DE MATERIAL (A OBRA O TALLER) -->
+
+    
+
+<div id="modalMaterialConsume" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 520px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: #0284c7;">
+
+                    <i class="fa-solid fa-truck-arrow-right"></i> Despachar / Consumir Material de Almacén
+
+                </h3>
+
+                <button onclick="closeModal('modalMaterialConsume')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="materialConsumeForm" onsubmit="submitMaterialConsume(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div>
+                    <label class="form-label">Material a Despachar *</label>
+                    <input type="text" id="mc_material_search" oninput="filterConsumeMaterialDropdown(this.value)" placeholder="🔍 Escribe para filtrar material por código o nombre..." class="form-input" style="font-size: 11.5px; padding: 5px 8px; margin-bottom: 6px; background: white; border: 1.5px solid #bae6fd;">
+                    <select id="mc_material_id" class="form-select" required onchange="onConsumeMaterialSelected()"></select>
+                </div>
+
+                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; color: #0369a1;">Stock Disponible en Almacén:</span>
+                    <b id="mc_stock_available_label" style="font-size: 14px; color: #0284c7;">0.00 UND</b>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cantidad a Despachar *</label>
+                        <input type="number" step="0.01" id="mc_quantity" placeholder="0.00" class="form-input" required oninput="calcMaterialConsumeTotal()">
+                    </div>
+                    <div>
+                        <label class="form-label">Costo Imputado Estimado</label>
+                        <input type="text" id="mc_cost_preview" class="form-input" readonly style="background: #f1f5f9; font-weight: 700;">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Destino / Imputación *</label>
+                    <select id="mc_project_id" class="form-select" required onchange="onConsumeProjectChanged()">
+                        <option value="">-- Consumo Interno Taller Central (Gasto Sede) --</option>
+                    </select>
+                </div>
+
+                <!-- Banner Informativo de Guía de Despacho (Punto 5) -->
+                <div id="mc_guide_banner" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 10px; display: none;">
+                    <span style="font-size: 11px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-file-circle-check"></i> Al despachar a obra se emitirá automáticamente la Guía de Despacho formal (GD-XXXX)
+                    </span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                        <div>
+                            <label style="font-size: 10px; font-weight: 700; color: #166534;">Conductor / Chofer</label>
+                            <input type="text" id="mc_driver_name" placeholder="Transporte DALOR / Conductor" class="form-input" style="font-size: 11px; padding: 4px 6px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; font-weight: 700; color: #166534;">Placa de Vehículo</label>
+                            <input type="text" id="mc_vehicle_plate" placeholder="Ej: DALOR-01 / 3-V-1-01" class="form-input" style="font-size: 11px; padding: 4px 6px;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Nº Requisición / Vale de Salida</label>
+                        <input type="text" id="mc_doc" placeholder="VALE-042" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Entregado Por (Custodio)</label>
+                        <input type="text" id="mc_performed_by" value="Custodio de Almacén Central" class="form-input">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Notas / Justificación Técnica</label>
+                    <input type="text" id="mc_notes" placeholder="Ej: Material verificado en pañol y despachado" class="form-input">
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px; background: #0284c7; font-weight: 800;">
+                    <i class="fa-solid fa-truck-arrow-right"></i> Confirmar Despacho & Emitir Guía
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- MODAL: BANDEJA DE REQUISICIONES DE OBRAS (PREPARACIÓN & DESPACHO ALMACÉN) -->
+    
+
+<div id="modalCalibrateMaterial" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #b45309;">
+                    <i class="fa-solid fa-sliders" style="color: #d97706;"></i> Calibración & Ajuste de Stock Físico
+                </h3>
+                <button onclick="closeModal('modalCalibrateMaterial')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="calibrateMaterialForm" onsubmit="submitCalibrateMaterial(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="calib_mat_id">
+                <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #92400e;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> <b>Autorización Requerida:</b> La calibración de inventario rectifica el stock físico en bodega y genera un registro de auditoría estricto. Requiere la clave de Director General o Administrador.
+                </div>
+                <div>
+                    <label class="form-label">Material / Ítem</label>
+                    <input type="text" id="calib_mat_display" class="form-input" readonly style="background: #f1f5f9; font-weight: 700;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Stock en Sistema</label>
+                        <input type="text" id="calib_mat_current_stock" class="form-input" readonly style="background: #f1f5f9; font-weight: 800; color: #002B49;">
+                    </div>
+                    <div>
+                        <label class="form-label">Nuevo Stock Físico Real *</label>
+                        <input type="number" step="0.01" id="calib_mat_new_stock" class="form-input" required style="border-color: #d97706; font-weight: 800;">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Motivo o Justificación del Ajuste *</label>
+                    <input type="text" id="calib_mat_reason" class="form-input" placeholder="Ej: Conteo físico semestral, merma calibrada..." required>
+                </div>
+                <div>
+                    <label class="form-label">Contraseña de Dirección / Administrador *</label>
+                    <input type="password" id="calib_mat_password" class="form-input" placeholder="Ingresa tu contraseña de usuario..." required autocomplete="current-password">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalCalibrateMaterial')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #d97706; color: white;">
+                        <i class="fa-solid fa-check-double"></i> Calibrar Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL EDITAR ORDEN DE ALQUILER / PRÉSTAMO (PUNTO 13) -->
+    
+
+<div id="modalNewMaterial" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 520px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-plus"></i> Crear Nuevo Ítem en Catálogo de Materiales
+
+                </h3>
+
+                <button onclick="closeModal('modalNewMaterial')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newMaterialForm" onsubmit="submitCreateMaterial(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código *</label>
+
+                        <input type="text" id="nmat_code" placeholder="MAT-PL-005" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre / Descripción *</label>
+
+                        <input type="text" id="nmat_name" placeholder="Ej: Plancha de Acero A36 3/8..." class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Categoría *</label>
+                        <select id="nmat_category" class="form-select" required onchange="onNewMaterialCategoryChanged()">
+                            <option value="Planchas y Laminas">Planchas y Láminas</option>
+                            <option value="Acero Estructural">Acero Estructural / Vigas</option>
+                            <option value="Tuberias y Canerias">Tuberías y Cañerías</option>
+                            <option value="Soldadura y Gases">Soldadura y Gases</option>
+                            <option value="Abrasivos y Corte">Abrasivos y Corte</option>
+                            <option value="Tornilleria y Fijaciones">Tornillería y Fijaciones</option>
+                            <option value="Pinturas y Revestimientos">Pinturas y Revestimientos</option>
+                            <option value="Consumibles de Taller">Consumibles de Taller</option>
+                            <option value="__NEW__" style="font-weight: bold; color: #2563eb;">+ Crear Nueva Categoría...</option>
+                        </select>
+                        <input type="text" id="nmat_category_custom" class="form-input hidden" style="margin-top: 6px;" placeholder="Escribe el nombre de la nueva categoría...">
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Unidad de Medida *</label>
+
+                        <select id="nmat_unit" class="form-select" required>
+
+                            <option value="UND">Unidad (UND)</option>
+
+                            <option value="KG">Kilogramos (KG)</option>
+
+                            <option value="MTR">Metros (MTR)</option>
+
+                            <option value="ROLLO">Rollo</option>
+
+                            <option value="GAL">Galón (GAL)</option>
+
+                            <option value="CAJA">Caja</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Stock Inicial</label>
+
+                        <input type="number" step="0.01" id="nmat_stock" value="0.00" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Alerta Mínima</label>
+
+                        <input type="number" step="0.01" id="nmat_alert" value="5.00" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Costo Unit. ($)</label>
+
+                        <input type="number" step="0.01" id="nmat_cost" value="0.00" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Ubicación en Almacén</label>
+
+                    <input type="text" id="nmat_location" value="Almacén Central Dalor" class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;">
+
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Material en Catálogo
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: GUÍA DE TRASLADO & DESPACHO DE EQUIPOS A OBRA -->
+
+    
+
+<div id="modalEditMaterial" class="modal-overlay hidden" style="z-index: 2200;">
+    <div class="modal-content" style="max-width: 550px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+            <div>
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-pen-to-square" style="color: #0284c7;"></i> Editar Ficha de Material / Insumo
+                </h3>
+                <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Actualizar especificaciones técnicas, categoría y stock mínimo del catálogo.</p>
+            </div>
+            <button type="button" onclick="closeModal('modalEditMaterial')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+
+        <form id="editMaterialForm" onsubmit="submitEditMaterial(event)" style="display: flex; flex-direction: column; gap: 12px;">
+            <input type="hidden" id="edit_mat_id">
+            
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                <div>
+                    <label class="form-label" style="font-size: 11px; font-weight: 700;">Código (No editable)</label>
+                    <input type="text" id="edit_mat_code" class="form-input" readonly style="background: #f1f5f9; font-family: monospace; font-weight: 700; color: #475569;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 11px; font-weight: 700;">Nombre / Descripción *</label>
+                    <input type="text" id="edit_mat_name" class="form-input" required placeholder="Ej: Viga IPE 160 x 12m">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <label class="form-label" style="font-size: 11px; font-weight: 700;">Categoría *</label>
+                    <input type="text" id="edit_mat_category" class="form-input" required placeholder="Ej: Acero Estructural" list="edit_mat_category_list">
+                    <datalist id="edit_mat_category_list">
+                        <option value="Acero Estructural">
+                        <option value="Pintura y Recubrimientos">
+                        <option value="Soldadura y Consumibles">
+                        <option value="Tornillería y Fijaciones">
+                        <option value="Electricidad e Iluminación">
+                        <option value="Gases Industriales">
+                        <option value="Herramientas Menores">
+                        <option value="Seguridad Industrial">
+                    </datalist>
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 11px; font-weight: 700;">Unidad de Medida *</label>
+                    <select id="edit_mat_unit" class="form-select" required>
+                        <option value="UND">UND (Unidades)</option>
+                        <option value="KG">KG (Kilogramos)</option>
+                        <option value="MTS">MTS (Metros lineales)</option>
+                        <option value="PZA">PZA (Piezas)</option>
+                        <option value="GLN">GLN (Galones)</option>
+                        <option value="CNA">CNA (Canecas / Cuñetes)</option>
+                        <option value="LTS">LTS (Litros)</option>
+                        <option value="PAR">PAR (Pares)</option>
+                        <option value="ROLLO">ROLLO (Rollos)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <label class="form-label" style="font-size: 11px; font-weight: 700;">Stock Mínimo de Alerta</label>
+                    <input type="number" id="edit_mat_min_stock" class="form-input" step="any" min="0" placeholder="5">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 11px; font-weight: 700;">Costo Unitario ($ USD)</label>
+                    <input type="number" id="edit_mat_unit_cost" class="form-input" step="0.01" min="0" placeholder="0.00">
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label" style="font-size: 11px; font-weight: 700;">Ubicación en Almacén</label>
+                <input type="text" id="edit_mat_location" class="form-input" placeholder="Ej: Pasillo A - Estante 2">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalEditMaterial')" class="btn-secondary">Cancelar</button>
+                <button type="submit" id="btnSubmitEditMaterial" class="btn-primary" style="background: #0284c7;">
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: SUSTITUIR RECURSO EN OBRA (PERSONAL / HERRAMIENTAS / VEHÍCULOS) -->

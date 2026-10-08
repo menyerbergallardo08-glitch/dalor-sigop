@@ -1,0 +1,675 @@
+<div id="modalPrintPreview" class="modal-overlay hidden" style="background: rgba(15, 23, 42, 0.75); z-index: 9999;">
+
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 92vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 14px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);">
+
+            
+
+            <!-- Barra Superior de Controles de Impresión -->
+
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--dalor-navy); color: white; padding: 12px 20px; border-bottom: 2px solid var(--dalor-gold);">
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+
+                    <span style="background: var(--dalor-gold); color: var(--dalor-navy); padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 13px;">
+
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+
+                    </span>
+
+                    <div>
+
+                        <h3 id="previewModalTitle" style="font-size: 15px; font-weight: 800; margin: 0; color: white;">Vista Preliminar de Presupuesto Formal</h3>
+
+                        <p style="font-size: 11px; color: #94a3b8; margin: 0;">Formato membretado oficial listo para imprimir o enviar en PDF</p>
+
+                    </div>
+
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+
+                    <button onclick="triggerPrintFromModal()" class="btn-primary" style="background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800; font-size: 12px; padding: 6px 14px; border-radius: 6px; box-shadow: 0 2px 6px rgba(245, 184, 0, 0.4);">
+
+                        <i class="fa-solid fa-print"></i> Imprimir / Guardar como PDF
+
+                    </button>
+
+                    <button onclick="closeModal('modalPrintPreview')" class="btn-secondary" style="background: #334155; color: white; border: none; font-size: 12px; padding: 6px 12px; border-radius: 6px;">
+
+                        <i class="fa-solid fa-xmark"></i> Cerrar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Contenedor con Scroll de la Hoja Membretada -->
+
+            <div id="printPreviewScrollArea" style="overflow-y: auto; padding: 25px; background: #f1f5f9; flex: 1;">
+
+                <div id="modalPrintPreviewContent" class="printable-sheet" style="background: white; max-width: 820px; margin: 0 auto; padding: 35px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #cbd5e1;">
+
+                    <!-- Se inyecta dinámicamente -->
+
+                </div>
+
+            </div>
+
+
+
+        </div>
+
+    </div>
+
+
+
+
+
+    <!-- ====================================================================
+
+         MODAL: CARGA RÁPIDA EN 3 TOQUES (CERO FRICCIÓN / CONSUMO DIARIO)
+
+         ==================================================================== -->
+
+    
+
+<div id="modalReceiptViewer" class="modal-overlay hidden" style="z-index: 100000;">
+        <div class="modal-content" style="max-width: 650px; text-align: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+                <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+                    <i class="fa-solid fa-receipt" style="color: var(--dalor-blue);"></i> Comprobante / Factura Digital
+                </h3>
+                <button onclick="closeModal('modalReceiptViewer')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <div style="max-height: 70vh; overflow: auto; background: #0f172a; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 220px;">
+                <img id="receiptViewerImg" src="" alt="Comprobante" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 4px;">
+                <div id="receiptViewerError" class="hidden" style="width: 100%;"></div>
+            </div>
+
+            <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <div>
+                    <label id="receiptViewerUploadBtn" class="btn-secondary" style="font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; color: #334155;">
+                        <i class="fa-solid fa-cloud-arrow-up" style="color: #0284c7;"></i> <span id="receiptViewerUploadText">Adjuntar / Reemplazar Foto</span>
+                        <input type="file" id="receiptViewerFileInput" accept="image/*,.pdf" style="display: none;" onchange="handleModalReceiptUpload(this.files[0])">
+                    </label>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <a id="receiptViewerDownload" href="" target="_blank" class="btn-primary" style="background: #0284c7; font-size: 12px; text-decoration: none;">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Pestaña Nueva
+                    </a>
+                    <button onclick="closeModal('modalReceiptViewer')" class="btn-secondary" style="font-size: 12px;">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- MODAL: AJUSTE MANUAL DE CONTINGENCIA DE TASA BCV -->
+
+    
+
+<div id="modalManualTasa" class="modal-overlay hidden" style="z-index: 100000;">
+
+        <div class="modal-card" style="max-width: 420px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); display: flex; align-items: center; gap: 8px; margin: 0;">
+
+                    <i class="fa-solid fa-scale-balanced" style="color: var(--dalor-gold);"></i> Tasa de Cambio (Contingencia)
+
+                </h3>
+
+                <button onclick="closeModal('modalManualTasa')" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer;">&times;</button>
+
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size: 12px; color: #475569;">
+
+                <p style="margin: 0 0 6px 0;"><b>Cotización BCV Actual:</b> <span id="modalBcvCurrentRate" style="color: var(--dalor-blue); font-weight: 800;">859.06 Bs/$</span></p>
+
+                <p style="margin: 0 0 6px 0;"><b>Fecha Valor Oficial:</b> <span id="modalBcvDateValue" style="color: #0f172a; font-weight: 700;">-</span></p>
+
+                <p style="margin: 0; font-size: 11px; color: #64748b;">El sistema actualiza esta tasa automáticamente desde el portal del BCV. Modifícala solo si existe una contingencia bancaria o feriado extraordinario.</p>
+
+            </div>
+
+            <form onsubmit="submitManualTasa(event)">
+
+                <div class="form-group" style="margin-bottom: 14px;">
+
+                    <label class="form-label" style="font-weight: 700;">Nueva Tasa Manual (Bs/$):</label>
+
+                    <input type="number" step="0.01" id="manualTasaInput" class="form-control" style="font-size: 16px; font-weight: 800; text-align: center; color: var(--dalor-navy);" required>
+
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+
+                    <button type="button" onclick="closeModal('modalManualTasa')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+
+                    <button type="button" onclick="closeModal('modalManualTasa'); openBcvRateHistoryModal();" class="btn-secondary" style="font-size: 12px; color: #2563eb;">
+
+                        <i class="fa-solid fa-clock-rotate-left"></i> Histórico BCV
+
+                    </button>
+
+                    <button type="button" onclick="syncBcvRateFromBtn(event); closeModal('modalManualTasa');" class="btn-secondary" style="font-size: 12px; color: #0284c7;">
+
+                        <i class="fa-solid fa-arrows-rotate"></i> Forzar BCV Oficial
+
+                    </button>
+
+                    <button type="submit" class="btn-primary" style="font-size: 12px; background: var(--dalor-gold); color: var(--dalor-navy); font-weight: 800;">
+
+                        Guardar Tasa
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: CAPTURA & OCR DE ODÓMETRO VEHICULAR -->
+
+    
+
+<div id="modalUserManagement" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 780px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <div>
+
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy);">
+
+                        <i class="fa-solid fa-users-gear" style="color: #0284c7;"></i> Gestión de Usuarios & Cuentas de Acceso
+
+                    </h3>
+
+                    <p style="font-size: 11px; color: #64748b;">Administración de cuentas con contraseñas cifradas y roles corporativos.</p>
+
+                </div>
+
+                <div style="display: flex; gap: 8px; align-items: center;">
+
+                    <button onclick="openNewUserModal()" class="btn-primary" style="background: #0284c7; font-size: 12px; font-weight: 800;">
+
+                        <i class="fa-solid fa-user-plus"></i> + Nuevo Usuario
+
+                    </button>
+
+                    <button onclick="closeModal('modalUserManagement')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Usuario (Login)</th>
+
+                            <th>Nombre Completo</th>
+
+                            <th>Correo</th>
+
+                            <th>Rol Corporativo</th>
+
+                            <th>Estado</th>
+
+                            <th>Último Acceso</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="userManagementTableBody"></tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: MAPA DE PERMISOS DE USUARIO -->
+    
+
+<div id="modalUserPermissions" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 680px; width: 95%; max-height: 92vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-key" style="color: #0284c7;"></i> Modificar Mapa de Permisos & Accesos
+                    </h3>
+                    <p style="font-size: 11px; color: #64748b; margin: 3px 0 0 0;">
+                        Usuario: <b id="permModalUsername" style="color: var(--dalor-navy);">-</b> (<span id="permModalFullName">-</span>)
+                    </p>
+                </div>
+                <button onclick="closeModal('modalUserPermissions')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form onsubmit="event.preventDefault(); submitSaveUserPermissions();" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="perm_target_user_id" value="">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; max-height: 400px; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                        <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy);">
+                            Permisos Granulares para este Usuario:
+                        </span>
+                        <div style="display: flex; gap: 6px; font-size: 11px;">
+                            <button type="button" onclick="window.toggleAllUserCheckboxes(true)" style="background: none; border: none; color: #0284c7; cursor: pointer; font-weight: 800;">Marcar Todos</button>
+                            <span style="color: #cbd5e1;">|</span>
+                            <button type="button" onclick="window.toggleAllUserCheckboxes(false)" style="background: none; border: none; color: #e11d48; cursor: pointer; font-weight: 800;">Desmarcar</button>
+                        </div>
+                    </div>
+
+                    <!-- 1. COMERCIAL -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #0369a1; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-briefcase"></i> 1. Comercial, Clientes & Cotizaciones
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_comercial_view"> Ver Directorio de Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_comercial_edit"> Crear / Editar Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_services_view"> Ver Catálogo de Servicios (APU)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_quotations_create"> Elaborar Cotizaciones</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_quotations_approve"> Aprobar / Emitir Cotizaciones</label>
+                        </div>
+                    </div>
+
+                    <!-- 2. PROYECTOS & OBRAS -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #15803d; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-helmet-safety"></i> 2. Proyectos, Fases & Obras
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_view"> Ver Listado de Proyectos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_edit"> Crear / Editar Proyectos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_phases"> Fases y Cronograma de Obra</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_adendas"> Adendas y Órdenes de Variación</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_proyectos_costs"> Margen Financiero (Costos Reales)</label>
+                        </div>
+                    </div>
+
+                    <!-- 3. FINANZAS & TESORERÍA -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #b45309; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-coins"></i> 3. Finanzas, Facturación, CxC, CxP & Bancos
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #047857; font-weight: 700;"><input type="checkbox" id="perm_cxc_view"> Cuentas por Cobrar (CxC / Facturar)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #047857;"><input type="checkbox" id="perm_cxc_pay"> Registrar Cobros / Abonos Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #b91c1c;"><input type="checkbox" id="perm_cxp_view"> Cuentas por Pagar (CxP Proveedores)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #b91c1c;"><input type="checkbox" id="perm_cxp_pay"> Programar y Registrar Pagos Proveedor</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_bancos_view"> Ver Bancos, Cajas Chicas y Saldos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_conciliacion_view"> Conciliación Bancaria y Flujo de Caja</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_retiros_view"> Retiros de Socios y Gastos Fijos</label>
+                        </div>
+                    </div>
+
+                    <!-- 4. GASTOS DE OPERACIÓN -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #c2410c; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-receipt"></i> 4. Gastos de Operación & Rendiciones
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_gastos_view"> Ver Registro Histórico de Gastos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_gastos_create"> Cargar Gastos / Escaneo OCR con IA</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_gastos_approve"> Aprobar / Auditar Gastos Rendidos</label>
+                        </div>
+                    </div>
+
+                    <!-- 5. RECURSOS (FLOTA & PERSONAL) -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #6b21a8; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-truck"></i> 5. Flota, Maquinaria, Equipos & Personal
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_recursos_view"> Ver Flota de Vehículos y Equipos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_recursos_edit"> Crear / Editar Fichas de Activos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_mantenimiento_vehicular"> Registrar Servicios y Odómetros</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_personal_view"> Ver Nómina de Personal Técnico</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_cuadrillas_assign"> Asignar Cuadrillas a Obras</label>
+                        </div>
+                    </div>
+
+                    <!-- 6. ALMACÉN, MATERIALES & DESPACHO -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #0f766e; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-boxes-stacked"></i> 6. Almacén, Materiales & Despacho
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_almacen_view"> Consultar Stock e Inventario</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_almacen_adjust"> Ajustar Stock y Registrar Compras</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_requisiciones_view"> Requisiciones de Materiales de Obra</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_despacho_view"> Generar Guías de Despacho / Traslado</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_alquileres_view"> Alquileres de Maquinaria a Terceros</label>
+                        </div>
+                    </div>
+
+                    <!-- 7. GERENCIA, AUDITORÍA & SEGURIDAD -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #4338ca; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-shield-halved"></i> 7. Gerencia, Auditoría & Seguridad
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_executive_dashboard"> Tablero Ejecutivo / BI Analytics</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_audit_logs"> Bitácora de Auditoría de Eventos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_usuarios_admin"> Administrar Usuarios y Roles</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="perm_backups_admin"> Generar / Descargar Copias de Seguridad</label>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalUserPermissions')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7; font-weight: 800;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Mapa de Permisos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CREAR NUEVO USUARIO DE SISTEMA -->
+    
+
+<div id="modalNewUser" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 500px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-user-shield" style="color: #0284c7;"></i> Crear Cuenta de Usuario de Sistema
+
+                </h3>
+
+                <button onclick="closeModal('modalNewUser')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newUserForm" onsubmit="submitCreateUser(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Nombre de Usuario (Login) *</label>
+
+                        <input type="text" id="nusr_username" placeholder="ej: javier.obra" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Contraseña Inicial *</label>
+
+                        <input type="password" id="nusr_password" placeholder="Contraseña segura" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Nombre Completo y Cargo *</label>
+
+                    <input type="text" id="nusr_fullname" placeholder="Ej: Ing. Javier Mendoza" class="form-input" required>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Correo Electrónico Corporativo</label>
+
+                    <input type="email" id="nusr_email" placeholder="javier@dalor.com.ve" class="form-input">
+
+                </div>
+
+
+
+                <div>
+                    <label class="form-label">Rol Base / Cargo Operacional *</label>
+                    <select id="nusr_role" class="form-select" required onchange="onNewUserRoleChanged()">
+                        <option value="director_general">Director General / Socio (Acceso Total & BI)</option>
+                        <option value="administrador_financiero">Administración & Finanzas (CxC, CxP, Bancos, Facturas)</option>
+                        <option value="ingeniero_obra">Ingeniero Residente de Obra (Proyectos, APU, Materiales)</option>
+                        <option value="supervisor_campo">Supervisor de Campo / Faena (Captura Móvil, Recursos)</option>
+                    </select>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <i class="fa-solid fa-shield-halved" style="color: #0284c7; font-size: 15px;"></i>
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">Herencia Automática de Permisos Granulares</span>
+                    </div>
+                    <p id="nusr_role_desc" style="font-size: 11.5px; color: #475569; margin: 0; line-height: 1.4;">
+                        Este usuario heredará automáticamente la matriz de 32 permisos asignada al rol seleccionado (incluyendo accesos precisos a CxC, CxP, Bancos, Gastos, etc.).
+                    </p>
+                    <div style="margin-top: 8px; font-size: 10.5px; color: #64748b; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-circle-info" style="color: #0284c7;"></i>
+                        Podrás afinar o alterar permisos individuales en cualquier momento desde el botón de escudo en la tabla de usuarios.
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalNewUser')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: var(--dalor-navy);">
+                        <i class="fa-solid fa-floppy-disk"></i> Crear Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CREAR / EDITAR ROL DE SEGURIDAD (PROFIT PLUS) -->
+    
+
+<div id="modalRoleForm" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 680px; width: 95%; max-height: 92vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-shield-halved" style="color: #d97706;"></i> <span id="roleModalTitle">Crear Rol de Seguridad</span>
+                </h3>
+                <button onclick="closeModal('modalRoleForm')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="roleForm" onsubmit="submitRoleForm(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="role_form_id" value="">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Nombre Visible del Rol *</label>
+                        <input type="text" id="role_display_name" placeholder="Ej: Auditor de Costos" class="form-input" required oninput="autoGenerateRoleSlug()">
+                    </div>
+                    <div>
+                        <label class="form-label">Identificador Único *</label>
+                        <input type="text" id="role_name" placeholder="auditor_costos" class="form-input" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Descripción Funcional</label>
+                    <input type="text" id="role_description" placeholder="Responsable de supervisión presupuestaria..." class="form-input">
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; max-height: 400px; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                        <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy);">
+                            Matriz de Permisos Granulares por Módulo (Estilo Profit Plus):
+                        </span>
+                        <div style="display: flex; gap: 6px; font-size: 11px;">
+                            <button type="button" onclick="window.toggleAllRoleCheckboxes(true)" style="background: none; border: none; color: #0284c7; cursor: pointer; font-weight: 800;">Marcar Todos</button>
+                            <span style="color: #cbd5e1;">|</span>
+                            <button type="button" onclick="window.toggleAllRoleCheckboxes(false)" style="background: none; border: none; color: #e11d48; cursor: pointer; font-weight: 800;">Desmarcar</button>
+                        </div>
+                    </div>
+
+                    <!-- 1. COMERCIAL -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #0369a1; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-briefcase"></i> 1. Comercial, Clientes & Cotizaciones
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_comercial_view"> Ver Directorio de Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_comercial_edit"> Crear / Editar Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_services_view"> Ver Catálogo de Servicios (APU)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_quotations_create"> Elaborar Cotizaciones</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_quotations_approve"> Aprobar / Emitir Cotizaciones</label>
+                        </div>
+                    </div>
+
+                    <!-- 2. PROYECTOS & OBRAS -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #15803d; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-helmet-safety"></i> 2. Proyectos, Fases & Obras
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_view"> Ver Listado de Proyectos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_edit"> Crear / Editar Proyectos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_phases"> Fases y Cronograma de Obra</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_adendas"> Adendas y Órdenes de Variación</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_proyectos_costs"> Margen Financiero (Costos Reales)</label>
+                        </div>
+                    </div>
+
+                    <!-- 3. FINANZAS & TESORERÍA -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #b45309; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-coins"></i> 3. Finanzas, Facturación, CxC, CxP & Bancos
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #047857; font-weight: 700;"><input type="checkbox" id="role_perm_cxc_view"> Cuentas por Cobrar (CxC / Facturar)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #047857;"><input type="checkbox" id="role_perm_cxc_pay"> Registrar Cobros / Abonos Clientes</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #b91c1c;"><input type="checkbox" id="role_perm_cxp_view"> Cuentas por Pagar (CxP Proveedores)</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: #b91c1c;"><input type="checkbox" id="role_perm_cxp_pay"> Programar y Registrar Pagos Proveedor</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_bancos_view"> Ver Bancos, Cajas Chicas y Saldos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_conciliacion_view"> Conciliación Bancaria y Flujo de Caja</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_retiros_view"> Retiros de Socios y Gastos Fijos</label>
+                        </div>
+                    </div>
+
+                    <!-- 4. GASTOS DE OPERACIÓN -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #c2410c; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-receipt"></i> 4. Gastos de Operación & Rendiciones
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_gastos_view"> Ver Registro Histórico de Gastos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_gastos_create"> Cargar Gastos / Escaneo OCR con IA</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_gastos_approve"> Aprobar / Auditar Gastos Rendidos</label>
+                        </div>
+                    </div>
+
+                    <!-- 5. RECURSOS (FLOTA & PERSONAL) -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #6b21a8; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-truck"></i> 5. Flota, Maquinaria, Equipos & Personal
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_recursos_view"> Ver Flota de Vehículos y Equipos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_recursos_edit"> Crear / Editar Fichas de Activos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_mantenimiento_vehicular"> Registrar Servicios y Odómetros</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_personal_view"> Ver Nómina de Personal Técnico</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_cuadrillas_assign"> Asignar Cuadrillas a Obras</label>
+                        </div>
+                    </div>
+
+                    <!-- 6. ALMACÉN, MATERIALES & DESPACHO -->
+                    <div style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #0f766e; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-boxes-stacked"></i> 6. Almacén, Materiales & Despacho
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_almacen_view"> Consultar Stock e Inventario</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_almacen_adjust"> Ajustar Stock y Registrar Compras</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_requisiciones_view"> Requisiciones de Materiales de Obra</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_despacho_view"> Generar Guías de Despacho / Traslado</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_alquileres_view"> Alquileres de Maquinaria a Terceros</label>
+                        </div>
+                    </div>
+
+                    <!-- 7. GERENCIA, AUDITORÍA & SEGURIDAD -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 800; font-size: 11.5px; color: #4338ca; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-shield-halved"></i> 7. Gerencia, Auditoría & Seguridad
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_executive_dashboard"> Tablero Ejecutivo / BI Analytics</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_audit_logs"> Bitácora de Auditoría de Eventos</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_usuarios_admin"> Administrar Usuarios y Roles</label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="role_perm_backups_admin"> Generar / Descargar Copias de Seguridad</label>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalRoleForm')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #d97706; font-weight: 800;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Rol
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+
+
+    <!-- MODAL DE CREACIÓN / EDICIÓN DE PARTIDA PRESUPUESTARIA -->
+    <div id="modalCreateCategory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-folder-tree" style="color: var(--dalor-blue);"></i> Nueva Partida Presupuestaria
+                </h3>
+                <button type="button" onclick="closeModal('modalCreateCategory')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="createCategoryForm" onsubmit="submitCreateCategory(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label" style="font-weight: 700;">Código *</label>
+                        <input type="text" id="cat_code_input" class="form-input" placeholder="Ej: 21.0 o 4.1" required style="font-weight: 800; font-family: monospace;">
+                    </div>
+                    <div>
+                        <label class="form-label" style="font-weight: 700;">Nombre de la Partida *</label>
+                        <input type="text" id="cat_name_input" class="form-input" placeholder="Ej: Servicios de Mantenimiento..." required style="font-weight: 700;">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label" style="font-weight: 700;">Presupuesto Mensual de Referencia ($ USD)</label>
+                    <input type="number" step="0.01" min="0" id="cat_budget_input" class="form-input" placeholder="0.00 (Opcional)" value="0.00" style="font-weight: 700;">
+                    <small style="font-size: 10.5px; color: #64748b; margin-top: 3px; display: block;">Partida general estándar sin restricciones forzadas, utilizable en cualquier área de la empresa.</small>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                    <button type="button" onclick="closeModal('modalCreateCategory')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: var(--dalor-navy); font-weight: 800;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Partida
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>

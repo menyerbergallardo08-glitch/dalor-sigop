@@ -283,7 +283,7 @@
 
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Ubicación / Planta / Frente *</label>
 
-                                    <input type="text" id="new_proj_location" required placeholder="Ej: Planta Guacara / Frente 2" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                    <input type="text" id="new_proj_location" required placeholder="Ej: Planta Guacara / Frente 2" oninput="onProjectLocationInput(this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
 
                                 </div>
 
@@ -374,7 +374,7 @@
                                     </div>
                                     <div id="plan_tags_personnel" class="assigned-tags-container" style="margin-top: 6px;"></div>
                                 </div>
-                                <div style="min-width: 0; overflow: hidden;">
+                                <div id="plan_vehicle_container" style="min-width: 0; overflow: hidden;">
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículos & Transporte Asignados</label>
                                     <input type="text" placeholder="🔍 Filtrar vehículo / placa..." oninput="filterPlanSelect('plan_select_fleet', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; font-size: 10.5px; margin-bottom: 4px; box-sizing: border-box;">
                                     <div style="display: flex; gap: 6px;">
@@ -384,6 +384,11 @@
                                         <button type="button" onclick="addPlanResource('fleet')" class="btn-secondary" style="padding: 6px 10px; font-size: 11px; font-weight: 700;"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div id="plan_tags_fleet" class="assigned-tags-container" style="margin-top: 6px;"></div>
+                                </div>
+                                <div id="plan_vehicle_placeholder" class="hidden" style="min-width: 0; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 14px 10px; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box;">
+                                    <i class="fa-solid fa-building-circle-check" style="font-size: 22px; color: #0284c7; margin-bottom: 6px;"></i>
+                                    <div style="font-size: 11px; font-weight: 800; color: #002B49;">Operación en Sede Central</div>
+                                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">No requiere asignación de flota ni vehículos.</div>
                                 </div>
                                 <div style="min-width: 0; overflow: hidden;">
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Maquinaria, Generadores & Equipos</label>
@@ -458,7 +463,7 @@
 
                                 </div>
 
-                                <div>
+                                <div id="plan_fuel_container">
 
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Combustible</label>
 

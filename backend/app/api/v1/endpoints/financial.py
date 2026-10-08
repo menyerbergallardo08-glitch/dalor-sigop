@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File
 import io
+import uuid
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -9,6 +10,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.services.storage import R2StorageService
 from app.models.models import (
     AccountReceivable,
     AccountPayable,
@@ -21,11 +23,16 @@ from app.models.models import (
     FixedExpenseSetting,
     AuditLog,
     Material,
-    MaterialMovement
+    MaterialMovement,
+    ExpenseCategory,
+    ReceivableFollowUpLog
 )
 from app.api.deps import require_roles, get_current_user
 from app.models.models import User as UserModel
-from app.schemas.schemas import FinancialAccountCreate, FinancialAccountUpdate, FinancialAccountOut
+from app.schemas.schemas import (
+    FinancialAccountCreate, FinancialAccountUpdate, FinancialAccountOut,
+    ReceivableFollowUpLogCreate, ReceivableFollowUpLogOut
+)
 
 router = APIRouter()
 
@@ -429,52 +436,21 @@ def direct_client_collection(p_in: DirectCollectionCreate, db: Session = Depends
     
     open_receivables = query.order_by(AccountReceivable.due_date.asc(), AccountReceivable.id.asc()).all()
 
-    # Si se especificó un proyecto pero no tiene facturas con saldo pendiente, crear anticipo formal de obra
-    if p_in.project_id and not open_receivables:
-        proj = db.query(Project).filter(Project.id == p_in.project_id).first()
-        proj_code = proj.code if proj else f"PRJ-{p_in.project_id}"
-        count_ant = db.query(AccountReceivable).filter(AccountReceivable.invoice_number.like(f"ANT-{proj_code}%")).count()
-        inv_code = f"ANT-{proj_code}-{count_ant + 1:02d}"
-        proj_rec = AccountReceivable(
-            project_id=p_in.project_id,
-            client_id=p_in.client_id,
-            invoice_number=inv_code,
-            description=f"Anticipo Obra: {p_in.concept or (proj.name if proj else 'Obra')}",
-            issue_date=datetime.utcnow(),
-            due_date=datetime.utcnow(),
-            taxable_base_usd=p_in.amount_usd,
-            amount_usd=p_in.amount_usd,
-            paid_amount_usd=p_in.amount_usd,
-            balance_usd=0.0,
-            net_amount_usd=p_in.amount_usd,
-            status="cobrado_total"
+    # REGLA ESTRICTA CXC: Todo abono debe estar estrictamente asociado a una factura existente con saldo pendiente
+    if not open_receivables:
+        raise HTTPException(
+            status_code=400,
+            detail="No es posible registrar un abono: El cliente no posee facturas ni valuaciones con saldo pendiente. Todo abono debe aplicarse a una factura creada previamente."
         )
-        db.add(proj_rec)
-        db.flush()
-        
-        payment = FinancialPayment(
-            payment_type="cxc_cobro",
-            receivable_id=proj_rec.id,
-            financial_account_id=p_in.financial_account_id,
-            bank_account=bank_acc_str,
-            amount_usd=p_in.amount_usd,
-            amount_bs=round(p_in.amount_usd * rate, 2),
-            exchange_rate=rate,
-            payment_method=p_in.payment_method or "transferencia",
-            voucher_number=ref_num,
-            reference_number=ref_num,
-            notes=p_in.notes or p_in.concept or "Anticipo de obra aplicado"
+
+    total_pending = sum(r.balance_usd for r in open_receivables)
+    if p_in.amount_usd > round(total_pending + 0.05, 2):
+        raise HTTPException(
+            status_code=400,
+            detail=f"El monto del abono (${p_in.amount_usd:,.2f}) excede la deuda exigible pendiente del cliente (${total_pending:,.2f}). Todo cobro debe aplicarse estrictamente contra facturas existentes."
         )
-        db.add(payment)
-        db.commit()
-        return {
-            "success": True,
-            "message": f"Anticipo de Obra [{proj_code}] por ${p_in.amount_usd:,.2f} USD registrado con éxito.",
-            "receipt_number": ref_num
-        }
 
     remaining_to_apply = p_in.amount_usd
-    applied_to_any = False
     
     for r in open_receivables:
         if remaining_to_apply <= 0.001:
@@ -504,51 +480,11 @@ def direct_client_collection(p_in: DirectCollectionCreate, db: Session = Depends
             r.status = "abono_parcial"
             
         remaining_to_apply = round(remaining_to_apply - apply_amount, 2)
-        applied_to_any = True
 
-    # Si sobra monto o no había facturas pendientes, crear anticipo libre formal para el cliente
-    if remaining_to_apply > 0.01 or not applied_to_any:
-        ant_amount = remaining_to_apply if applied_to_any else p_in.amount_usd
-        client_tag = f"CLI-{p_in.client_id}"
-        count_ant = db.query(AccountReceivable).filter(AccountReceivable.invoice_number.like(f"ANT-{client_tag}%")).count()
-        inv_code = f"ANT-{client_tag}-{count_ant + 1:02d}"
-        
-        adv_rec = AccountReceivable(
-            client_id=p_in.client_id,
-            project_id=p_in.project_id,
-            invoice_number=inv_code,
-            description=f"Anticipo Cliente: {p_in.concept or 'Abono libre en cuenta'}",
-            issue_date=datetime.utcnow(),
-            due_date=datetime.utcnow(),
-            taxable_base_usd=ant_amount,
-            amount_usd=ant_amount,
-            paid_amount_usd=ant_amount,
-            balance_usd=0.0,
-            net_amount_usd=ant_amount,
-            status="cobrado_total"
-        )
-        db.add(adv_rec)
-        db.flush()
-
-        adv_payment = FinancialPayment(
-            payment_type="cxc_anticipo",
-            receivable_id=adv_rec.id,
-            financial_account_id=p_in.financial_account_id,
-            bank_account=bank_acc_str,
-            amount_usd=ant_amount,
-            amount_bs=round(ant_amount * rate, 2),
-            exchange_rate=rate,
-            payment_method=p_in.payment_method or "transferencia",
-            voucher_number=ref_num,
-            reference_number=ref_num,
-            notes=f"[ANTICIPO CLIENTE] {p_in.notes or p_in.concept or ''}".strip()
-        )
-        db.add(adv_payment)
-    
     db.commit()
     return {
         "success": True,
-        "message": f"Cobro / Abono de ${p_in.amount_usd:,.2f} USD registrado con éxito.",
+        "message": f"Cobro / Abono de ${p_in.amount_usd:,.2f} USD aplicado exitosamente a facturas del cliente.",
         "receipt_number": ref_num
     }
 
@@ -634,8 +570,10 @@ def get_receivables(
     items = [{
         "id": r.id,
         "invoice_number": r.invoice_number,
+        "client_id": r.client_id,
         "client_name": r.client.name if r.client else "General",
         "client_rif": r.client.rif if r.client else "-",
+        "project_id": r.project_id,
         "project_name": r.project.name if r.project else "Sede Central",
         "project_code": r.project.code if r.project else "GEN",
         "description": r.description,
@@ -775,6 +713,9 @@ def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = De
     if not r:
         raise HTTPException(status_code=404, detail="Factura no encontrada.")
 
+    if r.balance_usd <= 0.001:
+        raise HTTPException(status_code=400, detail="Esta factura ya se encuentra totalmente cobrada (saldo $0.00). No es posible registrar abonos adicionales.")
+
     if p_in.amount_usd <= 0:
         raise HTTPException(status_code=400, detail="El monto del cobro debe ser mayor a cero.")
 
@@ -909,6 +850,323 @@ def declare_cxc_bad_debt(receivable_id: int, req: BadDebtRequest, db: Session = 
         "message": f"Factura {r.invoice_number} declarada incobrable por ${amount_written_off:,.2f} USD.",
         "amount_written_off": amount_written_off
     }
+
+# ------------------------------------------------------------------------------
+# 3.1 BITÁCORA Y TRAZABILIDAD DE COBRANZA (CxC TIMELINE & SEGUIMIENTO)
+# ------------------------------------------------------------------------------
+
+@router.get("/cxc/{receivable_id}/timeline")
+def get_cxc_timeline(receivable_id: int, db: Session = Depends(get_db)):
+    r = db.query(AccountReceivable).options(joinedload(AccountReceivable.client), joinedload(AccountReceivable.project)).filter(AccountReceivable.id == receivable_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura CxC no encontrada.")
+
+    payments = db.query(FinancialPayment).filter(FinancialPayment.receivable_id == receivable_id).order_by(FinancialPayment.payment_date.desc()).all()
+    follow_ups = db.query(ReceivableFollowUpLog).filter(ReceivableFollowUpLog.receivable_id == receivable_id).order_by(ReceivableFollowUpLog.created_at.desc()).all()
+
+    events = []
+    
+    def _clean_dt(dt):
+        if not dt:
+            return None
+        if hasattr(dt, 'strftime'):
+            return dt.strftime("%Y-%m-%d %H:%M")
+        return str(dt)
+
+    def _iso_sort(dt):
+        if not dt:
+            return ""
+        if hasattr(dt, 'isoformat'):
+            return dt.isoformat()
+        return str(dt)
+
+    inv_dt = r.issue_date or r.created_at
+    events.append({
+        "type": "factura_emitida",
+        "date": _clean_dt(inv_dt),
+        "raw_date": _iso_sort(inv_dt),
+        "title": f"Factura Emitida: {r.invoice_number}",
+        "subtitle": f"Monto Bruto: ${r.amount_usd:,.2f} USD | Vence: {r.due_date.strftime('%Y-%m-%d') if r.due_date else 'S/F'}",
+        "details": r.description or "Factura registrada en el sistema.",
+        "amount_usd": r.amount_usd,
+        "user": "Facturación DALOR",
+        "badge_color": "blue"
+    })
+
+    for p in payments:
+        p_dt = p.payment_date or p.created_at
+        events.append({
+            "type": "abono_pago",
+            "date": _clean_dt(p_dt),
+            "raw_date": _iso_sort(p_dt),
+            "title": f"Abono / Pago Recibido: ${p.amount_usd:,.2f} USD",
+            "subtitle": f"Ref: {p.reference_number or p.voucher_number or 'S/R'} | Método: {(p.payment_method or 'Transferencia').upper()}",
+            "details": f"Monto en Bs: Bs. {p.amount_bs:,.2f} (Tasa: {p.exchange_rate:.2f}) | {p.notes or ''}",
+            "amount_usd": p.amount_usd,
+            "user": "Cobranzas",
+            "badge_color": "green"
+        })
+
+    for f in follow_ups:
+        prom_str = f" | Promesa: {f.promised_payment_date.strftime('%Y-%m-%d')} (${f.promised_amount_usd:,.2f} USD)" if f.promised_payment_date else ""
+        events.append({
+            "type": "gestion_cobranza",
+            "date": _clean_dt(f.created_at),
+            "raw_date": _iso_sort(f.created_at),
+            "title": f"Gestión: {f.contact_channel}",
+            "subtitle": f"Contacto: {f.contact_person or 'Sin especificar'}{prom_str}",
+            "details": f.notes,
+            "amount_usd": f.promised_amount_usd or 0.0,
+            "user": f.recorded_by,
+            "badge_color": "purple",
+            "evidence_image_path": f.evidence_image_path
+        })
+
+    if r.is_bad_debt:
+        events.append({
+            "type": "incobrable",
+            "date": _clean_dt(r.bad_debt_date),
+            "raw_date": _iso_sort(r.bad_debt_date),
+            "title": f"Cartera Castigada / Incobrable: ${r.bad_debt_amount_usd:,.2f} USD",
+            "subtitle": f"Motivo: {r.bad_debt_reason or 'No especificado'}",
+            "details": "Factura declarada incobrable por la gerencia.",
+            "amount_usd": r.bad_debt_amount_usd,
+            "user": "Dirección",
+            "badge_color": "red"
+        })
+
+    events.sort(key=lambda x: str(x.get("raw_date") or x.get("date") or ""), reverse=True)
+
+    return {
+        "receivable": {
+            "id": r.id,
+            "invoice_number": r.invoice_number,
+            "client_id": r.client_id,
+            "client_name": r.client.name if r.client else "Cliente",
+            "client_rif": r.client.rif if r.client else "",
+            "client_phone": r.client.contact_phone if r.client else "",
+            "client_email": r.client.contact_email if r.client else "",
+            "project_id": r.project_id,
+            "project_code": r.project.code if r.project else "General",
+            "description": r.description,
+            "amount_usd": r.amount_usd,
+            "paid_amount_usd": r.paid_amount_usd,
+            "balance_usd": r.balance_usd,
+            "status": r.status,
+            "issue_date": r.issue_date.strftime('%Y-%m-%d') if r.issue_date else "",
+            "due_date": r.due_date.strftime('%Y-%m-%d') if r.due_date else "",
+            "is_bad_debt": r.is_bad_debt
+        },
+        "timeline": events
+    }
+
+@router.get("/cxc/client/{client_id}/timeline")
+def get_client_cxc_timeline(client_id: int, db: Session = Depends(get_db)):
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+
+    receivables = db.query(AccountReceivable).options(joinedload(AccountReceivable.project)).filter(AccountReceivable.client_id == client_id).order_by(AccountReceivable.issue_date.desc()).all()
+    rec_ids = [r.id for r in receivables]
+
+    payments = []
+    if rec_ids:
+        payments = db.query(FinancialPayment).filter(FinancialPayment.receivable_id.in_(rec_ids)).order_by(FinancialPayment.payment_date.desc()).all()
+
+    follow_ups = db.query(ReceivableFollowUpLog).filter(ReceivableFollowUpLog.client_id == client_id).order_by(ReceivableFollowUpLog.created_at.desc()).all()
+
+    total_billed = sum(r.amount_usd for r in receivables)
+    total_paid = sum(r.paid_amount_usd for r in receivables)
+    total_balance = sum(r.balance_usd for r in receivables)
+
+    events = []
+    def _clean_dt(dt):
+        if not dt:
+            return None
+        if hasattr(dt, 'strftime'):
+            return dt.strftime("%Y-%m-%d %H:%M")
+        return str(dt)
+
+    def _iso_sort(dt):
+        if not dt:
+            return ""
+        if hasattr(dt, 'isoformat'):
+            return dt.isoformat()
+        return str(dt)
+
+    for r in receivables:
+        inv_dt = r.issue_date or r.created_at
+        events.append({
+            "type": "factura_emitida",
+            "date": _clean_dt(inv_dt),
+            "raw_date": _iso_sort(inv_dt),
+            "title": f"Factura Emitida: {r.invoice_number}",
+            "subtitle": f"Total: ${r.amount_usd:,.2f} USD | Saldo: ${r.balance_usd:,.2f} USD | Vence: {r.due_date.strftime('%Y-%m-%d') if r.due_date else 'S/F'}",
+            "details": r.description or "Factura registrada",
+            "amount_usd": r.amount_usd,
+            "user": "Facturación DALOR",
+            "badge_color": "blue",
+            "receivable_id": r.id,
+            "invoice_number": r.invoice_number
+        })
+
+    for p in payments:
+        p_dt = p.payment_date or p.created_at
+        events.append({
+            "type": "abono_pago",
+            "date": _clean_dt(p_dt),
+            "raw_date": _iso_sort(p_dt),
+            "title": f"Abono / Pago Recibido: ${p.amount_usd:,.2f} USD",
+            "subtitle": f"Ref: {p.reference_number or p.voucher_number or 'S/R'} | Factura #{p.receivable_id}",
+            "details": f"Bs. {p.amount_bs:,.2f} (Tasa: {p.exchange_rate:.2f}) | {p.notes or ''}",
+            "amount_usd": p.amount_usd,
+            "user": "Cobranzas",
+            "badge_color": "green",
+            "receivable_id": p.receivable_id
+        })
+
+    for f in follow_ups:
+        prom_str = f" | Promesa: {f.promised_payment_date.strftime('%Y-%m-%d')} (${f.promised_amount_usd:,.2f} USD)" if f.promised_payment_date else ""
+        inv_str = f" (Factura #{f.receivable_id})" if f.receivable_id else " (Gestión General Cliente)"
+        events.append({
+            "type": "gestion_cobranza",
+            "date": _clean_dt(f.created_at),
+            "raw_date": _iso_sort(f.created_at),
+            "title": f"Gestión: {f.contact_channel}{inv_str}",
+            "subtitle": f"Contacto: {f.contact_person or 'Sin especificar'}{prom_str}",
+            "details": f.notes,
+            "amount_usd": f.promised_amount_usd or 0.0,
+            "user": f.recorded_by,
+            "badge_color": "purple",
+            "receivable_id": f.receivable_id,
+            "evidence_image_path": f.evidence_image_path
+        })
+
+    events.sort(key=lambda x: str(x.get("raw_date") or x.get("date") or ""), reverse=True)
+
+    return {
+        "client": {
+            "id": client.id,
+            "name": client.name,
+            "rif": client.rif,
+            "contact_name": client.contact_name,
+            "contact_phone": client.contact_phone,
+            "contact_email": client.contact_email,
+            "address": client.address,
+            "total_invoiced_usd": round(total_billed, 2),
+            "total_paid_usd": round(total_paid, 2),
+            "total_balance_usd": round(total_balance, 2)
+        },
+        "invoices": [
+            {
+                "id": r.id,
+                "invoice_number": r.invoice_number,
+                "description": r.description,
+                "amount_usd": r.amount_usd,
+                "balance_usd": r.balance_usd,
+                "status": r.status,
+                "due_date": r.due_date.strftime('%Y-%m-%d') if r.due_date else ""
+            } for r in receivables
+        ],
+        "timeline": events
+    }
+
+@router.post("/cxc/upload-evidence")
+async def upload_cxc_evidence(
+    file: UploadFile = File(...),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Sube soporte digital o evidencia fotográfica (comprobante, captura WhatsApp, compromiso firmado)
+    directamente al almacenamiento Cloudflare R2 para la bitácora de cobranza.
+    """
+    try:
+        contents = await file.read()
+        ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "jpg"
+        unique_name = f"cxc_evidence_{uuid.uuid4().hex[:10]}.{ext}"
+        
+        image_url, _ = R2StorageService.upload_receipt_image(contents, unique_name)
+        return {
+            "success": True,
+            "message": "Evidencia respaldada exitosamente en Cloudflare R2.",
+            "evidence_url": image_url
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error subiendo evidencia a R2: {str(e)}")
+
+@router.post("/cxc/{receivable_id}/log")
+def create_cxc_follow_up_log(
+    receivable_id: int, 
+    log_in: ReceivableFollowUpLogCreate, 
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura no encontrada.")
+
+    prom_date = None
+    if log_in.promised_payment_date:
+        try:
+            prom_date = datetime.strptime(log_in.promised_payment_date.split("T")[0], "%Y-%m-%d")
+        except Exception:
+            prom_date = None
+
+    author_name = current_user.full_name or current_user.username if current_user else "Administración"
+
+    entry = ReceivableFollowUpLog(
+        receivable_id=r.id,
+        client_id=r.client_id,
+        contact_channel=log_in.contact_channel or "Llamada Telefónica",
+        contact_person=log_in.contact_person,
+        promised_payment_date=prom_date,
+        promised_amount_usd=log_in.promised_amount_usd or 0.0,
+        notes=log_in.notes,
+        evidence_image_path=log_in.evidence_image_path,
+        recorded_by=author_name
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+
+    return {"success": True, "message": "Gestión registrada en la bitácora de cobranza.", "log_id": entry.id}
+
+@router.post("/cxc/client/{client_id}/log")
+def create_client_cxc_follow_up_log(
+    client_id: int, 
+    log_in: ReceivableFollowUpLogCreate, 
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    c = db.query(Client).filter(Client.id == client_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+
+    prom_date = None
+    if log_in.promised_payment_date:
+        try:
+            prom_date = datetime.strptime(log_in.promised_payment_date.split("T")[0], "%Y-%m-%d")
+        except Exception:
+            prom_date = None
+
+    author_name = current_user.full_name or current_user.username if current_user else "Administración"
+
+    entry = ReceivableFollowUpLog(
+        receivable_id=log_in.receivable_id,
+        client_id=c.id,
+        contact_channel=log_in.contact_channel or "Llamada Telefónica",
+        contact_person=log_in.contact_person,
+        promised_payment_date=prom_date,
+        promised_amount_usd=log_in.promised_amount_usd or 0.0,
+        notes=log_in.notes,
+        evidence_image_path=log_in.evidence_image_path,
+        recorded_by=author_name
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+
+    return {"success": True, "message": "Gestión registrada en la bitácora del cliente.", "log_id": entry.id}
 
 # ------------------------------------------------------------------------------
 # 4. ENDPOINTS DE CUENTAS POR PAGAR (CxP PROVEEDORES)
@@ -1131,9 +1389,19 @@ def create_payable(p_in: PayableCreate, db: Session = Depends(get_db)):
                 if not mat:
                     raise HTTPException(status_code=404, detail=f"Material #{item.material_id} no encontrado en catálogo.")
 
-                mat.stock_quantity = (mat.stock_quantity or 0.0) + item.quantity
-                if item.unit_cost_usd > 0:
-                    mat.unit_cost_usd = item.unit_cost_usd
+                prev_stock = max(0.0, float(mat.stock_quantity or 0.0))
+                prev_cost = float(mat.unit_cost_usd or 0.0)
+                new_qty = float(item.quantity)
+                new_cost = float(item.unit_cost_usd)
+                total_qty = prev_stock + new_qty
+
+                if total_qty > 0 and new_cost > 0:
+                    if prev_stock > 0 and prev_cost > 0:
+                        # Costo Promedio Ponderado (CPP)
+                        mat.unit_cost_usd = round(((prev_stock * prev_cost) + (new_qty * new_cost)) / total_qty, 4)
+                    else:
+                        mat.unit_cost_usd = round(new_cost, 4)
+                mat.stock_quantity = round(total_qty, 2)
                 mat.total_cost_usd = round(mat.stock_quantity * (mat.unit_cost_usd or 0.0), 2)
 
                 dest = item.destination or ("Almacén Central Dalor" if ptype == "stock_almacen" else f"Proyecto #{p_in.project_id or 'General'}")
@@ -2304,6 +2572,64 @@ def delete_financial_account(account_id: int, db: Session = Depends(get_db), cur
     acc.is_active = False
     db.commit()
 
+class InitialBalanceIn(BaseModel):
+    balance_amount: float
+    currency: str = "USD" # "USD" o "BS"
+    exchange_rate: Optional[float] = 859.06
+    notes: Optional[str] = "Saldo de apertura / saldo inicial"
+    operation_date: Optional[datetime] = None
+
+@router.post("/accounts/{account_id}/initial-balance")
+def set_account_initial_balance(account_id: int, data: InitialBalanceIn, db: Session = Depends(get_db)):
+    """Registra o actualiza el saldo inicial de apertura para una cuenta o caja."""
+    acc = db.query(FinancialAccount).filter(FinancialAccount.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada.")
+    
+    existing_init = db.query(FinancialPayment).filter(
+        FinancialPayment.financial_account_id == acc.id,
+        FinancialPayment.payment_type == "saldo_inicial"
+    ).first()
+    
+    rate = data.exchange_rate or 859.06
+    if data.currency.upper() == "USD":
+        amt_usd = data.balance_amount
+        amt_bs = round(data.balance_amount * rate, 2)
+    else:
+        amt_bs = data.balance_amount
+        amt_usd = round(data.balance_amount / rate, 2) if rate > 0 else 0.0
+
+    if existing_init:
+        existing_init.amount_usd = amt_usd
+        existing_init.amount_bs = amt_bs
+        existing_init.exchange_rate = rate
+        existing_init.payment_date = data.operation_date or datetime.utcnow()
+        existing_init.notes = data.notes or "Saldo de apertura / saldo inicial"
+    else:
+        init_pmt = FinancialPayment(
+            payment_type="saldo_inicial",
+            voucher_number=f"SI-{acc.id}-{datetime.utcnow().year}",
+            bank_account=acc.name,
+            financial_account_id=acc.id,
+            payment_date=data.operation_date or datetime.utcnow(),
+            payment_method="saldo_inicial",
+            reference_number="SALDO-INICIAL",
+            amount_usd=amt_usd,
+            amount_bs=amt_bs,
+            exchange_rate=rate,
+            notes=data.notes or "Saldo de apertura / saldo inicial"
+        )
+        db.add(init_pmt)
+    
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Saldo inicial registrado exitosamente para la cuenta {acc.name}: {data.currency} {data.balance_amount:,.2f}",
+        "account_id": acc.id,
+        "amount_usd": amt_usd,
+        "amount_bs": amt_bs
+    }
+
 
 # ─── BUSINESS INTELLIGENCE & ANALYTICS EJECUTIVO (100% DATOS REALES) ──────────
 
@@ -2663,10 +2989,12 @@ def get_bi_metrics(
 def get_libro_ventas_data(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2020, le=2040),
+    filter_type: Optional[str] = Query("all"),
     db: Session = Depends(get_db)
 ):
     """
     Retorna los datos del Libro de Ventas en formato oficial SENIAT para renderizado y PDF.
+    filter_type: 'all', 'fiscales', 'no_fiscales'
     """
     query = db.query(AccountReceivable).options(
         joinedload(AccountReceivable.client),
@@ -2677,6 +3005,30 @@ def get_libro_ventas_data(
     if month:
         query = query.filter(func.extract('month', AccountReceivable.issue_date) == month)
 
+    if filter_type in ("fiscales", "con_iva"):
+        query = query.filter(
+            AccountReceivable.tax_amount_usd > 0.001,
+            ~AccountReceivable.invoice_number.ilike("NE-%"),
+            ~AccountReceivable.invoice_number.ilike("NDE-%"),
+            ~AccountReceivable.invoice_number.ilike("REC-%"),
+            ~AccountReceivable.invoice_number.ilike("VAL-%")
+        )
+    elif filter_type == "sin_iva":
+        query = query.filter(
+            (AccountReceivable.tax_amount_usd == 0) | (AccountReceivable.tax_amount_usd == None) | (AccountReceivable.tax_amount_usd <= 0.001),
+            ~AccountReceivable.invoice_number.ilike("NE-%"),
+            ~AccountReceivable.invoice_number.ilike("NDE-%"),
+            ~AccountReceivable.invoice_number.ilike("REC-%"),
+            ~AccountReceivable.invoice_number.ilike("VAL-%")
+        )
+    elif filter_type == "no_fiscales":
+        query = query.filter(
+            (AccountReceivable.invoice_number.ilike("NE-%")) |
+            (AccountReceivable.invoice_number.ilike("NDE-%")) |
+            (AccountReceivable.invoice_number.ilike("REC-%")) |
+            (AccountReceivable.invoice_number.ilike("VAL-%"))
+        )
+
     receivables = query.order_by(AccountReceivable.issue_date.asc(), AccountReceivable.id.asc()).all()
 
     items = []
@@ -2686,11 +3038,19 @@ def get_libro_ventas_data(
     tot_ret_iva_bs = 0.0
     tot_ret_islr_bs = 0.0
 
-    for r in receivables:
+    for idx, r in enumerate(receivables, start=1):
         rate = r.exchange_rate or 859.06
         total_bs = round(r.amount_usd * rate, 2)
-        base_bs = round(r.taxable_base_usd * rate, 2) if r.taxable_base_usd else round(total_bs / 1.16, 2)
-        iva_bs = round(r.tax_amount_usd * rate, 2) if r.tax_amount_usd else round(total_bs - base_bs, 2)
+        tax_usd = r.tax_amount_usd or 0.0
+        base_usd = r.taxable_base_usd or 0.0
+
+        if tax_usd <= 0.001:
+            iva_bs = 0.0
+            base_bs = 0.0
+        else:
+            iva_bs = round(tax_usd * rate, 2)
+            base_bs = round(base_usd * rate, 2) if base_usd > 0 else round(total_bs / 1.16, 2)
+
         ret_iva_bs = round((r.tax_withholding_usd or 0.0) * rate, 2)
         ret_islr_bs = round((r.islr_withholding_usd or 0.0) * rate, 2)
 
@@ -2701,6 +3061,7 @@ def get_libro_ventas_data(
         tot_ret_islr_bs += ret_islr_bs
 
         items.append({
+            "operacion": idx,
             "id": r.id,
             "fecha": r.issue_date.strftime("%d/%m/%Y") if r.issue_date else "-",
             "dia": r.issue_date.day if r.issue_date else 1,
@@ -2714,7 +3075,7 @@ def get_libro_ventas_data(
             "ret_islr_bs": ret_islr_bs,
             "total_ventas_bs": total_bs,
             "base_imponible_bs": base_bs,
-            "alicuota_pct": 16.0,
+            "alicuota_pct": 16.0 if tax_usd > 0.001 else 0.0,
             "iva_bs": iva_bs,
             "total_ventas_usd": r.amount_usd,
             "exchange_rate": rate
@@ -2742,12 +3103,13 @@ def get_libro_ventas_data(
 def export_libro_ventas_excel(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2020, le=2040),
+    filter_type: Optional[str] = Query("all"),
     db: Session = Depends(get_db)
 ):
     """
     Exporta el Libro de Ventas en formato oficial de Excel idéntico al estándar SENIAT.
     """
-    data = get_libro_ventas_data(month, year, db)
+    data = get_libro_ventas_data(month=month, year=year, filter_type=filter_type, db=db)
     items = data["items"]
 
     wb = openpyxl.Workbook()
@@ -2858,10 +3220,12 @@ def export_libro_ventas_excel(
 def get_libro_compras_data(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2020, le=2040),
+    filter_type: Optional[str] = Query("all"),
     db: Session = Depends(get_db)
 ):
     """
     Retorna los datos del Libro de Compras en formato oficial SENIAT (21 columnas) para renderizado y PDF.
+    filter_type: 'all', 'fiscales', 'no_fiscales'
     """
     query = db.query(AccountPayable).options(
         joinedload(AccountPayable.project)
@@ -2870,6 +3234,33 @@ def get_libro_compras_data(
         query = query.filter(func.extract('year', AccountPayable.issue_date) == year)
     if month:
         query = query.filter(func.extract('month', AccountPayable.issue_date) == month)
+
+    if filter_type in ("fiscales", "con_iva"):
+        query = query.filter(
+            AccountPayable.tax_amount_usd > 0.001,
+            AccountPayable.doc_type != "nota_entrega",
+            ~AccountPayable.invoice_number.ilike("NE-%"),
+            ~AccountPayable.invoice_number.ilike("NDE-%"),
+            ~AccountPayable.invoice_number.ilike("REC-%"),
+            ~AccountPayable.invoice_number.ilike("VAL-%")
+        )
+    elif filter_type == "sin_iva":
+        query = query.filter(
+            (AccountPayable.tax_amount_usd == 0) | (AccountPayable.tax_amount_usd == None) | (AccountPayable.tax_amount_usd <= 0.001),
+            AccountPayable.doc_type != "nota_entrega",
+            ~AccountPayable.invoice_number.ilike("NE-%"),
+            ~AccountPayable.invoice_number.ilike("NDE-%"),
+            ~AccountPayable.invoice_number.ilike("REC-%"),
+            ~AccountPayable.invoice_number.ilike("VAL-%")
+        )
+    elif filter_type == "no_fiscales":
+        query = query.filter(
+            (AccountPayable.doc_type == "nota_entrega") |
+            (AccountPayable.invoice_number.ilike("NE-%")) |
+            (AccountPayable.invoice_number.ilike("NDE-%")) |
+            (AccountPayable.invoice_number.ilike("REC-%")) |
+            (AccountPayable.invoice_number.ilike("VAL-%"))
+        )
 
     payables = query.order_by(AccountPayable.issue_date.asc(), AccountPayable.id.asc()).all()
 
@@ -2880,12 +3271,22 @@ def get_libro_compras_data(
     tot_base_16_bs = 0.0
     tot_iva_16_bs = 0.0
 
-    for p in payables:
+    for idx, p in enumerate(payables, start=1):
         rate = p.exchange_rate or 859.06
         total_bs = round(p.amount_usd * rate, 2)
-        exento_bs = round((p.withholding_exempt_usd or 0.0) * rate, 2)
-        base_16_bs = round(p.taxable_base_usd * rate, 2) if p.taxable_base_usd else round((total_bs - exento_bs) / 1.16, 2)
-        iva_16_bs = round(p.tax_amount_usd * rate, 2) if p.tax_amount_usd else round(total_bs - exento_bs - base_16_bs, 2)
+        exento_usd = p.withholding_exempt_usd or 0.0
+        tax_usd = p.tax_amount_usd or 0.0
+        base_usd = p.taxable_base_usd or 0.0
+
+        if tax_usd <= 0.001:
+            iva_16_bs = 0.0
+            base_16_bs = 0.0
+            exento_bs = total_bs
+        else:
+            iva_16_bs = round(tax_usd * rate, 2)
+            base_16_bs = round(base_usd * rate, 2) if base_usd > 0 else round((total_bs - round(exento_usd * rate, 2)) / 1.16, 2)
+            exento_bs = round(exento_usd * rate, 2)
+
         ret_iva_bs = round((p.tax_withholding_usd or 0.0) * rate, 2)
 
         tot_compras_bs += total_bs
@@ -2895,7 +3296,9 @@ def get_libro_compras_data(
         tot_iva_16_bs += iva_16_bs
 
         items.append({
+            "operacion": idx,
             "id": p.id,
+            "payable_id": p.id,
             "fecha": p.issue_date.strftime("%d/%m/%Y") if p.issue_date else "-",
             "dia": p.issue_date.day if p.issue_date else 1,
             "factura": p.invoice_number,
@@ -2914,7 +3317,7 @@ def get_libro_compras_data(
             "alicuota_12_pct": 12.0,
             "iva_12_bs": 0.0,
             "base_16_bs": base_16_bs,
-            "alicuota_16_pct": 16.0,
+            "alicuota_16_pct": 16.0 if tax_usd > 0.001 else 0.0,
             "iva_16_bs": iva_16_bs,
             "total_usd": p.amount_usd,
             "exchange_rate": rate,
@@ -2944,12 +3347,13 @@ def get_libro_compras_data(
 def export_libro_compras_excel(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2020, le=2040),
+    filter_type: Optional[str] = Query("all"),
     db: Session = Depends(get_db)
 ):
     """
     Exporta el Libro de Compras en formato oficial SENIAT con 21 columnas en Excel.
     """
-    data = get_libro_compras_data(month, year, db)
+    data = get_libro_compras_data(month=month, year=year, filter_type=filter_type, db=db)
     items = data["items"]
 
     wb = openpyxl.Workbook()
@@ -3243,4 +3647,96 @@ async def import_libros_excel(
         "imported_compras": imported_compras,
         "linked_municipal": linked_municipal
     }
+
+
+class ExpenseConceptCreate(BaseModel):
+    name: str
+    business_rule: str = "costo_material_obra"
+    description: Optional[str] = None
+
+
+@router.get("/expense-concepts")
+def get_expense_concepts(db: Session = Depends(get_db)):
+    """
+    Retorna la lista de conceptos de gasto y cuentas por pagar con su regla de negocio asociada.
+    """
+    categories = db.query(ExpenseCategory).order_by(ExpenseCategory.name.asc()).all()
+    result = []
+    for c in categories:
+        rule = c.business_rule or "costo_material_obra"
+        if not c.business_rule:
+            low = c.name.lower()
+            if any(k in low for k in ["insumo", "material", "compra", "tubo", "plancha"]):
+                rule = "costo_material_obra"
+            elif any(k in low for k in ["almacen", "stock", "inventario"]):
+                rule = "stock_almacen"
+            elif any(k in low for k in ["servicio", "honorario", "asesoria", "torno", "soldad"]):
+                rule = "servicios_honorarios"
+            elif any(k in low for k in ["flota", "maquinaria", "alquiler", "grua", "vehiculo"]):
+                rule = "alquiler_maquinaria_ext"
+            else:
+                rule = "gastos_sede"
+        result.append({
+            "id": c.id,
+            "code": c.code,
+            "name": c.name,
+            "business_rule": rule,
+            "group_type": c.group_type
+        })
+    return result
+
+
+@router.post("/expense-concepts")
+def create_expense_concept(c_in: ExpenseConceptCreate, db: Session = Depends(get_db)):
+    """
+    Crea un nuevo concepto de gasto asociado a una regla de negocio específica.
+    """
+    name = (c_in.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="El nombre del concepto no puede estar vacío.")
+
+    valid_rules = ["costo_material_obra", "stock_almacen", "servicios_honorarios", "alquiler_maquinaria_ext", "gastos_sede"]
+    rule = c_in.business_rule if c_in.business_rule in valid_rules else "costo_material_obra"
+
+    existing = db.query(ExpenseCategory).filter(ExpenseCategory.name.ilike(name)).first()
+    if existing:
+        existing.business_rule = rule
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Concepto '{existing.name}' actualizado y vinculado a la regla '{rule}'.",
+            "concept": {
+                "id": existing.id,
+                "code": existing.code,
+                "name": existing.name,
+                "business_rule": existing.business_rule,
+                "group_type": existing.group_type
+            }
+        }
+
+    last_id = db.query(func.max(ExpenseCategory.id)).scalar() or 100
+    code = f"CPT-{last_id + 1}"
+
+    new_cat = ExpenseCategory(
+        code=code,
+        name=name,
+        business_rule=rule,
+        group_type="operativo" if rule in ["costo_material_obra", "stock_almacen"] else "corporativo"
+    )
+    db.add(new_cat)
+    db.commit()
+    db.refresh(new_cat)
+
+    return {
+        "success": True,
+        "message": f"Concepto '{new_cat.name}' creado exitosamente y asociado a la regla '{rule}'.",
+        "concept": {
+            "id": new_cat.id,
+            "code": new_cat.code,
+            "name": new_cat.name,
+            "business_rule": new_cat.business_rule,
+            "group_type": new_cat.group_type
+        }
+    }
+
 

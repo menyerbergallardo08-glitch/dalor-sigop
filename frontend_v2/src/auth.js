@@ -225,7 +225,7 @@ export function applyPermissionMap(user) {
     if (btnNewRec) btnNewRec.style.display = canCxc ? '' : 'none';
 
     const btnRecPay = document.getElementById('btnFinReceiveClientPayment');
-    if (btnRecPay) btnRecPay.style.display = canCxc ? '' : 'none';
+    if (btnRecPay) btnRecPay.style.display = 'none';
 
     const btnNewPay = document.getElementById('btnFinNewPayable');
     if (btnNewPay) btnNewPay.style.display = canCxp ? '' : 'none';

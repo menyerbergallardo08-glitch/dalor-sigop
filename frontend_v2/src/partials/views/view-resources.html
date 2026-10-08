@@ -4,9 +4,9 @@
 
                 <div>
 
-                    <span class="badge-tag">Módulo de Activos & Recursos</span>
+                    <span class="badge-tag">Módulo de Activos Fijos / Equipos / Herramientas / Flota</span>
 
-                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Control de Recursos, Flota, Herramientas & Personal</h2>
+                    <h2 style="font-size: 17px; font-weight: 800; margin-top: 4px;">Control de Activos Fijos, Flota, Maquinaria, Herramientas & Personal</h2>
 
                     <p style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Gestión de disponibilidad, ubicación en tiempo real, kilometrajes y transferencias a obra.</p>
 
@@ -370,7 +370,7 @@
                     <!-- Filtros y Búsqueda en Tiempo Real -->
                     <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 250px; position: relative;">
-                            <input type="text" id="toolSearchInput" oninput="debouncedFilterToolsList()" placeholder="🔍 Buscar herramienta por nombre, modelo o tipo..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+                            <input type="search" id="toolSearchInput" oninput="filterToolsList()" placeholder="🔍 Buscar por nombre, código Dalor, serial o ubicación..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <select id="toolCategoryFilter" onchange="filterToolsList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto; max-width: 200px;">
@@ -594,9 +594,11 @@
                                 <option value="all">Todos los Cargos / Roles</option>
                             </select>
                             <select id="personnelStatusFilter" onchange="filterPersonnelList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
-                                <option value="all">Todos los Estados</option>
-                                <option value="en_obra">Asignado a Obra</option>
+                                <option value="all">Solo Activos (Base & Obra)</option>
                                 <option value="disponible_base">Disponible en Base</option>
+                                <option value="en_obra">Asignado a Obra</option>
+                                <option value="inactivo">Inactivos / Egresados</option>
+                                <option value="todos">Todos (Incluyendo Inactivos)</option>
                             </select>
                             <span id="personnelCountBadge" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 6px 10px; border-radius: 6px;">0 empleados</span>
                         </div>

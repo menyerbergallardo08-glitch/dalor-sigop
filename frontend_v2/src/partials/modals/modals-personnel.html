@@ -1,0 +1,255 @@
+<div id="modalNewPersonnel" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 540px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: #065f46;">
+
+                    <i class="fa-solid fa-user-plus" style="color: #10b981;"></i> Registrar Nuevo Empleado / Ficha de Personal
+
+                </h3>
+
+                <button onclick="closeModal('modalNewPersonnel')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newPersonnelForm" onsubmit="submitCreatePersonnel(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código de Ficha *</label>
+
+                        <input type="text" id="npers_code" placeholder="PERS-019" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre Completo *</label>
+
+                        <input type="text" id="npers_name" placeholder="Nombres y Apellidos" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <!-- Banner Guía de Nomenclatura Personal -->
+                <div id="npers_nomenclature_guide" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Nomenclatura Dalor: Prefijo <b>PERS-</b> correlativo (ej: PERS-019).</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cédula / Identificación *</label>
+
+                        <input type="text" id="npers_id" placeholder="V-18.450.123" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Teléfono de Contacto</label>
+
+                        <input type="text" id="npers_phone" placeholder="+58 414 0000000" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cargo / Especialidad *</label>
+                        <input type="text" id="npers_role" list="rolesDatalist" class="form-input" placeholder="Ej: Soldador 6G, Mecánico..." required autocomplete="off">
+                        <datalist id="rolesDatalist">
+                            <option value="Ingeniero Residente de Obra">
+                            <option value="Supervisor de Soldadura y Montaje">
+                            <option value="Soldador Especialista 6G / TIG">
+                            <option value="Soldador Estructural MIG/MAG">
+                            <option value="Armador / Pailero Estructural">
+                            <option value="Mecánico Ajustador de Planta">
+                            <option value="Operador de Sandblasting & Pintura">
+                            <option value="Chofer / Conductor de Carga">
+                            <option value="Custodio de Almacén Central">
+                            <option value="Mecánico de Mantenimiento">
+                            <option value="Electricista Industrial">
+                            <option value="Instrumentista">
+                            <option value="Coordinador de Seguridad SIAHO">
+                            <option value="Ayudante General de Obra">
+                        </datalist>
+                        <span style="font-size: 10px; color: #64748b;">Selecciona o escribe una nueva especialidad</span>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Tipo de Nómina *</label>
+                        <input type="text" id="npers_payroll_type" list="payrollDatalist" class="form-input" placeholder="Ej: Semanal, Quincenal..." required autocomplete="off" value="Semanal">
+                        <datalist id="payrollDatalist">
+                            <option value="Semanal (Nómina de Taller / Cuadrilla)">
+                            <option value="Semanal">
+                            <option value="Quincenal (Administrativa / Técnica)">
+                            <option value="Quincenal">
+                            <option value="Mensual (Fijo Ordinario)">
+                            <option value="Mensual">
+                            <option value="Destajo por Obra / Por Avance">
+                            <option value="Honorarios Profesionales">
+                            <option value="Bono / Viático Temporal">
+                        </datalist>
+                        <span style="font-size: 10px; color: #64748b;">Selecciona o escribe el tipo de nómina</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Salario / Tarifa ($ USD)</label>
+                        <input type="number" step="0.01" id="npers_salary" value="0.00" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Ubicación Inicial</label>
+                        <input type="text" id="npers_location" value="Sede Central Dalor (Guacara)" class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalNewPersonnel')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #059669;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Ficha de Empleado
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR PERSONAL (PUNTO 7 & 8) -->
+    
+
+<div id="modalEditPersonnel" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 540px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #0284c7;">
+                    <i class="fa-solid fa-user-pen" style="color: #0284c7;"></i> Editar Colaborador / Ficha de Personal
+                </h3>
+                <button onclick="closeModal('modalEditPersonnel')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editPersonnelForm" onsubmit="submitEditPersonnel(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_pers_id">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Código de Ficha (Protegido)</label>
+                        <input type="text" id="edit_pers_code" class="form-input" readonly style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 700; color: #002B49;">
+                    </div>
+                    <div>
+                        <label class="form-label">Nombre Completo *</label>
+                        <input type="text" id="edit_pers_name" class="form-input" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cédula / Identificación *</label>
+                        <input type="text" id="edit_pers_id_doc" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Teléfono de Contacto</label>
+                        <input type="text" id="edit_pers_phone" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cargo / Especialidad *</label>
+                        <input type="text" id="edit_pers_role" list="rolesDatalist" class="form-input" required autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="form-label">Tipo de Nómina *</label>
+                        <input type="text" id="edit_pers_payroll_type" list="payrollDatalist" class="form-input" required autocomplete="off">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Salario / Tarifa ($ USD)</label>
+                        <input type="number" step="0.01" id="edit_pers_salary" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Ubicación Actual</label>
+                        <input type="text" id="edit_pers_location" class="form-input">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalEditPersonnel')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR ACTIVO / HERRAMIENTA / VEHÍCULO (PUNTO 7) -->
+    
+
+<div id="modalPersonnelHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 920px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="personnelHistoryTitle" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-user-clock" style="color: #2563eb;"></i> Bitácora & Trazabilidad de Colaborador
+                    </h3>
+                    <p id="personnelHistorySubtitle" style="font-size: 12px; color: #64748b; margin: 3px 0 0 0;">Cargando historial del colaborador...</p>
+                </div>
+                <button onclick="closeModal('modalPersonnelHistory')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Personnel KPI Card -->
+            <div id="personnelHistoryKpiCard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Ubicación / Obra Actual</span>
+                    <p id="persHistCurrentLoc" style="font-size: 12px; font-weight: 800; color: #1e293b; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cargo / Rol</span>
+                    <p id="persHistRole" style="font-size: 12px; font-weight: 800; color: #2563eb; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Asignaciones a Obras</span>
+                    <p id="persHistTotalProjects" style="font-size: 13px; font-weight: 800; color: #059669; margin: 2px 0 0 0;">0 obras</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Estatus Operativo</span>
+                    <p id="persHistStatusBadge" style="margin: 2px 0 0 0;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #dcfce7; color: #166534;">DISPONIBLE</span></p>
+                </div>
+            </div>
+
+            <!-- Timeline Table -->
+            <div class="table-wrapper">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px; text-align: left;">Fecha & Hora</th>
+                            <th style="padding: 8px; text-align: left;">Tipo Evento</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Rol / Función</th>
+                            <th style="padding: 8px; text-align: left;">Observaciones / Guía de Despacho</th>
+                        </tr>
+                    </thead>
+                    <tbody id="personnelHistoryTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">Cargando bitácora del colaborador...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Bitácora de Colaborador -->
+            <div id="personnelHistoryPagination"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalPersonnelHistory')" class="btn-secondary">Cerrar Bitácora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: BITÁCORA HISTÓRICA DE PARTIDA CONTABLE -->
+    

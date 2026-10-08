@@ -1,0 +1,1389 @@
+<div id="modalTool" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Nueva Herramienta / Equipo</h3>
+
+                <button onclick="closeModal('modalTool')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="toolForm" onsubmit="submitCreateTool(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código *</label>
+
+                        <input type="text" id="tool_code" placeholder="HER-005" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre del Equipo *</label>
+
+                        <input type="text" id="tool_name" placeholder="Ej: Generador Eléctrico 10kVA" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Tipo de Recurso</label>
+
+                        <select id="tool_type" class="form-select">
+
+                            <option value="herramienta">Herramienta Menor</option>
+
+                            <option value="maquinaria">Maquinaria Pesada</option>
+
+                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
+
+                            <option value="equipo_especial">Equipo Especial</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Marca / Modelo</label>
+
+                        <input type="text" id="tool_brand" placeholder="Ej: Caterpillar / DeWalt" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Número de Serial</label>
+
+                        <input type="text" id="tool_serial" placeholder="Serial de fábrica" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Ubicación Inicial</label>
+
+                        <input type="text" id="tool_location" value="Sede Central" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Herramienta</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO VEHÍCULO -->
+
+    
+
+<div id="modalVehicle" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Nuevo Vehículo / Camioneta</h3>
+
+                <button onclick="closeModal('modalVehicle')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="vehicleForm" onsubmit="submitCreateVehicle(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código Flota *</label>
+
+                        <input type="text" id="veh_code" placeholder="CAM-03" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre / Descripción *</label>
+
+                        <input type="text" id="veh_name" placeholder="Ej: Camioneta Hilux 4x4 Cuadrilla" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Marca / Modelo</label>
+
+                        <input type="text" id="veh_brand" placeholder="Toyota Hilux" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Placa</label>
+
+                        <input type="text" id="veh_plate" placeholder="A12BC34" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Odómetro Inicial (Km)</label>
+
+                        <input type="number" id="veh_odometer" value="0" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Intervalo de Servicio (Km)</label>
+
+                        <input type="number" id="veh_interval" value="5000" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Vehículo</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO SERVICIO / PARTIDA -->
+
+    
+
+<div id="modalAssignResource" class="modal-overlay hidden">
+
+        <div class="modal-content">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+
+                <h3 id="assignModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Asignar Recurso a Proyecto</h3>
+
+                <button onclick="closeModal('modalAssignResource')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="assignResourceForm" onsubmit="submitResourceAction(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <input type="hidden" id="modal_res_type">
+
+                <input type="hidden" id="modal_res_id">
+
+                <input type="hidden" id="modal_action_type">
+
+
+
+                <div>
+
+                    <label class="form-label">Proyecto Destino *</label>
+
+                    <select id="modal_target_project_id" class="form-select" required></select>
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="form-label">Ubicación Física *</label>
+
+                    <input type="text" id="modal_res_location" placeholder="Ej: Planta Guacara" class="form-input" required>
+
+                </div>
+
+
+
+                <div id="modal_custodian_container">
+
+                    <label class="form-label">Custodio / Responsable</label>
+
+                    <input type="text" id="modal_res_custodian" placeholder="Nombre de la persona a cargo" class="form-input">
+
+                </div>
+
+
+
+                <div id="modal_odometer_container">
+
+                    <label class="form-label">Odómetro (Km/Hrs)</label>
+
+                    <input type="number" id="modal_res_odometer" placeholder="Lectura de odómetro" class="form-input">
+
+                </div>
+
+
+
+                <button type="submit" id="btnConfirmResourceAction" class="btn-primary" style="margin-top: 6px;">
+
+                    Confirmar Movimiento
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: REGISTRAR COBRO / ABONO DIRECTO DE CLIENTE -->
+
+    
+
+<div id="modalVehicleServices" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 820px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="vehServicesModalTitle" style="font-size: 16px; font-weight: 800; color: #ea580c; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i class="fa-solid fa-wrench"></i> Historial de Mantenimientos & Servicios
+                    </h3>
+                    <p id="vehServicesModalSubtitle" style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Control de cambios de aceite, filtros, frenos y reparaciones preventivas/correctivas.</p>
+                </div>
+                <button onclick="closeModal('modalVehicleServices')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <!-- Ficha Resumen del Vehículo -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #9a3412;">PLACA / SERIAL</div>
+                    <div id="vehSrvPlate" style="font-weight: 800; color: #1e293b; font-size: 13px;">-</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #9a3412;">ODÓMETRO ACTUAL</div>
+                    <div id="vehSrvOdometer" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px;">0 Km</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #9a3412;">TOTAL SERVICIOS</div>
+                    <div id="vehSrvCount" style="font-weight: 800; color: #c2410c; font-size: 13px;">0 Realizados</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #9a3412;">INVERSIÓN TOTAL</div>
+                    <div id="vehSrvTotalCost" style="font-weight: 800; color: #059669; font-size: 13px;">$0.00 USD</div>
+                </div>
+            </div>
+
+            <!-- Botón acción registrar nuevo servicio -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                <button type="button" id="btnOpenNewServiceFromHistory" class="btn-primary" style="background: #ea580c; font-size: 12px; font-weight: 800;">
+                    <i class="fa-solid fa-plus"></i> + Registrar Nuevo Servicio
+                </button>
+            </div>
+
+            <!-- Tabla de Servicios -->
+            <div class="table-wrapper" style="max-height: 340px; overflow-y: auto;">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                            <th style="padding: 6px 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 6px 8px; text-align: left;">Tipo de Servicio</th>
+                            <th id="vehSrvColReading" style="padding: 6px 8px; text-align: right;">Lectura (Km/Hrs)</th>
+                            <th style="padding: 6px 8px; text-align: left;">Taller / Responsable</th>
+                            <th style="padding: 6px 8px; text-align: right;">Costo ($)</th>
+                            <th style="padding: 6px 8px; text-align: left;">Observaciones</th>
+                            <th style="padding: 6px 8px; text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vehServicesTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Servicios -->
+            <div id="vehServicesPagination"></div>
+
+            <!-- Contenedor de Trazabilidad Visible de Auditoría -->
+            <div id="vehServicesAuditContainer" style="margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleVehServicesAuditTrace()">
+                    <span style="font-size: 11px; font-weight: 800; color: #475569; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-clipboard-check" style="color: #6366f1;"></i> 
+                        <span>Trazabilidad de Auditoría & Eliminaciones</span>
+                        <span id="vehServicesAuditCount" style="background: #e2e8f0; color: #334155; font-size: 10px; padding: 1px 6px; border-radius: 9999px;">0 eventos</span>
+                    </span>
+                    <span id="vehServicesAuditChevron" style="font-size: 11px; color: #94a3b8;"><i class="fa-solid fa-chevron-down"></i></span>
+                </div>
+                <div id="vehServicesAuditList" style="display: none; margin-top: 8px; font-size: 10.5px; color: #64748b; max-height: 120px; overflow-y: auto; border-top: 1px dashed #cbd5e1; padding-top: 6px;"></div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                <button type="button" onclick="closeModal('modalVehicleServices')" class="btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTRAR / EDITAR MANTENIMIENTO O SERVICIO (VEHÍCULOS Y MAQUINARIAS) -->
+    
+
+<div id="modalRecordService" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 id="modalRecordServiceTitle" style="font-size: 16px; font-weight: 800; color: #ea580c; display: flex; align-items: center; gap: 8px; margin: 0;">
+                    <i class="fa-solid fa-wrench"></i> <span>Registrar Mantenimiento / Servicio</span>
+                </h3>
+                <button onclick="closeModal('modalRecordService')" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <form id="formRecordService" onsubmit="submitRecordService(event)">
+                <input type="hidden" id="srv_asset_id">
+                <input type="hidden" id="srv_edit_service_id">
+                <input type="hidden" id="srv_asset_is_machinery">
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Vehículo / Maquinaria / Planta:</label>
+                    <div id="srv_veh_label" style="font-weight: 800; color: var(--dalor-navy); font-size: 13px; padding: 8px 12px; background: #f1f5f9; border-radius: 6px; border: 1px solid #e2e8f0;"></div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Fecha del Servicio *</label>
+                        <input type="datetime-local" id="srv_service_date" class="form-input" style="width: 100%; font-size: 11.5px; padding: 6px;" required>
+                    </div>
+                    <div>
+                        <label id="srv_reading_label" style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Odómetro (Km) *</label>
+                        <input type="number" step="1" id="srv_odometer" class="form-input" required style="width: 100%; font-size: 12px; font-weight: 700;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11.5px; font-weight: 700; color: #334155; margin: 0;">Tipo de Servicio *</label>
+                        <button type="button" onclick="promptNewCustomServiceType()" style="background: none; border: none; font-size: 10.5px; color: #ea580c; font-weight: 700; cursor: pointer; text-decoration: underline;">
+                            + Crear Nuevo Tipo
+                        </button>
+                    </div>
+                    <select id="srv_type" class="form-select" onchange="onRecordServiceTypeChange()" required style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                        <!-- Opciones inyectadas dinámicamente según sea vehículo o maquinaria -->
+                    </select>
+                    <div id="srv_custom_type_container" style="display: none; margin-top: 6px;">
+                        <input type="text" id="srv_custom_type" class="form-input" placeholder="Escribe el nombre del tipo de servicio personalizado..." style="width: 100%; font-size: 12px; font-weight: 700; color: #ea580c; border-color: #fdba74;">
+                    </div>
+                </div>
+
+                <!-- Checkbox condicional: ¿Reinicia semáforo de aceite? (Solo Vehículos) -->
+                <div id="srv_reset_oil_container" class="form-group" style="margin-bottom: 12px; background: #fff7ed; padding: 10px 12px; border-radius: 6px; border: 1px solid #fed7aa;">
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 11.5px; font-weight: 700; color: #9a3412; margin: 0;">
+                        <input type="checkbox" id="srv_reset_oil" checked style="width: 16px; height: 16px; margin-top: 1px; accent-color: #ea580c; cursor: pointer;">
+                        <div>
+                            <span>¿Reiniciar ciclo de lubricación a 5.000 Km?</span>
+                            <span id="srv_reset_oil_desc" style="display: block; font-size: 10.5px; font-weight: 500; color: #c2410c; margin-top: 2px;">
+                                Marcado: Este servicio incluye cambio de lubricante y reinicia el intervalo a 5.000 Km (Verde OK).
+                            </span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Costo del Servicio ($ USD)</label>
+                    <input type="number" step="0.01" id="srv_cost" class="form-input" value="0.00" style="width: 100%; font-size: 12px; font-weight: 700; color: #059669;">
+                </div>
+
+                <!-- Opción 2: Casilla Inteligente Anti-Duplicados en Gastos / Tesorería -->
+                <div class="form-group" style="margin-bottom: 12px; background: #f0fdf4; padding: 10px 12px; border-radius: 6px; border: 1.5px solid #86efac;">
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 11.5px; font-weight: 700; color: #166534; margin: 0;">
+                        <input type="checkbox" id="srv_create_expense" style="width: 16px; height: 16px; margin-top: 1px; accent-color: #16a34a; cursor: pointer;">
+                        <div>
+                            <span>Cargar automáticamente este costo en el Módulo de Gastos / Tesorería</span>
+                            <span style="display: block; font-size: 10px; font-weight: 500; color: #15803d; margin-top: 2px;">
+                                ⚠️ Déjalo desmarcado si la factura o comprobante físico será registrado por Administración en Gastos, para evitar duplicación contable.
+                            </span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Taller / Responsable / Notas</label>
+                    <textarea id="srv_notes" class="form-input" rows="2" placeholder="Ej: Taller Central - Cambio de filtro primario y revisión de mangueras." style="width: 100%; font-size: 12px; resize: none;"></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalRecordService')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;">Cancelar</button>
+                    <button type="submit" id="btnSubmitRecordService" class="btn-primary" style="font-size: 12px; padding: 6px 14px; background: #ea580c; font-weight: 800;">
+                        <i class="fa-solid fa-check"></i> <span id="btnSubmitRecordServiceText">Guardar en Bitácora</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: AUTORIZACIÓN ESTRICTA DE ADMINISTRADOR PARA ELIMINACIONES Y AUDITORÍA -->
+    
+
+<div id="modalAdminAuth" class="modal-overlay hidden" style="z-index: 4000;">
+        <div class="modal-content" style="max-width: 440px; border-top: 4px solid #ef4444;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 id="adminAuthTitle" style="font-size: 15px; font-weight: 800; color: #b91c1c; display: flex; align-items: center; gap: 8px; margin: 0;">
+                    <i class="fa-solid fa-shield-halved"></i> <span>Autorización Requerida</span>
+                </h3>
+                <button type="button" onclick="closeModal('modalAdminAuth')" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+            
+            <p id="adminAuthMessage" style="font-size: 12px; color: #475569; margin-bottom: 14px; line-height: 1.4;">
+                Esta acción es restringida. Ingrese su clave de Administrador / Director General para autorizar y dejar registro visible en la bitácora de auditoría.
+            </p>
+
+            <form id="formAdminAuth" onsubmit="submitAdminAuth(event)">
+                <input type="hidden" id="adminAuthActionType">
+                <input type="hidden" id="adminAuthTargetId">
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Motivo / Justificación *</label>
+                    <input type="text" id="adminAuthReason" class="form-input" placeholder="Ej: Registro duplicado / error de digitación / cancelación" required style="width: 100%; font-size: 12px;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #b91c1c; display: block; margin-bottom: 4px;">Contraseña de Administrador / Director *</label>
+                    <input type="password" id="adminAuthPassword" class="form-input" placeholder="Ingrese clave de administrador..." required style="width: 100%; font-size: 12px; border-color: #fca5a5;">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalAdminAuth')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;">Cancelar</button>
+                    <button type="submit" id="btnConfirmAdminAuth" class="btn-primary" style="font-size: 12px; padding: 6px 14px; background: #dc2626; font-weight: 800;">
+                        <i class="fa-solid fa-trash"></i> Confirmar Eliminación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: NUEVO ACTIVO / EQUIPO / VEHÍCULO / HERRAMIENTA / MAQUINARIA -->
+
+    
+
+<div id="modalNewAsset" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 620px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 id="newAssetModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+
+                    <i class="fa-solid fa-plus-circle" style="color: var(--dalor-blue);"></i> Registrar Nuevo Activo / Equipo / Vehículo
+
+                </h3>
+
+                <button onclick="closeModal('modalNewAsset')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newAssetForm" onsubmit="submitCreateAsset(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Tipo de Activo / Recurso *</label>
+
+                        <select id="nass_type" class="form-select" required onchange="onAssetTypeChanged()">
+
+                            <option value="herramienta_mayor">Herramienta Mayor / Industrial</option>
+
+                            <option value="herramienta_menor">Herramienta Menor</option>
+
+                            <option value="maquinaria">Maquinaria Pesada / Planta / Compresor</option>
+
+                            <option value="vehiculo">Vehículo / Camión de Carga</option>
+
+                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Código de Activo *</label>
+
+                        <input type="text" id="nass_code" placeholder="Ej: HERR-0908 / FLT-009" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <!-- Banner Guía de Nomenclatura Dinámica -->
+                <div id="nass_nomenclature_guide" style="font-size: 11px; padding: 6px 10px; border-radius: 6px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span id="nass_nomenclature_text">Nomenclatura Dalor recomendada: Prefijo HERR- o código de pañol.</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Categoría *</label>
+
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <select id="nass_category" class="form-select" onchange="onAssetCategorySelected()">
+                                <option value="Herramientas Manuales">Herramientas Manuales</option>
+                                <option value="Herramientas Eléctricas">Herramientas Eléctricas</option>
+                                <option value="Equipos de Medición">Equipos de Medición</option>
+                                <option value="Seguridad Industrial">Seguridad Industrial</option>
+                                <option value="Consumibles de Taller">Consumibles de Taller</option>
+                                <option value="Flota Vehicular">Flota Vehicular</option>
+                                <option value="Maquinaria Pesada">Maquinaria Pesada</option>
+                                <option value="Herramientas Generales">Herramientas Generales</option>
+                                <option value="__NEW__" style="font-weight: 800; color: #2563eb;">+ Crear Nueva Categoría...</option>
+                            </select>
+                            <input type="text" id="nass_new_category" class="form-input hidden" placeholder="Escribe el nombre de la nueva categoría...">
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Condición de Propiedad *</label>
+
+                        <select id="nass_ownership" class="form-select">
+
+                            <option value="propio">Propio (Activo Fijo DALOR)</option>
+
+                            <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
+
+                            <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
+
+                            <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
+
+                            <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Nombre / Denominación del Equipo *</label>
+
+                        <input type="text" id="nass_name" placeholder="Ej: Máquina de Soldar Miller Big Blue 500X..." class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Empresa / Propietario / Arrendador</label>
+
+                        <input type="text" id="nass_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Marca</label>
+
+                        <input type="text" id="nass_brand" placeholder="Miller / Lincoln / Bosch / Ford..." class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Modelo / Especificación</label>
+
+                        <input type="text" id="nass_model" placeholder="Ej: 500X Diésel / GWS 22-230..." class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label" id="nass_serial_label">Serial / Placa</label>
+
+                        <input type="text" id="nass_serial" placeholder="Serial o Nº de Placa" class="form-input">
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label" id="nass_odometer_label">Lectura Inicial (Km / Horas)</label>
+
+                        <input type="number" step="0.1" id="nass_odometer" value="0" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Ubicación Inicial *</label>
+
+                        <input type="text" id="nass_location" value="Sede Central Dalor (Guacara)" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Custodio / Responsable</label>
+
+                        <input type="text" id="nass_custodian" value="Disponible en Base" class="form-input">
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+
+                    <button type="button" onclick="closeModal('modalNewAsset')" class="btn-secondary">Cancelar</button>
+
+                    <button type="submit" class="btn-primary" style="background: var(--dalor-navy);">
+
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Activo en Sistema
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: NUEVO EMPLEADO / PERSONAL -->
+
+    
+
+<div id="modalNewPersonnel" class="modal-overlay hidden">
+
+        <div class="modal-content" style="max-width: 540px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+
+                <h3 style="font-size: 15px; font-weight: 800; color: #065f46;">
+
+                    <i class="fa-solid fa-user-plus" style="color: #10b981;"></i> Registrar Nuevo Empleado / Ficha de Personal
+
+                </h3>
+
+                <button onclick="closeModal('modalNewPersonnel')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+
+            </div>
+
+            <form id="newPersonnelForm" onsubmit="submitCreatePersonnel(event)" style="display: flex; flex-direction: column; gap: 10px;">
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Código de Ficha *</label>
+
+                        <input type="text" id="npers_code" placeholder="PERS-019" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Nombre Completo *</label>
+
+                        <input type="text" id="npers_name" placeholder="Nombres y Apellidos" class="form-input" required>
+
+                    </div>
+
+                </div>
+
+                <!-- Banner Guía de Nomenclatura Personal -->
+                <div id="npers_nomenclature_guide" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Nomenclatura Dalor: Prefijo <b>PERS-</b> correlativo (ej: PERS-019).</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
+
+                        <label class="form-label">Cédula / Identificación *</label>
+
+                        <input type="text" id="npers_id" placeholder="V-18.450.123" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Teléfono de Contacto</label>
+
+                        <input type="text" id="npers_phone" placeholder="+58 414 0000000" class="form-input">
+
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cargo / Especialidad *</label>
+                        <input type="text" id="npers_role" list="rolesDatalist" class="form-input" placeholder="Ej: Soldador 6G, Mecánico..." required autocomplete="off">
+                        <datalist id="rolesDatalist">
+                            <option value="Ingeniero Residente de Obra">
+                            <option value="Supervisor de Soldadura y Montaje">
+                            <option value="Soldador Especialista 6G / TIG">
+                            <option value="Soldador Estructural MIG/MAG">
+                            <option value="Armador / Pailero Estructural">
+                            <option value="Mecánico Ajustador de Planta">
+                            <option value="Operador de Sandblasting & Pintura">
+                            <option value="Chofer / Conductor de Carga">
+                            <option value="Custodio de Almacén Central">
+                            <option value="Mecánico de Mantenimiento">
+                            <option value="Electricista Industrial">
+                            <option value="Instrumentista">
+                            <option value="Coordinador de Seguridad SIAHO">
+                            <option value="Ayudante General de Obra">
+                        </datalist>
+                        <span style="font-size: 10px; color: #64748b;">Selecciona o escribe una nueva especialidad</span>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Tipo de Nómina *</label>
+                        <input type="text" id="npers_payroll_type" list="payrollDatalist" class="form-input" placeholder="Ej: Semanal, Quincenal..." required autocomplete="off" value="Semanal">
+                        <datalist id="payrollDatalist">
+                            <option value="Semanal (Nómina de Taller / Cuadrilla)">
+                            <option value="Semanal">
+                            <option value="Quincenal (Administrativa / Técnica)">
+                            <option value="Quincenal">
+                            <option value="Mensual (Fijo Ordinario)">
+                            <option value="Mensual">
+                            <option value="Destajo por Obra / Por Avance">
+                            <option value="Honorarios Profesionales">
+                            <option value="Bono / Viático Temporal">
+                        </datalist>
+                        <span style="font-size: 10px; color: #64748b;">Selecciona o escribe el tipo de nómina</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Salario / Tarifa ($ USD)</label>
+                        <input type="number" step="0.01" id="npers_salary" value="0.00" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Ubicación Inicial</label>
+                        <input type="text" id="npers_location" value="Sede Central Dalor (Guacara)" class="form-input">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalNewPersonnel')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #059669;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Ficha de Empleado
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR PERSONAL (PUNTO 7 & 8) -->
+    
+
+<div id="modalEditPersonnel" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 540px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #0284c7;">
+                    <i class="fa-solid fa-user-pen" style="color: #0284c7;"></i> Editar Colaborador / Ficha de Personal
+                </h3>
+                <button onclick="closeModal('modalEditPersonnel')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editPersonnelForm" onsubmit="submitEditPersonnel(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_pers_id">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Código de Ficha (Protegido)</label>
+                        <input type="text" id="edit_pers_code" class="form-input" readonly style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 700; color: #002B49;">
+                    </div>
+                    <div>
+                        <label class="form-label">Nombre Completo *</label>
+                        <input type="text" id="edit_pers_name" class="form-input" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cédula / Identificación *</label>
+                        <input type="text" id="edit_pers_id_doc" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Teléfono de Contacto</label>
+                        <input type="text" id="edit_pers_phone" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Cargo / Especialidad *</label>
+                        <input type="text" id="edit_pers_role" list="rolesDatalist" class="form-input" required autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="form-label">Tipo de Nómina *</label>
+                        <input type="text" id="edit_pers_payroll_type" list="payrollDatalist" class="form-input" required autocomplete="off">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Salario / Tarifa ($ USD)</label>
+                        <input type="number" step="0.01" id="edit_pers_salary" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Ubicación Actual</label>
+                        <input type="text" id="edit_pers_location" class="form-input">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalEditPersonnel')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR ACTIVO / HERRAMIENTA / VEHÍCULO (PUNTO 7) -->
+    
+
+<div id="modalEditAsset" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #0284c7;">
+                    <i class="fa-solid fa-pen-to-square" style="color: #0284c7;"></i> Editar Activo / Equipo / Herramienta
+                </h3>
+                <button onclick="closeModal('modalEditAsset')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="editAssetForm" onsubmit="submitEditAsset(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit_asset_id">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Código (Protegido)</label>
+                        <input type="text" id="edit_asset_code" class="form-input" readonly style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 700; color: #002B49;">
+                    </div>
+                    <div>
+                        <label class="form-label">Nombre del Activo / Equipo *</label>
+                        <input type="text" id="edit_asset_name" class="form-input" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Tipo de Activo</label>
+                        <select id="edit_asset_type" class="form-select">
+                            <option value="herramienta">Herramienta</option>
+                            <option value="herramienta_mayor">Herramienta Mayor</option>
+                            <option value="herramienta_menor">Herramienta Menor</option>
+                            <option value="maquinaria">Maquinaria Pesada</option>
+                            <option value="vehiculo">Vehículo / Camión</option>
+                            <option value="camioneta">Camioneta</option>
+                            <option value="equipo_medicion">Equipo de Medición</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Categoría</label>
+                        <input type="text" id="edit_asset_category" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Marca</label>
+                        <input type="text" id="edit_asset_brand" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Modelo</label>
+                        <input type="text" id="edit_asset_model" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Serial</label>
+                        <input type="text" id="edit_asset_serial" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Placa (Vehículos)</label>
+                        <input type="text" id="edit_asset_plate" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Odómetro / Horómetro Actual</label>
+                        <input type="number" step="0.1" id="edit_asset_odometer" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Ubicación</label>
+                        <input type="text" id="edit_asset_location" class="form-input">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalEditAsset')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CALIBRACIÓN DE INVENTARIO (PUNTO 16) -->
+    
+
+<div id="modalToolHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 680px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="modalToolHistoryTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: var(--dalor-blue);"></i> Historial de Traza de Herramienta
+                    </h3>
+                    <p id="modalToolHistorySubtitle" style="font-size: 11px; color: #64748b;">Movimientos, obras, custodios y estados registrados.</p>
+                </div>
+                <button onclick="closeModal('modalToolHistory')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                            <th style="padding: 8px; text-align: left;">Cód. / Unidad</th>
+                            <th style="padding: 8px; text-align: left;">Evento / Movimiento</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Responsable</th>
+                        </tr>
+                    </thead>
+                    <tbody id="toolHistoryTableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 16px;">Cargando historial...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Traza de Herramientas -->
+            <div id="toolHistoryPagination"></div>
+
+            <div style="margin-top: 14px; text-align: right;">
+                <button type="button" onclick="closeModal('modalToolHistory')" class="btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GESTIÓN DE USUARIOS DE SISTEMA -->
+    
+
+<div id="modalOdometerOcr" class="modal-overlay hidden" style="z-index: 100000;">
+
+        <div class="modal-card" style="max-width: 480px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+
+                <div>
+
+                    <h3 style="font-size: 15px; font-weight: 800; color: #0284c7; display: flex; align-items: center; gap: 8px; margin: 0;">
+
+                        <i class="fa-solid fa-camera"></i> Escaneo de Odómetro (OCR IA)
+
+                    </h3>
+
+                    <p id="odoVehicleSubtitle" style="font-size: 12px; color: #64748b; margin: 2px 0 0 0; font-weight: 600;">[VEH-01] Toyota Hilux - Placa A82CK1M</p>
+
+                </div>
+
+                <button onclick="closeModal('modalOdometerOcr')" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer;">&times;</button>
+
+            </div>
+
+
+
+            <!-- Kilometraje Anterior Registrado -->
+
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+
+                <span style="font-size: 12px; color: #0369a1; font-weight: 700;">Último Kilometraje Registrado:</span>
+
+                <span id="odoCurrentKmDisplay" style="font-size: 14px; font-weight: 900; color: #0c4a6e; font-family: monospace;">125.000 Km</span>
+
+            </div>
+
+
+
+            <!-- Botón de Captura / Selección de Foto -->
+
+            <div style="text-align: center; margin-bottom: 14px;">
+
+                <input type="file" id="odometerFileInput" accept="image/*" capture="environment" style="display: none;" onchange="handleOdometerImageSelected(event)">
+
+                <button type="button" onclick="document.getElementById('odometerFileInput').click()" class="btn-primary" style="background: #0284c7; font-size: 13px; padding: 10px 18px; border-radius: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 3px 6px rgba(2, 132, 199, 0.3);">
+
+                    <i class="fa-solid fa-camera" style="font-size: 16px;"></i> Tomar Foto al Tablero / Odómetro
+
+                </button>
+
+            </div>
+
+
+
+            <!-- Preview y Animación de Escaneo -->
+
+            <div id="odoPreviewBox" style="display: none; background: #0f172a; border-radius: 8px; padding: 8px; text-align: center; margin-bottom: 14px; position: relative; overflow: hidden;">
+
+                <img id="odoPreviewImg" src="" style="max-height: 180px; max-width: 100%; object-fit: contain; border-radius: 6px;">
+
+                <div id="odoScanningOverlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.75); flex-direction: column; align-items: center; justify-content: center; color: white;">
+
+                    <i class="fa-solid fa-microchip fa-spin" style="font-size: 28px; color: #38bdf8; margin-bottom: 8px;"></i>
+
+                    <span style="font-size: 12px; font-weight: 700; color: #e0f2fe;">Analizando tablero con IA de Visión...</span>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Resultado de Lectura Detectada -->
+
+            <div id="odoResultBox" style="display: none; background: #ecfdf5; border: 1.5px solid #6ee7b7; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+
+                    <span style="font-size: 12px; font-weight: 800; color: #065f46; display: flex; align-items: center; gap: 6px;">
+
+                        <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Kilometraje Detectado:
+
+                    </span>
+
+                    <span id="odoConfidenceBadge" style="font-size: 10px; font-weight: 800; background: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px;">
+
+                        Confianza 95%
+
+                    </span>
+
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+
+                    <input type="number" id="odoDetectedInput" step="1" style="font-size: 20px; font-weight: 900; text-align: center; color: #064e3b; font-family: monospace; border: 2px solid #34d399; border-radius: 6px; padding: 6px; width: 100%; background: #ffffff;" required>
+
+                    <span style="font-size: 16px; font-weight: 800; color: #065f46;">Km</span>
+
+                </div>
+
+                <p id="odoDetectedNotes" style="font-size: 11px; color: #047857; margin: 6px 0 0 0; text-align: center;">Lectura clara del odómetro principal</p>
+
+            </div>
+
+
+
+            <form id="formConfirmOdometer" onsubmit="submitConfirmOdometer(event)">
+
+                <input type="hidden" id="odoAssetIdHidden">
+
+                <input type="hidden" id="odoImageUrlHidden">
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+
+                    <button type="button" onclick="closeModal('modalOdometerOcr')" class="btn-secondary" style="font-size: 12px;">Cancelar</button>
+
+                    <button type="submit" id="btnConfirmOdometer" class="btn-primary" style="font-size: 12px; background: #059669; display: none;">
+
+                        <i class="fa-solid fa-check-double"></i> Confirmar y Guardar Lectura
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    
+
+    <!-- 📱 ACTION SHEET MODAL PARA SUBMENÚS EN IPHONE & MÓVILES (INMUNE A RESTRICCIONES WEBKIT) -->
+
+    <div id="mobileSubmenuSheet" class="mobile-submenu-overlay" onclick="closeMobileSubmenu(event)">
+
+        <div class="mobile-submenu-card" onclick="event.stopPropagation()">
+
+            <div class="mobile-submenu-header">
+
+                <div id="mobileSubmenuTitle" class="mobile-submenu-title">
+
+                    <i class="fa-solid fa-layer-group" style="color: var(--dalor-blue);"></i>
+
+                    <span>Opciones del Módulo</span>
+
+                </div>
+
+                <button type="button" class="mobile-submenu-close" onclick="closeMobileSubmenu(event)">&times;</button>
+
+            </div>
+
+            <div id="mobileSubmenuItems" class="mobile-submenu-body">
+
+                <!-- Se clonan dinámicamente los items del submenú -->
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- 🔔 CONTENEDOR FLOTANTE DE NOTIFICACIONES TOAST EN VIVO -->
+
+    <div id="toastNotificationContainer" style="position: fixed; top: 75px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 390px; width: 92%;"></div>
+
+
+
+
+
+
+
+
+
+    <!-- MODAL: CONFIRMAR ENTREGA DE GUÍA DE DESPACHO -->
+
+    
+
+<div id="modalAssetHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 880px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="assetHistoryTitle" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: #2563eb;"></i> Bitácora de Uso & Trazabilidad
+                    </h3>
+                    <p id="assetHistorySubtitle" style="font-size: 12px; color: #64748b; margin: 3px 0 0 0;">Cargando información del activo...</p>
+                </div>
+                <button onclick="closeModal('modalAssetHistory')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Asset KPI Card -->
+            <div id="assetHistoryKpiCard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Ubicación Actual</span>
+                    <p id="assetHistCurrentLoc" style="font-size: 12px; font-weight: 800; color: #1e293b; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Custodio / Conductor</span>
+                    <p id="assetHistCustodian" style="font-size: 12px; font-weight: 800; color: #2563eb; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Odómetro / Horómetro</span>
+                    <p id="assetHistOdometer" style="font-size: 13px; font-weight: 800; color: #059669; margin: 2px 0 0 0;">0 Km</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Estado Operativo</span>
+                    <p id="assetHistStatusBadge" style="margin: 2px 0 0 0;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #dcfce7; color: #166534;">DISPONIBLE</span></p>
+                </div>
+            </div>
+
+            <!-- Timeline Table -->
+            <div class="table-wrapper">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px; text-align: left;">Fecha & Hora</th>
+                            <th style="padding: 8px; text-align: left;">Tipo Evento</th>
+                            <th style="padding: 8px; text-align: left;">Cód / Guía</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Chofer / Custodio</th>
+                            <th style="padding: 8px; text-align: right;">Odómetro</th>
+                            <th style="padding: 8px; text-align: left;">Observaciones / Motivo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetHistoryTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #64748b; padding: 20px;">Cargando bitácora del activo...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Bitácora de Activo -->
+            <div id="assetHistoryPagination"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalAssetHistory')" class="btn-secondary">Cerrar Bitácora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: BITÁCORA Y TRAZABILIDAD INTEGRAL DE COLABORADOR / PERSONAL (PUNTO 6) -->
+    
+
+<div id="modalPersonnelHistory" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 920px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <h3 id="personnelHistoryTitle" style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                        <i class="fa-solid fa-user-clock" style="color: #2563eb;"></i> Bitácora & Trazabilidad de Colaborador
+                    </h3>
+                    <p id="personnelHistorySubtitle" style="font-size: 12px; color: #64748b; margin: 3px 0 0 0;">Cargando historial del colaborador...</p>
+                </div>
+                <button onclick="closeModal('modalPersonnelHistory')" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Personnel KPI Card -->
+            <div id="personnelHistoryKpiCard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Ubicación / Obra Actual</span>
+                    <p id="persHistCurrentLoc" style="font-size: 12px; font-weight: 800; color: #1e293b; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Cargo / Rol</span>
+                    <p id="persHistRole" style="font-size: 12px; font-weight: 800; color: #2563eb; margin: 2px 0 0 0;">-</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Asignaciones a Obras</span>
+                    <p id="persHistTotalProjects" style="font-size: 13px; font-weight: 800; color: #059669; margin: 2px 0 0 0;">0 obras</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Estatus Operativo</span>
+                    <p id="persHistStatusBadge" style="margin: 2px 0 0 0;"><span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #dcfce7; color: #166534;">DISPONIBLE</span></p>
+                </div>
+            </div>
+
+            <!-- Timeline Table -->
+            <div class="table-wrapper">
+                <table style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 8px; text-align: left;">Fecha & Hora</th>
+                            <th style="padding: 8px; text-align: left;">Tipo Evento</th>
+                            <th style="padding: 8px; text-align: left;">Obra / Destino</th>
+                            <th style="padding: 8px; text-align: left;">Rol / Función</th>
+                            <th style="padding: 8px; text-align: left;">Observaciones / Guía de Despacho</th>
+                        </tr>
+                    </thead>
+                    <tbody id="personnelHistoryTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">Cargando bitácora del colaborador...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación de Bitácora de Colaborador -->
+            <div id="personnelHistoryPagination"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalPersonnelHistory')" class="btn-secondary">Cerrar Bitácora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: BITÁCORA HISTÓRICA DE PARTIDA CONTABLE -->
+    
+
+<div id="modalSubstituteResource" class="modal-overlay hidden" style="z-index: 2200;">
+    <div class="modal-content" style="max-width: 540px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+            <div>
+                <h3 id="modalSubstituteResourceTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-arrows-rotate" style="color: #2563eb;"></i> Sustituir Recurso en Obra
+                </h3>
+                <p id="modalSubstituteResourceSubtitle" style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Reemplazar un recurso asignado por otro disponible en Base Central.</p>
+            </div>
+            <button type="button" onclick="closeModal('modalSubstituteResource')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+
+        <form id="substituteResourceForm" onsubmit="submitSubstituteResource(event)" style="display: flex; flex-direction: column; gap: 12px;">
+            <input type="hidden" id="sub_res_type">
+            <input type="hidden" id="sub_res_old_id">
+            <input type="hidden" id="sub_res_project_id">
+
+            <!-- Obra / Proyecto Asociado -->
+            <div id="sub_res_project_banner" style="background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 8px; padding: 10px 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase;">
+                        <i class="fa-solid fa-helmet-safety"></i> Obra / Proyecto Asignado:
+                    </span>
+                    <span id="sub_res_project_badge" style="font-size: 10px; font-weight: 800; background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px;">En Obra</span>
+                </div>
+                <div id="sub_res_project_display" style="font-size: 13.5px; font-weight: 800; color: #1e3a8a; margin-top: 4px;">
+                    Consultando datos del proyecto...
+                </div>
+            </div>
+
+            <!-- Recurso Saliente -->
+            <div style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 12px;">
+                <span style="font-size: 11px; font-weight: 800; color: #991b1b; text-transform: uppercase;">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Recurso Saliente (Retorna a Base Dalor):
+                </span>
+                <div id="sub_res_old_display" style="font-size: 13px; font-weight: 800; color: #7f1d1d; margin-top: 3px;">-</div>
+            </div>
+
+            <!-- Recurso Entrante -->
+            <div>
+                <label class="form-label" style="font-size: 11px; font-weight: 700;">
+                    <i class="fa-solid fa-circle-check" style="color: #16a34a;"></i> Seleccionar Recurso Entrante (Disponible en Base) *
+                </label>
+                <select id="sub_res_new_select" class="form-select" required style="font-size: 12px; font-weight: 700; height: 36px;">
+                    <option value="">-- Cargando recursos disponibles... --</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label" style="font-size: 11px; font-weight: 700;">Motivo de la Sustitución *</label>
+                <select id="sub_res_reason_select" onchange="onSubstituteReasonChange(this.value)" class="form-select" style="font-size: 12px; margin-bottom: 6px;">
+                    <option value="Relevo programado de cuadrilla / turno">Relevo programado de cuadrilla / turno</option>
+                    <option value="Baja médica / Permiso de operario">Baja médica / Permiso de operario</option>
+                    <option value="Equipo / Herramienta averiada (Requiere mantenimiento)">Equipo / Herramienta averiada (Requiere mantenimiento)</option>
+                    <option value="Cambio de especificación técnica de la labor">Cambio de especificación técnica de la labor</option>
+                    <option value="Otro">Otro motivo personalizado...</option>
+                </select>
+                <input type="text" id="sub_res_custom_reason" class="form-input hidden" placeholder="Especifique el motivo de sustitución...">
+            </div>
+
+            <div>
+                <label class="form-label" style="font-size: 11px; font-weight: 700;">Notas u Observaciones de Traza</label>
+                <input type="text" id="sub_res_notes" class="form-input" placeholder="Opcional: detalles adicionales para la bitácora">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalSubstituteResource')" class="btn-secondary">Cancelar</button>
+                <button type="submit" id="btnSubmitSubstituteResource" class="btn-primary" style="background: #2563eb;">
+                    <i class="fa-solid fa-arrows-rotate"></i> Confirmar Sustitución
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: SUSTITUIR MATERIAL / INSUMO EN REQUISICIÓN DE OBRA -->

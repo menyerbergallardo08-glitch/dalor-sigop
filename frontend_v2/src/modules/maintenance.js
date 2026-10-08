@@ -165,13 +165,27 @@ function renderClientsPaginated() {
 
     const pageItems = clients.slice(startIndex, endIndex);
 
-    tbody.innerHTML = pageItems.map(c => `
+    tbody.innerHTML = pageItems.map(c => {
+        const rawPhone = (c.contact_phone || '').replace(/[^0-9]/g, '');
+        let waPhone = rawPhone;
+        if (waPhone.startsWith('0')) waPhone = '58' + waPhone.substring(1);
+        else if (waPhone && !waPhone.startsWith('58') && waPhone.length === 10) waPhone = '58' + waPhone;
+        const waBtn = waPhone ? `
+            <a href="https://wa.me/${waPhone}?text=${encodeURIComponent('Hola ' + (c.contact_name || c.name) + ', le saludamos de Metalmecánica Dalor C.A.')}" target="_blank" class="btn-secondary" style="padding: 4px 8px; color: #16a34a; margin-right: 4px; text-decoration: none; display: inline-flex; align-items: center;" title="Contactar por WhatsApp">
+                <i class="fa-brands fa-whatsapp"></i>
+            </a>
+        ` : '';
+
+        return `
         <tr>
             <td style="font-weight: 800; color: var(--dalor-blue);">${c.code || ('CLI-' + String(c.id).padStart(3, '0'))}</td>
             <td style="font-weight: 700; color: var(--dalor-navy);">${c.name}</td>
             <td>${c.rif || '<span style="color:#94a3b8;">-</span>'}</td>
             <td>${c.contact_name || '<span style="color:#94a3b8;">-</span>'}</td>
-            <td>${c.contact_phone || c.contact_email || '<span style="color:#94a3b8;">-</span>'}</td>
+            <td>
+                ${c.contact_phone || c.contact_email || '<span style="color:#94a3b8;">-</span>'}
+                ${waBtn}
+            </td>
             <td>${c.address || '<span style="color:#94a3b8;">-</span>'}</td>
             <td style="text-align: center; white-space: nowrap;">
                 <button onclick="openClientHistoryModal(${c.id})" class="btn-secondary" style="padding: 4px 8px; color: #059669; margin-right: 4px;" title="Ver Ficha e Historial">
@@ -185,7 +199,7 @@ function renderClientsPaginated() {
                 </button>
             </td>
         </tr>
-    `).join('');
+    `;}).join('');
 }
 
 async function loadClients() {
@@ -219,8 +233,35 @@ function onClientSearchInput(val) {
             (c.address && c.address.toLowerCase().includes(q))
         );
     }
+    applyClientSorting();
     clientsCurrentPage = 1;
     renderClientsPaginated();
+}
+
+let currentClientSortMode = 'code_asc';
+
+function onClientSortChanged(sortMode) {
+    currentClientSortMode = sortMode || 'code_asc';
+    applyClientSorting();
+    clientsCurrentPage = 1;
+    renderClientsPaginated();
+}
+window.onClientSortChanged = onClientSortChanged;
+
+function applyClientSorting() {
+    if (!lastClientsList || !Array.isArray(lastClientsList)) return;
+    lastClientsList.sort((a, b) => {
+        if (currentClientSortMode === 'name_asc') {
+            return (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' });
+        } else if (currentClientSortMode === 'name_desc') {
+            return (b.name || '').localeCompare(a.name || '', 'es', { sensitivity: 'base' });
+        } else if (currentClientSortMode === 'code_desc') {
+            return (b.code || '').localeCompare(a.code || '', 'es', { numeric: true });
+        } else {
+            // code_asc (default)
+            return (a.code || '').localeCompare(b.code || '', 'es', { numeric: true });
+        }
+    });
 }
 
 function openEditClientModal(clientId) {
@@ -691,6 +732,65 @@ async function loadCategoriesTree() {
     }
 }
 window.loadCategoriesTree = loadCategoriesTree;
+
+function openCreateCategoryModal() {
+    const codeInp = document.getElementById("cat_code_input");
+    const nameInp = document.getElementById("cat_name_input");
+    if (codeInp) codeInp.value = "";
+    if (nameInp) nameInp.value = "";
+    if (typeof openModal === "function") openModal("modalCreateCategory");
+}
+window.openCreateCategoryModal = openCreateCategoryModal;
+
+async function submitCreateCategory(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const code = (document.getElementById("cat_code_input")?.value || "").trim();
+    const name = (document.getElementById("cat_name_input")?.value || "").trim();
+    const monthly_budget_usd = parseFloat(document.getElementById("cat_budget_input")?.value) || 0;
+    const group_type = "general";
+
+    if (!code || !name) {
+        alert("Por favor ingrese el código y el nombre de la partida.");
+        return;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/expenses/categories`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code, name, group_type, monthly_budget_usd })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: "Error al crear partida" }));
+            throw new Error(err.detail || "Error al crear partida");
+        }
+        alert(`✅ Partida [${code}] ${name} creada exitosamente.`);
+        if (typeof closeModal === "function") closeModal("modalCreateCategory");
+        await loadCategoriesTree();
+        if (typeof loadExpenseConcepts === "function") loadExpenseConcepts();
+    } catch(err) {
+        alert("❌ Error: " + err.message);
+    }
+}
+window.submitCreateCategory = submitCreateCategory;
+
+async function toggleCategoryActive(catId, currentActive, event) {
+    if (event) event.stopPropagation();
+    const action = currentActive ? "inactivar" : "activar";
+    if (!confirm(`¿Deseas ${action} esta partida presupuestaria?`)) return;
+
+    try {
+        const res = await authFetch(`${API_BASE}/expenses/categories/${catId}/toggle-active`, {
+            method: "POST"
+        });
+        if (!res.ok) throw new Error("No se pudo cambiar el estado de la partida.");
+        alert(`✅ Partida actualizada exitosamente.`);
+        await loadCategoriesTree();
+    } catch(err) {
+        alert("❌ Error: " + err.message);
+    }
+}
+window.toggleCategoryActive = toggleCategoryActive;
 
 // ----------------------------------------------------
 // BITÁCORA DE PARTIDA CONTABLE (HISTORIAL EN MODAL)
@@ -2552,4 +2652,4 @@ if (typeof window !== 'undefined') {
     window.toggleAllUserCheckboxes = toggleAllUserCheckboxes;
 }
 
-export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterBIExtended, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, debouncedFilterComparisonDashboard, filterComparisonDashboard, goToComparisonPage, changeComparisonPageSize, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadMaintenanceRolesList, openNewRoleModal, openEditRoleModal, autoGenerateRoleSlug, submitRoleForm, deleteRole, onNewUserRoleChanged, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, goToBiPnlPage, changeBiPnlPageSize, renderBIPnlTablePaginated, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus, goToClientsPage, changeClientsPageSize, renderClientsPaginated, onClientSearchInput, openEditClientModal, submitEditClient, openClientHistoryModal, openCategoryHistoryModal, debouncedFilterCategoryHistory, filterCategoryHistory, goToCategoryHistoryPage, changeCategoryHistoryPageSize };
+export { applyPermissionMap, checkAuthStatus, createNewBackup, deleteClient, fillAndSubmitQuickLogin, fillQuickLogin, filterBIDashboard, filterBIExtended, filterMaintenanceAuditLogs, handleLogout, loadBackupsList, loadCategoriesTree, loadClients, loadComparisonDashboard, debouncedFilterComparisonDashboard, filterComparisonDashboard, goToComparisonPage, changeComparisonPageSize, loadExecutiveDashboard, loadMaintenanceAuditLogs, loadMaintenanceUsersList, loadMaintenanceRolesList, openNewRoleModal, openEditRoleModal, autoGenerateRoleSlug, submitRoleForm, deleteRole, onNewUserRoleChanged, loadUsersManagementTable, loginDirectlyAs, onUserRoleTemplateChanged, openMaintenanceSubtab, openMaintenanceSubtab_v2, openNewClientModal, openNewUserModal, openNewUserModal_v2, openUserManagementModal, openUserPermissionsModal, populateBISlicers, redirectUserByRole, renderBIAnalyticsCharts, renderBIPnlTable, goToBiPnlPage, changeBiPnlPageSize, renderBIPnlTablePaginated, renderCleanRadialCharts, renderUserBadge, resetMaintenanceAuditFilters, restoreBackup, showLoginError, submitCreateClient, submitCreateUser, submitCreateUser_v2, submitLogin, submitSaveUserPermissions, switchMaintenanceSubtab, toggleUserStatus, goToClientsPage, changeClientsPageSize, renderClientsPaginated, onClientSearchInput, openEditClientModal, submitEditClient, openClientHistoryModal, openCategoryHistoryModal, debouncedFilterCategoryHistory, filterCategoryHistory, goToCategoryHistoryPage, changeCategoryHistoryPageSize, openCreateCategoryModal, submitCreateCategory, toggleCategoryActive };

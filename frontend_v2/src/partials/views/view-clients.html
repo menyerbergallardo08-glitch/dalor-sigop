@@ -28,7 +28,14 @@
 
                     <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
 
-                        <input type="text" id="clientSearchInput" placeholder="🔍 Buscar cliente por nombre, RIF, código o contacto..." class="form-input" style="max-width: 340px;" oninput="onClientSearchInput(this.value)">
+                        <input type="text" id="clientSearchInput" placeholder="🔍 Buscar cliente por nombre, RIF, código o contacto..." class="form-input" style="max-width: 320px;" oninput="onClientSearchInput(this.value)">
+
+                        <select id="clientSortSelect" class="form-select" style="max-width: 220px; font-size: 11.5px; font-weight: 700;" onchange="onClientSortChanged(this.value)">
+                            <option value="code_asc">🔢 Orden: Código (CLI-001...)</option>
+                            <option value="code_desc">🔢 Orden: Código (Descendente)</option>
+                            <option value="name_asc">🔤 Orden: Razón Social (A - Z)</option>
+                            <option value="name_desc">🔤 Orden: Razón Social (Z - A)</option>
+                        </select>
 
                     </div>
 

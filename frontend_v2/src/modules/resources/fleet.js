@@ -42,16 +42,22 @@ async function loadFleetList() {
             return;
         }
 
-        rawFleetList = fleet.filter(a => a && (
+        const newFleet = fleet.filter(a => a && (
             (a.asset_type === 'vehiculo' || 
              a.asset_type === 'camioneta' || 
              (typeof a.asset_code === 'string' && (a.asset_code.includes('-V-') || a.asset_code.startsWith('FLT-'))) ||
              (typeof a.category === 'string' && a.category.toLowerCase().includes('flota')))
             && !((a.name || '').toLowerCase().includes('montacarga') || a.asset_code === '3-V-1-05')
         ));
-        window.rawFleetList = rawFleetList;
 
-        filterFleetList();
+        // Comparar con lo que ya está en memoria para evitar repintados innecesarios
+        const oldJson = JSON.stringify(window.rawFleetList || []);
+        const newJson = JSON.stringify(newFleet);
+        if (oldJson !== newJson || !tbody.children.length || tbody.innerText.includes('Cargando')) {
+            rawFleetList = newFleet;
+            window.rawFleetList = rawFleetList;
+            filterFleetList();
+        }
 
     } catch (e) {
         console.error("[FLEET ERROR]", e);

@@ -1382,7 +1382,12 @@ window.debouncedFilterExpensesLog = debouncedFilterExpensesLog;
 async function loadExpensesLog() {
     const tbody = document.getElementById("expensesLogTableBody");
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando histórico consolidado de gastos...</td></tr>`;
+
+    if (Array.isArray(allExpensesCache) && allExpensesCache.length > 0) {
+        filterExpensesLog();
+    } else {
+        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando histórico consolidado de gastos...</td></tr>`;
+    }
 
     try {
         let projectsList = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);

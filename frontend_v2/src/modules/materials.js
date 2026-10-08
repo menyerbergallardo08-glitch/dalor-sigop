@@ -56,7 +56,12 @@ async function loadMaterialsList() {
 
     const isDirector = isDirectorRole();
     const colSpan = isDirector ? 9 : 7;
-    tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de materiales...</td></tr>`;
+
+    if (Array.isArray(allMaterials) && allMaterials.length > 0) {
+        filterMaterialsList();
+    } else {
+        tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de materiales...</td></tr>`;
+    }
 
     try {
         const res = await authFetch(`${API_BASE}/materials/`);

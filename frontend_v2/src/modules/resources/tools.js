@@ -46,7 +46,12 @@ function populateToolCategoryDropdown(grouped, raw) {
 async function loadToolsList() {
     const tbody = document.getElementById("toolsTableBody");
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de herramientas agrupadas...</td></tr>`;
+
+    if (Array.isArray(window.rawToolsList) && window.rawToolsList.length > 0 && Array.isArray(groupedToolsList) && groupedToolsList.length > 0) {
+        renderGroupedTools(groupedToolsList);
+    } else {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario de herramientas agrupadas...</td></tr>`;
+    }
 
     try {
         const res = await authFetch(`${API_BASE}/assets/tools-summary`);

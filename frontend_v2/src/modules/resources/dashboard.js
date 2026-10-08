@@ -19,7 +19,11 @@ function authFetch(url, options = {}) {
 }
 
 function openResourceSubtab(subtabName) {
-    switchView('resources', 'recursos', subtabName);
+
+    switchView('resources', 'recursos');
+
+    switchResourceSubtab(subtabName);
+
 }
 
 

@@ -37,8 +37,14 @@ const authFetch = (url, options = {}) => {
 
 // 💰 13. MÓDULO FINANCIERO: SUBTABS (CxC, CxP, TESORERÍA)
 
+// ==============================================================================
+
 function openFinancialSubtab(subtabName) {
-    switchView('financial', 'finanzas', subtabName);
+
+    switchView('financial', 'finanzas');
+
+    switchFinancialSubtab(subtabName);
+
 }
 
 

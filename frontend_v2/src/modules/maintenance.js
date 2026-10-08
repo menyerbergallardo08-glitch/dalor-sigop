@@ -1026,7 +1026,11 @@ let allSystemUsers = [];
 
 
 function openMaintenanceSubtab(subtab) {
-    switchView('maintenance', 'mantenimiento', subtab);
+
+    switchView('maintenance', 'mantenimiento');
+
+    switchMaintenanceSubtab(subtab);
+
 }
 
 

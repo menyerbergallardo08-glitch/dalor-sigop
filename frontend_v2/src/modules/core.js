@@ -558,20 +558,8 @@ function closeAllDropdowns() {
 
 // Navegación Modular Principal
 
-var _lastNavigationKey = '';
-
 function switchView(viewName, moduleCategory, targetSubtab = null) {
-    const navKey = `${viewName}:${targetSubtab || ''}`;
-    const activeEl = document.getElementById(`view-${viewName}`);
-    const isAlreadyVisible = activeEl && !activeEl.classList.contains('hidden');
-
     closeAllDropdowns();
-
-    // Si ya estamos viendo exactamente esta vista y no se especificó un cambio de subtab diferente, no re-ejecutar cargas pesadas
-    if (isAlreadyVisible && navKey === _lastNavigationKey && !targetSubtab) {
-        return;
-    }
-    _lastNavigationKey = navKey;
 
     const allViews = [
         'executive', 'financial', 'maintenance',
@@ -586,7 +574,8 @@ function switchView(viewName, moduleCategory, targetSubtab = null) {
         if (el) el.classList.add('hidden');
     });
 
-    if (activeEl) activeEl.classList.remove('hidden');
+    const activeView = document.getElementById(`view-${viewName}`);
+    if (activeView) activeView.classList.remove('hidden');
 
     document.querySelectorAll(".nav-dropdown").forEach(drop => drop.classList.remove("active"));
     const activeDropdown = document.getElementById(`dropdown-${moduleCategory}`);

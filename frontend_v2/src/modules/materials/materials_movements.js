@@ -165,32 +165,66 @@ async function submitMaterialEntry(event) {
         if (typeof event.stopPropagation === 'function') event.stopPropagation();
     }
 
-    const rows = document.querySelectorAll("#me_materials_tbody tr");
-    const items = [];
+    const supplier = (document.getElementById("me_supplier")?.value || "").trim();
+    if (!supplier) {
+        alert("⚠️ Debe ingresar el nombre del Proveedor / Vendedor de la compra.");
+        document.getElementById("me_supplier")?.focus();
+        return false;
+    }
 
-    rows.forEach(tr => {
+    const docRef = (document.getElementById("me_doc")?.value || "").trim();
+    if (!docRef) {
+        alert("⚠️ Debe ingresar el Nº de Factura o Guía de Entrega del Proveedor.");
+        document.getElementById("me_doc")?.focus();
+        return false;
+    }
+
+    const rows = document.querySelectorAll("#me_materials_tbody tr");
+    if (!rows || rows.length === 0) {
+        alert("⚠️ Debe agregar al menos un renglón de material a la factura.");
+        return false;
+    }
+
+    const items = [];
+    for (let i = 0; i < rows.length; i++) {
+        const tr = rows[i];
         const matId = parseInt(tr.querySelector(".me-row-material")?.value);
         const qty = parseFloat(tr.querySelector(".me-row-qty")?.value) || 0;
         const cost = parseFloat(tr.querySelector(".me-row-cost")?.value) || 0;
-        if (matId && !isNaN(matId) && qty > 0) {
-            items.push({
-                material_id: matId,
-                quantity: qty,
-                unit_cost_usd: cost
-            });
-        }
-    });
 
-    if (items.length === 0) {
-        alert("⚠️ Por favor añade al menos un material válido con cantidad mayor a 0.");
-        return false;
+        if (!matId || isNaN(matId)) {
+            alert(`⚠️ En el renglón #${i + 1}: Debe seleccionar un material del catálogo.`);
+            tr.querySelector(".me-row-material")?.focus();
+            return false;
+        }
+        if (qty <= 0) {
+            alert(`⚠️ En el renglón #${i + 1}: La cantidad ingresada debe ser mayor a 0.`);
+            tr.querySelector(".me-row-qty")?.focus();
+            return false;
+        }
+        if (cost <= 0) {
+            alert(`⚠️ En el renglón #${i + 1}: El costo unitario en USD debe ser mayor a 0.`);
+            tr.querySelector(".me-row-cost")?.focus();
+            return false;
+        }
+
+        items.push({
+            material_id: matId,
+            quantity: qty,
+            unit_cost_usd: cost
+        });
     }
 
     const registerCxp = document.getElementById("me_register_cxp")?.checked || false;
     const paymentChannel = document.getElementById("me_payment_channel")?.value || "caja_chica_usd";
     const paymentRef = (document.getElementById("me_payment_ref")?.value || "").trim();
-    const supplier = (document.getElementById("me_supplier")?.value || "").trim() || "Proveedor General";
-    const docRef = (document.getElementById("me_doc")?.value || "").trim() || "Factura Compra";
+
+    if (!registerCxp && !paymentRef) {
+        alert("⚠️ Para compras de contado, debe ingresar el Nº de Referencia o comprobante del pago de caja/banco.");
+        document.getElementById("me_payment_ref")?.focus();
+        return false;
+    }
+
     const notes = (document.getElementById("me_notes")?.value || "").trim();
 
     const payload = {
@@ -470,6 +504,101 @@ async function submitCalibrateMaterial(event) {
     return false;
 }
 
+// ------------------------------------------------------------------------------
+// HISTORIAL KARDEX AUDITABLE DE MOVIMIENTOS
+// ------------------------------------------------------------------------------
+let rawKardexMovements = [];
+
+async function openMaterialKardexModal(materialId = null) {
+    if (typeof openModal === 'function') openModal('modalMaterialKardex');
+    const searchInput = document.getElementById('kardexSearchInput');
+    if (searchInput) searchInput.value = '';
+    const typeFilter = document.getElementById('kardexTypeFilter');
+    if (typeFilter) typeFilter.value = '';
+    await loadMaterialKardexList(materialId);
+}
+
+async function loadMaterialKardexList(materialId = null) {
+    const tbody = document.getElementById('kardexTableBody');
+    const badge = document.getElementById('kardexCountBadge');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: #64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando movimientos...</td></tr>';
+    }
+
+    try {
+        let url = `${API_BASE}/materials/movements?limit=200`;
+        if (materialId) url += `&material_id=${materialId}`;
+        const res = await authFetch(url);
+        if (res.ok) {
+            rawKardexMovements = await res.json();
+            renderMaterialKardexTable(rawKardexMovements);
+        } else {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: #ef4444;">Error al cargar historial de movimientos.</td></tr>';
+        }
+    } catch(err) {
+        console.error("Error loading kardex:", err);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 25px; color: #ef4444;">Error: ${err.message || err}</td></tr>`;
+    }
+}
+
+function filterMaterialKardexTable() {
+    const q = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
+    const type = document.getElementById('kardexTypeFilter')?.value || '';
+
+    const filtered = (rawKardexMovements || []).filter(m => {
+        if (type && m.movement_type !== type) return false;
+        if (!q) return true;
+        const text = `${m.material_code || ''} ${m.material_name || ''} ${m.reference_doc || ''} ${m.performed_by || ''} ${m.project_name || ''} ${m.destination || ''}`.toLowerCase();
+        return text.includes(q);
+    });
+
+    renderMaterialKardexTable(filtered);
+}
+
+function renderMaterialKardexTable(movements) {
+    const tbody = document.getElementById('kardexTableBody');
+    const badge = document.getElementById('kardexCountBadge');
+    if (badge) badge.textContent = `${movements.length} movimientos`;
+    if (!tbody) return;
+
+    if (!movements || movements.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: #94a3b8;">No se registraron movimientos que coincidan con los filtros.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = movements.map(m => {
+        let typeBadge = '';
+        if (m.movement_type === 'entrada_compra') {
+            typeBadge = '<span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10.5px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-cart-shopping"></i> Compra</span>';
+        } else if (m.movement_type === 'despacho_obra') {
+            typeBadge = '<span style="background: #e0f2fe; color: #0369a1; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10.5px; border: 1px solid #bae6fd;"><i class="fa-solid fa-truck-arrow-right"></i> Despacho</span>';
+        } else if (m.movement_type === 'calibracion_inventario') {
+            typeBadge = '<span style="background: #fef3c7; color: #92400e; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10.5px; border: 1px solid #fde68a;"><i class="fa-solid fa-scale-balanced"></i> Calibración</span>';
+        } else {
+            typeBadge = `<span style="background: #f1f5f9; color: #475569; font-weight: 700; padding: 2px 6px; border-radius: 6px; font-size: 10px;">${m.movement_type}</span>`;
+        }
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 7px 10px; color: #64748b; font-size: 11px; white-space: nowrap;">${m.movement_date || '-'}</td>
+                <td style="padding: 7px 10px; text-align: center;">${typeBadge}</td>
+                <td style="padding: 7px 10px; font-weight: 700; color: #1e293b;">
+                    <span style="font-family: monospace; font-size: 10.5px; color: #2563eb; background: #eff6ff; padding: 1px 4px; border-radius: 4px; margin-right: 4px;">${m.material_code || 'S/C'}</span>
+                    ${m.material_name || 'N/A'}
+                </td>
+                <td style="padding: 7px 10px; text-align: right; font-weight: 800; color: #0f172a;">
+                    ${m.quantity} <span style="font-size: 10px; color: #64748b; font-weight: 400;">${m.unit_measure || 'UND'}</span>
+                </td>
+                <td style="padding: 7px 10px; text-align: right; color: #475569;">$${(m.unit_cost_usd || 0).toFixed(2)}</td>
+                <td style="padding: 7px 10px; text-align: right; font-weight: 800; color: #059669;">$${(m.total_cost_usd || 0).toFixed(2)}</td>
+                <td style="padding: 7px 10px; color: #334155; font-size: 11px;">${m.project_name || m.destination || '-'}</td>
+                <td style="padding: 7px 10px; font-family: monospace; font-size: 10.5px; color: #475569;">${m.reference_doc || '-'}</td>
+                <td style="padding: 7px 10px; color: #64748b; font-size: 11px;">${m.performed_by || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
 
 // Exponer al objeto global window para eventos inline y compatibilidad
 if (typeof window !== 'undefined') {
@@ -489,4 +618,7 @@ if (typeof window !== 'undefined') {
     window.submitMaterialConsume = submitMaterialConsume;
     window.openCalibrateMaterialModal = openCalibrateMaterialModal;
     window.submitCalibrateMaterial = submitCalibrateMaterial;
+    window.openMaterialKardexModal = openMaterialKardexModal;
+    window.loadMaterialKardexList = loadMaterialKardexList;
+    window.filterMaterialKardexTable = filterMaterialKardexTable;
 }

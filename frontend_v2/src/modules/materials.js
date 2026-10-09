@@ -59,5 +59,8 @@ export const onReqVehicleChanged = (...args) => (window.onReqVehicleChanged ? wi
 export const onReqDriverChanged = (...args) => (window.onReqDriverChanged ? window.onReqDriverChanged(...args) : undefined);
 export const openCalibrateMaterialModal = (...args) => (window.openCalibrateMaterialModal ? window.openCalibrateMaterialModal(...args) : undefined);
 export const submitCalibrateMaterial = (...args) => (window.submitCalibrateMaterial ? window.submitCalibrateMaterial(...args) : undefined);
+export const openMaterialKardexModal = (...args) => (window.openMaterialKardexModal ? window.openMaterialKardexModal(...args) : undefined);
+export const loadMaterialKardexList = (...args) => (window.loadMaterialKardexList ? window.loadMaterialKardexList(...args) : undefined);
+export const filterMaterialKardexTable = (...args) => (window.filterMaterialKardexTable ? window.filterMaterialKardexTable(...args) : undefined);
 export const openEditMaterialModal = (...args) => (window.openEditMaterialModal ? window.openEditMaterialModal(...args) : undefined);
 export const submitEditMaterial = (...args) => (window.submitEditMaterial ? window.submitEditMaterial(...args) : undefined);

@@ -1079,4 +1079,79 @@
     </div>
 </div>
 
-<!-- MODAL: CREAR NUEVO CONCEPTO DE GASTO / CXP CON REGLA DE NEGOCIO -->
+<!-- MODAL: KARDEX / HISTORIAL DE MOVIMIENTOS DE MATERIALES -->
+<div id="modalMaterialKardex" class="modal-overlay hidden" style="z-index: 2150;">
+    <div class="modal-content" style="max-width: 980px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+            <div>
+                <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-clock-rotate-left" style="color: #6366f1;"></i> Kardex de Inventario & Historial de Movimientos
+                </h3>
+                <p style="font-size: 11.5px; color: #64748b; margin: 2px 0 0 0;">
+                    Registro cronológico y auditable de todas las entradas por compra, despachos a obras, salidas a taller y calibraciones de stock.
+                </p>
+            </div>
+            <button type="button" onclick="closeModal('modalMaterialKardex')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b; padding: 4px 8px;">&times;</button>
+        </div>
+
+        <!-- Barra de Filtros y Búsqueda -->
+        <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <div style="flex: 1; min-width: 220px; position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 10px; color: #94a3b8; font-size: 12px;"></i>
+                <input type="text" id="kardexSearchInput" oninput="filterMaterialKardexTable()" placeholder="Buscar por material, código, guía o responsable..." class="form-input" style="padding-left: 28px; font-size: 12px; width: 100%;">
+            </div>
+            <div style="min-width: 200px;">
+                <select id="kardexTypeFilter" onchange="filterMaterialKardexTable()" class="form-select" style="font-size: 12px;">
+                    <option value="">-- Todos los Movimientos --</option>
+                    <option value="entrada_compra">📥 Entradas / Compras</option>
+                    <option value="despacho_obra">📤 Despachos a Obras</option>
+                    <option value="calibracion_inventario">⚖️ Calibraciones Físicas</option>
+                    <option value="entrada_inicial">📦 Inventario Inicial</option>
+                </select>
+            </div>
+            <button type="button" onclick="loadMaterialKardexList()" class="btn-secondary" style="font-size: 12px; padding: 7px 12px;">
+                <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+            </button>
+            <span id="kardexCountBadge" style="font-size: 11px; font-weight: 700; color: #475569; background: #e2e8f0; padding: 6px 10px; border-radius: 6px; white-space: nowrap;">
+                0 movimientos
+            </span>
+        </div>
+
+        <!-- Tabla de Movimientos -->
+        <div style="overflow-y: auto; flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; background: white; max-height: 440px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 11.5px;">
+                <thead>
+                    <tr style="background: #f1f5f9; text-align: left; color: #334155; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #cbd5e1;">
+                        <th style="padding: 8px 10px;">Fecha / Hora</th>
+                        <th style="padding: 8px 10px; text-align: center;">Tipo</th>
+                        <th style="padding: 8px 10px;">Material / Código</th>
+                        <th style="padding: 8px 10px; text-align: right;">Cantidad</th>
+                        <th style="padding: 8px 10px; text-align: right;">Costo ($)</th>
+                        <th style="padding: 8px 10px; text-align: right;">Total ($)</th>
+                        <th style="padding: 8px 10px;">Destino / Proyecto</th>
+                        <th style="padding: 8px 10px;">Doc. / Guía</th>
+                        <th style="padding: 8px 10px;">Responsable</th>
+                    </tr>
+                </thead>
+                <tbody id="kardexTableBody">
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 30px; color: #94a3b8;">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Cargando movimientos del Kardex...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 12px;">
+            <span style="font-size: 11px; color: #64748b;">
+                Trazabilidad respaldada bajo normas de control interno DALOR.
+            </span>
+            <button type="button" onclick="closeModal('modalMaterialKardex')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+

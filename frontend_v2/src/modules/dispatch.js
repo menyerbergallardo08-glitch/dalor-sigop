@@ -507,6 +507,21 @@ function onDispatchAssetChanged() {
 // ==============================================================================
 // RENGLONES DINÁMICOS DE CARGA / PIEZAS
 // ==============================================================================
+function normalizeDispatchUnit(u) {
+    if (!u) return 'Unid';
+    const clean = String(u).trim().toUpperCase();
+    if (clean === 'KG' || clean === 'KGS' || clean === 'KILOGRAMO' || clean === 'KILOGRAMOS') return 'Kg';
+    if (clean === 'MTR' || clean === 'MTRS' || clean === 'MT' || clean === 'MTS' || clean === 'METRO' || clean === 'METROS') return 'Metros';
+    if (clean === 'PZA' || clean === 'PZAS' || clean === 'PIEZA' || clean === 'PIEZAS') return 'Pzas';
+    if (clean === 'UND' || clean === 'UNID' || clean === 'UNIDADES' || clean === 'UNIDAD') return 'Unid';
+    if (clean === 'LOTE' || clean === 'LOTES') return 'Lote';
+    if (clean === 'JGO' || clean === 'JUEGO' || clean === 'JUEGOS') return 'Juego';
+    if (clean === 'TAMBOR' || clean === 'TAMBORES' || clean === 'TAMB') return 'Tambor';
+    if (clean === 'LTS' || clean === 'LT' || clean === 'LITRO' || clean === 'LITROS') return 'Litros';
+    if (clean === 'GL' || clean === 'GAL' || clean === 'GALON' || clean === 'GALONES') return 'Galones';
+    return u;
+}
+
 function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Reparado / Listo para Montaje", weight = 0) {
     const tableBody = document.getElementById('dispatchItemsTableBody');
     if (!tableBody) return;
@@ -517,6 +532,15 @@ function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Reparado 
     const tr = document.createElement('tr');
     tr.id = rowId;
     tr.style.borderBottom = '1px solid #e2e8f0';
+
+    const normUnit = normalizeDispatchUnit(unit);
+    const standardUnits = ['Pzas', 'Unid', 'Kg', 'Metros', 'Litros', 'Galones', 'Lote', 'Juego', 'Tambor'];
+    let unitOptionsHtml = standardUnits.map(su => `<option value="${su}" ${normUnit.toLowerCase() === su.toLowerCase() ? 'selected' : ''}>${su}</option>`).join('');
+    if (!standardUnits.some(su => su.toLowerCase() === normUnit.toLowerCase())) {
+        unitOptionsHtml += `<option value="${normUnit}" selected>${normUnit}</option>`;
+    }
+
+    const condStr = String(cond || '');
 
     tr.innerHTML = `
         <td style="padding: 6px; text-align: center; color: #64748b; font-weight: 700;" class="disp-row-num">
@@ -530,22 +554,16 @@ function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Reparado 
         </td>
         <td style="padding: 6px;">
             <select class="form-select disp-item-unit" style="width: 100%; font-size: 11.5px;">
-                <option value="Pzas" ${unit === 'Pzas' ? 'selected' : ''}>Pzas</option>
-                <option value="Unid" ${unit === 'Unid' ? 'selected' : ''}>Unid</option>
-                <option value="Kg" ${unit === 'Kg' ? 'selected' : ''}>Kg</option>
-                <option value="Metros" ${unit === 'Metros' ? 'selected' : ''}>Metros</option>
-                <option value="Lote" ${unit === 'Lote' ? 'selected' : ''}>Lote</option>
-                <option value="Juego" ${unit === 'Juego' ? 'selected' : ''}>Juego</option>
-                <option value="Tambor" ${unit === 'Tambor' ? 'selected' : ''}>Tambor</option>
+                ${unitOptionsHtml}
             </select>
         </td>
         <td style="padding: 6px;">
             <select class="form-select disp-item-cond" style="width: 100%; font-size: 11px;">
-                <option value="Reparado / Listo para Montaje" ${cond.includes('Reparado') ? 'selected' : ''}>Reparado / Listo p/ Montaje</option>
-                <option value="Nuevo / Fabricado" ${cond.includes('Fabricado') || cond.includes('Nuevo') ? 'selected' : ''}>Nuevo / Fabricado DALOR</option>
-                <option value="Operativo / Buen Estado" ${cond.includes('Operativo') ? 'selected' : ''}>Operativo / Buen Estado</option>
-                <option value="Material en Custodia / Devolución" ${cond.includes('Custodia') ? 'selected' : ''}>Material en Custodia</option>
-                <option value="Dañado / Para Evaluación en Sitio" ${cond.includes('Dañado') ? 'selected' : ''}>Dañado / Para Evaluación</option>
+                <option value="Reparado / Listo para Montaje" ${condStr.includes('Reparado') ? 'selected' : ''}>Reparado / Listo p/ Montaje</option>
+                <option value="Nuevo / Fabricado" ${condStr.includes('Fabricado') ? 'selected' : ''}>Nuevo / Fabricado DALOR</option>
+                <option value="Operativo / Buen Estado" ${condStr.includes('Operativo') ? 'selected' : ''}>Operativo / Buen Estado</option>
+                <option value="Material en Custodia / Salida de Almacén" ${condStr.includes('Almacén') || condStr.includes('Custodia') ? 'selected' : ''}>Material en Custodia / Almacén</option>
+                <option value="Dañado / Para Evaluación en Sitio" ${condStr.includes('Dañado') ? 'selected' : ''}>Dañado / Para Evaluación</option>
             </select>
         </td>
         <td style="padding: 6px;">
@@ -1457,9 +1475,12 @@ async function renderDispatchPickerItems(filterText = '') {
         filtered.forEach(it => {
             const itemType = (currentPickerTab === 'materials') ? 'mat' : 'asset';
             const itemKey = `${itemType}-${it.id}`;
-            const isChecked = pickerSelectedResources.has(itemKey);
+            const existingSelected = pickerSelectedResources.get(itemKey);
+            const isChecked = !!existingSelected;
             const code = it.asset_code || it.code || it.internal_code || 'S/C';
             const name = it.name || 'Sin Nombre';
+            const unitDisplay = (currentPickerTab === 'materials') ? (it.unit_measure || 'UND') : 'UND';
+            const selectedQty = existingSelected ? existingSelected.qty : 1;
             const extra = (currentPickerTab === 'materials')
                 ? `Stock: ${it.stock_quantity ?? it.stock ?? 0} ${it.unit_measure || 'UND'}`
                 : `Marca: ${it.brand || 'N/A'} | Ubicación: ${it.current_location || 'Base'}`;
@@ -1484,7 +1505,16 @@ async function renderDispatchPickerItems(filterText = '') {
                             </span>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 4px;" onclick="event.stopPropagation()">
+                            <span style="font-size: 11px; font-weight: 700; color: #475569;">Cant:</span>
+                            <input type="number" step="0.01" min="0.01" value="${selectedQty}" 
+                                   id="picker_qty_${itemKey}" 
+                                   onchange="onPickerQuantityChanged('${itemKey}', this.value)" 
+                                   oninput="onPickerQuantityChanged('${itemKey}', this.value)" 
+                                   style="width: 72px; padding: 3px 6px; font-size: 11.5px; text-align: right; border: 1.5px solid #cbd5e1; border-radius: 4px; font-weight: 800; background: white;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b; min-width: 25px;">${unitDisplay}</span>
+                        </div>
                         <span style="font-size: 10px; font-weight: 700; color: ${it.is_active !== false ? '#10b981' : '#ef4444'}; background: ${it.is_active !== false ? '#ecfdf5' : '#fef2f2'}; padding: 2px 8px; border-radius: 9999px;">
                             ${it.is_active !== false ? 'DISPONIBLE' : 'NO DISPONIBLE'}
                         </span>
@@ -1504,26 +1534,41 @@ function filterDispatchPickerList(text) {
     renderDispatchPickerItems(text);
 }
 
+function onPickerQuantityChanged(key, val) {
+    const qty = parseFloat(val) || 1.0;
+    if (pickerSelectedResources.has(key)) {
+        const item = pickerSelectedResources.get(key);
+        item.qty = qty;
+        pickerSelectedResources.set(key, item);
+    }
+}
+
 function togglePickerItemSelection(key, type, id, isChecked) {
     if (isChecked) {
         let name = "";
         let code = "";
         let unit = "Unid";
         let cond = "Operativo / En Custodia";
+        let category = currentPickerTab;
 
         if (type === 'mat') {
             const m = (window.allMaterials || []).find(x => x.id === id);
             name = m ? m.name : "Material";
             code = m ? (m.code || 'S/C') : "S/C";
-            unit = m ? (m.unit_measure || 'Unid') : "Unid";
-            cond = "Nuevo / Salida de Almacén";
+            unit = m ? (m.unit_measure || 'Kg') : "Kg";
+            cond = "Material en Custodia / Salida de Almacén";
+            category = 'materials';
         } else {
             const a = (window.allAssets || []).find(x => x.id === id);
             name = a ? a.name : "Activo";
             code = a ? (a.asset_code || a.internal_code || 'S/C') : "S/C";
             unit = "Unid";
-            cond = "Operativo / En Custodia";
+            cond = "Operativo / Buen Estado";
+            category = (currentPickerTab === 'machinery') ? 'machinery' : 'tools';
         }
+
+        const qtyInput = document.getElementById(`picker_qty_${key}`);
+        const qtyVal = parseFloat(qtyInput ? qtyInput.value : 1) || 1.0;
 
         pickerSelectedResources.set(key, {
             type,
@@ -1532,7 +1577,8 @@ function togglePickerItemSelection(key, type, id, isChecked) {
             code,
             unit,
             cond,
-            qty: 1
+            category,
+            qty: qtyVal
         });
     } else {
         pickerSelectedResources.delete(key);
@@ -1575,7 +1621,7 @@ function confirmAddSelectedResourcesToDispatch() {
         if (item.type === 'mat') {
             desc = `[${item.code}] ${item.name}`;
         } else {
-            const prefix = (currentPickerTab === 'machinery') ? 'Maquinaria / Equipo' : 'Herramienta';
+            const prefix = (item.category === 'machinery') ? 'Maquinaria / Equipo' : 'Herramienta';
             desc = `${prefix}: ${item.name} (${item.code})`;
         }
         addDispatchItemRow(desc, item.qty, item.unit, item.cond, 0);
@@ -1600,6 +1646,7 @@ if (typeof window !== 'undefined') {
         window.openDispatchResourcePickerModal = openDispatchResourcePickerModal;
     window.switchDispatchPickerTab = switchDispatchPickerTab;
     window.filterDispatchPickerList = filterDispatchPickerList;
+    window.onPickerQuantityChanged = onPickerQuantityChanged;
     window.togglePickerItemSelection = togglePickerItemSelection;
     window.confirmAddSelectedResourcesToDispatch = confirmAddSelectedResourcesToDispatch;
     window.setDispatchMode = setDispatchMode;

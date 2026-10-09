@@ -1376,6 +1376,31 @@ async function renderDispatchPickerItems(filterText = '') {
     try {
         let items = [];
 
+        function getAssetKind(a) {
+            const t = (a.asset_type || '').toLowerCase();
+            const c = (a.category || '').toLowerCase();
+            const code = (a.asset_code || a.code || '').toLowerCase();
+            const name = (a.name || '').toLowerCase();
+
+            // 1. Vehículos
+            if (t.includes('veh') || c.includes('veh') || code.includes('-v-') || Boolean(a.license_plate)) {
+                return 'vehiculo';
+            }
+
+            // 2. Maquinaria y Equipos Mayores
+            const machKeywords = [
+                'torno', 'fresadora', 'generador', 'compresor', 'maquina de soldar', 
+                'soldadora', 'plasma', 'prensa', 'plegadora', 'cilindradora', 
+                'taladro de columna', 'taladro radial', 'grua', 'montacarga', 'retroexcavadora'
+            ];
+            if (t.includes('maquinaria') || t.includes('pesado') || machKeywords.some(k => name.includes(k))) {
+                return 'machinery';
+            }
+
+            // 3. Todo lo demás son herramientas y equipos de taller
+            return 'tools';
+        }
+
         if (currentPickerTab === 'tools' || currentPickerTab === 'machinery') {
             let assets = window.allAssets || [];
             if (assets.length === 0) {
@@ -1383,28 +1408,7 @@ async function renderDispatchPickerItems(filterText = '') {
                 if (res.ok) assets = window.allAssets = await res.json();
             }
 
-            if (currentPickerTab === 'tools') {
-                items = assets.filter(a => {
-                    const cat = (a.category || '').toLowerCase();
-                    const sub = (a.sub_category || '').toLowerCase();
-                    const type = (a.asset_type || '').toLowerCase();
-                    const name = (a.name || '').toLowerCase();
-                    const code = (a.asset_code || '').toLowerCase();
-                    return cat.includes('herram') || sub.includes('herram') || type.includes('herram') || 
-                           code.includes('her') || code.includes('-h-') || name.includes('herramienta');
-                });
-            } else {
-                items = assets.filter(a => {
-                    const cat = (a.category || '').toLowerCase();
-                    const sub = (a.sub_category || '').toLowerCase();
-                    const type = (a.asset_type || '').toLowerCase();
-                    const name = (a.name || '').toLowerCase();
-                    const code = (a.asset_code || '').toLowerCase();
-                    const isVeh = cat.includes('veh') || sub.includes('veh') || type.includes('veh') || code.includes('-v-');
-                    const isTool = cat.includes('herram') || sub.includes('herram') || type.includes('herram') || code.includes('-h-');
-                    return !isVeh && !isTool; // Maquinaria, equipos de soldar, generadores, tornos, etc.
-                });
-            }
+            items = assets.filter(a => getAssetKind(a) === currentPickerTab);
         } else if (currentPickerTab === 'materials') {
             let materials = window.allMaterials || [];
             if (materials.length === 0) {
@@ -1414,13 +1418,13 @@ async function renderDispatchPickerItems(filterText = '') {
             items = materials;
         }
 
-        // Conteo de badges en pestanas
+        // Conteo de badges en pestañas
         const cTools = document.getElementById('count_picker_tools');
         const cMach = document.getElementById('count_picker_machinery');
         const cMats = document.getElementById('count_picker_materials');
         if (window.allAssets && window.allAssets.length > 0) {
-            if (cTools) cTools.textContent = window.allAssets.filter(a => (a.category || a.asset_type || '').toLowerCase().includes('herram')).length;
-            if (cMach) cMach.textContent = window.allAssets.filter(a => !(a.category || a.asset_type || '').toLowerCase().includes('herram') && !(a.category || a.asset_type || '').toLowerCase().includes('veh')).length;
+            if (cTools) cTools.textContent = window.allAssets.filter(a => getAssetKind(a) === 'tools').length;
+            if (cMach) cMach.textContent = window.allAssets.filter(a => getAssetKind(a) === 'machinery').length;
         }
         if (window.allMaterials && cMats) {
             cMats.textContent = window.allMaterials.length;

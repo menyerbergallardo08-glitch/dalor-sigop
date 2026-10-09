@@ -125,13 +125,13 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-e5ZA8Ncb.js"></script>
+  <script type="module" crossorigin src="/assets/main-BmDzniLy.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-BA6a9-On.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-CaWuF4ZD.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-ChA-JEUH.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-7m4_TsO-.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-CVykDcAG.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-KydNBg8H.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-BXYBoHoU.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-BVXCvazZ.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-KicfdTr1.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-CgUdPGhY.js">
@@ -8278,17 +8278,28 @@
 
 
 
-                <div>
-                    <label class="form-label">Monto a Registrar ($ USD) *</label>
-                    <input type="number" step="0.01" id="fin_trans_amount_usd" oninput="calcFinTransBsEquiv()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px;" required>
-                    <div id="fin_trans_bcv_calc" style="font-size: 11px; color: #0369a1; background: #e0f2fe; padding: 6px 10px; border-radius: 6px; margin-top: 4px; display: none;">
-                        <i class="fa-solid fa-calculator"></i> Tasa Oficial BCV: <strong id="fin_bcv_rate_lbl">Bs. 850.00</strong> &bull; Equivalente: <strong id="fin_bs_equiv_lbl">Bs. 0.00</strong>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Monto ($ USD) a Amortizar *</label>
+                        <input type="number" step="0.01" id="fin_trans_amount_usd" oninput="calcFinTransFromUsd()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px; color: #0f172a;" required>
+                    </div>
+                    <div>
+                        <label class="form-label" title="Tasa pactada, orden de compra o del día">Tasa de Cambio (Bs/$) *</label>
+                        <input type="number" step="0.01" id="fin_trans_custom_rate" oninput="calcFinTransFromUsd()" class="form-input" style="font-weight: 800; font-size: 15px; color: #0369a1; background: #f0f9ff;" required>
+                    </div>
+                </div>
+
+                <div id="fin_trans_bs_wrapper">
+                    <label class="form-label">Monto Recibido/Pagado en Banco (Bs.)</label>
+                    <input type="number" step="0.01" id="fin_trans_amount_bs" oninput="calcFinTransFromBs()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 14px; color: #047857; background: #ecfdf5;">
+                    <div id="fin_trans_bcv_calc" style="font-size: 11px; color: #0369a1; background: #e0f2fe; padding: 6px 10px; border-radius: 6px; margin-top: 4px;">
+                        <i class="fa-solid fa-calculator"></i> Tasa Oficial Hoy: <strong id="fin_bcv_rate_lbl">Bs. 875.65</strong> &bull; Total en Bs: <strong id="fin_bs_equiv_lbl">Bs. 0.00</strong>
                     </div>
                 </div>
 
                 <div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label class="form-label">Cuenta Bancaria / Destino de los Fondos *</label>
+                        <label class="form-label">Cuenta Bancaria / Destino de Fondos *</label>
                         <button type="button" onclick="openManageAccountsModal()" style="border:none; background:transparent; color:#2563eb; font-size:11px; font-weight:800; cursor:pointer; padding:0 0 4px 0;" title="Agregar o editar cuentas bancarias">
                             <i class="fa-solid fa-plus-circle"></i> Gestionar Cuentas
                         </button>
@@ -8298,25 +8309,28 @@
                     </select>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
                     <div>
-                        <label class="form-label">Método de Pago</label>
-                        <select id="fin_trans_method" class="form-select" onchange="calcFinTransBsEquiv()">
-                            <option value="transferencia">Transferencia Bancaria</option>
-                            <option value="pago_movil">Pago Móvil</option>
-                            <option value="efectivo_divisa">Efectivo Divisa ($)</option>
-                            <option value="zelle">Zelle / Wire</option>
+                        <label class="form-label">Forma de Pago / Comprobante</label>
+                        <select id="fin_trans_method" class="form-select" onchange="onFinTransMethodChanged()">
+                            <option value="transferencia">Transferencia Bancaria (Bs)</option>
+                            <option value="pago_movil">Pago Móvil (Bs)</option>
+                            <option value="retencion_iva">Comprobante Retención IVA (75%/100%)</option>
+                            <option value="retencion_islr">Comprobante Retención ISLR (AR-CV)</option>
+                            <option value="retencion_municipal">Comprobante Retención Municipal</option>
+                            <option value="efectivo_divisa">Efectivo Divisas ($)</option>
+                            <option value="zelle">Zelle / Transferencia USD</option>
                         </select>
                     </div>
                     <div>
-                        <label class="form-label">Nº Referencia Bancaria *</label>
-                        <input type="text" id="fin_trans_ref" placeholder="Ref: 123456" class="form-input" required>
+                        <label class="form-label" id="fin_trans_ref_lbl">Nº Referencia / Comprobante *</label>
+                        <input type="text" id="fin_trans_ref" placeholder="Ej: 049182 / COMP-2026-01" class="form-input" required>
                     </div>
                 </div>
 
                 <div>
                     <label class="form-label">Notas / Observaciones</label>
-                    <input type="text" id="fin_trans_notes" placeholder="Ej: Cobro de valuación / alquiler" class="form-input">
+                    <input type="text" id="fin_trans_notes" placeholder="Ej: Pago a tasa O/C del martes 872.00 Bs / Retención IVA cliente" class="form-input">
                 </div>
 
                 <button type="submit" id="btnConfirmFinTrans" class="btn-primary" style="margin-top: 6px;">

@@ -32,27 +32,72 @@ const authFetch = (url, options = {}) => {
     return window.fetch(url, { ...options, headers });
 };
 
-function calcFinTransBsEquiv() {
-    const acc = document.getElementById("fin_trans_account")?.value || "";
-    const method = document.getElementById("fin_trans_method")?.value || "";
-    const container = document.getElementById("fin_trans_bcv_calc");
-    const rateLbl = document.getElementById("fin_bcv_rate_lbl");
-    const equivLbl = document.getElementById("fin_bs_equiv_lbl");
+function getActiveOfficialRate() {
+    return window.BCV_DATA?.rate || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : (window.EXCHANGE_RATE || 875.65));
+}
+
+function calcFinTransFromUsd() {
     const amountUsd = parseFloat(document.getElementById("fin_trans_amount_usd")?.value) || 0;
-    
-    const rate = window.BCV_DATA?.rate || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : (window.EXCHANGE_RATE || 850.0));
-    const isBs = acc.includes("(Bs)") || method === 'pago_movil';
-    
-    if (container) {
-        if (isBs) {
-            container.style.display = 'block';
-            if (rateLbl) rateLbl.innerText = `Bs. ${rate.toFixed(2)}`;
-            const equivBs = roundFinancial(amountUsd * rate);
-            if (equivLbl) equivLbl.innerText = `Bs. ${equivBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
-        } else {
-            container.style.display = 'none';
+    const customRate = parseFloat(document.getElementById("fin_trans_custom_rate")?.value) || getActiveOfficialRate();
+    const bsInput = document.getElementById("fin_trans_amount_bs");
+    const equivLbl = document.getElementById("fin_bs_equiv_lbl");
+    const rateLbl = document.getElementById("fin_bcv_rate_lbl");
+    const officialRate = getActiveOfficialRate();
+
+    const totalBs = roundFinancial(amountUsd * customRate);
+    if (bsInput && document.activeElement !== bsInput) {
+        bsInput.value = totalBs > 0 ? totalBs.toFixed(2) : "";
+    }
+    if (rateLbl) rateLbl.innerText = `Bs. ${officialRate.toFixed(2)}`;
+    if (equivLbl) equivLbl.innerText = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
+}
+
+function calcFinTransFromBs() {
+    const amountBs = parseFloat(document.getElementById("fin_trans_amount_bs")?.value) || 0;
+    const customRate = parseFloat(document.getElementById("fin_trans_custom_rate")?.value) || getActiveOfficialRate();
+    const usdInput = document.getElementById("fin_trans_amount_usd");
+    const equivLbl = document.getElementById("fin_bs_equiv_lbl");
+    const maxBalance = parseFloat(document.getElementById("fin_trans_amount_usd")?.max) || 99999999;
+
+    if (customRate > 0) {
+        const computedUsd = roundFinancial(amountBs / customRate);
+        if (usdInput) {
+            usdInput.value = computedUsd > 0 ? Math.min(computedUsd, maxBalance).toFixed(2) : "";
+        }
+        if (equivLbl) equivLbl.innerText = `Bs. ${amountBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
+    }
+}
+
+function onFinTransMethodChanged() {
+    const method = document.getElementById("fin_trans_method")?.value || "";
+    const bsWrapper = document.getElementById("fin_trans_bs_wrapper");
+    const refLbl = document.getElementById("fin_trans_ref_lbl");
+    const refInput = document.getElementById("fin_trans_ref");
+    const accountSel = document.getElementById("fin_trans_account");
+
+    if (method.startsWith("retencion_")) {
+        if (bsWrapper) bsWrapper.style.display = "none";
+        if (refLbl) refLbl.innerText = "Nº Comprobante de Retención *";
+        if (refInput) refInput.placeholder = "Ej: 202610000045";
+        // En retenciones tributarias no se afecta cuenta bancaria líquida
+        if (accountSel) {
+            accountSel.disabled = true;
+            accountSel.title = "Las retenciones tributarias no mueven cuentas bancarias (crédito fiscal directo)";
+        }
+    } else {
+        if (bsWrapper) bsWrapper.style.display = "block";
+        if (refLbl) refLbl.innerText = "Nº Referencia Bancaria *";
+        if (refInput) refInput.placeholder = "Ej: 049182 / REF-BANCARIA";
+        if (accountSel) {
+            accountSel.disabled = false;
+            accountSel.title = "";
         }
     }
+    calcFinTransFromUsd();
+}
+
+function calcFinTransBsEquiv() {
+    calcFinTransFromUsd();
 }
 
 function onFinTransAccountChanged() {
@@ -67,7 +112,7 @@ function onFinTransAccountChanged() {
     } else if (acc.includes("Efectivo USD") && methodSel) {
         methodSel.value = 'efectivo_divisa';
     }
-    calcFinTransBsEquiv();
+    onFinTransMethodChanged();
 }
 
 function openClientRefundModal(receivableId, maxSurplus, clientName, invoiceNumber) {
@@ -195,7 +240,13 @@ function openRecordPaymentModal(type, targetId, currentBalance) {
 
     }
 
-    calcFinTransBsEquiv();
+    const customRateInput = document.getElementById("fin_trans_custom_rate");
+    const activeRate = getActiveOfficialRate();
+    if (customRateInput) {
+        customRateInput.value = activeRate.toFixed(2);
+    }
+
+    onFinTransMethodChanged();
     openModal("modalFinancialTransaction");
 
 }
@@ -211,13 +262,14 @@ async function submitFinancialPayment(e) {
     const targetId = document.getElementById("fin_trans_target_id").value;
 
     const amountUsd = parseFloat(document.getElementById("fin_trans_amount_usd").value);
+    const customRate = parseFloat(document.getElementById("fin_trans_custom_rate")?.value) || getActiveOfficialRate();
     const selectedAcc = document.getElementById("fin_trans_account")?.value || "";
     const notesVal = document.getElementById("fin_trans_notes")?.value?.trim() || "";
     const fullNotes = selectedAcc ? `[Cuenta: ${selectedAcc}] ${notesVal}`.trim() : notesVal;
 
     const payload = {
         amount_usd: amountUsd,
-        exchange_rate: window.BCV_DATA?.rate || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0),
+        exchange_rate: customRate,
         payment_method: document.getElementById("fin_trans_method").value,
         reference_number: document.getElementById("fin_trans_ref").value.trim(),
         notes: fullNotes,
@@ -1717,6 +1769,9 @@ async function submitTreasuryExchange(e) {
 
 // Auto-window binding & ES6 exports
 if (typeof window !== 'undefined') {
+    window.calcFinTransFromUsd = calcFinTransFromUsd;
+    window.calcFinTransFromBs = calcFinTransFromBs;
+    window.onFinTransMethodChanged = onFinTransMethodChanged;
     window.calcFinTransBsEquiv = calcFinTransBsEquiv;
     window.onFinTransAccountChanged = onFinTransAccountChanged;
     window.openClientRefundModal = openClientRefundModal;
@@ -1753,6 +1808,9 @@ if (typeof window !== 'undefined') {
     window.submitTreasuryExchange = submitTreasuryExchange;
 }
 
+export { calcFinTransFromUsd };
+export { calcFinTransFromBs };
+export { onFinTransMethodChanged };
 export { calcFinTransBsEquiv };
 export { onFinTransAccountChanged };
 export { openClientRefundModal };

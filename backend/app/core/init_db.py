@@ -759,6 +759,24 @@ def init_db():
                             text("INSERT INTO bcv_rate_history (rate_date, rate, source) VALUES (:d, :r, :s)"),
                             {"d": r_date, "r": r_rate, "s": r_src}
                         )
+                # Corrección acotada: reemplaza valores provisionales sembrados por error en el
+                # primer despliegue. Solo coincide con (fecha + valor provisional exacto + origen exacto).
+                _placeholder_fix = {
+                    "2026-09-26": 450.25, "2026-09-27": 450.25, "2026-09-28": 452.10,
+                    "2026-09-29": 455.80, "2026-09-30": 458.40, "2026-10-01": 460.15,
+                    "2026-10-02": 462.50, "2026-10-03": 462.50, "2026-10-04": 462.50,
+                    "2026-10-05": 465.30, "2026-10-06": 468.20, "2026-10-07": 471.90,
+                    "2026-10-08": 473.40, "2026-10-09": 475.80,
+                }
+                for _d, _bad in _placeholder_fix.items():
+                    _good = next((r for (dd, r, s) in bcv_rates_seed if dd == _d), None)
+                    _src = next((s for (dd, r, s) in bcv_rates_seed if dd == _d), None)
+                    if _good is not None:
+                        isolated_conn.execute(
+                            text("UPDATE bcv_rate_history SET rate = :g, source = :s "
+                                 "WHERE rate_date = :d AND rate = :b AND source = 'BCV Oficial'"),
+                            {"g": _good, "s": _src, "d": _d, "b": _bad}
+                        )
         except Exception as e_bcv:
             print(f"[WARN] Error inicializando tasas BCV: {e_bcv}")
 

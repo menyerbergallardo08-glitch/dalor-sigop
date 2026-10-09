@@ -68,32 +68,94 @@ function calcFinTransFromBs() {
     }
 }
 
-function onFinTransMethodChanged() {
-    const method = document.getElementById("fin_trans_method")?.value || "";
-    const bsWrapper = document.getElementById("fin_trans_bs_wrapper");
-    const refLbl = document.getElementById("fin_trans_ref_lbl");
-    const refInput = document.getElementById("fin_trans_ref");
-    const accountSel = document.getElementById("fin_trans_account");
+function calcRetentionFromBs() {
+    const amountBs = parseFloat(document.getElementById("fin_trans_retention_bs")?.value) || 0;
+    const rate = parseFloat(document.getElementById("fin_trans_retention_rate")?.value) || getActiveOfficialRate();
+    const usdCalcEl = document.getElementById("fin_trans_retention_usd_calc");
+    const amountUsdInput = document.getElementById("fin_trans_amount_usd");
+    const maxBalance = parseFloat(amountUsdInput?.max) || 99999999;
 
-    if (method.startsWith("retencion_")) {
-        if (bsWrapper) bsWrapper.style.display = "none";
-        if (refLbl) refLbl.innerText = "Nº Comprobante de Retención *";
-        if (refInput) refInput.placeholder = "Ej: 202610000045";
-        // En retenciones tributarias no se afecta cuenta bancaria líquida
-        if (accountSel) {
-            accountSel.disabled = true;
-            accountSel.title = "Las retenciones tributarias no mueven cuentas bancarias (crédito fiscal directo)";
+    if (rate > 0) {
+        const computedUsd = roundFinancial(amountBs / rate);
+        const finalUsd = Math.min(computedUsd, maxBalance);
+        if (amountUsdInput) {
+            amountUsdInput.value = finalUsd > 0 ? finalUsd.toFixed(2) : "";
         }
-    } else {
-        if (bsWrapper) bsWrapper.style.display = "block";
-        if (refLbl) refLbl.innerText = "Nº Referencia Bancaria *";
-        if (refInput) refInput.placeholder = "Ej: 049182 / REF-BANCARIA";
-        if (accountSel) {
-            accountSel.disabled = false;
-            accountSel.title = "";
+        if (usdCalcEl) {
+            usdCalcEl.innerText = `$${finalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
         }
     }
-    calcFinTransFromUsd();
+}
+
+async function onFinTransDateChanged() {
+    const dateVal = document.getElementById("fin_trans_date")?.value;
+    if (!dateVal) return;
+
+    try {
+        const res = await authFetch(`${API_BASE}/financial/bcv-rates/history?limit=90`);
+        if (res.ok) {
+            const data = await res.json();
+            const history = data.history || [];
+            const found = history.find(h => h.rate_date === dateVal);
+            if (found && found.rate > 0) {
+                const targetRate = parseFloat(found.rate);
+                const retRateInput = document.getElementById("fin_trans_retention_rate");
+                const customRateInput = document.getElementById("fin_trans_custom_rate");
+                if (retRateInput) retRateInput.value = targetRate.toFixed(2);
+                if (customRateInput) customRateInput.value = targetRate.toFixed(2);
+
+                const method = document.getElementById("fin_trans_method")?.value || "";
+                if (method.startsWith("retencion_")) {
+                    calcRetentionFromBs();
+                } else {
+                    calcFinTransFromUsd();
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("No se pudo cargar la tasa histórica para la fecha:", e);
+    }
+}
+
+function onFinTransMethodChanged() {
+    const method = document.getElementById("fin_trans_method")?.value || "";
+    const retentionBox = document.getElementById("fin_trans_retention_box");
+    const standardBox = document.getElementById("fin_trans_standard_box");
+    const accountWrapper = document.getElementById("fin_trans_account_wrapper");
+    const refLbl = document.getElementById("fin_trans_ref_lbl");
+    const refInput = document.getElementById("fin_trans_ref");
+    const dateLbl = document.getElementById("fin_trans_date_lbl");
+    const activeRate = getActiveOfficialRate();
+
+    if (method.startsWith("retencion_")) {
+        // Modo Comprobante de Retención Fiscal
+        if (retentionBox) retentionBox.style.display = "block";
+        if (standardBox) standardBox.style.display = "none";
+        if (accountWrapper) accountWrapper.style.display = "none";
+        if (refLbl) refLbl.innerText = "Nº Comprobante de Retención Fiscal *";
+        if (refInput) refInput.placeholder = "Ej: 202610000045 (Número impreso en el comprobante)";
+        if (dateLbl) dateLbl.innerText = "Fecha Emisión Comprobante";
+
+        const retRateInput = document.getElementById("fin_trans_retention_rate");
+        if (retRateInput && (!retRateInput.value || parseFloat(retRateInput.value) <= 0)) {
+            retRateInput.value = activeRate.toFixed(2);
+        }
+        calcRetentionFromBs();
+    } else {
+        // Modo Pago / Transferencia Bancaria
+        if (retentionBox) retentionBox.style.display = "none";
+        if (standardBox) standardBox.style.display = "block";
+        if (accountWrapper) accountWrapper.style.display = "block";
+        if (refLbl) refLbl.innerText = "Nº Referencia Bancaria *";
+        if (refInput) refInput.placeholder = "Ej: 049182 / REF-BANCARIA";
+        if (dateLbl) dateLbl.innerText = "Fecha de Liquidación / Entrada en Banco";
+
+        const customRateInput = document.getElementById("fin_trans_custom_rate");
+        if (customRateInput && (!customRateInput.value || parseFloat(customRateInput.value) <= 0)) {
+            customRateInput.value = activeRate.toFixed(2);
+        }
+        calcFinTransFromUsd();
+    }
 }
 
 function calcFinTransBsEquiv() {
@@ -246,6 +308,19 @@ function openRecordPaymentModal(type, targetId, currentBalance) {
         customRateInput.value = activeRate.toFixed(2);
     }
 
+    const retRateInput = document.getElementById("fin_trans_retention_rate");
+    if (retRateInput) {
+        retRateInput.value = activeRate.toFixed(2);
+    }
+
+    const dateInput = document.getElementById("fin_trans_date");
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split("T")[0];
+    }
+
+    const retBsInput = document.getElementById("fin_trans_retention_bs");
+    if (retBsInput) retBsInput.value = "";
+
     onFinTransMethodChanged();
     openModal("modalFinancialTransaction");
 
@@ -262,15 +337,27 @@ async function submitFinancialPayment(e) {
     const targetId = document.getElementById("fin_trans_target_id").value;
 
     const amountUsd = parseFloat(document.getElementById("fin_trans_amount_usd").value);
-    const customRate = parseFloat(document.getElementById("fin_trans_custom_rate")?.value) || getActiveOfficialRate();
+    const method = document.getElementById("fin_trans_method").value;
+    
+    let effectiveRate = getActiveOfficialRate();
+    if (method.startsWith("retencion_")) {
+        effectiveRate = parseFloat(document.getElementById("fin_trans_retention_rate")?.value) || effectiveRate;
+    } else {
+        effectiveRate = parseFloat(document.getElementById("fin_trans_custom_rate")?.value) || effectiveRate;
+    }
+
     const selectedAcc = document.getElementById("fin_trans_account")?.value || "";
     const notesVal = document.getElementById("fin_trans_notes")?.value?.trim() || "";
-    const fullNotes = selectedAcc ? `[Cuenta: ${selectedAcc}] ${notesVal}`.trim() : notesVal;
+    const dateVal = document.getElementById("fin_trans_date")?.value || "";
+    const datePrefix = dateVal ? `[Fecha Op: ${dateVal}] ` : "";
+    const fullNotes = (selectedAcc && !method.startsWith("retencion_")) 
+        ? `${datePrefix}[Cuenta: ${selectedAcc}] ${notesVal}`.trim() 
+        : `${datePrefix}${notesVal}`.trim();
 
     const payload = {
         amount_usd: amountUsd,
-        exchange_rate: customRate,
-        payment_method: document.getElementById("fin_trans_method").value,
+        exchange_rate: effectiveRate,
+        payment_method: method,
         reference_number: document.getElementById("fin_trans_ref").value.trim(),
         notes: fullNotes,
         payment_type: type === 'cobro_cxc' ? 'cxc_cobro' : 'cxp_pago'
@@ -1769,6 +1856,8 @@ async function submitTreasuryExchange(e) {
 
 // Auto-window binding & ES6 exports
 if (typeof window !== 'undefined') {
+    window.calcRetentionFromBs = calcRetentionFromBs;
+    window.onFinTransDateChanged = onFinTransDateChanged;
     window.calcFinTransFromUsd = calcFinTransFromUsd;
     window.calcFinTransFromBs = calcFinTransFromBs;
     window.onFinTransMethodChanged = onFinTransMethodChanged;

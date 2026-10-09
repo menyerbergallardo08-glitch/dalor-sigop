@@ -277,37 +277,6 @@
 
 
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label class="form-label">Monto ($ USD) a Amortizar *</label>
-                        <input type="number" step="0.01" id="fin_trans_amount_usd" oninput="calcFinTransFromUsd()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px; color: #0f172a;" required>
-                    </div>
-                    <div>
-                        <label class="form-label" title="Tasa pactada, orden de compra o del día">Tasa de Cambio (Bs/$) *</label>
-                        <input type="number" step="0.01" id="fin_trans_custom_rate" oninput="calcFinTransFromUsd()" class="form-input" style="font-weight: 800; font-size: 15px; color: #0369a1; background: #f0f9ff;" required>
-                    </div>
-                </div>
-
-                <div id="fin_trans_bs_wrapper">
-                    <label class="form-label">Monto Recibido/Pagado en Banco (Bs.)</label>
-                    <input type="number" step="0.01" id="fin_trans_amount_bs" oninput="calcFinTransFromBs()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 14px; color: #047857; background: #ecfdf5;">
-                    <div id="fin_trans_bcv_calc" style="font-size: 11px; color: #0369a1; background: #e0f2fe; padding: 6px 10px; border-radius: 6px; margin-top: 4px;">
-                        <i class="fa-solid fa-calculator"></i> Tasa Oficial Hoy: <strong id="fin_bcv_rate_lbl">Bs. 875.65</strong> &bull; Total en Bs: <strong id="fin_bs_equiv_lbl">Bs. 0.00</strong>
-                    </div>
-                </div>
-
-                <div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label class="form-label">Cuenta Bancaria / Destino de Fondos *</label>
-                        <button type="button" onclick="openManageAccountsModal()" style="border:none; background:transparent; color:#2563eb; font-size:11px; font-weight:800; cursor:pointer; padding:0 0 4px 0;" title="Agregar o editar cuentas bancarias">
-                            <i class="fa-solid fa-plus-circle"></i> Gestionar Cuentas
-                        </button>
-                    </div>
-                    <select id="fin_trans_account" class="form-select" onchange="onFinTransAccountChanged()">
-                        <option value="">Cargando cuentas...</option>
-                    </select>
-                </div>
-
                 <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
                     <div>
                         <label class="form-label">Forma de Pago / Comprobante</label>
@@ -321,10 +290,75 @@
                             <option value="zelle">Zelle / Transferencia USD</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="form-label" id="fin_trans_ref_lbl">Nº Referencia / Comprobante *</label>
-                        <input type="text" id="fin_trans_ref" placeholder="Ej: 049182 / COMP-2026-01" class="form-input" required>
+                    <div id="fin_trans_date_wrapper">
+                        <label class="form-label" id="fin_trans_date_lbl">Fecha de Operación</label>
+                        <input type="date" id="fin_trans_date" class="form-input" onchange="onFinTransDateChanged()">
                     </div>
+                </div>
+
+                <!-- CONTENEDOR DEDICADO DE RETENCIONES EN BOLÍVARES (SE MUESTRA CUANDO ES RETENCIÓN) -->
+                <div id="fin_trans_retention_box" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px; margin-bottom: 2px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="font-size: 12px; font-weight: 800; color: #166534;">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> Cargar Comprobante Fiscal en Bolívares (Bs.)
+                        </span>
+                        <span id="fin_trans_retention_badge" style="font-size: 10.5px; background: #dcfce7; color: #15803d; font-weight: 700; padding: 2px 6px; border-radius: 4px;">
+                            Crédito Fiscal SENIAT
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 8px;">
+                        <div>
+                            <label class="form-label" style="color: #166534;">Monto Retenido en Comprobante (Bs.) *</label>
+                            <input type="number" step="0.01" id="fin_trans_retention_bs" oninput="calcRetentionFromBs()" placeholder="Monto exacto en Bs." class="form-input" style="font-weight: 800; font-size: 15px; color: #14532d; background: #ffffff; border-color: #86efac;">
+                        </div>
+                        <div>
+                            <label class="form-label" style="color: #166534;" title="Tasa BCV de la fecha del comprobante">Tasa del Comprobante (Bs/$)</label>
+                            <input type="number" step="0.01" id="fin_trans_retention_rate" oninput="calcRetentionFromBs()" class="form-input" style="font-weight: 800; font-size: 14px; color: #15803d; background: #ffffff; border-color: #86efac;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 6px; font-size: 11.5px; color: #166534; font-weight: 700; display: flex; justify-content: space-between;">
+                        <span>Dólares que se amortizarán de la factura:</span>
+                        <span id="fin_trans_retention_usd_calc" style="font-size: 13px; color: #047857; font-weight: 900;">$0.00 USD</span>
+                    </div>
+                </div>
+
+                <!-- CONTENEDOR ESTÁNDAR PARA PAGOS COMERCIALES -->
+                <div id="fin_trans_standard_box">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label class="form-label" id="fin_trans_usd_lbl">Monto ($ USD) a Amortizar *</label>
+                            <input type="number" step="0.01" id="fin_trans_amount_usd" oninput="calcFinTransFromUsd()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 15px; color: #0f172a;" required>
+                        </div>
+                        <div>
+                            <label class="form-label" id="fin_trans_rate_lbl" title="Tasa pactada, orden de compra o del día">Tasa de Liquidación (Bs/$) *</label>
+                            <input type="number" step="0.01" id="fin_trans_custom_rate" oninput="calcFinTransFromUsd()" class="form-input" style="font-weight: 800; font-size: 15px; color: #0369a1; background: #f0f9ff;" required>
+                        </div>
+                    </div>
+
+                    <div id="fin_trans_bs_wrapper">
+                        <label class="form-label">Monto Recibido/Pagado en Banco (Bs.)</label>
+                        <input type="number" step="0.01" id="fin_trans_amount_bs" oninput="calcFinTransFromBs()" placeholder="0.00" class="form-input" style="font-weight: 800; font-size: 14px; color: #047857; background: #ecfdf5;">
+                        <div id="fin_trans_bcv_calc" style="font-size: 11px; color: #0369a1; background: #e0f2fe; padding: 6px 10px; border-radius: 6px; margin-top: 4px;">
+                            <i class="fa-solid fa-calculator"></i> Tasa Oficial Hoy: <strong id="fin_bcv_rate_lbl">Bs. 875.65</strong> &bull; Total en Bs: <strong id="fin_bs_equiv_lbl">Bs. 0.00</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fin_trans_account_wrapper">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label class="form-label">Cuenta Bancaria / Destino de Fondos *</label>
+                        <button type="button" onclick="openManageAccountsModal()" style="border:none; background:transparent; color:#2563eb; font-size:11px; font-weight:800; cursor:pointer; padding:0 0 4px 0;" title="Agregar o editar cuentas bancarias">
+                            <i class="fa-solid fa-plus-circle"></i> Gestionar Cuentas
+                        </button>
+                    </div>
+                    <select id="fin_trans_account" class="form-select" onchange="onFinTransAccountChanged()">
+                        <option value="">Cargando cuentas...</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label" id="fin_trans_ref_lbl">Nº Referencia Bancaria *</label>
+                    <input type="text" id="fin_trans_ref" placeholder="Ej: 049182 / COMP-2026-01" class="form-input" required>
                 </div>
 
                 <div>

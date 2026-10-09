@@ -271,13 +271,24 @@ async function _renderAccountsList() {
             return;
         }
 
-        const rows = accounts.map(acc => `
+        const bcvRate = window.BCV_DATA?.rate || (typeof State !== 'undefined' && State.exchangeRate) || 859.06;
+        const rows = accounts.map(acc => {
+            const isBs = (acc.account_type || '').toLowerCase() === 'bs';
+            const balUsd = acc.current_balance !== undefined ? acc.current_balance : (acc.initial_balance || 0);
+            const balBs = acc.initial_balance_bs ? acc.initial_balance_bs : (balUsd * bcvRate);
+            const balColor = balUsd > 0 ? '#059669' : (balUsd < 0 ? '#dc2626' : '#64748b');
+
+            return `
             <tr style="border-bottom:1px solid #f1f5f9;">
                 <td style="padding:8px 6px; font-weight:700; font-size:13px; color:${acc.is_active ? '#1e293b' : '#94a3b8'};">
                     ${acc.is_active ? '🟢' : '🔴'} ${acc.name}
                 </td>
                 <td style="padding:8px 6px; font-size:12px; color:#475569;">
-                    ${acc.account_type === 'usd' ? '💵 USD' : '🇻🇪 Bs'}
+                    ${isBs ? '🇻🇪 Bs' : '💵 USD'}
+                </td>
+                <td style="padding:8px 6px; font-weight:800; font-size:12px; color:${balColor}; white-space:nowrap;">
+                    ${isBs ? `Bs. ${balBs.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})}` : `$${balUsd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`}
+                    ${acc.initial_balance > 0 ? `<div style="font-size:10px; color:#64748b; font-weight:600;">(Apertura: $${acc.initial_balance.toLocaleString()})</div>` : ''}
                 </td>
                 <td style="padding:8px 6px; font-size:12px; color:#64748b;">${acc.bank_or_provider || '—'}</td>
                 <td style="padding:8px 6px; font-size:12px; color:#94a3b8;">${acc.account_number || '—'}</td>
@@ -296,7 +307,8 @@ async function _renderAccountsList() {
                     ` : `<span style="font-size:10px;color:#94a3b8;">Inactiva</span>`}
                 </td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
 
         container.innerHTML = `
             <table style="width:100%; border-collapse:collapse;">
@@ -304,6 +316,7 @@ async function _renderAccountsList() {
                     <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
                         <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">CUENTA</th>
                         <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">MONEDA</th>
+                        <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">SALDO DISPONIBLE</th>
                         <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">BANCO</th>
                         <th style="padding:8px 6px; text-align:left; font-size:11px; color:#64748b; font-weight:700;">REF.</th>
                         <th style="padding:8px 6px; text-align:center; font-size:11px; color:#64748b; font-weight:700;">ACCIÓN</th>

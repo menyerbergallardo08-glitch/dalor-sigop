@@ -684,6 +684,83 @@ def init_db():
             db.add_all(default_accounts)
             db.commit()
 
+        # 8.1 Seed White-Label: Perfil Corporativo Activo (Metalmecánica Dalor, C.A.)
+        try:
+            from app.models.models import CompanyProfile
+            active_profile = db.query(CompanyProfile).filter(CompanyProfile.is_default == True).first()
+            if not active_profile:
+                print("--> Seeding default corporate profile (Metalmecanica Dalor, C.A.)...")
+                dalor_prof = CompanyProfile(
+                    legal_name="METALMECANICA DALOR, C.A.",
+                    trade_name="DALOR SIGO-P",
+                    rif="J-31601195-0",
+                    fiscal_address="AV CAMARA DE LAS INDUSTRIAS LOCAL GALPON NRO 10 ZONA INDUSTRIAL EL TIGRE GUACARA CARABOBO",
+                    phone="+58 245-564.88.92",
+                    email="metalmecanicadalorca@yahoo.com",
+                    legal_base_seniat="Providencia Administrativa SNAT/2015/0049 de fecha 17/07/2015, publicada en Gaceta Oficial N° 40.720 del 10/08/2015.",
+                    currency_symbol="$",
+                    primary_color="#002B49",
+                    secondary_color="#D4AF37",
+                    is_default=True
+                )
+                db.add(dalor_prof)
+                db.commit()
+        except Exception as e_prof:
+            db.rollback()
+            print(f"[WARN] Error inicializando CompanyProfile: {e_prof}")
+
+        # 8.2 Seed Histórico de Tasas BCV Oficiales (Septiembre - Octubre 2026)
+        try:
+            with engine.begin() as isolated_conn:
+                if is_sqlite:
+                    isolated_conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS bcv_rate_history (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            rate_date VARCHAR(10) UNIQUE,
+                            rate FLOAT NOT NULL,
+                            source VARCHAR(100),
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """))
+                else:
+                    isolated_conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS bcv_rate_history (
+                            id SERIAL PRIMARY KEY,
+                            rate_date VARCHAR(10) UNIQUE,
+                            rate FLOAT NOT NULL,
+                            source VARCHAR(100),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """))
+                
+                bcv_rates_seed = [
+                    ("2026-09-26", 450.25),
+                    ("2026-09-27", 450.25),
+                    ("2026-09-28", 452.10),
+                    ("2026-09-29", 455.80),
+                    ("2026-09-30", 458.40),
+                    ("2026-10-01", 460.15),
+                    ("2026-10-02", 462.50),
+                    ("2026-10-03", 462.50),
+                    ("2026-10-04", 462.50),
+                    ("2026-10-05", 465.30),
+                    ("2026-10-06", 468.20),
+                    ("2026-10-07", 471.90),
+                    ("2026-10-08", 473.40),
+                    ("2026-10-09", 475.80),
+                ]
+                for r_date, r_rate in bcv_rates_seed:
+                    row = isolated_conn.execute(
+                        text("SELECT id FROM bcv_rate_history WHERE rate_date = :d"), {"d": r_date}
+                    ).fetchone()
+                    if not row:
+                        isolated_conn.execute(
+                            text("INSERT INTO bcv_rate_history (rate_date, rate, source) VALUES (:d, :r, :s)"),
+                            {"d": r_date, "r": r_rate, "s": "BCV Oficial"}
+                        )
+        except Exception as e_bcv:
+            print(f"[WARN] Error inicializando tasas BCV: {e_bcv}")
+
         # 9. Purga quirúrgica de registros de prueba de emergencia en producción
         try:
             with engine.begin() as isolated_conn:

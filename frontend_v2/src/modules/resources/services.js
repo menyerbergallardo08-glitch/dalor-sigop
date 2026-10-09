@@ -91,7 +91,7 @@ function renderVehServicesTablePaginated() {
             <td style="padding: 8px; text-align: right; font-weight: 800; color: #059669;">$${Number(s.cost_usd || 0).toFixed(2)}</td>
             <td style="padding: 8px; color: #64748b; font-size: 11px;">${s.notes || '-'}</td>
             <td style="padding: 8px; text-align: center; white-space: nowrap;">
-                <button type="button" onclick="openEditServiceModal(${s.id})" class="btn-secondary" style="padding: 3px 7px; font-size: 11px; color: #0284c7; border-color: #bae6fd; margin-right: 4px;" title="Editar Servicio">
+                <button type="button" onclick="openEditVehicleServiceModal(${s.id})" class="btn-secondary" style="padding: 3px 7px; font-size: 11px; color: #0284c7; border-color: #bae6fd; margin-right: 4px;" title="Editar Servicio">
                     <i class="fa-solid fa-pen"></i> Editar
                 </button>
                 <button type="button" onclick="deleteServiceRecord(${s.id})" class="btn-secondary" style="padding: 3px 7px; font-size: 11px; color: #ef4444; border-color: #fecaca;" title="Eliminar Registro">
@@ -316,7 +316,7 @@ function openRecordServiceModal(assetId, code, name, currentReading, isMachinery
     openModal("modalRecordService");
 }
 
-function openEditServiceModal(serviceId) {
+function openEditVehicleServiceModal(serviceId) {
     const s = (currentVehServicesList || []).find(item => item.id === serviceId);
     if (!s) return alert("No se encontró la información del servicio.");
 
@@ -600,7 +600,7 @@ if (typeof window !== 'undefined') {
     window.onRecordServiceTypeChange = onRecordServiceTypeChange;
     window.promptNewCustomServiceType = promptNewCustomServiceType;
     window.openRecordServiceModal = openRecordServiceModal;
-    window.openEditServiceModal = openEditServiceModal;
+    window.openEditVehicleServiceModal = openEditVehicleServiceModal;
     window.submitRecordService = submitRecordService;
     window.deleteServiceRecord = deleteServiceRecord;
     window.openAdminAuthModal = openAdminAuthModal;

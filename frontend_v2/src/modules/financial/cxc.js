@@ -345,10 +345,19 @@ async function openNewReceivableModal() {
 
 
 
+    // Reset de campos para evitar datos residuales
+    const amtInput = document.getElementById("cxc_amount_usd");
+    if (amtInput) amtInput.value = "";
+    const descInput = document.getElementById("cxc_description");
+    if (descInput) descInput.value = "";
+    const taxRet = document.getElementById("cxc_tax_retained");
+    if (taxRet) taxRet.value = "0.00";
+
     populateSelect("cxc_client_id", [{id: '', name: '-- Seleccionar Cliente --'}, ...(allClients || [])], c => `<option value="${c.id}">${c.name} ${c.rif ? '(' + c.rif + ')' : ''}</option>`);
 
     const clientSelect = document.getElementById("cxc_client_id");
     if (clientSelect) {
+        clientSelect.value = "";
         clientSelect.onchange = function() {
             onCxcClientChanged();
         };
@@ -356,7 +365,8 @@ async function openNewReceivableModal() {
 
     const projSelect = document.getElementById("cxc_project_id");
     if (projSelect) {
-        projSelect.disabled = false;
+        projSelect.innerHTML = '<option value="">-- Selecciona primero un cliente --</option>';
+        projSelect.disabled = true;
         projSelect.onchange = function() {
             onCxcProjectChanged();
         };
@@ -391,8 +401,14 @@ async function openNewReceivableModal() {
 function onCxcClientChanged() {
     const clientSel = document.getElementById("cxc_client_id");
     const projSel = document.getElementById("cxc_project_id");
+    const amtInput = document.getElementById("cxc_amount_usd");
+    const descInput = document.getElementById("cxc_description");
     const submitBtn = document.querySelector('#receivableForm button[type="submit"]');
     if (!clientSel || !projSel) return;
+
+    // Resetear siempre monto y concepto al cambiar o deseleccionar cliente
+    if (amtInput) amtInput.value = "";
+    if (descInput) descInput.value = "";
 
     const clientId = clientSel.value;
     const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
@@ -459,19 +475,24 @@ function onCxcClientChanged() {
 
 function onCxcProjectChanged() {
     const projSel = document.getElementById("cxc_project_id");
+    const amtInput = document.getElementById("cxc_amount_usd");
+    const descInput = document.getElementById("cxc_description");
     const pId = projSel?.value;
-    if (!pId) return;
+
+    if (!pId) {
+        if (amtInput) amtInput.value = "";
+        if (descInput) descInput.value = "";
+        return;
+    }
 
     const safeProjects = (window.allProjects && window.allProjects.length > 0) ? window.allProjects : (allProjects || []);
     const proj = safeProjects.find(p => String(p.id) === String(pId));
     if (proj) {
-        const unbilled = Math.max(0, (proj.contract_amount_usd || 0) - (proj.total_billed_cxc_usd || 0));
-        const amtInput = document.getElementById("cxc_amount_usd");
-        if (amtInput && (!amtInput.value || parseFloat(amtInput.value) <= 0)) {
-            amtInput.value = unbilled > 0 ? unbilled.toFixed(2) : (proj.contract_amount_usd || 0).toFixed(2);
+        const unbilled = Math.max(0, (parseFloat(proj.contract_amount_usd) || 0) - (parseFloat(proj.total_billed_cxc_usd) || 0));
+        if (amtInput) {
+            amtInput.value = (unbilled > 0 ? unbilled : (parseFloat(proj.contract_amount_usd) || 0)).toFixed(2);
         }
-        const descInput = document.getElementById("cxc_description");
-        if (descInput && (!descInput.value || descInput.value.trim() === '')) {
+        if (descInput) {
             descInput.value = `Valuación de Obra - [${proj.code}] ${proj.name}`;
         }
     }

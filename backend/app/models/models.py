@@ -813,4 +813,25 @@ class AssetRentalLoanItem(Base):
     material = relationship("Material")
 
 
+class CompanyProfile(Base):
+    __tablename__ = "company_profile"
+
+    id = Column(Integer, primary_key=True, index=True)
+    legal_name = Column(String(255), nullable=False, default="METALMECANICA DALOR, C.A.")
+    trade_name = Column(String(255), nullable=False, default="DALOR SIGO-P")
+    rif = Column(String(50), nullable=False, default="J-31601195-0")
+    fiscal_address = Column(String(500), nullable=False, default="AV CAMARA DE LAS INDUSTRIAS LOCAL GALPON NRO 10 ZONA INDUSTRIAL EL TIGRE GUACARA CARABOBO")
+    phone = Column(String(100), nullable=True, default="+58 (245) 000-0000")
+    email = Column(String(100), nullable=True, default="metalmecanicadalorca@yahoo.com")
+    legal_base_seniat = Column(String(500), nullable=True, default="Providencia Administrativa SNAT/2015/0049 de fecha 17/07/2015, publicada en Gaceta Oficial N° 40.720 del 10/08/2015.")
+    logo_url = Column(String(500), nullable=True)
+    currency_symbol = Column(String(10), default="$")
+    primary_color = Column(String(20), default="#002B49")
+    secondary_color = Column(String(20), default="#D4AF37")
+    is_default = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+
 

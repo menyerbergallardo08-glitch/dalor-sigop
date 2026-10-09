@@ -378,7 +378,8 @@ async function loadTreasurySummary() {
                 accounts.forEach(a => {
                     const opt = document.createElement("option");
                     opt.value = a.id;
-                    opt.textContent = `${a.account_name} (${a.currency.toUpperCase()})`;
+                    const typeLabel = (a.currency || a.account_type || '').toUpperCase();
+                    opt.textContent = `${a.name} (${typeLabel || 'USD'})`;
                     accSelect.appendChild(opt);
                 });
             }
@@ -463,6 +464,12 @@ async function loadTreasurySummary() {
         `;
 
         cashflowDetails.innerHTML = `
+            ${(k.total_initial_balance_usd && k.total_initial_balance_usd > 0) ? `
+            <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 12px;">
+                <span style="color: #15803d; font-weight: 700;"><i class="fa-solid fa-coins"></i> (+) Saldo Inicial / Apertura:</span>
+                <b style="color: #15803d;">+$${k.total_initial_balance_usd.toLocaleString()}</b>
+            </div>` : ''}
+
             <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px; font-size: 12px;">
                 <span>(+) Cobranzas Líquidas de Clientes:</span>
                 <b style="color: #059669;">+$${k.total_collected_cxc_usd.toLocaleString()}</b>
@@ -536,12 +543,13 @@ async function loadTreasurySummary() {
             try {
                 const token = window.authToken || localStorage.getItem('dalor_token') || null;
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                const [resCxc, resCxp, resPart, resExch, resExp] = await Promise.all([
+                const [resCxc, resCxp, resPart, resExch, resExp, resAcc] = await Promise.all([
                     authFetch(`${API_BASE}/financial/cxc`, { headers }),
                     authFetch(`${API_BASE}/financial/cxp`, { headers }),
                     authFetch(`${API_BASE}/financial/partners/withdrawals`, { headers }),
                     authFetch(`${API_BASE}/financial/exchanges`, { headers }),
-                    authFetch(`${API_BASE}/expenses/?status=aprobado`, { headers })
+                    authFetch(`${API_BASE}/expenses/?status=aprobado`, { headers }),
+                    authFetch(`${API_BASE}/financial/accounts`, { headers })
                 ]);
 
                 const cxcList = resCxc.ok ? await resCxc.json() : [];
@@ -549,9 +557,36 @@ async function loadTreasurySummary() {
                 const partList = resPart.ok ? await resPart.json() : [];
                 const exchList = resExch.ok ? await resExch.json() : [];
                 const expList = (resExp && resExp.ok) ? await resExp.json() : [];
+                const accList = (resAcc && resAcc.ok) ? await resAcc.json() : [];
 
                 const operations = [];
                 const bcvRate = window.BCV_DATA?.rate || (typeof State !== 'undefined' && State.exchangeRate) || EXCHANGE_RATE || 850.0;
+
+                // 0. Trazabilidad de saldos iniciales de apertura
+                if (Array.isArray(accList)) {
+                    accList.forEach(acc => {
+                        if (acc.initial_balance && acc.initial_balance > 0) {
+                            const rawD = getIsoDate(acc.initial_balance_date || acc.created_at || '');
+                            const dispD = formatDateDisplay(acc.initial_balance_date || acc.created_at || 'Apertura');
+                            operations.push({
+                                date: dispD,
+                                rawDate: rawD,
+                                dateDisplay: dispD,
+                                type: 'SALDO INICIAL',
+                                typeColor: '#0284c7',
+                                sign: '+',
+                                concept: `Saldo de Apertura / Inicial [${acc.name}]`,
+                                entity: acc.name,
+                                ref: `SI-${acc.id}`,
+                                method: 'saldo inicial',
+                                amount_usd: acc.initial_balance,
+                                amount_bs: acc.initial_balance_bs || (acc.initial_balance * bcvRate),
+                                notes: acc.notes || 'Saldo de apertura y conciliación de cuenta',
+                                accountId: acc.id
+                            });
+                        }
+                    });
+                }
 
                 // 1. Trazabilidad de cada cobro / abono individual de clientes
                 if (Array.isArray(cxcList)) {
@@ -806,7 +841,7 @@ function applyTreasuryFilters() {
         // 0. Filtro por Cuenta Bancaria Seleccionada
         if (filterAcc && filterAcc !== 'all') {
             const accNum = parseInt(filterAcc);
-            if (op.accountId && op.accountId !== accNum) return false;
+            if (op.accountId !== accNum) return false;
         }
 
         // 1. Selector Tipo de Operación
@@ -1460,18 +1495,16 @@ async function openBcvRateHistoryModal() {
     const tbody = document.getElementById("bcvHistoryTableBody");
     if (!tbody) return;
 
-    if (!bcvRatesHistoryCache.length) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 16px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando tasas históricas...</td></tr>`;
-        try {
-            const res = await authFetch(`${API_BASE}/financial/bcv-rates/history?limit=60`);
-            if (res.ok) {
-                const data = await res.json();
-                bcvRatesHistoryCache = data.history || [];
-            }
-        } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 16px; color: #e11d48;">Error al consultar histórico BCV.</td></tr>`;
-            return;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 16px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando tasas históricas...</td></tr>`;
+    try {
+        const res = await authFetch(`${API_BASE}/financial/bcv-rates/history?limit=90`);
+        if (res.ok) {
+            const data = await res.json();
+            bcvRatesHistoryCache = data.history || [];
         }
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 16px; color: #e11d48;">Error al consultar histórico BCV.</td></tr>`;
+        return;
     }
 
     if (!bcvRatesHistoryCache.length) {

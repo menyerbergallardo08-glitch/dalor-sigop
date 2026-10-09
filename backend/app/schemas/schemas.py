@@ -470,6 +470,10 @@ class FinancialAccountUpdate(BaseModel):
 class FinancialAccountOut(FinancialAccountBase):
     id: int
     created_at: datetime
+    initial_balance: Optional[float] = 0.0
+    initial_balance_bs: Optional[float] = 0.0
+    initial_balance_date: Optional[str] = None
+    current_balance: Optional[float] = 0.0
     class Config:
         from_attributes = True
 

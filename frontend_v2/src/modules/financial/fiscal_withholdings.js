@@ -339,7 +339,7 @@ async function downloadLibroVentasExcel() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Libro_de_Ventas_SENIAT_${year}_${String(month).padStart(2, '0')}.xlsx`;
+        a.download = `Libro_de_Ventas_${year}_${String(month).padStart(2, '0')}.xlsx`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -360,7 +360,7 @@ async function downloadLibroComprasExcel() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Libro_de_Compras_SENIAT_21_Columnas_${year}_${String(month).padStart(2, '0')}.xlsx`;
+        a.download = `Libro_de_Compras_${year}_${String(month).padStart(2, '0')}.xlsx`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -375,9 +375,9 @@ function printLibroVentasPDF() {
     const year = document.getElementById("fiscal_year_select")?.value || "2026";
     const content = document.getElementById("section-fiscal-ventas");
     if (!content) return;
-    const title = `Libro_de_Ventas_SENIAT_${month}_${year}`;
+    const title = `Libro de Ventas - ${month} ${year}`;
     if (typeof window.printElementHtml === 'function') {
-        window.printElementHtml(content, title);
+        window.printElementHtml(content, title, { orientation: 'landscape' });
     } else {
         window.print();
     }
@@ -388,9 +388,9 @@ function printLibroComprasPDF() {
     const year = document.getElementById("fiscal_year_select")?.value || "2026";
     const content = document.getElementById("section-fiscal-compras");
     if (!content) return;
-    const title = `Libro_de_Compras_SENIAT_${month}_${year}`;
+    const title = `Libro de Compras - ${month} ${year}`;
     if (typeof window.printElementHtml === 'function') {
-        window.printElementHtml(content, title);
+        window.printElementHtml(content, title, { orientation: 'landscape' });
     } else {
         window.print();
     }

@@ -429,3 +429,67 @@
 
 
 <!-- MODAL: CREAR NUEVO CONCEPTO DE GASTO / CXP CON REGLA DE NEGOCIO -->
+
+
+    <!-- MODAL: SELECCIONAR HERRAMIENTAS, MAQUINARIA Y MATERIALES PARA GUIA / CONTROL INTERNO -->
+    <div id="modalDispatchResourcePicker" class="modal-overlay hidden" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 850px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-boxes-stacked" style="color: #2563eb;"></i> Seleccionar Recursos para Guía / Vale
+                    </h3>
+                    <p style="font-size: 11.5px; color: #64748b; margin: 2px 0 0 0;">
+                        Elige herramientas, maquinarias o materiales en stock para agregarlos directamente a los renglones de la guía.
+                    </p>
+                </div>
+                <button type="button" onclick="closeModal('modalDispatchResourcePicker')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b; padding: 4px 8px;">&times;</button>
+            </div>
+
+            <!-- Pestañas de tipo de recurso -->
+            <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; flex-wrap: wrap;">
+                <button type="button" id="tab_disp_pick_tools" onclick="switchDispatchPickerTab('tools')" class="btn-primary" style="font-size: 12px; padding: 6px 14px; border-radius: 6px;">
+                    <i class="fa-solid fa-toolbox"></i> Herramientas de Taller (<span id="count_picker_tools">0</span>)
+                </button>
+                <button type="button" id="tab_disp_pick_machinery" onclick="switchDispatchPickerTab('machinery')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px; border-radius: 6px;">
+                    <i class="fa-solid fa-gears"></i> Maquinaria & Equipos (<span id="count_picker_machinery">0</span>)
+                </button>
+                <button type="button" id="tab_disp_pick_materials" onclick="switchDispatchPickerTab('materials')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px; border-radius: 6px;">
+                    <i class="fa-solid fa-cubes-stacked"></i> Materiales de Almacén (<span id="count_picker_materials">0</span>)
+                </button>
+            </div>
+
+            <!-- Buscador y filtro -->
+            <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: center;">
+                <div style="flex: 1; position: relative;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 10px; color: #94a3b8; font-size: 12px;"></i>
+                    <input type="text" id="disp_picker_search" oninput="filterDispatchPickerList(this.value)" placeholder="Buscar por código, descripción, marca o serial..." class="form-input" style="padding-left: 28px; font-size: 12px; width: 100%;">
+                </div>
+                <span id="disp_picker_items_count" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 6px 10px; border-radius: 6px; white-space: nowrap;">
+                    0 disponibles
+                </span>
+            </div>
+
+            <!-- Listado con checkboxes -->
+            <div id="disp_picker_list_container" style="overflow-y: auto; flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; background: #f8fafc; min-height: 250px; max-height: 380px;">
+                <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 20px;"></i> Cargando catálogo de recursos...
+                </div>
+            </div>
+
+            <!-- Footer con acciones -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1.5px solid #e2e8f0; padding-top: 10px; margin-top: 12px; flex-wrap: wrap; gap: 8px;">
+                <div style="font-size: 11.5px; color: #475569; font-weight: 700;">
+                    Seleccionados: <span id="disp_picker_selected_count" style="color: #2563eb; font-size: 13px;">0</span> ítems
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalDispatchResourcePicker')" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="confirmAddSelectedResourcesToDispatch()" class="btn-primary" style="font-size: 12px; padding: 6px 18px; font-weight: 800; background: #2563eb;">
+                        <i class="fa-solid fa-plus"></i> Agregar a la Guía
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>

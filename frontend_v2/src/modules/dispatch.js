@@ -1330,6 +1330,262 @@ async function printOfficialDispatchGuide(guideId) {
     }
 }
 
+
+// ==============================================================================
+// MODAL SELECTOR UNIFICADO DE RECURSOS PARA GUIA / CONTROL INTERNO
+// (Herramientas, Maquinaria y Materiales en Stock)
+// ==============================================================================
+let currentPickerTab = 'tools';
+let pickerSelectedResources = new Map(); // key: 'type-id', val: { name, code, type, unit, qty, cond }
+
+async function openDispatchResourcePickerModal() {
+    pickerSelectedResources.clear();
+    updatePickerSelectedCount();
+    if (typeof openModal === 'function') {
+        openModal('modalDispatchResourcePicker');
+    } else {
+        const el = document.getElementById('modalDispatchResourcePicker');
+        if (el) el.classList.remove('hidden');
+    }
+    await switchDispatchPickerTab('tools');
+}
+
+async function switchDispatchPickerTab(tab) {
+    currentPickerTab = tab;
+    const btnTools = document.getElementById('tab_disp_pick_tools');
+    const btnMach = document.getElementById('tab_disp_pick_machinery');
+    const btnMats = document.getElementById('tab_disp_pick_materials');
+
+    if (btnTools) btnTools.className = (tab === 'tools') ? 'btn-primary' : 'btn-secondary';
+    if (btnMach) btnMach.className = (tab === 'machinery') ? 'btn-primary' : 'btn-secondary';
+    if (btnMats) btnMats.className = (tab === 'materials') ? 'btn-primary' : 'btn-secondary';
+
+    const searchInput = document.getElementById('disp_picker_search');
+    if (searchInput) searchInput.value = '';
+
+    await renderDispatchPickerItems();
+}
+
+async function renderDispatchPickerItems(filterText = '') {
+    const container = document.getElementById('disp_picker_list_container');
+    const counterBadge = document.getElementById('disp_picker_items_count');
+    if (!container) return;
+
+    container.innerHTML = '<div style="text-align: center; padding: 25px; color: #64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</div>';
+
+    try {
+        let items = [];
+
+        if (currentPickerTab === 'tools' || currentPickerTab === 'machinery') {
+            let assets = window.allAssets || [];
+            if (assets.length === 0) {
+                const res = await authFetch(`${API_BASE}/assets/`);
+                if (res.ok) assets = window.allAssets = await res.json();
+            }
+
+            if (currentPickerTab === 'tools') {
+                items = assets.filter(a => {
+                    const cat = (a.category || '').toLowerCase();
+                    const sub = (a.sub_category || '').toLowerCase();
+                    const type = (a.asset_type || '').toLowerCase();
+                    const name = (a.name || '').toLowerCase();
+                    const code = (a.asset_code || '').toLowerCase();
+                    return cat.includes('herram') || sub.includes('herram') || type.includes('herram') || 
+                           code.includes('her') || code.includes('-h-') || name.includes('herramienta');
+                });
+            } else {
+                items = assets.filter(a => {
+                    const cat = (a.category || '').toLowerCase();
+                    const sub = (a.sub_category || '').toLowerCase();
+                    const type = (a.asset_type || '').toLowerCase();
+                    const name = (a.name || '').toLowerCase();
+                    const code = (a.asset_code || '').toLowerCase();
+                    const isVeh = cat.includes('veh') || sub.includes('veh') || type.includes('veh') || code.includes('-v-');
+                    const isTool = cat.includes('herram') || sub.includes('herram') || type.includes('herram') || code.includes('-h-');
+                    return !isVeh && !isTool; // Maquinaria, equipos de soldar, generadores, tornos, etc.
+                });
+            }
+        } else if (currentPickerTab === 'materials') {
+            let materials = window.allMaterials || [];
+            if (materials.length === 0) {
+                const res = await authFetch(`${API_BASE}/materials/`);
+                if (res.ok) materials = window.allMaterials = await res.json();
+            }
+            items = materials;
+        }
+
+        // Conteo de badges en pestanas
+        const cTools = document.getElementById('count_picker_tools');
+        const cMach = document.getElementById('count_picker_machinery');
+        const cMats = document.getElementById('count_picker_materials');
+        if (window.allAssets && window.allAssets.length > 0) {
+            if (cTools) cTools.textContent = window.allAssets.filter(a => (a.category || a.asset_type || '').toLowerCase().includes('herram')).length;
+            if (cMach) cMach.textContent = window.allAssets.filter(a => !(a.category || a.asset_type || '').toLowerCase().includes('herram') && !(a.category || a.asset_type || '').toLowerCase().includes('veh')).length;
+        }
+        if (window.allMaterials && cMats) {
+            cMats.textContent = window.allMaterials.length;
+        }
+
+        // Filtrado por texto
+        const query = filterText.toLowerCase().trim();
+        const filtered = items.filter(it => {
+            if (!query) return true;
+            const name = (it.name || '').toLowerCase();
+            const code = (it.asset_code || it.code || it.internal_code || '').toLowerCase();
+            const brand = (it.brand || '').toLowerCase();
+            const model = (it.model || '').toLowerCase();
+            const serial = (it.serial_number || '').toLowerCase();
+            return name.includes(query) || code.includes(query) || brand.includes(query) || model.includes(query) || serial.includes(query);
+        });
+
+        if (counterBadge) counterBadge.textContent = `${filtered.length} disponibles`;
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                    <i class="fa-solid fa-box-open" style="font-size: 24px; margin-bottom: 6px;"></i>
+                    <p style="margin: 0; font-size: 12px;">No se encontraron ítems que coincidan con la búsqueda.</p>
+                </div>`;
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
+        filtered.forEach(it => {
+            const itemType = (currentPickerTab === 'materials') ? 'mat' : 'asset';
+            const itemKey = `${itemType}-${it.id}`;
+            const isChecked = pickerSelectedResources.has(itemKey);
+            const code = it.asset_code || it.code || it.internal_code || 'S/C';
+            const name = it.name || 'Sin Nombre';
+            const extra = (currentPickerTab === 'materials')
+                ? `Stock: ${it.stock_quantity ?? it.stock ?? 0} ${it.unit_measure || 'UND'}`
+                : `Marca: ${it.brand || 'N/A'} | Ubicación: ${it.current_location || 'Base'}`;
+            const badgeColor = (currentPickerTab === 'tools') ? '#fef3c7; color: #92400e;' : 
+                               (currentPickerTab === 'machinery') ? '#e0e7ff; color: #3730a3;' : '#d1fae5; color: #065f46;';
+
+            html += `
+                <label style="display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1.5px solid ${isChecked ? '#3b82f6' : '#e2e8f0'}; border-radius: 6px; padding: 8px 12px; cursor: pointer; transition: all 0.15s ease;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                        <input type="checkbox" onchange="togglePickerItemSelection('${itemKey}', '${itemType}', ${it.id}, this.checked)" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-family: monospace; font-size: 11px; font-weight: 800; background: ${badgeColor} padding: 2px 6px; border-radius: 4px;">
+                                    ${code}
+                                </span>
+                                <span style="font-size: 12px; font-weight: 700; color: #1e293b;">
+                                    ${name}
+                                </span>
+                            </div>
+                            <span style="font-size: 11px; color: #64748b;">
+                                ${extra}
+                            </span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 10px; font-weight: 700; color: ${it.is_active !== false ? '#10b981' : '#ef4444'}; background: ${it.is_active !== false ? '#ecfdf5' : '#fef2f2'}; padding: 2px 8px; border-radius: 9999px;">
+                            ${it.is_active !== false ? 'DISPONIBLE' : 'NO DISPONIBLE'}
+                        </span>
+                    </div>
+                </label>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (err) {
+        console.error('Error renderizando ítems en picker:', err);
+        container.innerHTML = '<div style="color: #ef4444; padding: 20px; text-align: center;">Error al cargar recursos.</div>';
+    }
+}
+
+function filterDispatchPickerList(text) {
+    renderDispatchPickerItems(text);
+}
+
+function togglePickerItemSelection(key, type, id, isChecked) {
+    if (isChecked) {
+        let name = "";
+        let code = "";
+        let unit = "Unid";
+        let cond = "Operativo / En Custodia";
+
+        if (type === 'mat') {
+            const m = (window.allMaterials || []).find(x => x.id === id);
+            name = m ? m.name : "Material";
+            code = m ? (m.code || 'S/C') : "S/C";
+            unit = m ? (m.unit_measure || 'Unid') : "Unid";
+            cond = "Nuevo / Salida de Almacén";
+        } else {
+            const a = (window.allAssets || []).find(x => x.id === id);
+            name = a ? a.name : "Activo";
+            code = a ? (a.asset_code || a.internal_code || 'S/C') : "S/C";
+            unit = "Unid";
+            cond = "Operativo / En Custodia";
+        }
+
+        pickerSelectedResources.set(key, {
+            type,
+            id,
+            name,
+            code,
+            unit,
+            cond,
+            qty: 1
+        });
+    } else {
+        pickerSelectedResources.delete(key);
+    }
+    updatePickerSelectedCount();
+    const container = document.getElementById('disp_picker_list_container');
+    if (container) {
+        const labels = container.querySelectorAll('label');
+        labels.forEach(lbl => {
+            const chk = lbl.querySelector('input[type="checkbox"]');
+            if (chk) {
+                lbl.style.borderColor = chk.checked ? '#3b82f6' : '#e2e8f0';
+            }
+        });
+    }
+}
+
+function updatePickerSelectedCount() {
+    const el = document.getElementById('disp_picker_selected_count');
+    if (el) el.textContent = pickerSelectedResources.size;
+}
+
+function confirmAddSelectedResourcesToDispatch() {
+    if (pickerSelectedResources.size === 0) {
+        alert("Por favor selecciona al menos una herramienta, maquinaria o material.");
+        return;
+    }
+
+    const tbody = document.getElementById('dispatchItemsTableBody');
+    if (tbody && tbody.children.length === 1) {
+        const firstDesc = tbody.children[0].querySelector('.disp-item-desc')?.value.trim();
+        if (!firstDesc) {
+            tbody.innerHTML = '';
+        }
+    }
+
+    let addedCount = 0;
+    pickerSelectedResources.forEach(item => {
+        let desc = "";
+        if (item.type === 'mat') {
+            desc = `[${item.code}] ${item.name}`;
+        } else {
+            const prefix = (currentPickerTab === 'machinery') ? 'Maquinaria / Equipo' : 'Herramienta';
+            desc = `${prefix}: ${item.name} (${item.code})`;
+        }
+        addDispatchItemRow(desc, item.qty, item.unit, item.cond, 0);
+        addedCount++;
+    });
+
+    closeModal('modalDispatchResourcePicker');
+    if (typeof window.showToast === 'function') {
+        window.showToast(`Se agregaron ${addedCount} recursos a la guía de despacho.`, 'success');
+    } else {
+        alert(`✅ Se agregaron ${addedCount} recursos a los renglones de la guía.`);
+    }
+}
+
 // ==============================================================================
 // PUENTE GLOBAL (WINDOW) & EXPORTS ES6
 // ==============================================================================
@@ -1337,6 +1593,11 @@ if (typeof window !== 'undefined') {
     window.switchDispatchSubtab = switchDispatchSubtab;
     window.initDispatchView = initDispatchView;
     window.initDispatchForm = initDispatchForm;
+        window.openDispatchResourcePickerModal = openDispatchResourcePickerModal;
+    window.switchDispatchPickerTab = switchDispatchPickerTab;
+    window.filterDispatchPickerList = filterDispatchPickerList;
+    window.togglePickerItemSelection = togglePickerItemSelection;
+    window.confirmAddSelectedResourcesToDispatch = confirmAddSelectedResourcesToDispatch;
     window.setDispatchMode = setDispatchMode;
     window.setDispatchTransportMode = setDispatchTransportMode;
     window.setDispatchFilter = setDispatchFilter;
@@ -1364,6 +1625,10 @@ if (typeof window !== 'undefined') {
 }
 
 export {
+    openDispatchResourcePickerModal,
+    switchDispatchPickerTab,
+    filterDispatchPickerList,
+    confirmAddSelectedResourcesToDispatch,
     switchDispatchSubtab,
     initDispatchView,
     initDispatchForm,

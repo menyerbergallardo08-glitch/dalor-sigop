@@ -667,9 +667,11 @@ def delete_payable(payable_id: int, db: Session = Depends(get_db)):
     if not p:
         raise HTTPException(status_code=404, detail="Cuenta por pagar no encontrada.")
 
-    bank_pays = [pm for pm in (p.payments or []) if pm.payment_method != "retencion_iva"]
-    if bank_pays:
-        raise HTTPException(status_code=400, detail="No se puede eliminar una factura que tiene pagos bancarios registrados. Anule primero los pagos.")
+    # Eliminar todos los pagos y retenciones asociados a esta cuenta por pagar
+    db.query(FinancialPayment).filter(
+        (FinancialPayment.payable_id == payable_id) |
+        ((FinancialPayment.payment_type == "cxp_pago") & (FinancialPayment.reference_number == p.invoice_number))
+    ).delete(synchronize_session=False)
 
     inv_num = p.invoice_number
     supp = p.supplier_name

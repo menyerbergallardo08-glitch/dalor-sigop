@@ -733,30 +733,31 @@ def init_db():
                         );
                     """))
                 
+                # Serie oficial BCV auditada (solo se insertan fechas faltantes; nunca sobrescribe)
                 bcv_rates_seed = [
-                    ("2026-09-26", 450.25),
-                    ("2026-09-27", 450.25),
-                    ("2026-09-28", 452.10),
-                    ("2026-09-29", 455.80),
-                    ("2026-09-30", 458.40),
-                    ("2026-10-01", 460.15),
-                    ("2026-10-02", 462.50),
-                    ("2026-10-03", 462.50),
-                    ("2026-10-04", 462.50),
-                    ("2026-10-05", 465.30),
-                    ("2026-10-06", 468.20),
-                    ("2026-10-07", 471.90),
-                    ("2026-10-08", 473.40),
-                    ("2026-10-09", 475.80),
+                    ("2026-09-26", 855.66, "BCV Oficial (Fin de semana)"),
+                    ("2026-09-27", 855.66, "BCV Oficial (Fin de semana)"),
+                    ("2026-09-28", 856.80, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-09-29", 857.01, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-09-30", 859.06, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-10-01", 860.18, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-10-02", 860.18, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-10-03", 860.18, "BCV Oficial (Fin de semana)"),
+                    ("2026-10-04", 860.18, "BCV Oficial (Fin de semana)"),
+                    ("2026-10-05", 872.39, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-10-06", 873.87, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-10-07", 874.73, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-10-08", 875.65, "BCV Oficial (bcv.org.ve)"),
+                    ("2026-10-09", 875.65, "BCV Oficial (bcv.org.ve)"),
                 ]
-                for r_date, r_rate in bcv_rates_seed:
+                for r_date, r_rate, r_src in bcv_rates_seed:
                     row = isolated_conn.execute(
                         text("SELECT id FROM bcv_rate_history WHERE rate_date = :d"), {"d": r_date}
                     ).fetchone()
                     if not row:
                         isolated_conn.execute(
                             text("INSERT INTO bcv_rate_history (rate_date, rate, source) VALUES (:d, :r, :s)"),
-                            {"d": r_date, "r": r_rate, "s": "BCV Oficial"}
+                            {"d": r_date, "r": r_rate, "s": r_src}
                         )
         except Exception as e_bcv:
             print(f"[WARN] Error inicializando tasas BCV: {e_bcv}")

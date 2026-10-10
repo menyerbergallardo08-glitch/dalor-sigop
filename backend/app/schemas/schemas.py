@@ -259,22 +259,32 @@ class ResourceAssignRequest(BaseModel):
     destination_location: Optional[str] = "Sede Central"
     custodian_name: Optional[str] = None
     start_odometer: Optional[float] = None
+    odometer_reading: Optional[float] = None
     notes: Optional[str] = None
 
 class ResourceTransferRequest(BaseModel):
+    from_project_id: Optional[int] = None
     target_project_id: Optional[int] = None
+    to_project_id: Optional[int] = None
     resource_type: str
     resource_id: int
     destination_location: Optional[str] = "Sede Central"
     custodian_name: Optional[str] = None
+    driver_name: Optional[str] = None
     current_odometer: Optional[float] = None
+    odometer_reading: Optional[float] = None
+    start_odometer: Optional[float] = None
     notes: Optional[str] = None
 
 class ResourceReturnRequest(BaseModel):
     resource_type: str
     resource_id: int
+    project_id: Optional[int] = None
     end_odometer: Optional[float] = None
+    odometer_reading: Optional[float] = None
     return_location: Optional[str] = "Sede Central"
+    return_condition: Optional[str] = "Conforme"
+    notes: Optional[str] = None
 
 # --- GASTOS & OCR ---
 class OCRExtractResult(BaseModel):

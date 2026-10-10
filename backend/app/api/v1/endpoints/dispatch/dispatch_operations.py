@@ -197,6 +197,10 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
         if veh:
             dest = g_in.destination_plant or g_in.destination_address or "En Tránsito / Despacho"
             veh.status = "en_obra"
+            if g_in.project_id:
+                veh.current_project_id = g_in.project_id
+            if g_in.driver_name and g_in.driver_name.strip():
+                veh.current_custodian_name = g_in.driver_name.strip()
             veh.current_location = f"En ruta: {dest}"
             from app.models.models import ResourceAssignmentHistory
             hist = ResourceAssignmentHistory(

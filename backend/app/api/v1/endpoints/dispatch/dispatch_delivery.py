@@ -29,6 +29,16 @@ def confirm_dispatch_delivery(
     if conf_in.notes:
         g.notes = (g.notes or "") + f"\n[Recepción: {conf_in.notes}]"
 
+    # Si la guía usó vehículo DALOR y no es asignación permanente a obra, liberar a Base
+    if g.asset_id:
+        from app.models.models import Asset
+        veh = db.query(Asset).filter(Asset.id == g.asset_id).first()
+        if veh and veh.current_project_id == g.project_id:
+            veh.status = "disponible_base"
+            veh.current_project_id = None
+            veh.current_location = "Sede Central Dalor (Guacara)"
+            veh.current_custodian_name = "Disponible en Base"
+
     db.commit()
     return {
         "success": True,

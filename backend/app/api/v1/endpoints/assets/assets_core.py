@@ -221,6 +221,10 @@ def get_fleet_summary(db: Session = Depends(get_db)):
             status_val = "en_obra"
             loc_val = f"[{p.code}] {p.name}" + (f" ({p.location})" if p.location else "")
             cust_val = a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else f"Equipo de Obra ({p.code})"
+        elif a.status == "en_obra" or (a.current_location and "en ruta" in a.current_location.lower()):
+            status_val = "en_obra"
+            loc_val = a.current_location or "En Operación de Obra / Ruta"
+            cust_val = a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else "Equipo de Despacho / Obra"
         elif a.status in ["en_operacion", "asignado"] or (a.current_custodian_name and "base" not in a.current_custodian_name.lower() and "disponible" not in a.current_custodian_name.lower()):
             status_val = "en_operacion"
             loc_val = a.current_location or "Sede Central Dalor (Uso Administrativo / Logística)"

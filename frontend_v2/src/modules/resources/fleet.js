@@ -103,7 +103,8 @@ function filterFleetList() {
             semBg = '#fef3c7';
         }
 
-        const inBase = (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
+        const isEnRuta = v?.status === 'en_obra' || (v?.current_location && v.current_location.toLowerCase().includes('en ruta'));
+        const inBase = (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && !isEnRuta && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
         const curOdo = Number(v?.current_odometer ?? 0);
         const remKm = Number(v?.remaining_km_to_service ?? 0);
         const plateStr = v?.license_plate || '-';
@@ -112,7 +113,7 @@ function filterFleetList() {
             : (v?.current_location || (v?.current_project_id ? 'En Operación / Obra' : 'Sede Central (Uso Administrativo / Logística)'));
         const custStr = inBase 
             ? 'Disponible en Base'
-            : (v?.custodian && !v.custodian.toLowerCase().includes('base') ? v.custodian : (v?.current_custodian_name || (v?.current_project_id ? 'Equipo de Obra' : 'Asignado a Custodio')));
+            : (v?.custodian && !v.custodian.toLowerCase().includes('base') ? v.custodian : (v?.current_custodian_name || (v?.current_project_id ? 'Equipo de Obra' : 'En Operación')));
         const vName = v?.name || 'Vehículo';
         const safeName = String(vName).replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const safeCode = v?.asset_code || 'FLT';
@@ -126,7 +127,12 @@ function filterFleetList() {
         let badgeIcon = 'fa-warehouse';
 
         if (!inBase) {
-            if (v?.current_project_id) {
+            if (isEnRuta) {
+                badgeText = 'EN RUTA / DESPACHO';
+                badgeBg = '#e0f2fe';
+                badgeColor = '#0369a1';
+                badgeIcon = 'fa-truck-fast';
+            } else if (v?.current_project_id) {
                 badgeText = 'EN OPERACIÓN / OBRA';
                 badgeBg = '#e0f2fe';
                 badgeColor = '#0369a1';

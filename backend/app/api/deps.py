@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, Header
+from fastapi import Depends, HTTPException, status, Header, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decode_access_token
@@ -7,24 +7,29 @@ from typing import Optional, List
 
 def get_current_user(
     authorization: Optional[str] = Header(None),
+    token_query: Optional[str] = Query(None, alias="token"),
     db: Session = Depends(get_db)
 ) -> User:
-    if not authorization:
+    token = None
+    if authorization:
+        auth_parts = authorization.strip().split()
+        if len(auth_parts) == 2 and auth_parts[0].lower() == "bearer":
+            token = auth_parts[1]
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Formato de autenticación inválido. Debe ser 'Bearer <token>'.",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+    elif token_query:
+        token = token_query.strip()
+
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No autenticado. Token de acceso requerido en encabezado Authorization.",
+            detail="No autenticado. Token de acceso requerido en encabezado Authorization o parámetro token.",
             headers={"WWW-Authenticate": "Bearer"}
         )
-    
-    auth_parts = authorization.strip().split()
-    if len(auth_parts) != 2 or auth_parts[0].lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Formato de autenticación inválido. Debe ser 'Bearer <token>'.",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    
-    token = auth_parts[1]
     payload = decode_access_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(

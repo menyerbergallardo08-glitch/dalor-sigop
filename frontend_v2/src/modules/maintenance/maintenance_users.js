@@ -25,6 +25,7 @@ import {
     redirectUserByRole, 
     showLoginError 
 } from '../../auth.js';
+import { GRANULAR_PERM_KEYS } from './maintenance_roles.js';
 
 let allSystemUsers = window.allSystemUsers = window.allSystemUsers || [];
 let allSystemRoles = window.allSystemRoles = window.allSystemRoles || [];
@@ -111,6 +112,7 @@ async function loadMaintenanceUsersList() {
     try {
         const res = await authFetch(`${API_BASE}/maintenance/users`);
         allSystemUsers = await res.json();
+        window.allSystemUsers = allSystemUsers;
 
         if (allSystemUsers.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 16px;">No hay usuarios registrados.</td></tr>`;
@@ -234,12 +236,30 @@ async function submitCreateUser(event) {
 }
 
 function openUserPermissionsModal(userId) {
-    const user = allSystemUsers.find(u => u.id === userId);
-    if (!user) return;
+    const permKeys = (typeof GRANULAR_PERM_KEYS !== 'undefined' && Array.isArray(GRANULAR_PERM_KEYS))
+        ? GRANULAR_PERM_KEYS
+        : (window.GRANULAR_PERM_KEYS || [
+            'comercial_view', 'comercial_edit', 'services_view', 'quotations_create', 'quotations_approve',
+            'proyectos_view', 'proyectos_edit', 'proyectos_phases', 'proyectos_adendas', 'proyectos_costs',
+            'cxc_view', 'cxc_pay', 'cxp_view', 'cxp_pay', 'bancos_view', 'conciliacion_view', 'retiros_view',
+            'gastos_view', 'gastos_create', 'gastos_approve',
+            'recursos_view', 'recursos_edit', 'mantenimiento_vehicular', 'personal_view', 'cuadrillas_assign',
+            'almacen_view', 'almacen_adjust', 'requisiciones_view', 'despacho_view', 'alquileres_view',
+            'executive_dashboard', 'audit_logs', 'usuarios_admin', 'backups_admin'
+        ]);
 
-    document.getElementById('perm_target_user_id').value = user.id;
-    document.getElementById('permModalUsername').textContent = user.username;
-    document.getElementById('permModalFullName').textContent = user.full_name;
+    const user = (allSystemUsers || []).find(u => u.id === userId) || (window.allSystemUsers || []).find(u => u.id === userId);
+    if (!user) {
+        alert("Usuario no encontrado en el directorio.");
+        return;
+    }
+
+    const targetInput = document.getElementById('perm_target_user_id');
+    if (targetInput) targetInput.value = user.id;
+    const usrName = document.getElementById('permModalUsername');
+    if (usrName) usrName.textContent = user.username;
+    const fullNm = document.getElementById('permModalFullName');
+    if (fullNm) fullNm.textContent = user.full_name;
 
     let p = {};
     if (typeof user.permissions_json === 'string') {
@@ -250,7 +270,7 @@ function openUserPermissionsModal(userId) {
         p = user.permissions;
     }
 
-    GRANULAR_PERM_KEYS.forEach(k => {
+    permKeys.forEach(k => {
         const el = document.getElementById('perm_' + k);
         if (!el) return;
         if (p[k] !== undefined) {
@@ -276,14 +296,28 @@ function openUserPermissionsModal(userId) {
         }
     });
 
-    document.getElementById('modalUserPermissions').classList.remove('hidden');
+    const modal = document.getElementById('modalUserPermissions');
+    if (modal) modal.classList.remove('hidden');
+    if (typeof window.openModal === 'function') window.openModal('modalUserPermissions');
 }
 
 async function submitSaveUserPermissions() {
+    const permKeys = (typeof GRANULAR_PERM_KEYS !== 'undefined' && Array.isArray(GRANULAR_PERM_KEYS))
+        ? GRANULAR_PERM_KEYS
+        : (window.GRANULAR_PERM_KEYS || [
+            'comercial_view', 'comercial_edit', 'services_view', 'quotations_create', 'quotations_approve',
+            'proyectos_view', 'proyectos_edit', 'proyectos_phases', 'proyectos_adendas', 'proyectos_costs',
+            'cxc_view', 'cxc_pay', 'cxp_view', 'cxp_pay', 'bancos_view', 'conciliacion_view', 'retiros_view',
+            'gastos_view', 'gastos_create', 'gastos_approve',
+            'recursos_view', 'recursos_edit', 'mantenimiento_vehicular', 'personal_view', 'cuadrillas_assign',
+            'almacen_view', 'almacen_adjust', 'requisiciones_view', 'despacho_view', 'alquileres_view',
+            'executive_dashboard', 'audit_logs', 'usuarios_admin', 'backups_admin'
+        ]);
+
     const userId = parseInt(document.getElementById('perm_target_user_id').value);
 
     const permissions = {};
-    GRANULAR_PERM_KEYS.forEach(k => {
+    permKeys.forEach(k => {
         const el = document.getElementById('perm_' + k);
         permissions[k] = el ? el.checked : false;
     });

@@ -85,7 +85,7 @@ async function loadMaintenanceRolesList() {
     }
 }
 
-const GRANULAR_PERM_KEYS = [
+export const GRANULAR_PERM_KEYS = [
     'comercial_view', 'comercial_edit', 'services_view', 'quotations_create', 'quotations_approve',
     'proyectos_view', 'proyectos_edit', 'proyectos_phases', 'proyectos_adendas', 'proyectos_costs',
     'cxc_view', 'cxc_pay', 'cxp_view', 'cxp_pay', 'bancos_view', 'conciliacion_view', 'retiros_view',
@@ -272,6 +272,7 @@ async function deleteRole(roleId, roleName) {
 
 // Exponer al objeto global window para eventos inline y compatibilidad
 if (typeof window !== 'undefined') {
+    window.GRANULAR_PERM_KEYS = GRANULAR_PERM_KEYS;
     window.loadMaintenanceRolesList = loadMaintenanceRolesList;
     window.toggleAllRoleCheckboxes = toggleAllRoleCheckboxes;
     window.toggleAllUserCheckboxes = toggleAllUserCheckboxes;

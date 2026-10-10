@@ -65,11 +65,11 @@ async function loadBackupsList() {
 
                 <td style="text-align: right;">
 
-                    <a href="${API_BASE}/maintenance/backups/download/${b.filename}" target="_blank" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; text-decoration: none; margin-right: 4px;" title="Descargar copia">
+                    <button onclick="downloadBackup('${b.filename}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px; cursor: pointer;" title="Descargar copia">
 
                         <i class="fa-solid fa-download"></i> Descargar
 
-                    </a>
+                    </button>
 
                     <button onclick="restoreBackup('${b.filename}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #b45309;" title="Restaurar a esta versión">
 
@@ -165,14 +165,66 @@ async function restoreBackup(filename) {
 
 }
 
+async function downloadBackup(filename) {
+    try {
+        const token = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+        const url = `${API_BASE}/maintenance/backups/download/${filename}?token=${encodeURIComponent(token)}`;
+        const res = await authFetch(url);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.detail || 'Error al descargar respaldo.');
+            return;
+        }
+        const blob = await res.blob();
+        const objUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => window.URL.revokeObjectURL(objUrl), 1000);
+    } catch (e) {
+        alert('Error al descargar copia de seguridad: ' + e.message);
+    }
+}
 
-
-
-
+async function syncDalorCatalogNow() {
+    const btn = document.getElementById('btnSyncDalorCatalog');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sincronizando catálogo...';
+    }
+    try {
+        const res = await authFetch(`${API_BASE}/maintenance/sync-dalor-catalog`, {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.detail || 'Error al sincronizar el catálogo.');
+            return;
+        }
+        alert(`✅ Sincronización Exitosa: ${data.message || 'Catálogo maestro DALOR sincronizado'}\nPersonal verificado: ${data.personnel_synced || 17}\nMateriales verificados: ${data.materials_synced || 171}`);
+        if (typeof window.loadInitialMasterData === 'function') {
+            window.loadInitialMasterData();
+        }
+    } catch (e) {
+        alert('Error de conexión al sincronizar catálogo: ' + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
 
 // Exponer al objeto global window para eventos inline y compatibilidad
 if (typeof window !== 'undefined') {
     window.loadBackupsList = loadBackupsList;
     window.createNewBackup = createNewBackup;
     window.restoreBackup = restoreBackup;
+    window.downloadBackup = downloadBackup;
+    window.syncDalorCatalogNow = syncDalorCatalogNow;
 }

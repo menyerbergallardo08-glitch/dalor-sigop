@@ -279,10 +279,19 @@ async function processOCRFile(rawFile) {
             }
         }
 
-        const res = await authFetch(`${API_BASE}/ocr/scan-ticket`, {
-            method: "POST",
-            body: formData
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        let res;
+        try {
+            res = await authFetch(`${API_BASE}/ocr/scan-ticket`, {
+                method: "POST",
+                body: formData,
+                signal: controller.signal
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
         
         if (!res.ok) {
             throw new Error("Respuesta no exitosa del servidor OCR");

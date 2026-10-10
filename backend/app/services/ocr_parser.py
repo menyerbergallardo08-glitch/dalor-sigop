@@ -128,19 +128,17 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
                 }
             }
 
-            # Modelos ordenados por disponibilidad y costo (más estables primero)
+            # Modelos ordenados por disponibilidad activa (con cuota verificada)
             candidate_models = [
-                "models/gemini-3.5-flash",
                 "models/gemini-3.5-flash-lite",
+                "models/gemini-3.5-flash",
                 "models/gemini-3.8-flash",
-                "models/gemini-3.7-flash",
-                "models/gemini-3.1-flash-lite",
                 "models/gemini-3.6-flash",
+                "models/gemini-3.7-flash",
                 "models/gemini-flash-latest"
             ]
             text_resp = None
-            import time as _time
-            for attempt_idx, model_name in enumerate(candidate_models):
+            for model_name in candidate_models:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
                     req = urllib.request.Request(
@@ -148,7 +146,7 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
                         data=json.dumps(payload).encode("utf-8"),
                         headers={"Content-Type": "application/json"}
                     )
-                    with urllib.request.urlopen(req, timeout=30) as res:
+                    with urllib.request.urlopen(req, timeout=8) as res:
                         resp_data = json.loads(res.read().decode("utf-8"))
                         candidates = resp_data.get("candidates", [])
                         if candidates and "content" in candidates[0]:
@@ -158,10 +156,7 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
                                 if text_resp:
                                     break
                 except urllib.error.HTTPError as m_err:
-                    err_code = m_err.code
-                    print(f"Gemini model {model_name} error: HTTP {err_code}")
-                    if err_code in (429, 503) and attempt_idx < len(candidate_models) - 1:
-                        _time.sleep(1.5 + attempt_idx * 0.5)  # backoff exponencial suave
+                    print(f"Gemini model {model_name} HTTP {m_err.code}")
                     continue
                 except Exception as m_err:
                     print(f"Gemini model {model_name} error: {m_err}")
@@ -630,8 +625,8 @@ Responde ÚNICAMENTE con este JSON válido:
                 }
 
                 candidate_models = [
-                    "models/gemini-3.1-flash-lite",
                     "models/gemini-3.5-flash-lite",
+                    "models/gemini-3.5-flash",
                     "models/gemini-3.8-flash",
                     "models/gemini-3.6-flash",
                     "models/gemini-flash-latest"
@@ -644,7 +639,7 @@ Responde ÚNICAMENTE con este JSON válido:
                             data=json.dumps(payload).encode("utf-8"),
                             headers={"Content-Type": "application/json"}
                         )
-                        with urllib.request.urlopen(req, timeout=15) as res:
+                        with urllib.request.urlopen(req, timeout=8) as res:
                             resp_data = json.loads(res.read().decode("utf-8"))
                             candidates = resp_data.get("candidates", [])
                             if candidates and "content" in candidates[0]:

@@ -234,6 +234,7 @@ function renderGroupedToolsPaginated() {
                 </span>
             </td>
             <td style="font-size: 11px; color: #334155;">${locDisplay}</td>
+            <td style="text-align: center; white-space: nowrap;">
                 <button onclick="toggleToolUnitsBreakdown('${rowCollapseId}')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #475569; background: #f8fafc;" title="Ver desglose detallado de cada serial y unidad">
                     <i class="fa-solid fa-layer-group"></i> Desglose (${g.total})
                 </button>

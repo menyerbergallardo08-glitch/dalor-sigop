@@ -888,17 +888,6 @@ window.renderPaginationControls = renderPaginationControls;
 // Carga Inicial de Datos Maestros
 
 async function loadInitialMasterData() {
-
-    // Auto-sincronización de catálogo DALOR si faltan datos
-
-    try {
-
-        await authFetch(`${API_BASE}/maintenance/sync-dalor-catalog`, { method: "POST" });
-
-    } catch(e) {}
-
-
-
     try {
 
         const [resCli, resSrv, resProj, resCat, resAss, resPers, resMat] = await Promise.all([

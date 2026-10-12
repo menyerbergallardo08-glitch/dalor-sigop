@@ -234,9 +234,11 @@ function renderGroupedToolsPaginated() {
                 </span>
             </td>
             <td style="font-size: 11px; color: #334155;">${locDisplay}</td>
-            <td style="text-align: center; white-space: nowrap;">
                 <button onclick="toggleToolUnitsBreakdown('${rowCollapseId}')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #475569; background: #f8fafc;" title="Ver desglose detallado de cada serial y unidad">
                     <i class="fa-solid fa-layer-group"></i> Desglose (${g.total})
+                </button>
+                <button onclick="openAddToolUnitsModal('${encodeURIComponent(g.name)}', ${g.total})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #16a34a; border-color: #bbf7d0; background: #f0fdf4;" title="Agregar más unidades / cantidades a este modelo">
+                    <i class="fa-solid fa-plus"></i> + Cantidad
                 </button>
                 <button onclick="openEditAssetModal(${g.items[0]?.id})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #0284c7; border-color: #bae6fd;" title="Editar Ficha Técnica de esta Herramienta">
                     <i class="fa-solid fa-pen"></i> Editar
@@ -460,67 +462,101 @@ function openNewToolModal() {
 
 
 async function submitCreateTool(event) {
-
     event.preventDefault();
+    const qty = parseInt(document.getElementById("tool_quantity")?.value || "1", 10) || 1;
 
     const payload = {
-
         asset_code: document.getElementById("tool_code").value,
-
         name: document.getElementById("tool_name").value,
-
         asset_type: document.getElementById("tool_type").value,
-
         brand: document.getElementById("tool_brand").value,
-
         serial_number: document.getElementById("tool_serial").value,
-
         current_location: document.getElementById("tool_location").value || "Sede Central",
-
-        is_exclusive: true
-
+        is_exclusive: true,
+        quantity: qty
     };
 
-
-
     try {
-
         const res = await authFetch(`${API_BASE}/assets/`, {
-
             method: "POST",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify(payload)
-
         });
 
         if (res.ok) {
-
-            alert("Herramienta/Equipo registrado exitosamente.");
-
+            alert(qty > 1 ? `✅ Se registraron exitosamente ${qty} unidades de la herramienta.` : "✅ Herramienta/Equipo registrado exitosamente.");
             closeModal("modalTool");
-
             await loadInitialMasterData();
-
             loadToolsList();
             if (typeof loadMachineryList === "function") loadMachineryList();
             if (typeof loadFleetList === "function") loadFleetList();
-
         } else {
-
             const err = await res.json();
-
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
+        alert("Error al registrar herramienta: " + e.message);
+    }
+}
 
-        alert("Error al registrar herramienta.");
+function openAddToolUnitsModal(toolNameEncoded, currentTotal) {
+    const toolName = decodeURIComponent(toolNameEncoded);
+    const hiddenInput = document.getElementById("add_units_tool_name");
+    const nameDisplay = document.getElementById("add_units_display_name");
+    const currentDisplay = document.getElementById("add_units_display_current");
+    const qtyInput = document.getElementById("add_units_quantity");
+    const prefixInput = document.getElementById("add_units_prefix");
+    const locInput = document.getElementById("add_units_location");
 
+    if (hiddenInput) hiddenInput.value = toolName;
+    if (nameDisplay) nameDisplay.innerText = toolName;
+    if (currentDisplay) currentDisplay.innerText = `Unidades físicas actuales: ${currentTotal}`;
+    if (qtyInput) qtyInput.value = "";
+    if (prefixInput) prefixInput.value = "";
+    if (locInput) locInput.value = "Sede Central Dalor (Guacara)";
+
+    openModal("modalAddToolUnits");
+}
+
+async function submitAddToolUnits(event) {
+    event.preventDefault();
+    const toolName = document.getElementById("add_units_tool_name")?.value;
+    const qty = parseInt(document.getElementById("add_units_quantity")?.value || "1", 10);
+    const prefix = document.getElementById("add_units_prefix")?.value?.trim() || null;
+    const loc = document.getElementById("add_units_location")?.value?.trim() || "Sede Central Dalor (Guacara)";
+
+    if (!qty || qty < 1) {
+        alert("Por favor indica una cantidad válida (mínimo 1).");
+        return;
     }
 
+    try {
+        const payload = {
+            tool_name: toolName,
+            quantity: qty,
+            prefix_code: prefix,
+            current_location: loc
+        };
+
+        const res = await authFetch(`${API_BASE}/assets/tools/add-units`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            alert(`✅ ${data.message || `Se agregaron ${qty} unidades con éxito.`}`);
+            closeModal("modalAddToolUnits");
+            await loadInitialMasterData();
+            loadToolsList();
+        } else {
+            const err = await res.json();
+            alert("Error al agregar unidades: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        alert("Error de conexión al agregar unidades: " + e.message);
+    }
 }
 
 
@@ -545,4 +581,6 @@ if (typeof window !== 'undefined') {
     window.openToolHistoryModal = openToolHistoryModal;
     window.openNewToolModal = openNewToolModal;
     window.submitCreateTool = submitCreateTool;
+    window.openAddToolUnitsModal = openAddToolUnitsModal;
+    window.submitAddToolUnits = submitAddToolUnits;
 }

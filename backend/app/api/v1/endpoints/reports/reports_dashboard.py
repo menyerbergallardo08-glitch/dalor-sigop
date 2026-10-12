@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+
 from app.core.database import get_db
-from app.models.models import Project, Expense, ExpenseCategory, Asset, Personnel
+from app.models.models import Project, Expense, ExpenseCategory
 
 router = APIRouter()
+
 
 @router.get("/comparison-dashboard")
 def get_comparison_dashboard(db: Session = Depends(get_db)):
@@ -80,6 +82,7 @@ def get_comparison_dashboard(db: Session = Depends(get_db)):
         },
         "projects_comparison": project_metrics
     }
+
 
 @router.get("/company-overview")
 def get_company_overview(db: Session = Depends(get_db)):

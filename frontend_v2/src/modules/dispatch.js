@@ -823,6 +823,7 @@ function updateFilterCounters() {
     const countProject = guides.filter(g => !g.is_freeform && g.guide_type !== 'control_interno' && !(g.guide_number && g.guide_number.startsWith('GCI-'))).length;
     const countFreeform = guides.filter(g => g.is_freeform && g.guide_type !== 'control_interno' && !(g.guide_number && g.guide_number.startsWith('GCI-'))).length;
     const countInternal = guides.filter(g => g.guide_type === 'control_interno' || (g.guide_number && g.guide_number.startsWith('GCI-'))).length;
+    const countIssued = guides.filter(g => g.status === 'emitida').length;
     const countTransit = guides.filter(g => g.status === 'en_transito').length;
     const countDelivered = guides.filter(g => g.status === 'entregada' || g.status === 'entregado_conforme').length;
 
@@ -830,6 +831,7 @@ function updateFilterCounters() {
     const elProj = document.getElementById('count_disp_project');
     const elFree = document.getElementById('count_disp_freeform');
     const elInt = document.getElementById('count_disp_internal');
+    const elIssued = document.getElementById('count_disp_issued');
     const elTrans = document.getElementById('count_disp_transit');
     const elDel = document.getElementById('count_disp_delivered');
 
@@ -837,13 +839,14 @@ function updateFilterCounters() {
     if (elProj) elProj.textContent = countProject;
     if (elFree) elFree.textContent = countFreeform;
     if (elInt) elInt.textContent = countInternal;
+    if (elIssued) elIssued.textContent = countIssued;
     if (elTrans) elTrans.textContent = countTransit;
     if (elDel) elDel.textContent = countDelivered;
 }
 
 function setDispatchFilter(filter) {
     currentDispatchFilter = filter;
-    const filterButtons = ['all', 'project', 'freeform', 'internal', 'transit', 'delivered'];
+    const filterButtons = ['all', 'project', 'freeform', 'internal', 'issued', 'transit', 'delivered'];
     filterButtons.forEach(f => {
         const btn = document.getElementById(`btn_disp_filter_${f}`);
         if (btn) {
@@ -884,6 +887,8 @@ function renderDispatchTable(searchQuery = "") {
         guides = guides.filter(g => g.is_freeform && g.guide_type !== 'control_interno' && !(g.guide_number && g.guide_number.startsWith('GCI-')));
     } else if (currentDispatchFilter === 'internal') {
         guides = guides.filter(g => g.guide_type === 'control_interno' || (g.guide_number && g.guide_number.startsWith('GCI-')));
+    } else if (currentDispatchFilter === 'issued') {
+        guides = guides.filter(g => g.status === 'emitida');
     } else if (currentDispatchFilter === 'transit') {
         guides = guides.filter(g => g.status === 'en_transito');
     } else if (currentDispatchFilter === 'delivered') {
@@ -951,9 +956,12 @@ function renderDispatchPaginated() {
         const isInternal = (g.guide_type === 'control_interno' || (g.guide_number && g.guide_number.startsWith('GCI-')));
         const isFreeform = !!g.is_freeform;
         const isDelivered = (g.status === 'entregada' || g.status === 'entregado_conforme');
+        const isIssued = (g.status === 'emitida');
         const statusBadge = isDelivered
             ? `<span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-circle-check"></i> ${isInternal ? 'Conforme Sede' : 'Entregada'}</span>`
-            : `<span style="background: #fff7ed; color: #c2410c; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fed7aa;"><i class="fa-solid fa-truck-fast"></i> En Tránsito</span>`;
+            : (isIssued
+                ? `<span style="background: #fefce8; color: #a16207; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fef08a;"><i class="fa-solid fa-file-circle-check"></i> ${isInternal ? 'Emitida (Taller)' : 'Emitida'}</span>`
+                : `<span style="background: #fff7ed; color: #c2410c; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fed7aa;"><i class="fa-solid fa-truck-fast"></i> En Tránsito</span>`);
 
         let typeBadge = '';
         if (isInternal) {

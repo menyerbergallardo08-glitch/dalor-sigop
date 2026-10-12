@@ -68,7 +68,7 @@
 
                         <label class="form-label">Número de Serial</label>
 
-                        <input type="text" id="tool_serial" placeholder="Serial de fábrica" class="form-input">
+                        <input type="text" id="tool_serial" placeholder="Serial de fábrica (opcional)" class="form-input">
 
                     </div>
 
@@ -82,12 +82,58 @@
 
                 </div>
 
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                        <div>
+                            <label class="form-label" style="color: #166534; font-weight: 800; margin: 0;">Cantidad de Unidades a Crear:</label>
+                            <p style="font-size: 10.5px; color: #15803d; margin: 2px 0 0 0;">Si indicas más de 1 (ej: 5 tubos), el sistema generará correlativos únicos para cada unidad automáticamente.</p>
+                        </div>
+                        <input type="number" id="tool_quantity" value="1" min="1" max="500" class="form-input" style="width: 80px; text-align: center; font-size: 14px; font-weight: 800; border-color: #86efac;">
+                    </div>
+                </div>
+
                 <button type="submit" class="btn-primary" style="margin-top: 6px;"><i class="fa-solid fa-floppy-disk"></i> Guardar Herramienta</button>
 
             </form>
 
         </div>
 
+    </div>
+
+    <!-- MODAL: AGREGAR UNIDADES A HERRAMIENTA EXISTENTE -->
+    <div id="modalAddToolUnits" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);"><i class="fa-solid fa-circle-plus" style="color: #16a34a;"></i> Agregar Unidades Físicas al Modelo</h3>
+                <button onclick="closeModal('modalAddToolUnits')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="addToolUnitsForm" onsubmit="submitAddToolUnits(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="add_units_tool_name">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px;">
+                    <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Herramienta Seleccionada:</div>
+                    <div id="add_units_display_name" style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-top: 2px;">-</div>
+                    <div id="add_units_display_current" style="font-size: 11px; color: #0284c7; margin-top: 4px; font-weight: 600;">Unidades actuales: -</div>
+                </div>
+                <div>
+                    <label class="form-label" style="font-weight: 800;">¿Cuántas unidades deseas agregar? *</label>
+                    <input type="number" id="add_units_quantity" placeholder="Indica cantidad a sumar..." min="1" max="500" class="form-input" style="font-size: 14px; font-weight: 800; padding: 8px 12px;" required>
+                    <small style="color: #64748b; font-size: 10.5px;">Indica cuántas unidades nuevas vas a incorporar a este modelo físico.</small>
+                </div>
+                <div>
+                    <label class="form-label">Prefijo de Código (Opcional)</label>
+                    <input type="text" id="add_units_prefix" placeholder="Auto-detectar o ej: TUB / HER" class="form-input">
+                    <small style="color: #94a3b8; font-size: 10px;">Si lo dejas en blanco, el sistema continuará el correlativo del modelo existente.</small>
+                </div>
+                <div>
+                    <label class="form-label">Ubicación Inicial para las nuevas unidades</label>
+                    <input type="text" id="add_units_location" value="Sede Central Dalor (Guacara)" class="form-input">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalAddToolUnits')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #16a34a;"><i class="fa-solid fa-check"></i> Agregar Unidades Ahora</button>
+                </div>
+            </form>
+        </div>
     </div>
 
 
@@ -176,13 +222,33 @@
                     </div>
 
                     <div>
-
-                        <label class="form-label">Código de Activo *</label>
-
-                        <input type="text" id="nass_code" placeholder="Ej: HERR-0908 / FLT-009" class="form-input" required>
-
+                        <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Código de Activo *</span>
+                            <span style="font-size: 10px; color: #0284c7; font-weight: 700;">(Correlativo Automático)</span>
+                        </label>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" id="nass_code" placeholder="Generando..." class="form-input" style="font-weight: 700; background: #f8fafc;" required>
+                            <button type="button" onclick="refreshNextAssetCode()" title="Recalcular siguiente código libre" class="btn-secondary" style="padding: 0 10px; font-size: 12px;"><i class="fa-solid fa-arrows-rotate"></i></button>
+                        </div>
                     </div>
 
+                </div>
+
+                <!-- Fila de Cantidad Dinámica (Especial para Herramientas e Insumos en Lote) -->
+                <div id="nass_quantity_row" style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 10px 14px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-layer-group" style="color: #15803d;"></i> Cantidad de Unidades a Registrar
+                        </div>
+                        <div style="font-size: 11px; color: #166534;">
+                            Ej: 5 tubos del mismo tipo. El sistema generará correlativos secuenciales automáticos (-01, -02...).
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <button type="button" onclick="const q=document.getElementById('nass_quantity'); q.value=Math.max(1, (parseInt(q.value)||1)-1)" class="btn-secondary" style="padding: 4px 12px; font-weight: 800; font-size: 14px; border-color: #86efac;">-</button>
+                        <input type="number" id="nass_quantity" value="1" min="1" max="500" class="form-input" style="width: 70px; text-align: center; font-weight: 800; font-size: 15px; color: #166534; border-color: #86efac; background: #ffffff;" required>
+                        <button type="button" onclick="const q=document.getElementById('nass_quantity'); q.value=(parseInt(q.value)||1)+1" class="btn-secondary" style="padding: 4px 12px; font-weight: 800; font-size: 14px; border-color: #86efac;">+</button>
+                    </div>
                 </div>
 
                 <!-- Banner Guía de Nomenclatura Dinámica -->
@@ -191,12 +257,13 @@
                     <span id="nass_nomenclature_text">Nomenclatura Dalor recomendada: Prefijo HERR- o código de pañol.</span>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
                     <div>
-
+                        <label class="form-label">Nombre / Denominación de la Herramienta o Equipo *</label>
+                        <input type="text" id="nass_name" placeholder="Ej: Tubo conduit galvanizado 2 pulg / Esmeril 7''..." class="form-input" required>
+                    </div>
+                    <div>
                         <label class="form-label">Categoría *</label>
-
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <select id="nass_category" class="form-select" onchange="onAssetCategorySelected()">
                                 <option value="Herramientas Manuales">Herramientas Manuales</option>
@@ -211,109 +278,59 @@
                             </select>
                             <input type="text" id="nass_new_category" class="form-input hidden" placeholder="Escribe el nombre de la nueva categoría...">
                         </div>
-
                     </div>
-
-                    <div>
-
-                        <label class="form-label">Condición de Propiedad *</label>
-
-                        <select id="nass_ownership" class="form-select">
-
-                            <option value="propio">Propio (Activo Fijo DALOR)</option>
-
-                            <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
-
-                            <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
-
-                            <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
-
-                            <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
-
-                        </select>
-
-                    </div>
-
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
                     <div>
-
-                        <label class="form-label">Nombre / Denominación del Equipo *</label>
-
-                        <input type="text" id="nass_name" placeholder="Ej: Máquina de Soldar Miller Big Blue 500X..." class="form-input" required>
-
-                    </div>
-
-                    <div>
-
-                        <label class="form-label">Empresa / Propietario / Arrendador</label>
-
-                        <input type="text" id="nass_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
-
-                    </div>
-
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
-                        <label class="form-label">Marca</label>
-
+                        <label class="form-label">Marca (Opcional)</label>
                         <input type="text" id="nass_brand" placeholder="Miller / Lincoln / Bosch / Ford..." class="form-input">
-
                     </div>
-
                     <div>
-
-                        <label class="form-label">Modelo / Especificación</label>
-
-                        <input type="text" id="nass_model" placeholder="Ej: 500X Diésel / GWS 22-230..." class="form-input">
-
+                        <label class="form-label">Modelo / Especificación (Opcional)</label>
+                        <input type="text" id="nass_model" placeholder="Ej: 500X / Schedule 40 / GWS 22-230..." class="form-input">
                     </div>
-
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
                     <div>
-
-                        <label class="form-label" id="nass_serial_label">Serial / Placa</label>
-
-                        <input type="text" id="nass_serial" placeholder="Serial o Nº de Placa" class="form-input">
-
-                    </div>
-
-                    <div>
-
-                        <label class="form-label" id="nass_odometer_label">Lectura Inicial (Km / Horas)</label>
-
-                        <input type="number" step="0.1" id="nass_odometer" value="0" class="form-input">
-
-                    </div>
-
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
                         <label class="form-label">Ubicación Inicial *</label>
-
                         <input type="text" id="nass_location" value="Sede Central Dalor (Guacara)" class="form-input" required>
-
                     </div>
-
                     <div>
-
                         <label class="form-label">Custodio / Responsable</label>
-
                         <input type="text" id="nass_custodian" value="Disponible en Base" class="form-input">
-
                     </div>
+                </div>
 
+                <!-- Campos Técnicos Específicos para Vehículos, Maquinaria Pesada o Arrendamiento -->
+                <div id="nass_heavy_fields" style="display: none; border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 4px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                        <div>
+                            <label class="form-label">Condición de Propiedad</label>
+                            <select id="nass_ownership" class="form-select">
+                                <option value="propio">Propio (Activo Fijo DALOR)</option>
+                                <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
+                                <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
+                                <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
+                                <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Empresa / Propietario / Arrendador</label>
+                            <input type="text" id="nass_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label class="form-label" id="nass_serial_label">Serial / Placa</label>
+                            <input type="text" id="nass_serial" placeholder="Serial o Nº de Placa" class="form-input">
+                        </div>
+                        <div>
+                            <label class="form-label" id="nass_odometer_label">Lectura Inicial (Km / Horas)</label>
+                            <input type="number" step="0.1" id="nass_odometer" value="0" class="form-input">
+                        </div>
+                    </div>
                 </div>
 
 

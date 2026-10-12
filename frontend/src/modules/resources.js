@@ -1309,6 +1309,9 @@ function renderGroupedToolsPaginated() {
                 <button onclick="toggleToolUnitsBreakdown('${rowCollapseId}')" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #475569; background: #f8fafc;" title="Ver desglose detallado de cada serial y unidad">
                     <i class="fa-solid fa-layer-group"></i> Desglose (${g.total})
                 </button>
+                <button onclick="openAddToolUnitsModal('${encodeURIComponent(g.name)}', ${g.total})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #16a34a; border-color: #bbf7d0; background: #f0fdf4;" title="Agregar más unidades / cantidades a este modelo">
+                    <i class="fa-solid fa-plus"></i> + Cantidad
+                </button>
                 ${g.available > 0 ? `
                     <button onclick="assignAvailableToolFromGroup('${encodeURIComponent(g.name)}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" title="Asignar una unidad disponible a obra">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Asignar
@@ -1446,66 +1449,102 @@ function openNewToolModal() {
 async function submitCreateTool(event) {
 
     event.preventDefault();
+    const qty = parseInt(document.getElementById("tool_quantity")?.value || "1", 10) || 1;
 
     const payload = {
-
         asset_code: document.getElementById("tool_code").value,
-
         name: document.getElementById("tool_name").value,
-
         asset_type: document.getElementById("tool_type").value,
-
         brand: document.getElementById("tool_brand").value,
-
         serial_number: document.getElementById("tool_serial").value,
-
         current_location: document.getElementById("tool_location").value || "Sede Central",
-
-        is_exclusive: true
-
+        is_exclusive: true,
+        quantity: qty
     };
 
-
-
     try {
-
         const res = await authFetch(`${API_BASE}/assets/`, {
-
             method: "POST",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify(payload)
-
         });
 
         if (res.ok) {
-
-            alert("Herramienta/Equipo registrado exitosamente.");
-
+            alert(qty > 1 ? `✅ Se registraron exitosamente ${qty} unidades de la herramienta.` : "✅ Herramienta/Equipo registrado exitosamente.");
             closeModal("modalTool");
-
             await loadInitialMasterData();
-
             loadToolsList();
             if (typeof loadMachineryList === "function") loadMachineryList();
             if (typeof loadFleetList === "function") loadFleetList();
-
         } else {
-
             const err = await res.json();
-
             alert("Error: " + (err.detail || JSON.stringify(err)));
-
         }
-
     } catch (e) {
+        alert("Error al registrar herramienta: " + e.message);
+    }
+}
 
-        alert("Error al registrar herramienta.");
+function openAddToolUnitsModal(toolNameEncoded, currentTotal) {
+    const toolName = decodeURIComponent(toolNameEncoded);
+    const hiddenInput = document.getElementById("add_units_tool_name");
+    const nameDisplay = document.getElementById("add_units_display_name");
+    const currentDisplay = document.getElementById("add_units_display_current");
+    const qtyInput = document.getElementById("add_units_quantity");
+    const prefixInput = document.getElementById("add_units_prefix");
+    const locInput = document.getElementById("add_units_location");
 
+    if (hiddenInput) hiddenInput.value = toolName;
+    if (nameDisplay) nameDisplay.innerText = toolName;
+    if (currentDisplay) currentDisplay.innerText = `Unidades físicas actuales: ${currentTotal}`;
+    if (qtyInput) qtyInput.value = "";
+    if (prefixInput) prefixInput.value = "";
+    if (locInput) locInput.value = "Sede Central Dalor (Guacara)";
+
+    openModal("modalAddToolUnits");
+}
+
+async function submitAddToolUnits(event) {
+    event.preventDefault();
+    const toolName = document.getElementById("add_units_tool_name")?.value;
+    const qty = parseInt(document.getElementById("add_units_quantity")?.value || "1", 10);
+    const prefix = document.getElementById("add_units_prefix")?.value?.trim() || null;
+    const loc = document.getElementById("add_units_location")?.value?.trim() || "Sede Central Dalor (Guacara)";
+
+    if (!qty || qty < 1) {
+        alert("Por favor indica una cantidad válida (mínimo 1).");
+        return;
     }
 
+    try {
+        const payload = {
+            tool_name: toolName,
+            quantity: qty,
+            prefix_code: prefix,
+            current_location: loc
+        };
+
+        const res = await authFetch(`${API_BASE}/assets/tools/add-units`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            alert(`✅ ${data.message || `Se agregaron ${qty} unidades con éxito.`}`);
+            closeModal("modalAddToolUnits");
+            await loadInitialMasterData();
+            loadToolsList();
+        } else {
+            const err = await res.json();
+            alert("Error al agregar unidades: " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        alert("Error de conexión al agregar unidades: " + e.message);
+    }
 }
+
 
 
 
@@ -1875,106 +1914,88 @@ function openNewVehicleModal_v2() {
 
 
 
-function onAssetTypeChanged() {
-
-    const type = document.getElementById("nass_type").value;
-
-    const title = document.getElementById("newAssetModalTitle");
-
-    const serialLabel = document.getElementById("nass_serial_label");
-
-    const odometerLabel = document.getElementById("nass_odometer_label");
-
-
-
-    if (type === 'vehiculo') {
-
-        if (title) title.innerHTML = '<i class="fa-solid fa-truck" style="color: #6366f1;"></i> Registrar Nuevo Vehículo de Flota / Carga';
-
-        if (serialLabel) serialLabel.textContent = "Placa del Vehículo *";
-
-        if (odometerLabel) odometerLabel.textContent = "Kilometraje Inicial (Km)";
-
-    } else if (type === 'maquinaria') {
-
-        if (title) title.innerHTML = '<i class="fa-solid fa-gears" style="color: #d97706;"></i> Registrar Nueva Maquinaria Pesada / Planta / Compresor';
-
-        if (serialLabel) serialLabel.textContent = "Serial del Fabricante";
-
-        if (odometerLabel) odometerLabel.textContent = "Horómetro Inicial (Horas)";
-
-    } else if (type === 'equipo_medicion') {
-
-        if (title) title.innerHTML = '<i class="fa-solid fa-scale-unbalanced" style="color: #8b5cf6;"></i> Registrar Nuevo Equipo de Medición / Calibración';
-
-        if (serialLabel) serialLabel.textContent = "Serial / Certificado Calibración";
-
-        if (odometerLabel) odometerLabel.textContent = "Usos / Horómetro";
-
-    } else {
-
-        if (title) title.innerHTML = '<i class="fa-solid fa-toolbox" style="color: var(--dalor-blue);"></i> Registrar Nueva Herramienta / Equipo';
-
-        if (serialLabel) serialLabel.textContent = "Serial / Identificador";
-
-        if (odometerLabel) odometerLabel.textContent = "Horómetro / Contador";
-
+async function refreshNextAssetCode(explicitType = null) {
+    const codeInput = document.getElementById("nass_code");
+    if (!codeInput) return;
+    const type = explicitType || document.getElementById("nass_type")?.value || 'herramienta_mayor';
+    codeInput.value = "Generando...";
+    try {
+        const res = await authFetch(`${API_BASE}/assets/next-code?asset_type=${encodeURIComponent(type)}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.next_code) {
+                codeInput.value = data.next_code;
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn("Error consultando siguiente correlativo:", err);
     }
-
+    codeInput.value = (type.includes('herramienta') || type === 'herramienta_mayor') ? 'HERR-0916' : (type === 'vehiculo' ? '3-V-1-09' : 'MAQ-001');
 }
 
+function onAssetTypeChanged() {
+    const type = document.getElementById("nass_type").value;
+    const title = document.getElementById("newAssetModalTitle");
+    const serialLabel = document.getElementById("nass_serial_label");
+    const odometerLabel = document.getElementById("nass_odometer_label");
 
+    const isTool = type.includes('herramienta') || type === 'herramienta_mayor' || type === 'herramienta_menor';
+    const qtyRow = document.getElementById("nass_quantity_row");
+    if (qtyRow) {
+        qtyRow.style.display = isTool ? "flex" : "none";
+        const qInput = document.getElementById("nass_quantity");
+        if (qInput && !qInput.value) qInput.value = "1";
+    }
+
+    if (type === 'vehiculo') {
+        if (title) title.innerHTML = '<i class="fa-solid fa-truck" style="color: #6366f1;"></i> Registrar Nuevo Vehículo de Flota / Carga';
+        if (serialLabel) serialLabel.textContent = "Placa del Vehículo *";
+        if (odometerLabel) odometerLabel.textContent = "Kilometraje Inicial (Km)";
+    } else if (type === 'maquinaria') {
+        if (title) title.innerHTML = '<i class="fa-solid fa-gears" style="color: #d97706;"></i> Registrar Nueva Maquinaria Pesada / Planta / Compresor';
+        if (serialLabel) serialLabel.textContent = "Serial del Fabricante";
+        if (odometerLabel) odometerLabel.textContent = "Horómetro Inicial (Horas)";
+    } else if (type === 'equipo_medicion') {
+        if (title) title.innerHTML = '<i class="fa-solid fa-scale-unbalanced" style="color: #8b5cf6;"></i> Registrar Nuevo Equipo de Medición / Calibración';
+        if (serialLabel) serialLabel.textContent = "Serial / Certificado Calibración";
+        if (odometerLabel) odometerLabel.textContent = "Usos / Horómetro";
+    } else {
+        if (title) title.innerHTML = '<i class="fa-solid fa-toolbox" style="color: var(--dalor-blue);"></i> Registrar Nueva Herramienta / Equipo';
+        if (serialLabel) serialLabel.textContent = "Serial / Identificador (Opcional)";
+        if (odometerLabel) odometerLabel.textContent = "Horómetro / Contador";
+    }
+
+    refreshNextAssetCode(type);
+}
 
 async function submitCreateAsset(e) {
-
     e.preventDefault();
-
     const type = document.getElementById("nass_type").value;
-
     const code = document.getElementById("nass_code").value.trim();
-
     const name = document.getElementById("nass_name").value.trim();
-
     const brand = document.getElementById("nass_brand").value.trim();
-
     const model = document.getElementById("nass_model").value.trim();
-
     const serial = document.getElementById("nass_serial").value.trim();
-
     const odometer = parseFloat(document.getElementById("nass_odometer").value) || 0.0;
-
     const location = document.getElementById("nass_location").value.trim() || "Sede Central";
-
     const custodian = document.getElementById("nass_custodian").value.trim() || "Disponible en Base";
-
-
+    const quantity = parseInt(document.getElementById("nass_quantity")?.value) || 1;
 
     const payload = {
-
         asset_code: code,
-
         name: name,
-
         asset_type: type,
-
         brand: brand,
-
         model: model,
-
         serial_number: type !== 'vehiculo' ? serial : null,
-
         license_plate: type === 'vehiculo' ? serial : null,
-
         current_odometer: odometer,
-
         service_interval_km: type === 'vehiculo' ? 5000 : 250,
-
         current_location: location,
-
         current_custodian_name: custodian,
-
-        is_exclusive: true
-
+        is_exclusive: true,
+        quantity: quantity
     };
 
 
@@ -2222,6 +2243,7 @@ if (typeof window !== 'undefined') {
     window.returnResourceToBase = returnResourceToBase;
     window.submitConfirmOdometer = submitConfirmOdometer;
     window.submitCreateAsset = submitCreateAsset;
+    window.refreshNextAssetCode = refreshNextAssetCode;
     window.submitCreatePersonnel = submitCreatePersonnel;
     window.submitCreateTool = submitCreateTool;
     window.submitCreateVehicle = submitCreateVehicle;
@@ -2234,6 +2256,8 @@ if (typeof window !== 'undefined') {
     window.submitCalibrateAllOdometers = submitCalibrateAllOdometers;
     window.filterToolsList = filterToolsList;
     window.assignAvailableToolFromGroup = assignAvailableToolFromGroup;
+    window.openAddToolUnitsModal = openAddToolUnitsModal;
+    window.submitAddToolUnits = submitAddToolUnits;
     window.openToolHistoryModal = openToolHistoryModal;
     window.openAssetHistoryModal = openAssetHistoryModal;
     window.goToToolsPage = goToToolsPage;

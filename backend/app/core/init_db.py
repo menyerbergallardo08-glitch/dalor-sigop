@@ -889,6 +889,25 @@ def init_db():
         except Exception as e_purge:
             print(f"--> [INFO] Rutina de purga preventiva de pruebas: {e_purge}")
 
+        # 14. Normalización de códigos de clientes (Eliminar CLI-ALQ para unificar a formato CLI-xxx estándar)
+        try:
+            alq_clients = db.query(Client).filter(Client.code.like("CLI-ALQ-%")).all()
+            if alq_clients:
+                import re
+                for c in alq_clients:
+                    nums = re.findall(r'\d+', c.code)
+                    if nums:
+                        n_val = int(nums[-1])
+                        std_code = f"CLI-{n_val:03d}"
+                        while db.query(Client).filter(Client.code == std_code, Client.id != c.id).first():
+                            n_val += 1
+                            std_code = f"CLI-{n_val:03d}"
+                        c.code = std_code
+                db.commit()
+                print(f"--> [INIT_DB] {len(alq_clients)} clientes con prefijo ALQ normalizados a formato uniforme CLI-xxx.")
+        except Exception as e_alq:
+            print(f"--> [INFO] Normalización preventiva de clientes: {e_alq}")
+
         print("--> Dalor SIGO-P Database successfully verified & synced!")
     except Exception as e:
         db.rollback()

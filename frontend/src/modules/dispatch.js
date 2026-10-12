@@ -572,25 +572,28 @@ function updateFilterCounters() {
     const countAll = guides.length;
     const countProject = guides.filter(g => !g.is_freeform).length;
     const countFreeform = guides.filter(g => g.is_freeform).length;
+    const countIssued = guides.filter(g => g.status === 'emitida').length;
     const countTransit = guides.filter(g => g.status === 'en_transito').length;
     const countDelivered = guides.filter(g => g.status === 'entregada' || g.status === 'entregado_conforme').length;
 
     const elAll = document.getElementById('count_disp_all');
     const elProj = document.getElementById('count_disp_project');
     const elFree = document.getElementById('count_disp_freeform');
+    const elIssued = document.getElementById('count_disp_issued');
     const elTrans = document.getElementById('count_disp_transit');
     const elDel = document.getElementById('count_disp_delivered');
 
     if (elAll) elAll.textContent = countAll;
     if (elProj) elProj.textContent = countProject;
     if (elFree) elFree.textContent = countFreeform;
+    if (elIssued) elIssued.textContent = countIssued;
     if (elTrans) elTrans.textContent = countTransit;
     if (elDel) elDel.textContent = countDelivered;
 }
 
 function setDispatchFilter(filter) {
     currentDispatchFilter = filter;
-    const filterButtons = ['all', 'project', 'freeform', 'transit', 'delivered'];
+    const filterButtons = ['all', 'project', 'freeform', 'issued', 'transit', 'delivered'];
     filterButtons.forEach(f => {
         const btn = document.getElementById(`btn_disp_filter_${f}`);
         if (btn) {
@@ -629,6 +632,8 @@ function renderDispatchTable(searchQuery = "") {
         guides = guides.filter(g => !g.is_freeform);
     } else if (currentDispatchFilter === 'freeform') {
         guides = guides.filter(g => g.is_freeform);
+    } else if (currentDispatchFilter === 'issued') {
+        guides = guides.filter(g => g.status === 'emitida');
     } else if (currentDispatchFilter === 'transit') {
         guides = guides.filter(g => g.status === 'en_transito');
     } else if (currentDispatchFilter === 'delivered') {
@@ -688,10 +693,18 @@ function renderDispatchPaginated() {
 
     tbody.innerHTML = pageItems.map(g => {
         const isFreeform = !!g.is_freeform;
+        const isInternal = (g.guide_type === 'control_interno' || (g.guide_number && g.guide_number.startsWith('GCI-')));
         const isDelivered = (g.status === 'entregada' || g.status === 'entregado_conforme');
-        const statusBadge = isDelivered
-            ? `<span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-circle-check"></i> Entregada</span>`
-            : `<span style="background: #fff7ed; color: #c2410c; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fed7aa;"><i class="fa-solid fa-truck-fast"></i> En Tránsito</span>`;
+        const isIssued = (g.status === 'emitida');
+        
+        let statusBadge = '';
+        if (isDelivered) {
+            statusBadge = `<span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-circle-check"></i> ${isInternal ? 'Conforme Sede' : 'Entregada'}</span>`;
+        } else if (isIssued) {
+            statusBadge = `<span style="background: #fef9c3; color: #854d0e; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fde047;"><i class="fa-solid fa-file-circle-check"></i> Emitida</span>`;
+        } else {
+            statusBadge = `<span style="background: #fff7ed; color: #c2410c; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fed7aa;"><i class="fa-solid fa-truck-fast"></i> En Tránsito</span>`;
+        }
 
         const typeBadge = isFreeform
             ? `<span style="background: #fef3c7; color: #92400e; font-weight: 800; padding: 2px 7px; border-radius: 6px; font-size: 10px; border: 1px solid #fde68a;"><i class="fa-solid fa-feather-pointed"></i> Libre</span>`

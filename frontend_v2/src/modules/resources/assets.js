@@ -330,6 +330,26 @@ function onAssetCategorySelected() {
     }
 }
 
+async function refreshNextAssetCode(explicitType = null) {
+    const codeInput = document.getElementById("nass_code");
+    if (!codeInput) return;
+    const type = explicitType || document.getElementById("nass_type")?.value || 'herramienta_mayor';
+    codeInput.value = "Generando...";
+    try {
+        const res = await authFetch(`${API_BASE}/assets/next-code?asset_type=${encodeURIComponent(type)}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.next_code) {
+                codeInput.value = data.next_code;
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn("Error consultando siguiente correlativo:", err);
+    }
+    codeInput.value = (type.includes('herramienta') || type === 'herramienta_mayor') ? 'HERR-0916' : (type === 'vehiculo' ? '3-V-1-09' : 'MAQ-001');
+}
+
 function onAssetTypeChanged() {
     const sel = document.getElementById("nass_type");
     const newTypeInp = document.getElementById("nass_new_type");
@@ -349,10 +369,19 @@ function onAssetTypeChanged() {
     const serialLabel = document.getElementById("nass_serial_label");
     const odometerLabel = document.getElementById("nass_odometer_label");
     const guideText = document.getElementById("nass_nomenclature_text");
-    const codeInput = document.getElementById("nass_code");
     const catSelect = document.getElementById("nass_category");
 
-    const assets = allAssets || [];
+    const isTool = type.includes('herramienta') || type === 'herramienta_mayor' || type === 'herramienta_menor';
+    const qtyRow = document.getElementById("nass_quantity_row");
+    if (qtyRow) {
+        qtyRow.style.display = isTool ? "flex" : "none";
+        const qInput = document.getElementById("nass_quantity");
+        if (qInput && !qInput.value) qInput.value = "1";
+    }
+    const heavyRow = document.getElementById("nass_heavy_fields");
+    if (heavyRow) {
+        heavyRow.style.display = isTool ? "none" : "block";
+    }
 
     if (type === 'vehiculo') {
         if (title) title.innerHTML = '<i class="fa-solid fa-truck" style="color: #6366f1;"></i> Registrar Nuevo Vehículo de Flota / Carga';
@@ -360,43 +389,29 @@ function onAssetTypeChanged() {
         if (odometerLabel) odometerLabel.textContent = "Kilometraje Inicial (Km)";
         if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Flota: <b>[Piso]-[Tipo V]-[Área]-[Correlativo]</b> (Ej: <code>1-V-1-09</code>) o <b>FLT-XXX</b> (Ej: <code>FLT-009</code>).';
         if (catSelect) catSelect.value = "Flota Vehicular";
-
-        const fltVehs = assets.filter(a => a.asset_type === 'vehiculo' || (a.asset_code && a.asset_code.includes('-V-')));
-        const nextNum = fltVehs.length + 1;
-        if (codeInput) codeInput.value = `3-V-1-${String(nextNum).padStart(2, '0')}`;
     } else if (type === 'maquinaria') {
         if (title) title.innerHTML = '<i class="fa-solid fa-gears" style="color: #d97706;"></i> Registrar Nueva Maquinaria Pesada / Planta / Compresor';
         if (serialLabel) serialLabel.textContent = "Serial del Fabricante";
         if (odometerLabel) odometerLabel.textContent = "Horómetro Inicial (Horas)";
         if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Maquinaria: Prefijo <b>MAQ-</b> o <b>EQ-</b> (Ej: <code>MAQ-002</code> o <code>EQ-PLANTA-01</code>).';
         if (catSelect) catSelect.value = "Maquinaria Pesada";
-
-        const maqs = assets.filter(a => a.asset_type === 'maquinaria' || (a.asset_code && a.asset_code.startsWith('MAQ-')));
-        const nextNum = maqs.length + 1;
-        if (codeInput) codeInput.value = `MAQ-${String(nextNum).padStart(3, '0')}`;
     } else if (type === 'equipo_medicion') {
         if (title) title.innerHTML = '<i class="fa-solid fa-scale-unbalanced" style="color: #8b5cf6;"></i> Registrar Nuevo Equipo de Medición / Calibración';
         if (serialLabel) serialLabel.textContent = "Serial / Certificado Calibración";
         if (odometerLabel) odometerLabel.textContent = "Usos / Horómetro";
         if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Medición: Prefijo <b>MED-</b> o código Pañol <b>1-D-X-XX</b> (Ej: <code>MED-002</code> o <code>1-D-1-26-3</code>).';
         if (catSelect) catSelect.value = "Equipos de Medición";
-
-        const meds = assets.filter(a => a.asset_type === 'equipo_medicion' || (a.asset_code && a.asset_code.startsWith('MED-')));
-        const nextNum = meds.length + 1;
-        if (codeInput) codeInput.value = `MED-${String(nextNum).padStart(3, '0')}`;
     } else {
         if (title) title.innerHTML = '<i class="fa-solid fa-toolbox" style="color: var(--dalor-blue);"></i> Registrar Nueva Herramienta / Equipo';
-        if (serialLabel) serialLabel.textContent = "Serial / Identificador";
+        if (serialLabel) serialLabel.textContent = "Serial / Identificador (Opcional)";
         if (odometerLabel) odometerLabel.textContent = "Horómetro / Contador";
-        if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Herramientas: Prefijo <b>HERR-</b> (Ej: <code>HERR-0908</code>) o Código Pañol <b>[Gaveta]-[Letra]-[Nivel]-[Ítem]</b> (Ej: <code>1-J-1-28</code>).';
+        if (guideText) guideText.innerHTML = 'Nomenclatura Dalor Herramientas: Correlativo único oficial <b>HERR-XXXX</b> o Código Pañol <b>[Gaveta]-[Letra]-[Nivel]-[Ítem]</b> (Ej: <code>1-J-1-28</code>).';
         if (catSelect && (catSelect.value === 'Flota Vehicular' || catSelect.value === 'Maquinaria Pesada')) {
             catSelect.value = "Herramientas Manuales";
         }
-
-        const herrCodes = assets.map(a => a.asset_code).filter(c => c && c.startsWith('HERR-')).map(c => parseInt(c.replace('HERR-', '')) || 0);
-        const maxHerr = herrCodes.length > 0 ? Math.max(...herrCodes) : 907;
-        if (codeInput) codeInput.value = `HERR-${String(maxHerr + 1).padStart(4, '0')}`;
     }
+
+    refreshNextAssetCode(type);
 }
 
 async function submitCreateAsset(e) {
@@ -425,6 +440,8 @@ async function submitCreateAsset(e) {
         category = (document.getElementById("nass_new_category")?.value || '').trim() || "General";
     }
 
+    const quantity = parseInt(document.getElementById("nass_quantity")?.value) || 1;
+
     const payload = {
         asset_code: code,
         name: name,
@@ -438,7 +455,8 @@ async function submitCreateAsset(e) {
         service_interval_km: type === 'vehiculo' ? 5000 : 250,
         current_location: location,
         current_custodian_name: custodian,
-        is_exclusive: true
+        is_exclusive: true,
+        quantity: quantity
     };
 
     try {
@@ -459,7 +477,9 @@ async function submitCreateAsset(e) {
         }
 
         closeModal("modalNewAsset");
-        alert(`✅ Activo ${code} (${name}) registrado exitosamente con tipo "${type}" en categoría "${category}".`);
+        alert(quantity > 1 
+            ? `✅ Se registraron exitosamente ${quantity} unidades de "${name}" con correlativos automáticos.` 
+            : `✅ Activo ${code} (${name}) registrado exitosamente.`);
 
         if (typeof window.loadInitialMasterData === "function") await window.loadInitialMasterData();
         if (typeof window.loadFleetList === "function") window.loadFleetList();
@@ -737,6 +757,7 @@ if (typeof window !== 'undefined') {
     window.submitResourceAction = submitResourceAction;
     window.returnResourceToBase = returnResourceToBase;
     window.openNewAssetModal = openNewAssetModal;
+    window.refreshNextAssetCode = refreshNextAssetCode;
     window.onAssetCategorySelected = onAssetCategorySelected;
     window.onAssetTypeChanged = onAssetTypeChanged;
     window.onEditAssetTypeChanged = onEditAssetTypeChanged;

@@ -15,6 +15,81 @@ from .assets_common import *
 
 router = APIRouter()
 
+def get_next_asset_code_value(db: Session, asset_type: str = "herramienta") -> str:
+    import re
+    asset_type_clean = (asset_type or "").lower().strip()
+    
+    if asset_type_clean in ("vehiculo", "camioneta", "camion"):
+        vehs = db.query(Asset.asset_code).filter(
+            (Asset.asset_type.in_(["vehiculo", "camioneta", "camion"])) |
+            (Asset.asset_code.like("%-V-%")) |
+            (Asset.asset_code.like("FLT-%"))
+        ).all()
+        max_num = 0
+        for v in vehs:
+            if v[0]:
+                nums = re.findall(r'\d+', v[0])
+                if nums:
+                    max_num = max(max_num, int(nums[-1]))
+        candidate = f"3-V-1-{max_num + 1:02d}"
+        while db.query(Asset).filter(Asset.asset_code == candidate).first():
+            max_num += 1
+            candidate = f"3-V-1-{max_num + 1:02d}"
+        return candidate
+
+    elif asset_type_clean in ("maquinaria", "planta", "generador", "compresor"):
+        maqs = db.query(Asset.asset_code).filter(Asset.asset_code.like("MAQ-%")).all()
+        max_num = 0
+        for m in maqs:
+            if m[0]:
+                nums = re.findall(r'\d+', m[0])
+                if nums:
+                    max_num = max(max_num, int(nums[-1]))
+        candidate = f"MAQ-{max_num + 1:03d}"
+        while db.query(Asset).filter(Asset.asset_code == candidate).first():
+            max_num += 1
+            candidate = f"MAQ-{max_num + 1:03d}"
+        return candidate
+
+    elif asset_type_clean in ("equipo_medicion", "medicion"):
+        meds = db.query(Asset.asset_code).filter(Asset.asset_code.like("MED-%")).all()
+        max_num = 0
+        for m in meds:
+            if m[0]:
+                nums = re.findall(r'\d+', m[0])
+                if nums:
+                    max_num = max(max_num, int(nums[-1]))
+        candidate = f"MED-{max_num + 1:03d}"
+        while db.query(Asset).filter(Asset.asset_code == candidate).first():
+            max_num += 1
+            candidate = f"MED-{max_num + 1:03d}"
+        return candidate
+
+    else:
+        # Herramientas: HERR-XXXX
+        herrs = db.query(Asset.asset_code).filter(Asset.asset_code.like("HERR-%")).all()
+        max_num = 0
+        for h in herrs:
+            if h[0]:
+                nums = re.findall(r'\d+', h[0])
+                if nums:
+                    try:
+                        max_num = max(max_num, int(nums[0]))
+                    except ValueError:
+                        pass
+        num = max(max_num + 1, 916)
+        candidate = f"HERR-{num:04d}"
+        while db.query(Asset).filter(Asset.asset_code == candidate).first():
+            num += 1
+            candidate = f"HERR-{num:04d}"
+        return candidate
+
+
+@router.get("/next-code")
+def get_next_asset_code_endpoint(asset_type: str = "herramienta", db: Session = Depends(get_db)):
+    return {"next_code": get_next_asset_code_value(db, asset_type)}
+
+
 @router.get("/tools-summary")
 def get_tools_summary(db: Session = Depends(get_db)):
     """
@@ -127,9 +202,57 @@ def get_assets(
 
 @router.post("/")
 def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
-    existing = db.query(Asset).filter(Asset.asset_code == asset_in.asset_code).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Ya existe un activo/herramienta con ese código.")
+    qty = getattr(asset_in, 'quantity', 1) or 1
+    code_val = (asset_in.asset_code or "").strip()
+
+    # Si el código no viene, es un placeholder o ya colisiona en la base de datos, auto-asignar el siguiente libre
+    if not code_val or code_val in ("Cargando...", "Generando...", "Auto", "S/C") or db.query(Asset).filter(Asset.asset_code == code_val).first():
+        code_val = get_next_asset_code_value(db, asset_in.asset_type)
+    
+    asset_in.asset_code = code_val
+    
+    if qty > 1:
+        base_code = code_val
+        existing_codes = set(
+            c[0] for c in db.query(Asset.asset_code).filter(Asset.asset_code.like(f"{base_code}%")).all()
+        )
+        created_assets = []
+        counter = 1
+        while len(created_assets) < qty:
+            candidate_code = f"{base_code}-{counter:02d}"
+            if candidate_code not in existing_codes:
+                existing_codes.add(candidate_code)
+                new_asset = Asset(
+                    asset_code=candidate_code,
+                    name=asset_in.name,
+                    asset_type=asset_in.asset_type,
+                    category=asset_in.category or "General",
+                    brand=asset_in.brand,
+                    model=asset_in.model,
+                    serial_number=f"{asset_in.serial_number}-{counter:02d}" if asset_in.serial_number else None,
+                    license_plate=asset_in.license_plate,
+                    current_odometer=asset_in.current_odometer or 0.0,
+                    service_interval_km=asset_in.service_interval_km or 5000.0,
+                    last_service_odometer=asset_in.current_odometer or 0.0,
+                    ownership_type=asset_in.ownership_type or "propio",
+                    external_entity_name=asset_in.external_entity_name,
+                    rental_rate_usd=asset_in.rental_rate_usd or 0.0,
+                    return_due_date=asset_in.return_due_date,
+                    status="disponible_base",
+                    current_location=asset_in.current_location or "Sede Central Dalor (Guacara)",
+                    current_custodian_name=asset_in.current_custodian_name or "Disponible en Base",
+                    is_exclusive=asset_in.is_exclusive,
+                    is_active=asset_in.is_active
+                )
+                db.add(new_asset)
+                created_assets.append(new_asset)
+            counter += 1
+            if counter > 9999:
+                break
+        db.commit()
+        for a in created_assets:
+            db.refresh(a)
+        return created_assets[0]
     
     new_asset = Asset(
         asset_code=asset_in.asset_code,
@@ -157,6 +280,79 @@ def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_asset)
     return new_asset
+
+@router.post("/tools/add-units")
+def add_tool_units(req: ToolAddUnitsRequest, db: Session = Depends(get_db)):
+    if req.quantity < 1:
+        raise HTTPException(status_code=400, detail="La cantidad a agregar debe ser al menos 1.")
+    
+    # Buscar registros existentes del mismo modelo para tomar sus datos base si no vienen
+    base_name = req.tool_name.strip()
+    existing_tools = db.query(Asset).filter(
+        func.trim(func.upper(Asset.name)) == base_name.upper(),
+        Asset.is_active == True
+    ).order_by(Asset.id.asc()).all()
+    
+    sample = existing_tools[0] if existing_tools else None
+    
+    brand = req.brand if req.brand is not None else (sample.brand if sample else "")
+    model = req.model if req.model is not None else (sample.model if sample else "")
+    cat = req.category if req.category is not None else (sample.category if sample else "General")
+    a_type = req.asset_type if req.asset_type is not None else (sample.asset_type if sample else "herramienta")
+    loc = req.current_location or (sample.current_location if sample else "Sede Central Dalor (Guacara)")
+    
+    # Determinar prefijo de código
+    import re
+    prefix = (req.prefix_code or "").strip().upper()
+    if not prefix and sample and sample.asset_code:
+        code = sample.asset_code.strip()
+        match = re.match(r"^(.*?)([-_]?\d+)$", code)
+        if match:
+            prefix = match.group(1).rstrip("-_")
+        else:
+            prefix = code
+    if not prefix:
+        prefix = "HER"
+        
+    existing_codes = set(
+        c[0] for c in db.query(Asset.asset_code).filter(Asset.asset_code.like(f"{prefix}%")).all()
+    )
+    
+    created_assets = []
+    counter = len(existing_tools) + 1 if existing_tools else 1
+    
+    while len(created_assets) < req.quantity:
+        candidate_code = f"{prefix}-{counter:03d}" if counter < 1000 else f"{prefix}-{counter}"
+        if candidate_code not in existing_codes:
+            existing_codes.add(candidate_code)
+            new_a = Asset(
+                asset_code=candidate_code,
+                name=base_name,
+                asset_type=a_type,
+                category=cat,
+                brand=brand,
+                model=model,
+                serial_number=req.serial_number or f"S/N-{candidate_code}",
+                status="disponible_base",
+                current_location=loc,
+                current_custodian_name="Disponible en Base",
+                is_exclusive=True,
+                is_active=True
+            )
+            db.add(new_a)
+            created_assets.append(candidate_code)
+        counter += 1
+        if counter > 99999:
+            break
+            
+    db.commit()
+    return {
+        "success": True,
+        "created_count": len(created_assets),
+        "new_codes": created_assets,
+        "message": f"Se agregaron exitosamente {len(created_assets)} unidades al modelo '{base_name}'."
+    }
+
 
 @router.get("/categories/list")
 def get_asset_categories(db: Session = Depends(get_db)):

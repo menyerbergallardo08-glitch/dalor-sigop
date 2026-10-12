@@ -117,6 +117,7 @@ async function loadClients() {
         const data = await res.json();
         allClients = Array.isArray(data) ? data : [];
         lastClientsList = allClients;
+        applyClientSorting();
         clientsCurrentPage = 1;
         renderClientsPaginated();
 

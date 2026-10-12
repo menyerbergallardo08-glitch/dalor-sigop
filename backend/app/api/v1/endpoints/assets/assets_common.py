@@ -23,6 +23,19 @@ class AssetCreate(BaseModel):
     current_custodian_name: Optional[str] = "Disponible en Base"
     is_exclusive: bool = True
     is_active: bool = True
+    quantity: Optional[int] = 1
+
+class ToolAddUnitsRequest(BaseModel):
+    tool_name: str
+    quantity: int = 1
+    prefix_code: Optional[str] = None
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    category: Optional[str] = "General"
+    asset_type: Optional[str] = "herramienta"
+    current_location: Optional[str] = "Sede Central Dalor (Guacara)"
+
 
 class AssetUpdate(BaseModel):
     name: Optional[str] = None

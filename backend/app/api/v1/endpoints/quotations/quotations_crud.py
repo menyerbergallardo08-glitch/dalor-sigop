@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
-from datetime import datetime
-import re
-from app.core.database import get_db
-from app.models.models import Quotation, QuotationItem, Client, ServiceItem, Project, Material, ProjectMaterialRequisition
-from app.schemas.schemas import QuotationCreate, QuotationUpdate, QuotationOut
+"""
+CRUD operations for Quotations (Presupuestos & APU).
+"""
+from .quotations_common import (
+    APIRouter, Depends, HTTPException, Session, List,
+    get_db, Quotation, QuotationItem, Client,
+    QuotationCreate, QuotationUpdate, QuotationOut
+)
 
 router = APIRouter()
 
@@ -146,119 +146,6 @@ def update_quotation(quotation_id: int, quote_in: QuotationUpdate, db: Session =
     db.refresh(quote)
     return quote
 
-@router.get("/{quotation_id}", response_model=QuotationOut)
-def get_quotation_detail(quotation_id: int, db: Session = Depends(get_db)):
-    quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
-    if not quote:
-        raise HTTPException(status_code=404, detail="Cotización no encontrada.")
-    return quote
-
-@router.post("/{quotation_id}/convert-to-project")
-@router.post("/{quotation_id}/approve")
-def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db)):
-    quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
-    if not quote:
-        raise HTTPException(status_code=404, detail="Cotización no encontrada.")
-
-    # 🛡️ Idempotencia: Bloquear duplicación si la cotización ya fue aprobada
-    if quote.status == "aprobado":
-        existing_p = db.query(Project).filter(
-            Project.client_id == quote.client_id,
-            Project.name == quote.project_title
-        ).first()
-        if existing_p:
-            return {
-                "success": True,
-                "message": f"Esta cotización ya fue aprobada previamente y está vinculada al Proyecto {existing_p.code}.",
-                "project_id": existing_p.id,
-                "project_code": existing_p.code,
-                "project_name": existing_p.name,
-                "already_approved": True
-            }
-        raise HTTPException(
-            status_code=400,
-            detail=f"La cotización {quote.quote_number} ya fue aprobada previamente y no puede duplicarse."
-        )
-
-    # Generar código de proyecto correlativo garantizando unicidad y formato estricto
-    current_year = datetime.utcnow().year
-    projects = db.query(Project.code).all()
-    max_seq = 0
-    pattern = re.compile(rf"PRJ-{current_year}-(\d+)", re.IGNORECASE)
-    for (p_code,) in projects:
-        if p_code:
-            m = pattern.search(p_code)
-            if m:
-                try:
-                    num = int(m.group(1))
-                    if num > max_seq:
-                        max_seq = num
-                except ValueError:
-                    pass
-    proj_code = f"PRJ-{current_year}-{(max_seq + 1):03d}"
-
-    # Estimar bolsas iniciales a partir del subtotal cotizado (65% costo base estimado, 35% margen)
-    est_labor = round(quote.subtotal_usd * 0.30, 2)
-    est_fuel = round(quote.subtotal_usd * 0.08, 2)
-    est_materials = round(quote.subtotal_usd * 0.20, 2)
-    est_tools = round(quote.subtotal_usd * 0.04, 2)
-    est_services = round(quote.subtotal_usd * 0.03, 2)
-    total_est = est_labor + est_fuel + est_materials + est_tools + est_services
-
-    new_project = Project(
-        code=proj_code,
-        name=quote.project_title,
-        client_id=quote.client_id,
-        client_name=quote.client.name if quote.client else "Cliente",
-        location=quote.location or "Sede Central",
-        status="activo",
-        duration_days=30,
-        contract_amount_usd=quote.total_usd,
-        estimated_labor_usd=est_labor,
-        estimated_fuel_usd=est_fuel,
-        estimated_materials_usd=est_materials,
-        estimated_tools_usd=est_tools,
-        estimated_services_usd=est_services,
-        budget_limit_usd=total_est,
-        is_active=True
-    )
-
-    quote.status = "aprobado"
-    db.add(new_project)
-    db.flush()
-
-    # Explosión de Insumos del Presupuesto a Requisición de Almacén para el Proyecto
-    for q_item in (quote.items or []):
-        mat = db.query(Material).filter(
-            (Material.code == q_item.item_code) |
-            (Material.name.ilike(f"%{q_item.description[:30]}%"))
-        ).first()
-
-        req = ProjectMaterialRequisition(
-            project_id=new_project.id,
-            material_id=mat.id if mat else None,
-            material_code=mat.code if mat else (q_item.item_code or "APU-MAT"),
-            material_name=q_item.description,
-            unit_measure=q_item.unit_measure or "UND",
-            quantity_required=q_item.quantity or 1.0,
-            quantity_dispatched=0.0,
-            estimated_cost_usd=q_item.total_usd or 0.0,
-            status="pendiente",
-            notes=f"Partida presupuestada en {quote.quote_number}"
-        )
-        db.add(req)
-
-    db.commit()
-    db.refresh(new_project)
-
-    return {
-        "success": True,
-        "message": f"Cotización {quote.quote_number} convertida exitosamente en el Proyecto Activo {proj_code}.",
-        "project_id": new_project.id,
-        "project_code": new_project.code,
-        "project_name": new_project.name
-    }
-
 @router.delete("/{quotation_id}")
 def delete_quotation(quotation_id: int, db: Session = Depends(get_db)):
     quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
@@ -268,4 +155,3 @@ def delete_quotation(quotation_id: int, db: Session = Depends(get_db)):
     db.delete(quote)
     db.commit()
     return {"success": True, "message": f"Cotización {quote.quote_number} eliminada exitosamente."}
-

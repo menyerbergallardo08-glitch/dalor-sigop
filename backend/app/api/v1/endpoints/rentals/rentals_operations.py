@@ -270,9 +270,10 @@ def create_rental_loan(
             clean_name = req.external_entity.strip()
             cli = db.query(Client).filter(Client.name.ilike(f"%{clean_name}%")).first()
             if not cli:
-                count_cli = db.query(Client).count()
+                from app.api.v1.endpoints.clients.clients_crud import get_next_client_code_value
+                client_code = get_next_client_code_value(db)
                 cli = Client(
-                    code=f"CLI-ALQ-{count_cli + 1:03d}",
+                    code=client_code,
                     name=clean_name,
                     rif="S/I",
                     contact_name=req.contact_person.strip() if req.contact_person else None,

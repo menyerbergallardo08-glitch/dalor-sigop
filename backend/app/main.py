@@ -117,8 +117,10 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 @app.middleware("http")
 async def add_strict_no_cache_headers(request, call_next):
     response = await call_next(request)
-    # Evitar caché en navegadores para archivos estáticos y rutas web durante desarrollo y producción
-    if request.url.path.startswith(("/static", "/src", "/css", "/api", "/assets")) or request.url.path in ("/", "/app.js", "/index.html", "/sw.js", "/manifest.webmanifest"):
+    # Permitir caché inmutable para bundles de Vite con hash único (/assets/*)
+    if request.url.path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif request.url.path.startswith(("/static", "/src", "/css", "/api")) or request.url.path in ("/", "/app.js", "/index.html", "/sw.js", "/manifest.webmanifest"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"

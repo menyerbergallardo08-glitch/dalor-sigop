@@ -53,11 +53,11 @@
     </script>
 
     <!-- Iconos FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
     
-    <!-- Chart.js & Mermaid.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Chart.js (Carga Asíncrona sin Bloquear Renderizado) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Hoja de Estilos Corporativa Extraída -->
     <link rel="stylesheet" href="/css/styles.css?v=2026.09.20">

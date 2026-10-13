@@ -898,12 +898,9 @@ async function loadInitialMasterData(force = false) {
         return _masterDataPromise;
     }
 
-    // 2. Caché en memoria: Si los datos se cargaron recientemente y no se fuerza recarga, reutilizar
+    // 2. Caché en memoria: Si los datos se cargaron recientemente y no se fuerza recarga, retornar de inmediato sin tocar el DOM
     if (!force && (now - _lastMasterDataFetchTime < MASTER_DATA_TTL_MS) && window.allClients && window.allClients.length > 0) {
-        populateSelectDropdowns();
-        populatePlanDropdownSelectors();
-        updatePendingInboxBadge();
-        return;
+        return Promise.resolve();
     }
 
     _masterDataPromise = (async () => {

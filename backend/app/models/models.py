@@ -57,10 +57,10 @@ class AuditLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     username = Column(String(50), nullable=False)
-    module = Column(String(50), nullable=False)
+    module = Column(String(50), nullable=False, index=True)
     action = Column(String(100), nullable=False)
     details = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 # ==============================================================================
 # 👤 RETIROS DE SOCIOS & GASTOS FIJOS DE SEDE (BLINDAJE FINANCIERO)
@@ -385,8 +385,8 @@ class Expense(Base):
     __tablename__ = "expenses"
 
     id = Column(Integer, primary_key=True, index=True)
-    category_id = Column(Integer, ForeignKey("expense_categories.id"), nullable=False)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    category_id = Column(Integer, ForeignKey("expense_categories.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     cost_center_id = Column(Integer, ForeignKey("cost_centers.id"), nullable=True)
     asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True, index=True)
     reported_by_id = Column(Integer, ForeignKey("personnel.id"), nullable=True)
@@ -395,7 +395,7 @@ class Expense(Base):
     expense_type = Column(String(50), default="costo_obra") # costo_obra, gasto_sede, retiro_socio
     partner_name = Column(Text, nullable=True) # Para retiros de socios o autor que reporta
     
-    expense_date = Column(DateTime, default=datetime.utcnow)
+    expense_date = Column(DateTime, default=datetime.utcnow, index=True)
     description = Column(Text, nullable=False)
     supplier_vendor = Column(Text, nullable=False)
     amount_bs = Column(Float, nullable=False)
@@ -411,7 +411,7 @@ class Expense(Base):
     
     payment_method = Column(String(50), default="caja_chica")
     financial_account_id = Column(Integer, ForeignKey("financial_accounts.id"), nullable=True)
-    status = Column(String(50), default="aprobado")
+    status = Column(String(50), default="aprobado", index=True)
     has_receipt = Column(Boolean, default=True)
     receipt_image_path = Column(Text, nullable=True)
     

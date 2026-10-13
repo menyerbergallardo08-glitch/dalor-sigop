@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.models.models import Asset, Personnel
 
@@ -10,8 +10,8 @@ def get_resource_matrix_status(db: Session = Depends(get_db)):
     """
     Retorna el estado de disponibilidad y ubicación de todos los activos, vehículos y personal.
     """
-    assets = db.query(Asset).filter(Asset.is_active == True).all()
-    personnel = db.query(Personnel).filter(Personnel.is_active == True).all()
+    assets = db.query(Asset).options(joinedload(Asset.current_project)).filter(Asset.is_active == True).all()
+    personnel = db.query(Personnel).options(joinedload(Personnel.current_project)).filter(Personnel.is_active == True).all()
 
     vehicles = [a for a in assets if a.asset_type in ["vehiculo", "camioneta", "camion", "remolque"]]
     machinery = [a for a in assets if a.asset_type in ["maquinaria", "generador", "compresor", "planta"]]

@@ -1,6 +1,7 @@
 import os
 import re
 import asyncio
+import base64
 from datetime import datetime
 from typing import Dict, Any, Optional
 from PIL import Image, ImageOps
@@ -625,11 +626,10 @@ Responde ÚNICAMENTE con este JSON válido:
                 }
 
                 candidate_models = [
-                    "models/gemini-3.5-flash-lite",
-                    "models/gemini-3.5-flash",
-                    "models/gemini-3.8-flash",
-                    "models/gemini-3.6-flash",
-                    "models/gemini-flash-latest"
+                    "models/gemini-2.5-flash",
+                    "models/gemini-2.0-flash",
+                    "models/gemini-1.5-flash",
+                    "models/gemini-1.5-flash-latest"
                 ]
                 for model_name in candidate_models:
                     try:

@@ -213,41 +213,30 @@ let currentVehServicesPageSize = 5;
 
 
 function openOdometerOcrModal(assetId, code, name, plate, currentKm) {
-
     document.getElementById("odoAssetIdHidden").value = assetId;
-
     document.getElementById("odoImageUrlHidden").value = "";
-
     document.getElementById("odoVehicleSubtitle").innerText = `[${code}] ${name} - Placa: ${plate || 'N/A'}`;
-
     document.getElementById("odoCurrentKmDisplay").innerText = `${(currentKm || 0).toLocaleString()} Km`;
 
-    
-
-    // Resetear preview y resultados
-
+    // Resetear preview y preparar entrada inmediata
     const previewBox = document.getElementById("odoPreviewBox");
-
     const resultBox = document.getElementById("odoResultBox");
-
     const btnConfirm = document.getElementById("btnConfirmOdometer");
-
     const fileInput = document.getElementById("odometerFileInput");
-
-    
+    const detectedInput = document.getElementById("odoDetectedInput");
+    const notesEl = document.getElementById("odoDetectedNotes");
+    const confidenceBadge = document.getElementById("odoConfidenceBadge");
 
     if (previewBox) previewBox.style.display = "none";
-
-    if (resultBox) resultBox.style.display = "none";
-
-    if (btnConfirm) btnConfirm.style.display = "none";
-
+    if (resultBox) resultBox.style.display = "block";
+    if (btnConfirm) btnConfirm.style.display = "inline-flex";
     if (fileInput) fileInput.value = "";
-
-
+    if (detectedInput) detectedInput.value = (currentKm != null && currentKm > 0) ? currentKm : "";
+    if (notesEl) notesEl.innerText = "Escribe la cifra o escanéala tomando foto del tablero abajo";
+    if (confidenceBadge) confidenceBadge.innerText = "Ingreso Directo / OCR";
 
     openModal("modalOdometerOcr");
-
+    setTimeout(() => { if (detectedInput) { detectedInput.focus(); detectedInput.select(); } }, 150);
 }
 
 
@@ -385,57 +374,38 @@ async function handleOdometerImageSelected(event) {
 
 
 async function submitConfirmOdometer(event) {
-
     event.preventDefault();
-
     const assetId = document.getElementById("odoAssetIdHidden").value;
-
     const reading = parseFloat(document.getElementById("odoDetectedInput").value);
-
     const photoUrl = document.getElementById("odoImageUrlHidden").value;
 
-
-
-    if (isNaN(reading) || reading <= 0) {
-
-        alert("Por favor ingresa un kilometraje válido mayor a 0.");
-
+    if (isNaN(reading) || reading < 0) {
+        alert("Por favor ingresa un kilometraje válido mayor o igual a 0.");
         return;
-
     }
 
-
-
     try {
+        const u = window.currentUser || (typeof State !== 'undefined' ? State?.currentUser : null);
+        const repName = (u && (u.username || u.full_name)) ? (u.username || u.full_name) : "Supervisor de Campo";
 
         const res = await authFetch(`${API_BASE}/assets/${assetId}/record-odometer`, {
-
             method: "POST",
-
             headers: { "Content-Type": "application/json" },
-
             body: JSON.stringify({
-
                 odometer_reading: reading,
-
                 photo_url: photoUrl,
-
-                reported_by: (currentUser && currentUser.full_name) ? currentUser.full_name : "Supervisor de Campo"
-
+                reported_by: repName
             })
-
         });
 
-
-
-        if (!res.ok) throw new Error("Error al guardar odómetro");
-
-
-
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.detail || data.message || `Error HTTP ${res.status} al guardar odómetro`);
+        }
 
         closeModal("modalOdometerOcr");
-        showRealtimeToast(`✅ Odómetro registrado: ${reading.toLocaleString()} Km (${data.traffic_light.replace('_', ' ')})`, 'flota', 'success');
+        const sem = (data.traffic_light || '').replace(/_/g, ' ');
+        showRealtimeToast(`✅ Odómetro registrado: ${reading.toLocaleString()} Km (${sem})`, 'flota', 'success');
         await loadFleetList();
     } catch (err) {
         alert("Error al guardar odómetro: " + err.message);

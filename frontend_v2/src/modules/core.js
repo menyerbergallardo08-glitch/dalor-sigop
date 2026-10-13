@@ -885,66 +885,73 @@ window.renderPaginationControls = renderPaginationControls;
 
 
 
-// Carga Inicial de Datos Maestros
+// Carga Inicial de Datos Maestros con Coalescencia y Caché en Memoria
+let _masterDataPromise = null;
+let _lastMasterDataFetchTime = 0;
+const MASTER_DATA_TTL_MS = 8000; // 8 segundos para absorber ráfagas de recargas concurrentes
 
-async function loadInitialMasterData() {
-    try {
+async function loadInitialMasterData(force = false) {
+    const now = Date.now();
 
-        const [resCli, resSrv, resProj, resCat, resAss, resPers, resMat] = await Promise.all([
-
-            authFetch(`${API_BASE}/clients/`),
-
-            authFetch(`${API_BASE}/services/`),
-
-            authFetch(`${API_BASE}/projects/`),
-
-            authFetch(`${API_BASE}/expenses/categories`),
-
-            authFetch(`${API_BASE}/assets/`),
-
-            authFetch(`${API_BASE}/personnel/`),
-
-            authFetch(`${API_BASE}/materials/`)
-
-        ]);
-
-
-
-        const cliData = resCli.ok ? await resCli.json() : [];
-        window.allClients = allClients = Array.isArray(cliData) ? cliData : [];
-
-        const srvData = resSrv.ok ? await resSrv.json() : [];
-        window.allServices = allServices = Array.isArray(srvData) ? srvData : [];
-
-        const projData = resProj.ok ? await resProj.json() : [];
-        window.allProjects = allProjects = Array.isArray(projData) ? projData : [];
-
-        const catData = resCat.ok ? await resCat.json() : [];
-        window.allCategories = allCategories = Array.isArray(catData) ? catData : [];
-
-        const assData = resAss.ok ? await resAss.json() : [];
-        window.allAssets = allAssets = Array.isArray(assData) ? assData : [];
-
-        const persData = resPers.ok ? await resPers.json() : [];
-        window.allPersonnel = allPersonnel = Array.isArray(persData) ? persData : [];
-
-        const matData = resMat.ok ? await resMat.json() : {};
-        window.allMaterials = allMaterials = Array.isArray(matData.materials) ? matData.materials : (Array.isArray(matData) ? matData : []);
-
-
-
-        populateSelectDropdowns();
-
-        populatePlanDropdownSelectors();
-
-        updatePendingInboxBadge();
-
-    } catch (e) {
-
-        console.error("Error al cargar datos maestros:", e);
-
+    // 1. Coalescencia: Si ya hay una petición en vuelo, devolver la misma promesa
+    if (_masterDataPromise) {
+        return _masterDataPromise;
     }
 
+    // 2. Caché en memoria: Si los datos se cargaron recientemente y no se fuerza recarga, reutilizar
+    if (!force && (now - _lastMasterDataFetchTime < MASTER_DATA_TTL_MS) && window.allClients && window.allClients.length > 0) {
+        populateSelectDropdowns();
+        populatePlanDropdownSelectors();
+        updatePendingInboxBadge();
+        return;
+    }
+
+    _masterDataPromise = (async () => {
+        try {
+            const [resCli, resSrv, resProj, resCat, resAss, resPers, resMat] = await Promise.all([
+                authFetch(`${API_BASE}/clients/`),
+                authFetch(`${API_BASE}/services/`),
+                authFetch(`${API_BASE}/projects/`),
+                authFetch(`${API_BASE}/expenses/categories`),
+                authFetch(`${API_BASE}/assets/`),
+                authFetch(`${API_BASE}/personnel/`),
+                authFetch(`${API_BASE}/materials/`)
+            ]);
+
+            const cliData = resCli.ok ? await resCli.json() : [];
+            window.allClients = allClients = Array.isArray(cliData) ? cliData : [];
+
+            const srvData = resSrv.ok ? await resSrv.json() : [];
+            window.allServices = allServices = Array.isArray(srvData) ? srvData : [];
+
+            const projData = resProj.ok ? await resProj.json() : [];
+            window.allProjects = allProjects = Array.isArray(projData) ? projData : [];
+
+            const catData = resCat.ok ? await resCat.json() : [];
+            window.allCategories = allCategories = Array.isArray(catData) ? catData : [];
+
+            const assData = resAss.ok ? await resAss.json() : [];
+            window.allAssets = allAssets = Array.isArray(assData) ? assData : [];
+
+            const persData = resPers.ok ? await resPers.json() : [];
+            window.allPersonnel = allPersonnel = Array.isArray(persData) ? persData : [];
+
+            const matData = resMat.ok ? await resMat.json() : {};
+            window.allMaterials = allMaterials = Array.isArray(matData.materials) ? matData.materials : (Array.isArray(matData) ? matData : []);
+
+            _lastMasterDataFetchTime = Date.now();
+
+            populateSelectDropdowns();
+            populatePlanDropdownSelectors();
+            updatePendingInboxBadge();
+        } catch (e) {
+            console.error("Error al cargar datos maestros:", e);
+        } finally {
+            _masterDataPromise = null;
+        }
+    })();
+
+    return _masterDataPromise;
 }
 
 

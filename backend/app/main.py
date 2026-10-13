@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
+import time
 from datetime import datetime
 from typing import Optional
 from app.core.config import settings
@@ -116,7 +117,11 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.middleware("http")
 async def add_strict_no_cache_headers(request, call_next):
+    start_time = time.perf_counter()
     response = await call_next(request)
+    process_time = time.perf_counter() - start_time
+    response.headers["X-Process-Time"] = f"{process_time:.4f}s"
+
     # Permitir caché inmutable para bundles de Vite con hash único (/assets/*)
     if request.url.path.startswith("/assets/"):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"

@@ -1,7 +1,7 @@
 // DALOR SIGO-P ERP — Service Worker Oficial (v2.1.0-LIVE)
 // Políticas: Network-First universal con Fallback a Caché Offline para continuidad operativa
 
-const CACHE_NAME = 'dalor-sigop-pwa-v2.2.0';
+const CACHE_NAME = 'dalor-sigop-pwa-v2.3.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -78,7 +78,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // C. Assets (JS, CSS, Fuentes, Imágenes): NETWORK-FIRST para garantizar código siempre fresco
+  // C. Bundles inmutables de Vite (/assets/): CACHE-FIRST instantáneo
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && request.method === 'GET') {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return networkResponse;
+        });
+      })
+    );
+    return;
+  }
+
+  // D. Resto de Recursos (Imágenes, Fuentes, CSS dinámico): NETWORK-FIRST
   event.respondWith(
     fetch(request)
       .then((networkResponse) => {

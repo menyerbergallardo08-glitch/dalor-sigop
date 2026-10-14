@@ -642,3 +642,67 @@ def sync_dalor_catalog(db: Session = Depends(get_db)):
         "message": f"Catálogo DALOR sincronizado: {pers_count} trabajadores y {mat_count} materiales activos."
     }
 
+
+@router.post("/reset-materials-and-tools")
+def reset_materials_and_tools(db: Session = Depends(get_db)):
+    """
+    Surgical reset: Cleans all materials and non-vehicular, non-machinery tools.
+    Preserves all 7 vehicles and all 9 heavy machinery intact.
+    """
+    from app.models.models import (
+        Material, MaterialMovement, Asset, ProjectMaterialRequisition,
+        AssetRentalLoanItem, ResourceAssignmentHistory
+    )
+
+    # 1. Limpiar movimientos de inventario y referencias
+    deleted_movs = db.query(MaterialMovement).delete(synchronize_session=False)
+
+    try:
+        db.query(ProjectMaterialRequisition).update({"material_id": None}, synchronize_session=False)
+        db.query(AssetRentalLoanItem).filter(AssetRentalLoanItem.material_id.isnot(None)).delete(synchronize_session=False)
+    except Exception:
+        pass
+
+    # 2. Purgar tabla de materiales a cero
+    deleted_mats = db.query(Material).delete(synchronize_session=False)
+
+    # 3. Purgar herramientas y equipos menores (dejando vehículos y maquinarias intactos)
+    non_tool_types = ['vehiculo', 'camioneta', 'camion', 'maquinaria', 'planta', 'generador', 'compresor']
+    tool_rows = db.query(Asset.id).filter(~Asset.asset_type.in_(non_tool_types)).all()
+    tool_ids = [r[0] for r in tool_rows]
+    deleted_tools_count = len(tool_ids)
+
+    if tool_ids:
+        try:
+            db.query(AssetRentalLoanItem).filter(AssetRentalLoanItem.asset_id.in_(tool_ids)).delete(synchronize_session=False)
+        except Exception:
+            pass
+        try:
+            db.query(ProjectMaterialRequisition).filter(ProjectMaterialRequisition.asset_id.in_(tool_ids)).update({"asset_id": None}, synchronize_session=False)
+        except Exception:
+            pass
+        try:
+            db.query(ResourceAssignmentHistory).filter(
+                ResourceAssignmentHistory.resource_type == "asset",
+                ResourceAssignmentHistory.resource_id.in_(tool_ids)
+            ).delete(synchronize_session=False)
+        except Exception:
+            pass
+        db.query(Asset).filter(Asset.id.in_(tool_ids)).delete(synchronize_session=False)
+
+    db.commit()
+
+    intact_vehicles = db.query(Asset).filter(Asset.asset_type.in_(['vehiculo', 'camioneta', 'camion'])).count()
+    intact_machinery = db.query(Asset).filter(Asset.asset_type.in_(['maquinaria', 'planta', 'generador', 'compresor'])).count()
+
+    return {
+        "success": True,
+        "message": "Limpieza quirúrgica ejecutada exitosamente. Flota y maquinaria pesada 100% preservadas.",
+        "deleted_materials": deleted_mats,
+        "deleted_movements": deleted_movs,
+        "deleted_tools": deleted_tools_count,
+        "intact_vehicles": intact_vehicles,
+        "intact_machinery": intact_machinery
+    }
+
+

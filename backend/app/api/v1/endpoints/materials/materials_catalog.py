@@ -9,12 +9,119 @@ from app.services.inventory_excel_service import InventoryExcelService
 from .materials_common import MaterialCreate, MaterialUpdate
 
 
+import re
+import unicodedata
+
+def generate_category_prefix(cat_name: str) -> str:
+    if not cat_name or not cat_name.strip():
+        return "MAT"
+    
+    clean = unicodedata.normalize('NFKD', cat_name).encode('ASCII', 'ignore').decode('utf-8').upper().strip()
+    
+    mappings = {
+        'HERRAMIENTA': 'HERR',
+        'HERRAMIENTAS': 'HERR',
+        'MEDICION': 'MED',
+        'EQUIPO DE MEDICION': 'MED',
+        'EQUIPOS DE MEDICION': 'MED',
+        'SOLDADURA': 'SOL',
+        'ABRASIVO': 'ABR',
+        'ABRASIVOS': 'ABR',
+        'TORNILLERIA': 'TOR',
+        'PINTURA': 'PIN',
+        'PINTURAS': 'PIN',
+        'TUBERIA': 'TUB',
+        'TUBERIAS': 'TUB',
+        'ACERO': 'ACE',
+        'ACEROS': 'ACE',
+        'CONSUMIBLE': 'CON',
+        'CONSUMIBLES': 'CON',
+        'ELECTRICO': 'ELEC',
+        'ELECTRICIDAD': 'ELEC',
+        'SEGURIDAD': 'EPP',
+        'EPP': 'EPP',
+        'VALVULA': 'VAL',
+        'VALVULAS': 'VAL',
+        'MANGUERA': 'MAN',
+        'MANGUERAS': 'MAN',
+        'QUIMICO': 'QUI',
+        'QUIMICOS': 'QUI',
+        'LUBRICANTE': 'LUB',
+        'LUBRICANTES': 'LUB',
+        'REPUESTO': 'REP',
+        'REPUESTOS': 'REP',
+        'MAQUINARIA': 'MAQ'
+    }
+    
+    words = [w for w in re.split(r'[\s\-_/,]+', clean) if w and w not in ('Y', 'DE', 'DEL', 'LA', 'EL', 'LOS', 'LAS', 'EN', 'PARA')]
+    if not words:
+        return "MAT"
+    
+    first_word = words[0]
+    if first_word in mappings:
+        return mappings[first_word]
+    if clean in mappings:
+        return mappings[clean]
+    
+    if len(first_word) >= 3:
+        return first_word[:3]
+    elif len(clean) >= 3:
+        return clean[:3]
+    return first_word
+
+
 router = APIRouter()
+
+@router.get("/categories")
+def get_material_categories(db: Session = Depends(get_db)):
+    cats = db.query(Material.category).distinct().filter(
+        Material.category.isnot(None),
+        Material.category != "",
+        Material.category != "None"
+    ).order_by(Material.category.asc()).all()
+    return [c[0] for c in cats if c[0]]
+
+
+@router.get("/next-code")
+def get_next_material_code(
+    category: Optional[str] = Query(None),
+    custom_prefix: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    prefix = (custom_prefix or "").strip().upper()
+    if not prefix:
+        prefix = generate_category_prefix(category or "Material")
+    
+    candidates = db.query(Material.code).filter(Material.code.like(f"{prefix}-%")).all()
+    max_num = 0
+    for row in candidates:
+        if row[0]:
+            nums = re.findall(r'\d+', row[0])
+            if nums:
+                try:
+                    max_num = max(max_num, int(nums[-1]))
+                except ValueError:
+                    pass
+    
+    num = max_num + 1
+    next_code = f"{prefix}-{num:03d}"
+    while db.query(Material).filter(Material.code == next_code).first():
+        num += 1
+        next_code = f"{prefix}-{num:03d}"
+        
+    return {
+        "category": category,
+        "prefix": prefix,
+        "next_code": next_code
+    }
+
 
 @router.get("/")
 def get_materials(
     category: Optional[str] = None,
     search: Optional[str] = None,
+    page: Optional[int] = Query(None, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db)
 ):
     query = db.query(Material).filter((Material.is_active == True) | (Material.is_active == None))
@@ -24,11 +131,17 @@ def get_materials(
         query = query.filter(
             (Material.name.ilike(f"%{search}%")) | (Material.code.ilike(f"%{search}%"))
         )
-    materials = query.order_by(Material.category.asc(), Material.name.asc()).all()
-    total_inventory_usd = sum(m.stock_quantity * m.unit_cost_usd for m in materials)
+    
+    total_items = query.count()
+    total_inventory_usd = sum(m.stock_quantity * m.unit_cost_usd for m in query.all())
+
+    if page:
+        materials = query.order_by(Material.category.asc(), Material.name.asc()).offset((page - 1) * page_size).limit(page_size).all()
+    else:
+        materials = query.order_by(Material.category.asc(), Material.name.asc()).all()
 
     return {
-        "total_items": len(materials),
+        "total_items": total_items,
         "total_inventory_usd": round(total_inventory_usd, 2),
         "materials": [{
             "id": m.id,

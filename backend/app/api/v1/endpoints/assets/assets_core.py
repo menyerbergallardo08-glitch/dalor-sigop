@@ -18,9 +18,12 @@ from .assets_common import *
 router = APIRouter()
 
 
-def get_next_asset_code_value(db: Session, asset_type: str = "herramienta") -> str:
+def get_next_asset_code_value(db: Session, asset_type: str = "herramienta", category: Optional[str] = None) -> str:
     import re
+    import unicodedata
+
     asset_type_clean = (asset_type or "").lower().strip()
+    cat_clean = (category or "").strip()
     
     if asset_type_clean in ("vehiculo", "camioneta", "camion"):
         vehs = db.query(Asset.asset_code).filter(
@@ -54,7 +57,7 @@ def get_next_asset_code_value(db: Session, asset_type: str = "herramienta") -> s
             candidate = f"MAQ-{max_num + 1:03d}"
         return candidate
 
-    elif asset_type_clean in ("equipo_medicion", "medicion"):
+    elif asset_type_clean in ("equipo_medicion", "medicion") or "medicion" in cat_clean.lower():
         meds = db.query(Asset.asset_code).filter(Asset.asset_code.like("MED-%")).all()
         max_num = 0
         for m in meds:
@@ -69,28 +72,54 @@ def get_next_asset_code_value(db: Session, asset_type: str = "herramienta") -> s
         return candidate
 
     else:
-        # Herramientas: HERR-XXXX
-        herrs = db.query(Asset.asset_code).filter(Asset.asset_code.like("HERR-%")).all()
+        # Herramientas / Categorías dinámicas
+        prefix = "HERR"
+        if cat_clean and cat_clean.lower() not in ("general", "herramienta", "herramientas", "none"):
+            # Generar prefijo desde la categoría
+            clean_str = unicodedata.normalize('NFKD', cat_clean).encode('ASCII', 'ignore').decode('utf-8').upper().strip()
+            words = [w for w in re.split(r'[\s\-_/,]+', clean_str) if w and w not in ('Y', 'DE', 'DEL', 'LA', 'EL', 'LOS', 'LAS', 'EN', 'PARA')]
+            if words:
+                prefix = f"HERR-{words[0][:3]}" if len(words[0]) >= 3 else f"HERR-{words[0]}"
+        
+        candidates = db.query(Asset.asset_code).filter(Asset.asset_code.like(f"{prefix}-%")).all()
         max_num = 0
-        for h in herrs:
+        for h in candidates:
             if h[0]:
                 nums = re.findall(r'\d+', h[0])
                 if nums:
                     try:
-                        max_num = max(max_num, int(nums[0]))
+                        max_num = max(max_num, int(nums[-1]))
                     except ValueError:
                         pass
-        num = max(max_num + 1, 916)
-        candidate = f"HERR-{num:04d}"
+        num = max_num + 1
+        candidate = f"{prefix}-{num:03d}"
         while db.query(Asset).filter(Asset.asset_code == candidate).first():
             num += 1
-            candidate = f"HERR-{num:04d}"
+            candidate = f"{prefix}-{num:03d}"
         return candidate
 
 
 @router.get("/next-code")
-def get_next_asset_code_endpoint(asset_type: str = "herramienta", db: Session = Depends(get_db)):
-    return {"next_code": get_next_asset_code_value(db, asset_type)}
+def get_next_asset_code_endpoint(
+    asset_type: str = "herramienta",
+    category: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    return {"next_code": get_next_asset_code_value(db, asset_type, category)}
+
+
+@router.get("/tools-categories")
+def get_tools_categories(db: Session = Depends(get_db)):
+    non_tools = ['vehiculo', 'camioneta', 'camion', 'maquinaria', 'planta', 'generador', 'compresor']
+    cats = db.query(Asset.category).distinct().filter(
+        ~Asset.asset_type.in_(non_tools),
+        Asset.category.isnot(None),
+        Asset.category != "",
+        Asset.category != "General",
+        Asset.category != "None"
+    ).order_by(Asset.category.asc()).all()
+    return [c[0] for c in cats if c[0]]
+
 
 
 @router.get("/tools-summary")

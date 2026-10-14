@@ -79,6 +79,19 @@ async function loadMaterialsList() {
         });
 
         renderMaterialsTable(allMaterials);
+
+        // Actualizar opciones del filtro de categoría dinámicamente con categorías reales
+        const filterCatSel = document.getElementById("filterMaterialCategory");
+        if (filterCatSel) {
+            const currentVal = filterCatSel.value;
+            const uniqueCats = Array.from(new Set(allMaterials.map(m => m.category).filter(Boolean))).sort();
+            filterCatSel.innerHTML = `<option value="">Todas las Categorías</option>` +
+                uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('');
+            if (currentVal && uniqueCats.includes(currentVal)) {
+                filterCatSel.value = currentVal;
+            }
+        }
+
         try {
             if (typeof populateSelectDropdowns === 'function') populateSelectDropdowns();
         } catch (errPop) {
@@ -188,29 +201,105 @@ function filterMaterialsTable() {
     renderMaterialsTable(filtered);
 }
 
-function onNewMaterialCategoryChanged() {
-    const sel = document.getElementById("nmat_category");
-    const customInp = document.getElementById("nmat_category_custom");
-    if (!sel || !customInp) return;
-    if (sel.value === "__NEW__") {
-        customInp.classList.remove("hidden");
-        customInp.required = true;
-        customInp.focus();
-    } else {
-        customInp.classList.add("hidden");
-        customInp.required = false;
-        customInp.value = "";
+let customCategoryDebounceTimer = null;
+
+async function fetchNextMaterialCode(category) {
+    if (!category || !category.trim()) return;
+    try {
+        const res = await authFetch(`${API_BASE}/materials/next-code?category=${encodeURIComponent(category.trim())}`);
+        if (res.ok) {
+            const data = await res.json();
+            const codeInp = document.getElementById("nmat_code");
+            if (codeInp && data.next_code) {
+                codeInp.value = data.next_code;
+                codeInp.style.borderColor = "#10b981";
+                codeInp.style.backgroundColor = "#f0fdf4";
+                setTimeout(() => {
+                    codeInp.style.borderColor = "";
+                    codeInp.style.backgroundColor = "";
+                }, 1000);
+            }
+        }
+    } catch (e) {
+        console.error("Error al obtener próximo código de material:", e);
     }
 }
 
-function openNewMaterialModal() {
-    document.getElementById("newMaterialForm").reset();
+function onNewMaterialCategoryChanged() {
+    const sel = document.getElementById("nmat_category");
     const customInp = document.getElementById("nmat_category_custom");
-    if (customInp) {
-        customInp.classList.add("hidden");
-        customInp.required = false;
-        customInp.value = "";
+    if (!sel) return;
+    
+    if (sel.value === "__NEW__") {
+        if (customInp) {
+            customInp.classList.remove("hidden");
+            customInp.required = true;
+            customInp.focus();
+            if (customInp.value.trim()) {
+                fetchNextMaterialCode(customInp.value.trim());
+            }
+        }
+    } else {
+        if (customInp) {
+            customInp.classList.add("hidden");
+            customInp.required = false;
+            customInp.value = "";
+        }
+        if (sel.value) {
+            fetchNextMaterialCode(sel.value);
+        }
     }
+}
+
+function onCustomCategoryTyped(val) {
+    if (customCategoryDebounceTimer) clearTimeout(customCategoryDebounceTimer);
+    customCategoryDebounceTimer = setTimeout(() => {
+        if (val && val.trim().length >= 2) {
+            fetchNextMaterialCode(val.trim());
+        }
+    }, 300);
+}
+
+async function openNewMaterialModal() {
+    const form = document.getElementById("newMaterialForm");
+    if (form) form.reset();
+    
+    const customInp = document.getElementById("nmat_category_custom");
+    const sel = document.getElementById("nmat_category");
+    const codeInp = document.getElementById("nmat_code");
+    if (codeInp) codeInp.value = "";
+
+    // Cargar categorías existentes directamente desde el backend
+    try {
+        const res = await authFetch(`${API_BASE}/materials/categories`);
+        if (res.ok) {
+            const categories = await res.json();
+            if (sel) {
+                if (categories && categories.length > 0) {
+                    sel.innerHTML = `<option value="">-- Seleccionar Categoría --</option>` +
+                        categories.map(c => `<option value="${c}">${c}</option>`).join('') +
+                        `<option value="__NEW__" style="font-weight: bold; color: #2563eb;">+ Crear Nueva Categoría...</option>`;
+                    if (customInp) {
+                        customInp.classList.add("hidden");
+                        customInp.required = false;
+                        customInp.value = "";
+                    }
+                } else {
+                    // Cero categorías existentes: modo directo para crear la primera
+                    sel.innerHTML = `<option value="__NEW__" selected>+ Crear Nueva Categoría...</option>`;
+                    if (customInp) {
+                        customInp.classList.remove("hidden");
+                        customInp.required = true;
+                        customInp.value = "";
+                        setTimeout(() => customInp.focus(), 150);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Error al cargar categorías de materiales:", e);
+    }
+
     openModal("modalNewMaterial");
 }
 
@@ -1447,9 +1536,11 @@ if (typeof window !== 'undefined') {
     window.submitMaterialEntry = submitMaterialEntry;
     window.toggleMaterialEntryPaymentBox = toggleMaterialEntryPaymentBox;
     window.onNewMaterialCategoryChanged = onNewMaterialCategoryChanged;
+    window.onCustomCategoryTyped = onCustomCategoryTyped;
 }
 
 export { 
+    onCustomCategoryTyped,
     addMaterialDeliveryRow, 
     calcMaterialConsumeTotal, 
     calcMaterialEntryTotal, 

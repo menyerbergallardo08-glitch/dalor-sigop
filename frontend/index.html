@@ -6818,19 +6818,14 @@
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
 
                     <div>
-
                         <label class="form-label">Código *</label>
-
-                        <input type="text" id="tool_code" placeholder="HER-005" class="form-input" required>
-
+                        <input type="text" id="tool_code" placeholder="HERR-001" class="form-input" required>
+                        <small style="font-size: 10px; color: #0284c7; display: block; margin-top: 2px;">⚡ Correlativo automático por categoría</small>
                     </div>
 
                     <div>
-
                         <label class="form-label">Nombre del Equipo *</label>
-
                         <input type="text" id="tool_name" placeholder="Ej: Generador Eléctrico 10kVA" class="form-input" required>
-
                     </div>
 
                 </div>
@@ -6838,29 +6833,26 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
-
-                        <label class="form-label">Tipo de Recurso</label>
-
-                        <select id="tool_type" class="form-select">
-
-                            <option value="herramienta">Herramienta Menor</option>
-
-                            <option value="maquinaria">Maquinaria Pesada</option>
-
-                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
-
-                            <option value="equipo_especial">Equipo Especial</option>
-
+                        <label class="form-label">Tipo de Recurso *</label>
+                        <select id="tool_type" class="form-select" onchange="onToolTypeOrCategoryChanged()">
+                            <option value="herramienta">Herramienta Menor (HERR)</option>
+                            <option value="equipo_medicion">Equipo de Medición (MED)</option>
+                            <option value="maquinaria">Maquinaria (MAQ)</option>
                         </select>
-
                     </div>
 
                     <div>
+                        <label class="form-label">Categoría / Especialidad</label>
+                        <input type="text" id="tool_category" placeholder="Ej: Neumática, Eléctrica, Manual..." class="form-input" oninput="onToolCategoryTyped(this.value)">
+                    </div>
 
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
                         <label class="form-label">Marca / Modelo</label>
-
                         <input type="text" id="tool_brand" placeholder="Ej: Caterpillar / DeWalt" class="form-input">
-
                     </div>
 
                 </div>
@@ -7762,21 +7754,12 @@
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
-                    <div>
-
                         <label class="form-label">Categoría *</label>
                         <select id="nmat_category" class="form-select" required onchange="onNewMaterialCategoryChanged()">
-                            <option value="Planchas y Laminas">Planchas y Láminas</option>
-                            <option value="Acero Estructural">Acero Estructural / Vigas</option>
-                            <option value="Tuberias y Canerias">Tuberías y Cañerías</option>
-                            <option value="Soldadura y Gases">Soldadura y Gases</option>
-                            <option value="Abrasivos y Corte">Abrasivos y Corte</option>
-                            <option value="Tornilleria y Fijaciones">Tornillería y Fijaciones</option>
-                            <option value="Pinturas y Revestimientos">Pinturas y Revestimientos</option>
-                            <option value="Consumibles de Taller">Consumibles de Taller</option>
+                            <option value="">-- Seleccionar Categoría --</option>
                             <option value="__NEW__" style="font-weight: bold; color: #2563eb;">+ Crear Nueva Categoría...</option>
                         </select>
-                        <input type="text" id="nmat_category_custom" class="form-input hidden" style="margin-top: 6px;" placeholder="Escribe el nombre de la nueva categoría...">
+                        <input type="text" id="nmat_category_custom" class="form-input hidden" style="margin-top: 6px;" placeholder="Escribe el nombre de la nueva categoría..." oninput="onCustomCategoryTyped(this.value)">
                     </div>
 
                     <div>

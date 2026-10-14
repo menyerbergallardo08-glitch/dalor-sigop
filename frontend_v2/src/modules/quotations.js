@@ -29,6 +29,8 @@ export const editQuotation = (...args) => (window.editQuotation ? window.editQuo
 export const submitCreateQuotation = (...args) => (window.submitCreateQuotation ? window.submitCreateQuotation(...args) : undefined);
 export const cancelQuotationConversion = (...args) => (window.cancelQuotationConversion ? window.cancelQuotationConversion(...args) : undefined);
 export const convertQuoteToProject = (...args) => (window.convertQuoteToProject ? window.convertQuoteToProject(...args) : undefined);
+export const declineQuotation = (...args) => (window.declineQuotation ? window.declineQuotation(...args) : undefined);
+export const reopenQuotation = (...args) => (window.reopenQuotation ? window.reopenQuotation(...args) : undefined);
 export const checkQuoteClientCreditRisk = (...args) => (window.checkQuoteClientCreditRisk ? window.checkQuoteClientCreditRisk(...args) : undefined);
 export const onQuoteClientChanged = (...args) => (window.onQuoteClientChanged ? window.onQuoteClientChanged(...args) : undefined);
 export const confirmQuoteClientRisk = (...args) => (window.confirmQuoteClientRisk ? window.confirmQuoteClientRisk(...args) : undefined);

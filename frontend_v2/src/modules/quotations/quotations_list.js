@@ -122,7 +122,13 @@ function renderQuotationsPaginated() {
 
     // Filtro por estatus
     if (quoteFilterStatus) {
-        quotes = quotes.filter(item => (item.status || "").toLowerCase() === quoteFilterStatus);
+        quotes = quotes.filter(item => {
+            const s = (item.status || "").toLowerCase();
+            if (quoteFilterStatus === 'declinado' || quoteFilterStatus === 'rechazado') {
+                return s === 'declinado' || s === 'rechazado';
+            }
+            return s === quoteFilterStatus;
+        });
     }
 
     // Filtro por fechas
@@ -159,10 +165,30 @@ function renderQuotationsPaginated() {
 
     tbody.innerHTML = pageItems.map(q => {
         const clientName = q.client ? q.client.name : 'Cliente General';
-        const isApproved = q.status === 'aprobado';
+        const rawStatus = (q.status || 'borrador').toLowerCase();
+        const isApproved = rawStatus === 'aprobado';
+        const isDeclined = rawStatus === 'declinado' || rawStatus === 'rechazado';
         const subtotal = Number(q.subtotal_usd || 0);
         const tax = Number(q.tax_usd || 0);
         const total = Number(q.total_usd || 0);
+
+        let badgeBg = '#f1f5f9';
+        let badgeColor = '#475569';
+        let badgeBorder = '1px solid #e2e8f0';
+        let badgeText = rawStatus.toUpperCase();
+
+        if (isApproved) {
+            badgeBg = '#dcfce7';
+            badgeColor = '#166534';
+            badgeBorder = '1px solid #bbf7d0';
+            badgeText = 'APROBADO';
+        } else if (isDeclined) {
+            badgeBg = '#fee2e2';
+            badgeColor = '#991b1b';
+            badgeBorder = '1px solid #fecaca';
+            badgeText = 'DECLINADO';
+        }
+
         return `
         <tr>
             <td style="font-weight: 800; color: var(--dalor-blue);">
@@ -179,8 +205,8 @@ function renderQuotationsPaginated() {
             </td>
             <td style="font-weight: 800; color: var(--dalor-navy);">$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td>
-                <span style="font-size: 10px; padding: 3px 8px; border-radius: 9999px; font-weight: 800; ${isApproved ? 'background: #dcfce7; color: #166534;' : 'background: #f1f5f9; color: #475569;'}">
-                    ${(q.status || 'borrador').toUpperCase()}
+                <span style="font-size: 10px; padding: 3px 8px; border-radius: 9999px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor}; border: ${badgeBorder}; display: inline-block;">
+                    ${badgeText}
                 </span>
             </td>
             <td style="text-align: center; white-space: nowrap;">
@@ -190,11 +216,20 @@ function renderQuotationsPaginated() {
                 <button onclick="printQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Imprimir / Exportar Cotización">
                     <i class="fa-solid fa-print"></i>
                 </button>
-                ${!isApproved ? `
+                ${isApproved ? `
+                    <span style="font-size: 11px; color: #059669; font-weight: bold; margin-left: 6px;"><i class="fa-solid fa-check-circle"></i> Obra Activa</span>
+                ` : isDeclined ? `
+                    <button onclick="reopenQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px; color: #0284c7; border: 1px solid #bae6fd; font-weight: 600;" title="Reabrir a Borrador para renegociar">
+                        <i class="fa-solid fa-rotate-left"></i> Reabrir
+                    </button>
+                ` : `
                     <button onclick="convertQuoteToProject(${q.id})" class="btn-primary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px; background: #059669;" title="Aprobar y Convertir en Proyecto">
                         <i class="fa-solid fa-check"></i> Convertir en Proyecto
                     </button>
-                ` : '<span style="font-size: 11px; color: #059669; font-weight: bold; margin-left: 6px;">Obra Activa</span>'}
+                    <button onclick="declineQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px; color: #dc2626; border: 1px solid #fecaca; font-weight: 600;" title="Marcar como Declinado por el cliente">
+                        <i class="fa-solid fa-xmark"></i> Declinó
+                    </button>
+                `}
             </td>
         </tr>`;
     }).join('');

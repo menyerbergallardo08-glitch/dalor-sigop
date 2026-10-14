@@ -826,6 +826,67 @@ function cancelQuoteClientRisk() {
     window.quoteClientRiskDismissed = false;
 }
 
+// Marcar cotización como Declinada por el cliente
+async function declineQuotation(quoteId) {
+    if (!confirm('¿El cliente ha declinado o rechazado esta cotización?\n\nSe marcará como DECLINADA en el sistema. Esto no genera proyectos ni afectará la caja.')) {
+        return;
+    }
+
+    const reason = prompt('Indica opcionalmente el motivo del rechazo (ej: Precio fuera de presupuesto, Plazo de entrega, Desistimiento del cliente):', '') || '';
+
+    try {
+        const url = `${API_BASE}/quotations/${quoteId}/decline` + (reason ? `?reason=${encodeURIComponent(reason)}` : '');
+        const res = await authFetch(url, { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Error al declinar cotización.');
+        }
+
+        const data = await res.json();
+        if (typeof showNotification === 'function') {
+            showNotification(data.message || 'Cotización marcada como DECLINADA.', 'info');
+        } else if (typeof alert === 'function') {
+            alert(data.message || 'Cotización marcada como DECLINADA.');
+        }
+
+        if (typeof loadQuotations === 'function') {
+            await loadQuotations();
+        }
+    } catch (e) {
+        console.error('Error al declinar presupuesto:', e);
+        alert(e.message || 'No se pudo registrar la declinación.');
+    }
+}
+
+// Reabrir cotización a Borrador
+async function reopenQuotation(quoteId) {
+    if (!confirm('¿Deseas reactivar esta cotización y devolverla al estado BORRADOR para volver a editarla o renegociarla?')) {
+        return;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/quotations/${quoteId}/reopen`, { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Error al reabrir cotización.');
+        }
+
+        const data = await res.json();
+        if (typeof showNotification === 'function') {
+            showNotification(data.message || 'Cotización reactivada como Borrador.', 'success');
+        } else if (typeof alert === 'function') {
+            alert(data.message || 'Cotización reactivada como Borrador.');
+        }
+
+        if (typeof loadQuotations === 'function') {
+            await loadQuotations();
+        }
+    } catch (e) {
+        console.error('Error al reabrir presupuesto:', e);
+        alert(e.message || 'No se pudo reabrir la cotización.');
+    }
+}
+
 
 // Exponer al objeto global window para eventos inline y compatibilidad
 if (typeof window !== 'undefined') {
@@ -840,6 +901,8 @@ if (typeof window !== 'undefined') {
     window.submitCreateQuotation = submitCreateQuotation;
     window.cancelQuotationConversion = cancelQuotationConversion;
     window.convertQuoteToProject = convertQuoteToProject;
+    window.declineQuotation = declineQuotation;
+    window.reopenQuotation = reopenQuotation;
     window.checkQuoteClientCreditRisk = checkQuoteClientCreditRisk;
     window.onQuoteClientChanged = onQuoteClientChanged;
     window.confirmQuoteClientRisk = confirmQuoteClientRisk;

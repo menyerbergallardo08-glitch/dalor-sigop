@@ -2,7 +2,7 @@
 Conversion & approval logic: Quotation -> Active Project and Material Requisitions.
 """
 from .quotations_common import (
-    APIRouter, Depends, HTTPException, Session, datetime, re,
+    APIRouter, Depends, HTTPException, Session, datetime, re, Optional,
     get_db, Quotation, Project, Material, ProjectMaterialRequisition
 )
 
@@ -113,3 +113,65 @@ def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db
         "project_code": new_project.code,
         "project_name": new_project.name
     }
+
+
+@router.post("/{quotation_id}/decline")
+def decline_quotation(
+    quotation_id: int,
+    reason: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Marca un presupuesto como declinado por el cliente sin alterar proyectos ni caja."""
+    quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada.")
+    
+    if quote.status == "aprobado":
+        p = db.query(Project).filter(
+            Project.client_id == quote.client_id,
+            Project.name == quote.project_title,
+            Project.is_active == True
+        ).first()
+        if p:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Esta cotización ya fue aprobada y tiene el Proyecto activo {p.code}. Inactiva o elimina el proyecto antes de marcarla como declinada."
+            )
+
+    quote.status = "declinado"
+    clean_reason = (reason or "").strip()
+    stamp = datetime.utcnow().strftime("%d/%m/%Y")
+    note_entry = f"[{stamp}] Cliente declinó la propuesta" + (f". Motivo: {clean_reason}" if clean_reason else ".")
+    quote.notes = f"{quote.notes}\n{note_entry}" if quote.notes else note_entry
+
+    db.commit()
+    db.refresh(quote)
+    return {
+        "success": True,
+        "message": f"Cotización {quote.quote_number} marcada como DECLINADA por el cliente.",
+        "quotation_id": quote.id,
+        "status": quote.status
+    }
+
+
+@router.post("/{quotation_id}/reopen")
+def reopen_quotation(quotation_id: int, db: Session = Depends(get_db)):
+    """Reabre una cotización declinada devolviéndola al estado borrador para su renegociación."""
+    quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada.")
+    
+    quote.status = "borrador"
+    stamp = datetime.utcnow().strftime("%d/%m/%Y")
+    note_entry = f"[{stamp}] Presupuesto reabierto a Borrador para renegociación comercial."
+    quote.notes = f"{quote.notes}\n{note_entry}" if quote.notes else note_entry
+
+    db.commit()
+    db.refresh(quote)
+    return {
+        "success": True,
+        "message": f"Cotización {quote.quote_number} reabierta a BORRADOR exitosamente.",
+        "quotation_id": quote.id,
+        "status": quote.status
+    }
+

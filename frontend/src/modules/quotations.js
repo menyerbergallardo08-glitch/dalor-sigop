@@ -80,7 +80,27 @@ function renderQuotationsPaginated() {
 
     tbody.innerHTML = pageItems.map(q => {
         const clientName = q.client ? q.client.name : 'Cliente General';
-        const isApproved = q.status === 'aprobado';
+        const rawStatus = (q.status || 'borrador').toLowerCase();
+        const isApproved = rawStatus === 'aprobado';
+        const isDeclined = rawStatus === 'declinado' || rawStatus === 'rechazado';
+
+        let badgeBg = '#f1f5f9';
+        let badgeColor = '#475569';
+        let badgeBorder = '1px solid #e2e8f0';
+        let badgeText = rawStatus.toUpperCase();
+
+        if (isApproved) {
+            badgeBg = '#dcfce7';
+            badgeColor = '#166534';
+            badgeBorder = '1px solid #bbf7d0';
+            badgeText = 'APROBADO';
+        } else if (isDeclined) {
+            badgeBg = '#fee2e2';
+            badgeColor = '#991b1b';
+            badgeBorder = '1px solid #fecaca';
+            badgeText = 'DECLINADO';
+        }
+
         return `
         <tr>
             <td style="font-weight: 800; color: var(--dalor-blue);">${q.quote_number}</td>
@@ -92,8 +112,8 @@ function renderQuotationsPaginated() {
             </td>
             <td style="font-weight: 800; color: var(--dalor-navy);">$${q.total_usd.toLocaleString()}</td>
             <td>
-                <span style="font-size: 10px; padding: 3px 8px; border-radius: 9999px; font-weight: 800; ${isApproved ? 'background: #dcfce7; color: #166534;' : 'background: #f1f5f9; color: #475569;'}">
-                    ${q.status.toUpperCase()}
+                <span style="font-size: 10px; padding: 3px 8px; border-radius: 9999px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor}; border: ${badgeBorder}; display: inline-block;">
+                    ${badgeText}
                 </span>
             </td>
             <td style="text-align: center; white-space: nowrap;">
@@ -103,11 +123,20 @@ function renderQuotationsPaginated() {
                 <button onclick="printQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Imprimir / Exportar Cotización">
                     <i class="fa-solid fa-print"></i>
                 </button>
-                ${!isApproved ? `
+                ${isApproved ? `
+                    <span style="font-size: 11px; color: #059669; font-weight: bold; margin-left: 6px;"><i class="fa-solid fa-check-circle"></i> Obra Activa</span>
+                ` : isDeclined ? `
+                    <button onclick="reopenQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px; color: #0284c7; border: 1px solid #bae6fd; font-weight: 600;" title="Reabrir a Borrador para renegociar">
+                        <i class="fa-solid fa-rotate-left"></i> Reabrir
+                    </button>
+                ` : `
                     <button onclick="convertQuoteToProject(${q.id})" class="btn-primary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px; background: #059669;" title="Aprobar y Convertir en Proyecto">
                         <i class="fa-solid fa-check"></i> Convertir en Proyecto
                     </button>
-                ` : '<span style="font-size: 11px; color: #059669; font-weight: bold; margin-left: 6px;">Obra Activa</span>'}
+                    <button onclick="declineQuotation(${q.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-left: 4px; color: #dc2626; border: 1px solid #fecaca; font-weight: 600;" title="Marcar como Declinado por el cliente">
+                        <i class="fa-solid fa-xmark"></i> Declinó
+                    </button>
+                `}
             </td>
         </tr>`;
     }).join('');
@@ -797,7 +826,66 @@ async function convertQuoteToProject(quoteId) {
     }
 }
 
+// Marcar cotización como Declinada por el cliente
+async function declineQuotation(quoteId) {
+    if (!confirm('¿El cliente ha declinado o rechazado esta cotización?\n\nSe marcará como DECLINADA en el sistema. Esto no genera proyectos ni afectará la caja.')) {
+        return;
+    }
 
+    const reason = prompt('Indica opcionalmente el motivo del rechazo (ej: Precio fuera de presupuesto, Plazo de entrega, Desistimiento del cliente):', '') || '';
+
+    try {
+        const url = `${API_BASE}/quotations/${quoteId}/decline` + (reason ? `?reason=${encodeURIComponent(reason)}` : '');
+        const res = await authFetch(url, { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Error al declinar cotización.');
+        }
+
+        const data = await res.json();
+        if (typeof showNotification === 'function') {
+            showNotification(data.message || 'Cotización marcada como DECLINADA.', 'info');
+        } else if (typeof alert === 'function') {
+            alert(data.message || 'Cotización marcada como DECLINADA.');
+        }
+
+        if (typeof loadQuotations === 'function') {
+            await loadQuotations();
+        }
+    } catch (e) {
+        console.error('Error al declinar presupuesto:', e);
+        alert(e.message || 'No se pudo registrar la declinación.');
+    }
+}
+
+// Reabrir cotización a Borrador
+async function reopenQuotation(quoteId) {
+    if (!confirm('¿Deseas reactivar esta cotización y devolverla al estado BORRADOR para volver a editarla o renegociarla?')) {
+        return;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/quotations/${quoteId}/reopen`, { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Error al reabrir cotización.');
+        }
+
+        const data = await res.json();
+        if (typeof showNotification === 'function') {
+            showNotification(data.message || 'Cotización reactivada como Borrador.', 'success');
+        } else if (typeof alert === 'function') {
+            alert(data.message || 'Cotización reactivada como Borrador.');
+        }
+
+        if (typeof loadQuotations === 'function') {
+            await loadQuotations();
+        }
+    } catch (e) {
+        console.error('Error al reabrir presupuesto:', e);
+        alert(e.message || 'No se pudo reabrir la cotización.');
+    }
+}
 
 async function printQuotation(quoteId) {
 
@@ -1602,6 +1690,8 @@ if (typeof window !== 'undefined') {
     window.addQuotationRow = addQuotationRow;
     window.cancelQuotationConversion = cancelQuotationConversion;
     window.convertQuoteToProject = convertQuoteToProject;
+    window.declineQuotation = declineQuotation;
+    window.reopenQuotation = reopenQuotation;
     window.deleteService = deleteService;
     window.editQuotation = editQuotation;
     window.loadQuotations = loadQuotations;
@@ -1630,7 +1720,7 @@ if (typeof window !== 'undefined') {
 }
 
 export { 
-    addQuotationRow, cancelQuotationConversion, convertQuoteToProject, deleteService, 
+    addQuotationRow, cancelQuotationConversion, convertQuoteToProject, declineQuotation, reopenQuotation, deleteService, 
     editQuotation, loadQuotations, loadServices, onQuotationCurrencyChanged, 
     onServiceCategoryChanged, onServiceUnitChanged, onServiceSelected, onTaxTypeChanged, 
     openNewQuotationModal, openNewServiceModal, printQuotation, recalcQuotationTotals, 

@@ -1,8 +1,15 @@
 // Sigop ERP - Submódulo de Proyectos Modularizado
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) || '/api/v1';
 
+var allPersonnel = window.allPersonnel = window.allPersonnel || [];
+var allAssets = window.allAssets = window.allAssets || [];
+var allClients = window.allClients = window.allClients || [];
+var allMaterials = window.allMaterials = window.allMaterials || [];
+
 const authFetch = (url, options = {}) => {
-    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || (typeof window !== 'undefined' && window.authToken);
+    const token = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('dalor_token')) ||
+                  (typeof localStorage !== 'undefined' && (localStorage.getItem('dalor_token') || localStorage.getItem('token'))) ||
+                  (typeof window !== 'undefined' && window.authToken) || '';
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (options.body instanceof FormData) {
@@ -591,9 +598,10 @@ async function releaseProjectResource(resourceType, resourceId, resourceName, ta
             throw new Error(err.detail || "Error al liberar recurso.");
         }
 
-        // Invalidar caché en memoria para disponibilidad reactiva inmediata sin recargar página
-        window.allAssets = [];
-        window.allPersonnel = [];
+        // Recargar datos maestros frescos para disponibilidad reactiva inmediata
+        if (typeof window.loadInitialMasterData === 'function') {
+            await window.loadInitialMasterData(true);
+        }
 
         if (typeof showToastNotification === 'function') {
             showToastNotification(`✅ ${resourceName || 'Recurso'} retornado y DISPONIBLE en Base Central.`, "success");
@@ -799,8 +807,10 @@ async function submitSubstituteResource(event) {
         const data = await res.json();
         closeModal("modalSubstituteResource");
 
-        window.allAssets = [];
-        window.allPersonnel = [];
+        // Recargar datos maestros frescos para disponibilidad reactiva inmediata
+        if (typeof window.loadInitialMasterData === 'function') {
+            await window.loadInitialMasterData(true);
+        }
 
         if (typeof showToastNotification === 'function') {
             showToastNotification(data.message || "✅ Sustitución de recurso completada con éxito.", "success");

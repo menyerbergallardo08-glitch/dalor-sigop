@@ -1,8 +1,15 @@
 // Sigop ERP - Submódulo de Proyectos Modularizado
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) || '/api/v1';
 
+var allPersonnel = window.allPersonnel = window.allPersonnel || [];
+var allAssets = window.allAssets = window.allAssets || [];
+var allClients = window.allClients = window.allClients || [];
+var allMaterials = window.allMaterials = window.allMaterials || [];
+
 const authFetch = (url, options = {}) => {
-    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || (typeof window !== 'undefined' && window.authToken);
+    const token = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('dalor_token')) ||
+                  (typeof localStorage !== 'undefined' && (localStorage.getItem('dalor_token') || localStorage.getItem('token'))) ||
+                  (typeof window !== 'undefined' && window.authToken) || '';
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (options.body instanceof FormData) {
@@ -237,11 +244,35 @@ function initProjectPlanningView() {
 
 
 
-function populatePlanDropdownSelectors() {
-    const rawPersonnel = (window.allPersonnel && window.allPersonnel.length > 0) ? window.allPersonnel : (allPersonnel || []);
+async function populatePlanDropdownSelectors() {
+    let rawPersonnel = (window.allPersonnel && window.allPersonnel.length > 0) ? window.allPersonnel : (allPersonnel || []);
+    let rawAssets = (window.allAssets && window.allAssets.length > 0) ? window.allAssets : (allAssets || []);
+
+    if (rawPersonnel.length === 0 || rawAssets.length === 0) {
+        try {
+            const [resPers, resAss] = await Promise.all([
+                authFetch(`${API_BASE}/personnel/`),
+                authFetch(`${API_BASE}/assets/`)
+            ]);
+            if (resPers.ok) {
+                const pData = await resPers.json();
+                if (Array.isArray(pData) && pData.length > 0) {
+                    rawPersonnel = window.allPersonnel = allPersonnel = pData;
+                }
+            }
+            if (resAss.ok) {
+                const aData = await resAss.json();
+                if (Array.isArray(aData) && aData.length > 0) {
+                    rawAssets = window.allAssets = allAssets = aData;
+                }
+            }
+        } catch(e) {
+            console.warn("Auto-fetch fallback en populatePlanDropdownSelectors:", e);
+        }
+    }
+
     const safePersonnel = rawPersonnel.filter(p => !p.current_project_id && p.status !== 'en_obra' && p.status !== 'inactivo' && (p.status === 'disponible_base' || p.status === 'disponible' || !p.status));
 
-    const rawAssets = (window.allAssets && window.allAssets.length > 0) ? window.allAssets : (allAssets || []);
     // Solo mostrar activos disponibles que no estén asignados a otra obra activa, ni en mantenimiento, ni alquilados
     const availableAssets = rawAssets.filter(a => !a.current_project_id && a.status !== 'en_obra' && a.status !== 'alquilado_a_tercero' && a.status !== 'en_mantenimiento' && a.status !== 'inactivo' && (a.status === 'disponible_base' || a.status === 'disponible' || !a.status));
 
@@ -572,9 +603,7 @@ function renderAssignedTags() {
         } else {
 
             persContainer.innerHTML = selectedPersonnelIds.map(id => {
-
-                const p = allPersonnel.find(item => item.id === id);
-
+                const p = (window.allPersonnel || allPersonnel || []).find(item => item.id === id);
                 if (!p) return '';
 
                 return `

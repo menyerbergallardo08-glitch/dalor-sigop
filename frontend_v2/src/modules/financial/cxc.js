@@ -23,7 +23,9 @@ function safeParseFloat(val) {
 }
 
 const authFetch = (url, options = {}) => {
-    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || (typeof window !== 'undefined' && window.authToken);
+    const token = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('dalor_token')) ||
+                  (typeof localStorage !== 'undefined' && (localStorage.getItem('dalor_token') || localStorage.getItem('token'))) ||
+                  (typeof window !== 'undefined' && window.authToken) || '';
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (options.body instanceof FormData) {

@@ -1,8 +1,15 @@
 // Sigop ERP - Submódulo de Proyectos Modularizado
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) || '/api/v1';
 
+var allPersonnel = window.allPersonnel = window.allPersonnel || [];
+var allAssets = window.allAssets = window.allAssets || [];
+var allClients = window.allClients = window.allClients || [];
+var allMaterials = window.allMaterials = window.allMaterials || [];
+
 const authFetch = (url, options = {}) => {
-    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || (typeof window !== 'undefined' && window.authToken);
+    const token = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('dalor_token')) ||
+                  (typeof localStorage !== 'undefined' && (localStorage.getItem('dalor_token') || localStorage.getItem('token'))) ||
+                  (typeof window !== 'undefined' && window.authToken) || '';
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (options.body instanceof FormData) {
@@ -323,8 +330,8 @@ async function populateEditProjectDropdowns(currentProjId) {
     }
     const persSel = document.getElementById('edit_select_personnel');
     if (persSel) {
-        const validPers = allPers.filter(p => !p.current_project_id || p.current_project_id === currentProjId || editSelectedPersonnelIds.includes(p.id));
-        persSel.innerHTML = '<option value="">-- Seleccionar Trabajador --</option>' +
+        const validPers = allPers.filter(p => (!p.current_project_id || p.current_project_id === currentProjId || editSelectedPersonnelIds.includes(p.id) || p.status === 'disponible_base' || p.status === 'disponible') && p.is_active !== false && p.status !== 'inactivo');
+        persSel.innerHTML = `<option value="">-- Seleccionar Trabajador (${validPers.length} disp. en base) --</option>` +
             validPers.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name} (${p.role_title || 'Operario'})</option>`).join('');
     }
 

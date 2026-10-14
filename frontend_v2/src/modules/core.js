@@ -898,8 +898,14 @@ async function loadInitialMasterData(force = false) {
         return _masterDataPromise;
     }
 
-    // 2. Caché en memoria: Si los datos se cargaron recientemente y no se fuerza recarga, retornar de inmediato sin tocar el DOM
-    if (!force && (now - _lastMasterDataFetchTime < MASTER_DATA_TTL_MS) && window.allClients && window.allClients.length > 0) {
+    // 2. Caché en memoria: Si los datos se cargaron recientemente y están completos, retornar de inmediato
+    if (!force && (now - _lastMasterDataFetchTime < MASTER_DATA_TTL_MS) && 
+        window.allClients && window.allClients.length > 0 && 
+        window.allPersonnel && window.allPersonnel.length > 0 && 
+        window.allAssets && window.allAssets.length > 0) {
+        if (typeof populatePlanDropdownSelectors === 'function') {
+            populatePlanDropdownSelectors();
+        }
         return Promise.resolve();
     }
 

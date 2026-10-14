@@ -965,6 +965,45 @@ def delete_project(project_id: int, req: Optional[AdminAuthProjectDelete] = None
     proj.is_active = False
     proj.status = "inactivo"
 
+    # Auto-liberar activos asignados retornándolos a base central
+    assigned_assets = db.query(Asset).filter(Asset.current_project_id == proj.id).all()
+    for a in assigned_assets:
+        a.status = "disponible_base"
+        a.current_project_id = None
+        a.current_location = "Sede Central Dalor (Guacara)"
+        a.current_custodian_name = "Disponible en Base"
+        db.add(ResourceAssignmentHistory(
+            project_id=proj.id,
+            resource_type="asset",
+            resource_id=a.id,
+            resource_code=a.asset_code,
+            resource_name=a.name,
+            custodian_name="Base Central",
+            origin_location=proj.location or "Planta / Obra",
+            destination_location="Sede Central Dalor (Guacara)",
+            status="disponible_base",
+            notes=f"Liberación automática por inactivación de obra {proj.code}"
+        ))
+
+    # Auto-liberar personal asignado retornándolos a base central
+    assigned_personnel = db.query(Personnel).filter(Personnel.current_project_id == proj.id).all()
+    for p in assigned_personnel:
+        p.status = "disponible_base"
+        p.current_project_id = None
+        p.current_location = "Sede Central Dalor (Guacara)"
+        db.add(ResourceAssignmentHistory(
+            project_id=proj.id,
+            resource_type="personnel",
+            resource_id=p.id,
+            resource_code=p.code,
+            resource_name=p.full_name,
+            custodian_name="Base Central",
+            origin_location=proj.location or "Planta / Obra",
+            destination_location="Sede Central Dalor (Guacara)",
+            status="disponible_base",
+            notes=f"Liberación automática por inactivación de obra {proj.code}"
+        ))
+
     spent_now = round(sum(e.amount_usd for e in proj.expenses if e.status == 'aprobado'), 2) if proj.expenses else 0.0
     audit = AuditLog(
         username="director",

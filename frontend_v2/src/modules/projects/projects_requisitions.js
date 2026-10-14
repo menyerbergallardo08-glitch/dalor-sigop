@@ -1,8 +1,15 @@
 // Sigop ERP - Submódulo de Proyectos Modularizado
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) || '/api/v1';
 
+var allPersonnel = window.allPersonnel = window.allPersonnel || [];
+var allAssets = window.allAssets = window.allAssets || [];
+var allClients = window.allClients = window.allClients || [];
+var allMaterials = window.allMaterials = window.allMaterials || [];
+
 const authFetch = (url, options = {}) => {
-    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || (typeof window !== 'undefined' && window.authToken);
+    const token = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('dalor_token')) ||
+                  (typeof localStorage !== 'undefined' && (localStorage.getItem('dalor_token') || localStorage.getItem('token'))) ||
+                  (typeof window !== 'undefined' && window.authToken) || '';
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (options.body instanceof FormData) {

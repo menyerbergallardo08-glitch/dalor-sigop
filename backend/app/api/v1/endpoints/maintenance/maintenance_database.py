@@ -146,49 +146,7 @@ def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends
                 is_active=True
             ))
 
-    # Cargar 908 herramientas desde clean_tools.json si faltan
-    if db.query(Asset).count() < 916:
-        tools_json_paths = [
-            "/app/backend/clean_tools.json",
-            "/app/backend/app/data/clean_tools.json",
-            "/app/clean_tools.json",
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "clean_tools.json"),
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))), "clean_tools.json"),
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "data", "clean_tools.json"),
-            os.path.join(os.getcwd(), "clean_tools.json"),
-            os.path.join(os.getcwd(), "backend", "clean_tools.json"),
-            os.path.join(os.getcwd(), "backend", "app", "data", "clean_tools.json"),
-            r"C:\Users\GATEWAY\Desktop\CLIENTES DE CONSULTORIA\Metalmecanica Dalor\clean_tools.json"
-        ]
-        for tjp in tools_json_paths:
-            if os.path.exists(tjp):
-                try:
-                    import json
-                    with open(tjp, "r", encoding="utf-8") as tjf:
-                        tools_data = json.load(tjf)
-                    for t in tools_data:
-                        code = t.get("code")
-                        if code:
-                            et = db.query(Asset).filter(Asset.asset_code == code).first()
-                            if not et:
-                                db.add(Asset(
-                                    asset_code=code,
-                                    name=t.get("name"),
-                                    asset_type=t.get("asset_type", "herramienta"),
-                                    brand=t.get("brand"),
-                                    model=t.get("model"),
-                                    serial_number=t.get("serial_number"),
-                                    status="disponible_base",
-                                    current_location=t.get("location", "Sede Central Dalor (Guacara)"),
-                                    current_odometer=0.0,
-                                    last_service_odometer=0.0,
-                                    is_active=True
-                                ))
-                            else:
-                                et.is_active = True
-                    break
-                except Exception as ex:
-                    print(f"Error loading clean tools in reset: {ex}")
+    # 5. Herramientas y Materiales se mantienen limpios para registro uno a uno vía UI
 
     # 5. Restablecer stocks de materiales a niveles base limpios
     stock_defaults = {

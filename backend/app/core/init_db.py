@@ -74,6 +74,7 @@ def init_db():
         "ALTER TABLE expenses ALTER COLUMN receipt_image_path TYPE TEXT;",
         "ALTER TABLE projects ALTER COLUMN name TYPE TEXT;",
         "ALTER TABLE quotations ALTER COLUMN project_title TYPE TEXT;",
+        "ALTER TABLE quotation_items ALTER COLUMN description TYPE TEXT;",
         "ALTER TABLE project_addendums ALTER COLUMN title TYPE TEXT;",
         "ALTER TABLE audit_logs ALTER COLUMN username TYPE VARCHAR(150);",
         "ALTER TABLE audit_logs ALTER COLUMN action TYPE VARCHAR(150);",

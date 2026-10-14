@@ -563,8 +563,14 @@ async function submitCreateQuotation(event) {
         });
 
         if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || "Error al guardar el presupuesto");
+            let errorMsg = "Error al guardar el presupuesto";
+            try {
+                const err = await res.json();
+                if (err && err.detail) {
+                    errorMsg = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+                }
+            } catch(e) {}
+            throw new Error(errorMsg);
         }
 
         const data = await res.json();
@@ -584,7 +590,15 @@ async function submitCreateQuotation(event) {
         await loadQuotations();
     } catch(err) {
         console.error("Error al guardar presupuesto:", err);
-        alert("Error al guardar presupuesto: " + err.message);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al Guardar Presupuesto',
+                text: err.message || String(err)
+            });
+        } else {
+            alert("Error al guardar presupuesto: " + err.message);
+        }
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;

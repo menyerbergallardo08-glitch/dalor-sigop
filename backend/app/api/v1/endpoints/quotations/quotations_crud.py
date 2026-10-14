@@ -2,12 +2,41 @@
 CRUD operations for Quotations (Presupuestos & APU).
 """
 from .quotations_common import (
-    APIRouter, Depends, HTTPException, Session, List, datetime,
+    APIRouter, Depends, HTTPException, Session, List, datetime, re,
     get_db, Quotation, QuotationItem, Client,
     QuotationCreate, QuotationUpdate, QuotationOut
 )
 
 router = APIRouter()
+
+def compute_next_quotation_number(db: Session, current_year: int = None) -> str:
+    """
+    Calcula el siguiente correlativo secuencial para cotizaciones basándose
+    en el número máximo real en la base de datos (evita colisiones por conteo simple o registros borrados).
+    """
+    if current_year is None:
+        current_year = datetime.utcnow().year
+
+    quotes = db.query(Quotation.quote_number).all()
+    max_seq = 0
+    pattern = re.compile(rf"COT-{current_year}-(\d+)", re.IGNORECASE)
+    for (q_num,) in quotes:
+        if q_num:
+            m = pattern.search(q_num)
+            if m:
+                try:
+                    num = int(m.group(1))
+                    if num > max_seq:
+                        max_seq = num
+                except ValueError:
+                    pass
+
+    next_num = max_seq + 1
+    # Asegurar que no colisione con ningún correlativo existente
+    while db.query(Quotation.id).filter(Quotation.quote_number == f"COT-{current_year}-{next_num:04d}").first() is not None:
+        next_num += 1
+
+    return f"COT-{current_year}-{next_num:04d}"
 
 @router.get("/", response_model=List[QuotationOut])
 def get_quotations(db: Session = Depends(get_db)):
@@ -19,9 +48,16 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
 
-    # Generar correlativo si no viene
-    count = db.query(Quotation).count() + 1
-    quote_number = quote_in.quote_number or f"COT-2026-{count:04d}"
+    # Generar correlativo si no viene o verificar si ya existe
+    current_year = datetime.utcnow().year
+    if quote_in.quote_number:
+        existing = db.query(Quotation.id).filter(Quotation.quote_number == quote_in.quote_number).first()
+        if existing:
+            quote_number = compute_next_quotation_number(db, current_year)
+        else:
+            quote_number = quote_in.quote_number
+    else:
+        quote_number = compute_next_quotation_number(db, current_year)
 
     # Calcular Subtotal de renglones
     subtotal = 0.0
@@ -43,7 +79,8 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
             total_usd=line_total
         ))
 
-    tax_usd = round(subtotal * (quote_in.tax_percent / 100.0), 2)
+    tax_pct = quote_in.tax_percent if quote_in.tax_percent is not None else 16.0
+    tax_usd = round(subtotal * (tax_pct / 100.0), 2)
     total_usd = round(subtotal + tax_usd, 2)
 
     new_quote = Quotation(
@@ -56,7 +93,7 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
         validity_days=quote_in.validity_days,
         exchange_rate=quote_in.exchange_rate,
         subtotal_usd=subtotal,
-        tax_percent=quote_in.tax_percent,
+        tax_percent=tax_pct,
         tax_usd=tax_usd,
         total_usd=total_usd,
         status="borrador",
@@ -68,9 +105,25 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
         items=items_objs
     )
 
-    db.add(new_quote)
-    db.commit()
-    db.refresh(new_quote)
+    try:
+        db.add(new_quote)
+        db.commit()
+        db.refresh(new_quote)
+    except Exception as e:
+        db.rollback()
+        err_str = str(e).lower()
+        if "unique" in err_str or "duplicate" in err_str:
+            new_quote.quote_number = compute_next_quotation_number(db, current_year)
+            try:
+                db.add(new_quote)
+                db.commit()
+                db.refresh(new_quote)
+            except Exception as e2:
+                db.rollback()
+                raise HTTPException(status_code=400, detail=f"Error de concurrencia al registrar presupuesto: {str(e2)}")
+        else:
+            raise HTTPException(status_code=400, detail=f"Error al registrar presupuesto: {str(e)}")
+
     return new_quote
 
 @router.get("/{quotation_id}", response_model=QuotationOut)
@@ -145,8 +198,13 @@ def update_quotation(quotation_id: int, quote_in: QuotationUpdate, db: Session =
         quote.total_usd = total_usd
         db.add_all(items_objs)
 
-    db.commit()
-    db.refresh(quote)
+    try:
+        db.commit()
+        db.refresh(quote)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Error al actualizar presupuesto: {str(e)}")
+
     return quote
 
 @router.delete("/{quotation_id}")
@@ -154,7 +212,11 @@ def delete_quotation(quotation_id: int, db: Session = Depends(get_db)):
     quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada.")
-    db.query(QuotationItem).filter(QuotationItem.quotation_id == quotation_id).delete()
-    db.delete(quote)
-    db.commit()
+    try:
+        db.query(QuotationItem).filter(QuotationItem.quotation_id == quotation_id).delete()
+        db.delete(quote)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Error al eliminar presupuesto: {str(e)}")
     return {"success": True, "message": f"Cotización {quote.quote_number} eliminada exitosamente."}

@@ -161,7 +161,7 @@ class QuotationItem(Base):
     quotation_id = Column(Integer, ForeignKey("quotations.id"), nullable=False)
     service_id = Column(Integer, ForeignKey("service_items.id"), nullable=True)
     item_code = Column(String(50), nullable=True)
-    description = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
     unit_measure = Column(String(50), default="Global")
     quantity = Column(Float, default=1.0)
     unit_price_usd = Column(Float, default=0.0)

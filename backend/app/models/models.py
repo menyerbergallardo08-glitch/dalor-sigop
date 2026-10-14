@@ -134,7 +134,7 @@ class Quotation(Base):
     id = Column(Integer, primary_key=True, index=True)
     quote_number = Column(String(50), unique=True, index=True)
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
-    project_title = Column(String(200), nullable=False)
+    project_title = Column(Text, nullable=False)
     location = Column(String(200), nullable=True)
     execution_time = Column(String(100), default="15 días hábiles")
     currency = Column(String(10), default="USD")
@@ -175,7 +175,7 @@ class Project(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, index=True)
-    name = Column(String(200), nullable=False)
+    name = Column(Text, nullable=False)
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=True, index=True)
     client_name = Column(String(150), nullable=True)
     location = Column(String(200), default="Sede Central")
@@ -236,6 +236,7 @@ class ProjectPhase(Base):
     estimated_cost_usd = Column(Float, default=0.0)
     status = Column(String(50), default="pendiente")
     responsible_person = Column(String(150), nullable=True)
+    weight_percent = Column(Float, default=0.0)
 
     project = relationship("Project", back_populates="phases")
 
@@ -245,7 +246,7 @@ class ProjectAddendum(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     addendum_number = Column(Integer, default=1)
-    title = Column(String(200), nullable=False)
+    title = Column(Text, nullable=False)
     scope_description = Column(Text, nullable=True)
     additional_contract_usd = Column(Float, nullable=False, default=0.0)
     additional_materials_usd = Column(Float, default=0.0)

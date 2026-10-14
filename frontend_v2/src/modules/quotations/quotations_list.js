@@ -165,7 +165,12 @@ function renderQuotationsPaginated() {
         const total = Number(q.total_usd || 0);
         return `
         <tr>
-            <td style="font-weight: 800; color: var(--dalor-blue);">${q.quote_number}</td>
+            <td style="font-weight: 800; color: var(--dalor-blue);">
+                ${q.quote_number}
+                <div style="font-size: 10px; color: #64748b; font-weight: normal; margin-top: 2px;">
+                    <i class="fa-regular fa-calendar-days" style="color: var(--dalor-gold);"></i> ${q.created_at ? (q.created_at.includes('-') ? (parts => `${parts[2]}/${parts[1]}/${parts[0]}`)(q.created_at.substring(0, 10).split('-')) : new Date(q.created_at).toLocaleDateString('es-VE')) : '-'}
+                </div>
+            </td>
             <td style="font-weight: 600;">${clientName}</td>
             <td>${q.project_title}</td>
             <td style="font-weight: 700;">$${subtotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>

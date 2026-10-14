@@ -125,7 +125,9 @@ async def add_strict_no_cache_headers(request, call_next):
     # Permitir caché inmutable para bundles de Vite con hash único (/assets/*)
     if request.url.path.startswith("/assets/"):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-    elif request.url.path.startswith(("/static", "/src", "/css", "/api")) or request.url.path in ("/", "/app.js", "/index.html", "/sw.js", "/manifest.webmanifest"):
+    elif request.url.path in ("/", "/index.html", "/app.js"):
+        response.headers["Cache-Control"] = "no-cache"
+    elif request.url.path.startswith(("/static", "/src", "/css", "/api")) or request.url.path in ("/sw.js", "/manifest.webmanifest"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -253,7 +255,7 @@ if os.path.exists(FRONTEND_DIR):
 
     @app.get("/")
     def serve_frontend():
-        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), headers=NO_CACHE_HEADERS)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), headers={"Cache-Control": "no-cache"})
 
     @app.get("/app.js")
     def serve_app_js():

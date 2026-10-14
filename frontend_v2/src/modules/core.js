@@ -1069,13 +1069,21 @@ function populateSelectDropdowns() {
 
 
 
-    // Vehículos para Guías
+    // Vehículos para Guías (Solo unidades activas y disponibles en base)
+    const vehicles = (allAssets || []).filter(a => 
+        (a.asset_type === 'vehiculo' || a.asset_type === 'camioneta' || a.asset_type === 'transporte') &&
+        a.is_active !== false &&
+        !a.current_project_id &&
+        (a.status === 'disponible_base' || a.status === 'disponible' || !a.status) &&
+        a.status !== 'en_obra' &&
+        a.status !== 'en_mantenimiento' &&
+        a.status !== 'alquilado_a_tercero' &&
+        a.status !== 'desincorporado'
+    );
 
-    const vehicles = allAssets.filter(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
-
-    const vehOptions = `<option value="">-- Seleccione Vehículo de Transporte --</option>` + 
-
-        vehicles.map(v => `<option value="${v.id}">[${v.asset_code}] ${v.name} (Placa: ${v.license_plate || 'S/P'})</option>`).join('');
+    const vehOptions = `<option value="">-- Seleccione Vehículo de Transporte (${vehicles.length} disp. en base) --</option>` + 
+        `<option value="none">📍 Sin Vehículo Asignado (Sede Central / Taller / Custodia Interna)</option>` +
+        vehicles.map(v => `<option value="${v.id}">[${v.asset_code}] ${v.name} (Placa: ${v.license_plate || 'S/P'}) - ${v.current_location || 'Base'}</option>`).join('');
 
     if (document.getElementById("tg_vehicle_id")) document.getElementById("tg_vehicle_id").innerHTML = vehOptions;
 

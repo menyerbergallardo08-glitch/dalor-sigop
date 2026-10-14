@@ -485,9 +485,15 @@
                         <input type="text" inputmode="decimal" id="add_phase_cost" class="form-control" value="0" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 14px;">
-                    <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Responsable / Cuadrilla a Cargo:</label>
-                    <input type="text" id="add_phase_responsible" class="form-control" placeholder="Ej: Ing. Residente / Cuadrilla Mecánica" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                <div class="grid-2" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Responsable / Cuadrilla:</label>
+                        <input type="text" id="add_phase_responsible" class="form-control" placeholder="Ej: Ing. Residente" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Peso / Ponderación (%):</label>
+                        <input type="text" inputmode="decimal" id="add_phase_weight" class="form-control" value="0" placeholder="0 - 100%" style="width: 100%; font-size: 12px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; color: #059669;">
+                    </div>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
                     <button type="button" onclick="closeModal('modalAddProjectPhase')" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;">Cancelar</button>
@@ -536,8 +542,8 @@
 
                 <div class="grid-2" style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 10px;">
                     <div>
-                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Proyecto / Obra *</label>
-                        <input type="text" id="edit_project_name" required class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px;">
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Proyecto / Obra * <span style="font-size: 9px; color: #059669; font-weight: 600;">(Capacidad ampliada para especificaciones oficiales)</span></label>
+                        <textarea id="edit_project_name" required rows="2" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px; resize: vertical;"></textarea>
                     </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente Asignado *</label>
@@ -547,7 +553,13 @@
                     </div>
                 </div>
 
-                <div class="grid-3" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: var(--dalor-navy);">
+                            <i class="fa-regular fa-calendar-days" style="color: var(--dalor-gold);"></i> Fecha Inicio / Arranque *
+                        </label>
+                        <input type="date" id="edit_project_start_date" class="form-input" required style="width: 100%; font-size: 12px; padding: 6px 10px; font-weight: 700; cursor: pointer;" title="Permite seleccionar cualquier fecha anterior o posterior">
+                    </div>
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: #475569;">Ubicación / Planta / Frente *</label>
                         <input type="text" id="edit_project_location" oninput="onEditProjectLocationInput(this.value)" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px;">
@@ -560,11 +572,10 @@
                         <label style="font-size: 11px; font-weight: 700; color: #475569;">Tiempo de Ejecución (Días Hábiles) *</label>
                         <input type="text" id="edit_project_execution_time" class="form-input" placeholder="Ej: 15 días hábiles" style="width: 100%; font-size: 12px; padding: 6px 10px;">
                     </div>
-                </div>
-
-                <div style="margin-bottom: 10px;">
-                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Monto Contractual / Venta (USD) *</label>
-                    <input type="text" inputmode="decimal" id="edit_project_contract" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px; font-weight: 800; color: var(--dalor-navy);">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Monto Contractual / Venta (USD) *</label>
+                        <input type="text" inputmode="decimal" id="edit_project_contract" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 10px; font-weight: 800; color: var(--dalor-navy);">
+                    </div>
                 </div>
 
                 <!-- Bolsas de Costo Presupuestario -->
@@ -680,8 +691,10 @@
                                 <select id="edit_select_tools" class="form-select" style="font-size: 11px; padding: 5px; flex: 1;">
                                     <option value="">-- Seleccionar Herramienta --</option>
                                 </select>
+                                <input type="number" id="edit_tool_quantity" value="1" min="1" placeholder="Cant." style="width: 50px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px; font-size: 11px; text-align: center; font-weight: 700;" title="Cantidad a asignar">
                                 <button type="button" onclick="addEditProjectResource('tools')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800; color: #92400e;">+ Asignar</button>
                             </div>
+
                             <div id="edit_tags_tools" style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
                         </div>
                     </div>
@@ -883,6 +896,68 @@
 
 
 
-    <!-- MODAL: NUEVA COTIZACIÓN (ESTIMACIONES & APU) -->
+    <!-- MODAL: CONFIGURAR PONDERACIÓN DE ETAPA Y TAREAS (WBS WEIGHTS) -->
+    <div id="modalConfigurePhaseWeights" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-scale-balanced" style="color: var(--dalor-blue);"></i> Ponderación de Etapa & Tareas
+                </h3>
+                <button type="button" onclick="closeModal('modalConfigurePhaseWeights')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="formConfigurePhaseWeights" onsubmit="submitConfigurePhaseWeights(event)">
+                <input type="hidden" id="cfg_weights_project_id" value="">
+                <input type="hidden" id="cfg_weights_phase_id" value="">
+
+                <!-- Etapa Info & Peso -->
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                        <span id="cfg_weights_phase_name" style="font-size: 13px; font-weight: 800; color: var(--dalor-navy);">Etapa: ...</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 800; color: #334155; margin: 0;">Peso en la Obra:</label>
+                            <input type="text" inputmode="decimal" id="cfg_weights_phase_percent" class="form-input" style="width: 70px; font-size: 12px; font-weight: 800; color: #059669; text-align: center; padding: 4px;" placeholder="0-100%">
+                            <span style="font-size: 11px; font-weight: 800; color: #059669;">%</span>
+                        </div>
+                    </div>
+                    <small id="cfg_weights_phase_context_hint" style="font-size: 10.5px; color: #64748b; display: block;">
+                        Las demás etapas suman un peso determinado. La suma total no debe exceder el 100%.
+                    </small>
+                </div>
+
+                <!-- Tareas de la Etapa -->
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                                <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas Operativas de la Etapa:
+                            </label>
+                            <span id="cfg_weights_tasks_sum_badge" style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 4px; background: #e2e8f0; color: #334155;">
+                                Total: 0%
+                            </span>
+                        </div>
+                        <button type="button" onclick="distributeModalTaskWeightsEqually()" class="btn-secondary" style="font-size: 10.5px; padding: 3px 8px; background: #f0fdf4; color: #166534; border-color: #86efac; font-weight: 700;">
+                            ⚖️ Repartir 100% Equitativo
+                        </button>
+                    </div>
+
+                    <p style="font-size: 10.5px; color: #64748b; margin: 0 0 8px 0;">
+                        Indica el porcentaje de aporte de cada tarea al progreso de esta etapa. Deben sumar 100% (o 0% para ponderación equitativa automática).
+                    </p>
+
+                    <div id="cfg_weights_tasks_list" style="display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto;">
+                        <!-- Filas de tareas generadas dinámicamente -->
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalConfigurePhaseWeights')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" id="btn_save_phase_weights" class="btn-primary" style="background: #0284c7; font-weight: 800; font-size: 12px; padding: 6px 16px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Ponderaciones
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     

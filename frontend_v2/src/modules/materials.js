@@ -22,6 +22,9 @@ export const calcMaterialConsumeTotal = (...args) => (window.calcMaterialConsume
 export const calcMaterialEntryTotal = (...args) => (window.calcMaterialEntryTotal ? window.calcMaterialEntryTotal(...args) : undefined);
 export const filterMaterialsTable = (...args) => (window.filterMaterialsTable ? window.filterMaterialsTable(...args) : undefined);
 export const filterTransferToolsChecklist = (...args) => (window.filterTransferToolsChecklist ? window.filterTransferToolsChecklist(...args) : undefined);
+export const onToggleTransferToolRow = (...args) => (window.onToggleTransferToolRow ? window.onToggleTransferToolRow(...args) : undefined);
+export const adjustTransferToolQty = (...args) => (window.adjustTransferToolQty ? window.adjustTransferToolQty(...args) : undefined);
+export const onTransferToolQtyInput = (...args) => (window.onTransferToolQtyInput ? window.onTransferToolQtyInput(...args) : undefined);
 export const loadMaterialsList = (...args) => (window.loadMaterialsList ? window.loadMaterialsList(...args) : undefined);
 export const onConsumeMaterialSelected = (...args) => (window.onConsumeMaterialSelected ? window.onConsumeMaterialSelected(...args) : undefined);
 export const onMaterialDeliveryProjectChanged = (...args) => (window.onMaterialDeliveryProjectChanged ? window.onMaterialDeliveryProjectChanged(...args) : undefined);
@@ -64,3 +67,6 @@ export const loadMaterialKardexList = (...args) => (window.loadMaterialKardexLis
 export const filterMaterialKardexTable = (...args) => (window.filterMaterialKardexTable ? window.filterMaterialKardexTable(...args) : undefined);
 export const openEditMaterialModal = (...args) => (window.openEditMaterialModal ? window.openEditMaterialModal(...args) : undefined);
 export const submitEditMaterial = (...args) => (window.submitEditMaterial ? window.submitEditMaterial(...args) : undefined);
+export const downloadMaterialsExcelTemplate = (...args) => (window.downloadMaterialsExcelTemplate ? window.downloadMaterialsExcelTemplate(...args) : undefined);
+export const submitImportMaterialsExcel = (...args) => (window.submitImportMaterialsExcel ? window.submitImportMaterialsExcel(...args) : undefined);
+

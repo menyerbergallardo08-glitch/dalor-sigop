@@ -191,6 +191,11 @@ function renderGroupedToolsPaginated() {
                         <button onclick="openEditAssetModal(${it.id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #0284c7; border-color: #bae6fd; margin-right: 3px;" title="Editar Ficha de esta Herramienta">
                             <i class="fa-solid fa-pen"></i> Editar
                         </button>
+                        ${isAvail ? `
+                            <button onclick="confirmRemoveSingleToolUnit(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #dc2626; border-color: #fecaca; margin-right: 3px;" title="Dar de baja / restar esta unidad física del inventario">
+                                <i class="fa-solid fa-trash-can"></i> Restar
+                            </button>
+                        ` : ''}
                         ${!isAvail ? `
                             <button onclick="openSubstituteResourceModal('asset', ${it.id}, '${(it.name || '').replace(/'/g, "\\'")}', ${it.current_project_id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #2563eb; border-color: #bfdbfe; margin-right: 3px;" title="Sustituir en Obra por otra herramienta disponible">
                                 <i class="fa-solid fa-arrows-rotate"></i> Sustituir
@@ -200,6 +205,7 @@ function renderGroupedToolsPaginated() {
                             <i class="fa-solid fa-clock-rotate-left"></i> Traza
                         </button>
                     </td>
+
                 </tr>
             `;
         }).join('');
@@ -241,9 +247,13 @@ function renderGroupedToolsPaginated() {
                 <button onclick="openAddToolUnitsModal('${encodeURIComponent(g.name)}', ${g.total})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #16a34a; border-color: #bbf7d0; background: #f0fdf4;" title="Agregar más unidades / cantidades a este modelo">
                     <i class="fa-solid fa-plus"></i> + Cantidad
                 </button>
+                <button onclick="openRemoveToolUnitsModal('${encodeURIComponent(g.name)}', ${g.available}, ${g.total})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #dc2626; border-color: #fecaca; background: #fef2f2;" title="Restar o desincorporar unidades disponibles en base">
+                    <i class="fa-solid fa-minus"></i> - Cantidad
+                </button>
                 <button onclick="openEditAssetModal(${g.items[0]?.id})" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; color: #0284c7; border-color: #bae6fd;" title="Editar Ficha Técnica de esta Herramienta">
                     <i class="fa-solid fa-pen"></i> Editar
                 </button>
+
                 ${g.available > 0 ? `
                     <button onclick="assignAvailableToolFromGroup('${encodeURIComponent(g.name)}')" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" title="Asignar una unidad disponible a obra">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Asignar
@@ -560,9 +570,207 @@ async function submitAddToolUnits(event) {
     }
 }
 
+function openRemoveToolUnitsModal(toolNameEncoded, availableUnits, totalUnits) {
+    const toolName = decodeURIComponent(toolNameEncoded);
+    const hiddenName = document.getElementById("remove_units_tool_name");
+    const hiddenMax = document.getElementById("remove_units_max_available");
+    const nameDisplay = document.getElementById("remove_units_display_name");
+    const statusDisplay = document.getElementById("remove_units_display_status");
+    const qtyInput = document.getElementById("remove_units_quantity");
+    const reasonInput = document.getElementById("remove_units_reason");
 
+    if (availableUnits <= 0) {
+        alert(`⚠️ No hay unidades disponibles en base para restar de '${toolName}'. Las unidades en obra deben retornar antes de darse de baja.`);
+        return;
+    }
 
+    if (hiddenName) hiddenName.value = toolName;
+    if (hiddenMax) hiddenMax.value = availableUnits;
+    if (nameDisplay) nameDisplay.innerText = toolName;
+    if (statusDisplay) statusDisplay.innerText = `Disponibles en base para restar: ${availableUnits} | Total físico histórico: ${totalUnits}`;
+    if (qtyInput) {
+        qtyInput.value = "1";
+        qtyInput.max = availableUnits;
+    }
+    if (reasonInput) reasonInput.value = "Ajuste de inventario físico / Desgaste";
 
+    openModal("modalRemoveToolUnits");
+}
+
+async function submitRemoveToolUnits(event) {
+    event.preventDefault();
+    const toolName = document.getElementById("remove_units_tool_name")?.value;
+    const maxAvail = parseInt(document.getElementById("remove_units_max_available")?.value || "0", 10);
+    const qty = parseInt(document.getElementById("remove_units_quantity")?.value || "1", 10);
+    const reason = document.getElementById("remove_units_reason")?.value?.trim() || "Ajuste de inventario físico";
+
+    if (!qty || qty < 1) {
+        alert("Por favor indica una cantidad válida a restar (mínimo 1).");
+        return;
+    }
+
+    if (qty > maxAvail) {
+        alert(`⚠️ No puedes restar más de ${maxAvail} unidad(es), ya que solo esas están disponibles en base.`);
+        return;
+    }
+
+    if (!confirm(`¿Confirmas que deseas restar / desincorporar ${qty} unidad(es) de '${toolName}'? Esta acción registrará la baja en la traza.`)) {
+        return;
+    }
+
+    try {
+        const payload = {
+            tool_name: toolName,
+            quantity: qty,
+            reason: reason
+        };
+
+        const res = await authFetch(`${API_BASE}/assets/tools/remove-units`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            alert(`✅ ${data.message || `Se restaron ${qty} unidades exitosamente.`}`);
+            closeModal("modalRemoveToolUnits");
+            await loadInitialMasterData();
+            loadToolsList();
+        } else {
+            const err = await res.json();
+            alert("❌ " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        alert("Error de conexión al restar unidades: " + e.message);
+    }
+}
+
+async function confirmRemoveSingleToolUnit(assetId, assetCode, toolName) {
+    const reason = prompt(`Indica el motivo para dar de baja la unidad [${assetCode}] de '${toolName}':`, "Ajuste de inventario / Desgaste / Daño");
+    if (reason === null) return;
+
+    if (!confirm(`¿Confirmas dar de baja la unidad física [${assetCode}] de '${toolName}'?`)) {
+        return;
+    }
+
+    try {
+        const payload = {
+            tool_name: toolName,
+            quantity: 1,
+            reason: reason || "Baja unitaria manual",
+            specific_asset_id: assetId
+        };
+
+        const res = await authFetch(`${API_BASE}/assets/tools/remove-units`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            alert(`✅ ${data.message || `Unidad dada de baja con éxito.`}`);
+            await loadInitialMasterData();
+            loadToolsList();
+        } else {
+            const err = await res.json();
+            alert("❌ " + (err.detail || JSON.stringify(err)));
+        }
+    } catch (e) {
+        alert("Error de conexión al dar de baja unidad: " + e.message);
+    }
+}
+
+async function downloadAssetsExcelTemplate() {
+    try {
+        const token = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+        const res = await fetch(`${API_BASE}/assets/excel-template`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error("Error del servidor al generar plantilla");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `DALOR_Catalogo_Activos_Herramientas_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        alert("Error al descargar plantilla de activos: " + e.message);
+    }
+}
+
+async function submitImportAssetsExcel(event) {
+    event.preventDefault();
+    const fileInput = document.getElementById("assets_excel_file_input");
+    const feedback = document.getElementById("assetsExcelImportFeedback");
+    const btn = document.getElementById("btnSubmitImportAssetsExcel");
+
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert("Por favor selecciona un archivo Excel (.xlsx).");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Procesando archivo...`;
+    }
+    if (feedback) {
+        feedback.className = "";
+        feedback.style.display = "block";
+        feedback.style.background = "#eff6ff";
+        feedback.style.color = "#1e40af";
+        feedback.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Leyendo registros y aplicando cambios a herramientas y activos...`;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/assets/import-excel`, {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            if (feedback) {
+                feedback.style.background = "#f0fdf4";
+                feedback.style.color = "#166534";
+                feedback.innerHTML = `<b>✅ Carga masiva exitosa:</b> ${data.message || ''}`;
+            }
+            alert(`✅ ${data.message || 'Carga completada con éxito.'}`);
+            closeModal("modalImportAssetsExcel");
+            fileInput.value = "";
+            await loadInitialMasterData();
+            loadToolsList();
+            if (typeof loadMachineryList === 'function') loadMachineryList();
+        } else {
+            if (feedback) {
+                feedback.style.background = "#fef2f2";
+                feedback.style.color = "#991b1b";
+                feedback.innerHTML = `<b>❌ Error:</b> ${data.detail || JSON.stringify(data)}`;
+            }
+            alert("Error al procesar archivo: " + (data.detail || JSON.stringify(data)));
+        }
+    } catch (e) {
+        if (feedback) {
+            feedback.style.background = "#fef2f2";
+            feedback.style.color = "#991b1b";
+            feedback.innerHTML = `<b>❌ Error de conexión:</b> ${e.message}`;
+        }
+        alert("Error de conexión al subir Excel: " + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Procesar Carga Masiva`;
+        }
+    }
+}
 
 // --- VINCULACIÓN CON WINDOW Y SCOPE GLOBAL ---
 if (typeof window !== 'undefined') {
@@ -584,4 +792,10 @@ if (typeof window !== 'undefined') {
     window.submitCreateTool = submitCreateTool;
     window.openAddToolUnitsModal = openAddToolUnitsModal;
     window.submitAddToolUnits = submitAddToolUnits;
+    window.openRemoveToolUnitsModal = openRemoveToolUnitsModal;
+    window.submitRemoveToolUnits = submitRemoveToolUnits;
+    window.confirmRemoveSingleToolUnit = confirmRemoveSingleToolUnit;
+    window.downloadAssetsExcelTemplate = downloadAssetsExcelTemplate;
+    window.submitImportAssetsExcel = submitImportAssetsExcel;
 }
+

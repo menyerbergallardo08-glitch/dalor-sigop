@@ -26,6 +26,15 @@ def add_project_phase(project_id: int, phase_in: ProjectPhaseAdd, db: Session = 
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
 
     curr_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
+    # Validar que la nueva etapa no exceda el 100% de ponderación de la obra
+    existing_weights = sum((p.weight_percent or 0.0) for p in curr_phases)
+    new_weight = round(phase_in.weight_percent or 0.0, 2)
+    if existing_weights + new_weight > 100.05:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Inconsistencia en Ponderación: Las etapas existentes suman {round(existing_weights, 1)}%. Asignar {new_weight}% superaría el 100% permitido (Total resultante: {round(existing_weights + new_weight, 1)}%)."
+        )
+
     p_num = phase_in.phase_number if (phase_in.phase_number and phase_in.phase_number > 0) else len(curr_phases) + 1
 
     d_unit = phase_in.duration_unit or "dias"
@@ -43,7 +52,8 @@ def add_project_phase(project_id: int, phase_in: ProjectPhaseAdd, db: Session = 
         estimated_duration=e_dur,
         estimated_cost_usd=round(phase_in.estimated_cost_usd or 0.0, 2),
         status=phase_in.status or "pendiente",
-        responsible_person=phase_in.responsible_person or "Residente de Obra"
+        responsible_person=phase_in.responsible_person or "Residente de Obra",
+        weight_percent=round(phase_in.weight_percent or 0.0, 2)
     )
     db.add(new_phase)
     db.commit()
@@ -59,7 +69,8 @@ def add_project_phase(project_id: int, phase_in: ProjectPhaseAdd, db: Session = 
             "name": new_phase.name,
             "duration_days": new_phase.duration_days,
             "estimated_cost_usd": new_phase.estimated_cost_usd,
-            "status": new_phase.status
+            "status": new_phase.status,
+            "weight_percent": new_phase.weight_percent
         }
     }
 
@@ -69,26 +80,10 @@ def update_phase_status(project_id: int, phase_id: int, update_in: PhaseStatusUp
     if not phase:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
 
-    # Restricción Secuencial Estricta:
-    if update_in.status in ["en_progreso", "completado"] and phase.phase_number > 1:
-        prev_phases = db.query(ProjectPhase).filter(
-            ProjectPhase.project_id == project_id,
-            ProjectPhase.phase_number < phase.phase_number
-        ).order_by(ProjectPhase.phase_number.asc()).all()
-        for p in prev_phases:
-            if p.status != "completado":
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Acción Bloqueada: No puedes avanzar la Etapa {phase.phase_number} ('{phase.name}') porque la Etapa {p.phase_number} ('{p.name}') no ha sido culminada aún."
-                )
-
+    # Prelación eliminada: se permite avanzar o culminar cualquier etapa independientemente (estilo Project)
     phase.status = update_in.status
     db.commit()
     return {"success": True, "message": f"Etapa '{phase.name}' actualizada a {phase.status}."}
-
-class TaskToggleInput(BaseModel):
-    task_index: int
-    is_completed: bool
 
 @router.put("/{project_id}/phases/{phase_id}/toggle-task")
 def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, db: Session = Depends(get_db)):
@@ -96,19 +91,7 @@ def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, 
     if not phase:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
 
-    # Verificar si etapa anterior fue completada si se intenta avanzar
-    if task_in.is_completed and phase.phase_number > 1:
-        prev_phases = db.query(ProjectPhase).filter(
-            ProjectPhase.project_id == project_id,
-            ProjectPhase.phase_number < phase.phase_number
-        ).order_by(ProjectPhase.phase_number.asc()).all()
-        for p in prev_phases:
-            if p.status != "completado":
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Acción Bloqueada: No puedes marcar tareas de la Etapa {phase.phase_number} porque la Etapa {p.phase_number} ('{p.name}') no ha sido culminada."
-                )
-
+    # Prelación eliminada: se permite marcar o desmarcar cualquier tarea sin depender de etapas previas
     raw_desc = phase.description or ""
     tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
     if not tasks:
@@ -145,9 +128,6 @@ def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, 
         }
     raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
 
-class TaskCreateInput(BaseModel):
-    task_name: str
-
 @router.post("/{project_id}/phases/{phase_id}/tasks")
 def add_phase_task(project_id: int, phase_id: int, payload: TaskCreateInput, db: Session = Depends(get_db)):
     phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
@@ -167,7 +147,10 @@ def add_phase_task(project_id: int, phase_id: int, payload: TaskCreateInput, db:
     if not tasks and raw_desc.strip():
         tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
         
-    tasks.append(f"[ ] {clean_task}")
+    task_str = f"[ ] {clean_task}"
+    if payload.weight_percent is not None and payload.weight_percent > 0:
+        task_str = f"[ ] {clean_task} [W:{round(payload.weight_percent, 2)}%]"
+    tasks.append(task_str)
     phase.description = "; ".join(tasks)
     db.commit()
     return {
@@ -209,6 +192,67 @@ def delete_phase_task(project_id: int, phase_id: int, task_index: int, db: Sessi
         }
     raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
 
+@router.put("/{project_id}/phases/{phase_id}/weights")
+def update_phase_weights(project_id: int, phase_id: int, payload: PhaseWeightsUpdate, db: Session = Depends(get_db)):
+    phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    # 1. Validar y actualizar peso de la etapa en el proyecto si se envía
+    if payload.weight_percent is not None:
+        other_phases = db.query(ProjectPhase).filter(
+            ProjectPhase.project_id == project_id,
+            ProjectPhase.id != phase_id
+        ).all()
+        other_sum = sum((p.weight_percent or 0.0) for p in other_phases)
+        new_weight = round(payload.weight_percent, 2)
+        if other_sum + new_weight > 100.05:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Inconsistencia: Las demás etapas suman {round(other_sum, 1)}%. Asignar {new_weight}% a esta etapa superaría el 100% total (Suma: {round(other_sum + new_weight, 1)}%)."
+            )
+        phase.weight_percent = new_weight
+
+    # 2. Validar y actualizar pesos de las tareas de la etapa
+    if payload.tasks_weights is not None:
+        tasks_sum = sum(payload.tasks_weights)
+        if tasks_sum > 100.05:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Inconsistencia en Tareas: La suma de pesos de las tareas es {round(tasks_sum, 1)}%, lo cual supera el 100% de la etapa."
+            )
+
+        raw_desc = phase.description or ""
+        tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
+        if not tasks and raw_desc.strip():
+            tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
+
+        updated_tasks = []
+        for idx, t in enumerate(tasks):
+            is_done = t.startswith("[x]") or t.startswith("[X]") or "✅" in t
+            clean_title = t
+            for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
+                if clean_title.startswith(pref):
+                    clean_title = clean_title[len(pref):].strip()
+            # Limpiar peso previo
+            clean_title = re.sub(r'\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]', '', clean_title, flags=re.IGNORECASE).strip()
+
+            prefix = "[x]" if is_done else "[ ]"
+            w = payload.tasks_weights[idx] if idx < len(payload.tasks_weights) else 0.0
+            if w > 0:
+                updated_tasks.append(f"{prefix} {clean_title} [W:{round(w, 2)}%]")
+            else:
+                updated_tasks.append(f"{prefix} {clean_title}")
+
+        phase.description = "; ".join(updated_tasks)
+
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Ponderaciones de la etapa '{phase.name}' actualizadas correctamente.",
+        "phase_weight_percent": phase.weight_percent,
+        "description": phase.description
+    }
 
 @router.post("/{project_id}/tracking-token")
 def generate_project_tracking_token(project_id: int, db: Session = Depends(get_db)):

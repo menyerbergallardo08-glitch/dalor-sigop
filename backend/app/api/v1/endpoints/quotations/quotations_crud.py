@@ -2,7 +2,7 @@
 CRUD operations for Quotations (Presupuestos & APU).
 """
 from .quotations_common import (
-    APIRouter, Depends, HTTPException, Session, List,
+    APIRouter, Depends, HTTPException, Session, List, datetime,
     get_db, Quotation, QuotationItem, Client,
     QuotationCreate, QuotationUpdate, QuotationOut
 )
@@ -64,6 +64,7 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
         coletilla_bolivares=quote_in.coletilla_bolivares if quote_in.coletilla_bolivares is not None else False,
         coletilla_modalidad=quote_in.coletilla_modalidad if quote_in.coletilla_modalidad is not None else True,
         notes=quote_in.notes,
+        created_at=quote_in.created_at or datetime.utcnow(),
         items=items_objs
     )
 
@@ -117,6 +118,8 @@ def update_quotation(quotation_id: int, quote_in: QuotationUpdate, db: Session =
         quote.coletilla_modalidad = quote_in.coletilla_modalidad
     if quote_in.status is not None:
         quote.status = quote_in.status
+    if quote_in.created_at is not None:
+        quote.created_at = quote_in.created_at
 
     if quote_in.items is not None:
         db.query(QuotationItem).filter(QuotationItem.quotation_id == quotation_id).delete()

@@ -426,6 +426,7 @@ async function submitAddProjectPhase(event) {
     const days = durUnit === "horas" ? Math.max(1, Math.round(durVal / 8)) : Math.max(1, Math.round(durVal));
     const cost = parseLocalizedNumber(document.getElementById("add_phase_cost")?.value) || 0.0;
     const resp = document.getElementById("add_phase_responsible")?.value?.trim() || "";
+    const weightVal = parseLocalizedNumber(document.getElementById("add_phase_weight")?.value) || 0.0;
 
     if (!pId || !name) {
         alert("Por favor indique el nombre de la etapa.");
@@ -442,7 +443,8 @@ async function submitAddProjectPhase(event) {
                 duration_unit: durUnit,
                 estimated_duration: durVal,
                 estimated_cost_usd: cost,
-                responsible_person: resp
+                responsible_person: resp,
+                weight_percent: weightVal
             })
         });
 
@@ -465,7 +467,9 @@ async function submitAddProjectPhase(event) {
 
 async function addProjectTask(projectId, phaseId) {
     const inp = document.getElementById(`new_task_inp_${phaseId}`);
+    const weightInp = document.getElementById(`new_task_weight_${phaseId}`);
     const taskName = inp?.value?.trim();
+    const taskWeight = weightInp ? (parseLocalizedNumber(weightInp.value) || null) : null;
     if (!taskName) {
         alert("Escriba la descripción de la tarea antes de agregar.");
         return;
@@ -475,7 +479,10 @@ async function addProjectTask(projectId, phaseId) {
         const res = await authFetch(`${API_BASE}/projects/${projectId}/phases/${phaseId}/tasks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ task_name: taskName })
+            body: JSON.stringify({
+                task_name: taskName,
+                weight_percent: taskWeight
+            })
         });
 
         if (!res.ok) {
@@ -484,6 +491,7 @@ async function addProjectTask(projectId, phaseId) {
         }
 
         if (inp) inp.value = "";
+        if (weightInp) weightInp.value = "";
         await viewProjectDetails(projectId);
     } catch (e) {
         console.error("Error al agregar tarea:", e);

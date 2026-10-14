@@ -7,6 +7,9 @@ from app.models.models import Project, Client, ProjectPhase
 
 public_router = APIRouter()
 
+import re
+from .projects_common import calculate_project_progress
+
 @public_router.get("/public-tracking/{token_or_code}")
 @public_router.get("/public-tracking/{token_or_code}/")
 def get_public_project_tracking(token_or_code: str, db: Session = Depends(get_db)):
@@ -20,8 +23,6 @@ def get_public_project_tracking(token_or_code: str, db: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="Proyecto o enlace de seguimiento no encontrado.")
 
     # Calcular progreso físico sin exponer ningún costo
-    total_tasks = 0
-    completed_tasks = 0
     phases_out = []
     
     if proj.phases:
@@ -37,13 +38,17 @@ def get_public_project_tracking(token_or_code: str, db: Session = Depends(get_db
                 for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
                     if clean_title.startswith(pref):
                         clean_title = clean_title[len(pref):].strip()
+                
+                w_match = re.search(r'\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]', clean_title, re.IGNORECASE)
+                task_weight = float(w_match.group(1)) if w_match else None
+                if w_match:
+                    clean_title = re.sub(r'\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]', '', clean_title, flags=re.IGNORECASE).strip()
+
                 phase_tasks.append({
                     "title": clean_title,
-                    "completed": is_done
+                    "completed": is_done,
+                    "weight_percent": task_weight
                 })
-                total_tasks += 1
-                if is_done:
-                    completed_tasks += 1
 
             phases_out.append({
                 "phase_number": ph.phase_number,
@@ -51,10 +56,11 @@ def get_public_project_tracking(token_or_code: str, db: Session = Depends(get_db
                 "status": ph.status,
                 "duration_days": ph.duration_days,
                 "responsible_person": ph.responsible_person or "Equipo de Operaciones",
+                "weight_percent": float(getattr(ph, "weight_percent", 0.0) or 0.0),
                 "tasks": phase_tasks
             })
 
-    prog_pct = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else (100.0 if proj.status == "completado" else 0.0)
+    prog_pct = calculate_project_progress(proj.phases, proj.status)
 
     return {
         "success": True,

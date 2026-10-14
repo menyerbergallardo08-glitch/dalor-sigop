@@ -136,9 +136,75 @@
         </div>
     </div>
 
+    <!-- MODAL: RESTAR UNIDADES A HERRAMIENTA EXISTENTE -->
+    <div id="modalRemoveToolUnits" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: #dc2626;"><i class="fa-solid fa-circle-minus" style="color: #dc2626;"></i> Restar / Desincorporar Unidades del Modelo</h3>
+                <button onclick="closeModal('modalRemoveToolUnits')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <form id="removeToolUnitsForm" onsubmit="submitRemoveToolUnits(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="remove_units_tool_name">
+                <input type="hidden" id="remove_units_max_available">
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 10px 12px;">
+                    <div style="font-size: 11px; color: #991b1b; text-transform: uppercase; font-weight: 700;">Herramienta Seleccionada:</div>
+                    <div id="remove_units_display_name" style="font-size: 14px; font-weight: 800; color: #7f1d1d; margin-top: 2px;">-</div>
+                    <div id="remove_units_display_status" style="font-size: 11px; color: #b91c1c; margin-top: 4px; font-weight: 600;">Disponibles en base: - | Total físico: -</div>
+                </div>
+                <div>
+                    <label class="form-label" style="font-weight: 800; color: #991b1b;">¿Cuántas unidades deseas restar / desincorporar? *</label>
+                    <input type="number" id="remove_units_quantity" placeholder="Indica cantidad a restar..." min="1" class="form-input" style="font-size: 14px; font-weight: 800; padding: 8px 12px; border-color: #fca5a5;" required>
+                    <small style="color: #64748b; font-size: 10.5px;">Solo se pueden desincorporar unidades que estén disponibles en base (no en obra).</small>
+                </div>
+                <div>
+                    <label class="form-label">Motivo de la baja / ajuste *</label>
+                    <input type="text" id="remove_units_reason" value="Ajuste de inventario físico / Desgaste" class="form-input" required>
+                    <small style="color: #94a3b8; font-size: 10px;">Indica el motivo (ej: Merma, extravío, daño irreparable o corrección de conteo).</small>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" onclick="closeModal('modalRemoveToolUnits')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #dc2626;"><i class="fa-solid fa-trash-can"></i> Confirmar Resta Ahora</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
+    <!-- MODAL: IMPORTAR ACTIVOS / HERRAMIENTAS VÍA EXCEL -->
+    <div id="modalImportAssetsExcel" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                    <i class="fa-solid fa-file-excel" style="color: #16a34a;"></i> Reforma y Carga Masiva de Activos (Excel)
+                </h3>
+                <button type="button" onclick="closeModal('modalImportAssetsExcel')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div style="font-size: 12px; color: #475569; line-height: 1.5; margin-bottom: 14px;">
+                <p style="margin: 0 0 8px 0;">Sube el archivo Excel oficial completado. El sistema actualizará los activos existentes por código o creará los nuevos con sus correlativos.</p>
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 11px; color: #166534; font-weight: 700;">¿No tienes la plantilla oficial?</span>
+                    <button type="button" onclick="downloadAssetsExcelTemplate()" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #166534; border-color: #86efac; background: white;">
+                        <i class="fa-solid fa-download"></i> Descargar Plantilla
+                    </button>
+                </div>
+            </div>
+            <form id="importAssetsExcelForm" onsubmit="submitImportAssetsExcel(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                    <label class="form-label" style="font-weight: 700;">Seleccionar Archivo Excel (.xlsx) *</label>
+                    <input type="file" id="assets_excel_file_input" accept=".xlsx, .xls" class="form-input" style="padding: 8px;" required>
+                </div>
+                <div id="assetsExcelImportFeedback" class="hidden" style="padding: 10px; border-radius: 6px; font-size: 11.5px;"></div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <button type="button" onclick="closeModal('modalImportAssetsExcel')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" id="btnSubmitImportAssetsExcel" class="btn-primary" style="background: #16a34a;">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Procesar Carga Masiva
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- MODAL: NUEVO VEHÍCULO -->
+
 
     
 
@@ -486,13 +552,17 @@
 
 
 
-                <div id="modal_custodian_container">
-
-                    <label class="form-label">Custodio / Responsable</label>
-
-                    <input type="text" id="modal_res_custodian" placeholder="Nombre de la persona a cargo" class="form-input">
-
+                <div id="modal_quantity_container">
+                    <label class="form-label" style="font-weight: 800; color: var(--dalor-navy);">Cantidad de Unidades a Enviar / Asignar</label>
+                    <input type="number" id="modal_res_quantity" value="1" min="1" class="form-input" style="font-weight: 800; padding: 7px 10px;">
+                    <small id="modal_res_quantity_hint" style="color: #64748b; font-size: 10px;">Para herramientas y equipos con múltiples unidades físicas disponibles.</small>
                 </div>
+
+                <div id="modal_custodian_container">
+                    <label class="form-label">Custodio / Responsable</label>
+                    <input type="text" id="modal_res_custodian" placeholder="Nombre de la persona a cargo" class="form-input">
+                </div>
+
 
 
 

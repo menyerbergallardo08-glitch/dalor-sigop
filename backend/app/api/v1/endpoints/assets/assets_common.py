@@ -36,6 +36,13 @@ class ToolAddUnitsRequest(BaseModel):
     asset_type: Optional[str] = "herramienta"
     current_location: Optional[str] = "Sede Central Dalor (Guacara)"
 
+class ToolRemoveUnitsRequest(BaseModel):
+    tool_name: str
+    quantity: int = 1
+    reason: Optional[str] = "Ajuste de inventario físico / Desincorporación"
+    specific_asset_id: Optional[int] = None
+
+
 
 class AssetUpdate(BaseModel):
     name: Optional[str] = None

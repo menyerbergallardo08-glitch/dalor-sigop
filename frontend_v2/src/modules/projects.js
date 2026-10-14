@@ -106,3 +106,11 @@ export const removeEditProjectResource = (...args) => (typeof window !== 'undefi
 export const populateEditProjectDropdowns = (...args) => (typeof window !== 'undefined' && window.populateEditProjectDropdowns ? window.populateEditProjectDropdowns(...args) : undefined);
 export const openEditProjectModal = (...args) => (typeof window !== 'undefined' && window.openEditProjectModal ? window.openEditProjectModal(...args) : undefined);
 export const submitEditProject = (...args) => (typeof window !== 'undefined' && window.submitEditProject ? window.submitEditProject(...args) : undefined);
+export const updatePhaseWeightsSumIndicator = (...args) => (typeof window !== 'undefined' && window.updatePhaseWeightsSumIndicator ? window.updatePhaseWeightsSumIndicator(...args) : undefined);
+export const distributePhaseWeightsEqually = (...args) => (typeof window !== 'undefined' && window.distributePhaseWeightsEqually ? window.distributePhaseWeightsEqually(...args) : undefined);
+export const updateTaskWeightsSumIndicator = (...args) => (typeof window !== 'undefined' && window.updateTaskWeightsSumIndicator ? window.updateTaskWeightsSumIndicator(...args) : undefined);
+export const distributeTaskWeightsEqually = (...args) => (typeof window !== 'undefined' && window.distributeTaskWeightsEqually ? window.distributeTaskWeightsEqually(...args) : undefined);
+export const openConfigurePhaseWeightsModal = (...args) => (typeof window !== 'undefined' && window.openConfigurePhaseWeightsModal ? window.openConfigurePhaseWeightsModal(...args) : undefined);
+export const updateModalTaskWeightsSumIndicator = (...args) => (typeof window !== 'undefined' && window.updateModalTaskWeightsSumIndicator ? window.updateModalTaskWeightsSumIndicator(...args) : undefined);
+export const distributeModalTaskWeightsEqually = (...args) => (typeof window !== 'undefined' && window.distributeModalTaskWeightsEqually ? window.distributeModalTaskWeightsEqually(...args) : undefined);
+export const submitConfigurePhaseWeights = (...args) => (typeof window !== 'undefined' && window.submitConfigurePhaseWeights ? window.submitConfigurePhaseWeights(...args) : undefined);

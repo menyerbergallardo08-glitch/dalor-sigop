@@ -346,7 +346,7 @@ async function printQuotation(quoteId) {
 
                     <span style="background: #002B49; color: #F5B800; padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 13px; letter-spacing: 0.5px; display: inline-block;">${q.quote_number}</span>
 
-                    <p style="font-size: 10.5px; color: #475569; margin: 4px 0 0 0;">Fecha: <b>${new Date(q.created_at).toLocaleDateString('es-VE')}</b></p>
+                    <p style="font-size: 10.5px; color: #475569; margin: 4px 0 0 0;">Fecha: <b>${q.created_at ? (q.created_at.includes('-') ? (parts => `${parts[2]}/${parts[1]}/${parts[0]}`)(q.created_at.substring(0, 10).split('-')) : new Date(q.created_at).toLocaleDateString('es-VE')) : '-'}</b></p>
 
                     <p style="font-size: 10.5px; color: #475569; margin: 2px 0 0 0;">Validez: <b>${q.validity_days || 15} Días</b></p>
 

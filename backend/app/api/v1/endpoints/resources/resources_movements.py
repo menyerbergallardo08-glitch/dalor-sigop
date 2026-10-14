@@ -33,6 +33,52 @@ def assign_resource(req: ResourceAssignRequest, db: Session = Depends(get_db)):
         res = db.query(Asset).filter(Asset.id == req.resource_id).first()
         if not res:
             raise HTTPException(status_code=404, detail="Activo/Herramienta no encontrado.")
+        
+        req_qty = max(1, req.quantity or 1)
+        if req_qty > 1 and (res.asset_type or "").lower() not in ["vehiculo", "camioneta", "camion"]:
+            from sqlalchemy import func
+            available_units = db.query(Asset).filter(
+                func.trim(func.upper(Asset.name)) == func.trim(func.upper(res.name)),
+                Asset.is_active == True,
+                (Asset.status == "disponible_base") | (Asset.current_project_id == None)
+            ).all()
+
+            if len(available_units) < req_qty:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Solo hay {len(available_units)} unidades disponibles en base de '{res.name}' para asignar (solicitadas: {req_qty})."
+                )
+
+            units_to_assign = available_units[:req_qty]
+            assigned_codes = []
+            for u in units_to_assign:
+                u.current_project_id = project.id if project else None
+                u.status = "en_obra" if project else "asignado"
+                u.current_location = dest_loc
+                u.current_custodian_name = req.custodian_name
+                assigned_codes.append(u.asset_code)
+                hist = ResourceAssignmentHistory(
+                    project_id=project.id if project else None,
+                    resource_type=req.resource_type,
+                    resource_id=u.id,
+                    resource_code=u.asset_code,
+                    resource_name=u.name,
+                    custodian_name=req.custodian_name,
+                    origin_location="Sede Central Dalor (Guacara)",
+                    destination_location=dest_loc,
+                    start_odometer=odo_val,
+                    status="en_obra" if project else "asignado",
+                    notes=req.notes
+                )
+                db.add(hist)
+
+            db.commit()
+            return {
+                "success": True,
+                "message": f"Se asignaron exitosamente {len(units_to_assign)} unidades de '{res.name}' ({', '.join(assigned_codes)}).",
+                "project_code": project.code if project else "DALOR-BASE"
+            }
+
         resource_name = res.name
         resource_code = res.asset_code
 
@@ -55,6 +101,7 @@ def assign_resource(req: ResourceAssignRequest, db: Session = Depends(get_db)):
         res.current_location = dest_loc
     else:
         raise HTTPException(status_code=400, detail="Tipo de recurso inválido (asset o personnel).")
+
 
     history = ResourceAssignmentHistory(
         project_id=project.id if project else None,

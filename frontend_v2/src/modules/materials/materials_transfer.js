@@ -107,11 +107,15 @@ function onTransferGuideProjectChanged() {
             vehSelect.value = projVeh.id;
 
         } else {
-
-            const firstVeh = (allAssets || []).find(a => a.asset_type === 'vehiculo' || a.asset_type === 'camioneta');
-
-            if (firstVeh) vehSelect.value = firstVeh.id;
-
+            const availableVeh = (allAssets || []).find(a => 
+                (a.asset_type === 'vehiculo' || a.asset_type === 'camioneta' || a.asset_type === 'transporte') &&
+                a.is_active !== false &&
+                !a.current_project_id &&
+                (a.status === 'disponible_base' || a.status === 'disponible' || !a.status) &&
+                a.status !== 'en_mantenimiento' && a.status !== 'en_obra' && a.status !== 'alquilado_a_tercero'
+            );
+            if (availableVeh) vehSelect.value = availableVeh.id;
+            else vehSelect.value = "";
         }
 
     }
@@ -126,64 +130,206 @@ function onTransferGuideProjectChanged() {
 
 
 
-function renderTransferToolsChecklist(selectedProjId = null) {
+var transferToolsGrouped = [];
 
-    const container = document.getElementById("tg_tools_checklist_container");
-
-    if (!container) return;
-
-
-
-    const tools = allAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
-
-    if (tools.length === 0) {
-
-        container.innerHTML = `<span style="font-size:11px; color:#94a3b8;">No hay herramientas registradas.</span>`;
-
-        return;
-
+async function ensureToolsLoadedForTransfer() {
+    if (!allAssets || allAssets.length === 0 || !(window.rawToolsList && window.rawToolsList.length > 0)) {
+        try {
+            const res = await authFetch(`${API_BASE}/assets/tools-summary`);
+            if (res.ok) {
+                const grouped = await res.json();
+                window.rawToolsList = grouped.flatMap(g => g.items || []);
+                if (!allAssets || allAssets.length === 0) {
+                    window.allAssets = allAssets = window.rawToolsList;
+                }
+            } else {
+                const resA = await authFetch(`${API_BASE}/assets/`);
+                if (resA.ok) {
+                    window.allAssets = allAssets = await resA.json();
+                }
+            }
+        } catch (e) {
+            console.warn("Error cargando inventario de herramientas para traslado:", e);
+        }
     }
-
-
-
-    container.innerHTML = tools.map(t => {
-
-        const isPreChecked = selectedProjId && (t.current_project_id === selectedProjId || t.current_location === "en_obra");
-
-        return `
-
-        <label style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; background: ${isPreChecked ? '#f0fdf4' : '#f8fafc'}; font-size: 11px; cursor: pointer;" class="tg-tool-item" data-text="${t.asset_code} ${t.name} ${t.brand || ''}">
-
-            <input type="checkbox" value="${t.id}" data-name="${t.name}" data-code="${t.asset_code}" data-brand="${t.brand || ''}" data-serial="${t.serial_number || ''}" class="tg-tool-checkbox" ${isPreChecked ? 'checked' : ''} style="width: 15px; height: 15px; accent-color: #0284c7;">
-
-            <span style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">[${t.asset_code}]</span>
-
-            <span style="font-weight: 600; color: var(--dalor-navy);">${t.name}</span>
-
-            <span style="color: #64748b; font-size: 10px; margin-left: auto;">${t.brand || ''}</span>
-
-        </label>
-
-        `;
-
-    }).join('');
-
 }
 
+async function renderTransferToolsChecklist(selectedProjId = null) {
+    const container = document.getElementById("tg_tools_checklist_container");
+    if (!container) return;
 
+    container.innerHTML = `<div style="text-align: center; padding: 12px; color: #64748b; font-size: 11px;">
+        <i class="fa-solid fa-spinner fa-spin"></i> Cargando herramientas disponibles...
+    </div>`;
 
-function filterTransferToolsChecklist() {
+    await ensureToolsLoadedForTransfer();
 
-    const q = (document.getElementById("tg_tools_search")?.value || "").toLowerCase();
+    const nonTools = ['vehiculo', 'camioneta', 'camion', 'remolque'];
+    const pool = (window.rawToolsList && window.rawToolsList.length > 0)
+        ? window.rawToolsList
+        : (allAssets || []).filter(a => !nonTools.includes(a.asset_type));
 
-    document.querySelectorAll(".tg-tool-item").forEach(item => {
+    // Agrupar herramientas por nombre / modelo
+    const groups = {};
+    pool.forEach(t => {
+        const key = (t.name || 'HERRAMIENTA GENERAL').trim().toUpperCase();
+        if (!groups[key]) {
+            groups[key] = {
+                key: key,
+                name: (t.name || 'Herramienta General').trim(),
+                asset_code_sample: t.asset_code || 'HERR',
+                brand: t.brand || '',
+                availableUnits: [],
+                projectUnits: [],
+                allUnits: []
+            };
+        }
+        groups[key].allUnits.push(t);
 
-        const text = item.getAttribute("data-text").toLowerCase();
+        const isAssignedToThis = selectedProjId && (t.current_project_id === selectedProjId);
+        const isAvail = (t.status === 'disponible_base' || t.status === 'disponible' || !t.current_project_id);
 
-        item.style.display = text.includes(q) ? "flex" : "none";
-
+        if (isAssignedToThis) {
+            groups[key].projectUnits.push(t);
+        } else if (isAvail) {
+            groups[key].availableUnits.push(t);
+        }
     });
 
+    transferToolsGrouped = Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+
+    if (transferToolsGrouped.length === 0) {
+        container.innerHTML = `<div style="text-align: center; padding: 12px; color: #94a3b8; font-size: 11px;">
+            No hay herramientas registradas en el sistema.
+        </div>`;
+        return;
+    }
+
+    renderTransferToolsItemsHtml();
+}
+
+function renderTransferToolsItemsHtml() {
+    const container = document.getElementById("tg_tools_checklist_container");
+    if (!container) return;
+
+    container.innerHTML = transferToolsGrouped.map((g, idx) => {
+        const totalAvail = g.availableUnits.length + g.projectUnits.length;
+        const initialQty = g.projectUnits.length > 0 ? g.projectUnits.length : 0;
+        const isInitiallyActive = initialQty > 0;
+
+        return `
+        <div class="tg-tool-item" data-index="${idx}" data-text="${g.name} ${g.asset_code_sample} ${g.brand}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 6px; background: ${isInitiallyActive ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isInitiallyActive ? '#86efac' : '#e2e8f0'}; transition: all 0.2s ease;">
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+                <input type="checkbox" id="tg_chk_${idx}" class="tg-tool-checkbox" data-index="${idx}" ${isInitiallyActive ? 'checked' : ''} onchange="onToggleTransferToolRow(${idx})" style="width: 16px; height: 16px; accent-color: #0284c7; cursor: pointer; flex-shrink: 0;">
+                <label for="tg_chk_${idx}" style="cursor: pointer; display: flex; flex-direction: column; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: var(--dalor-navy); font-size: 12px; line-height: 1.2;">${g.name}</span>
+                        ${g.brand ? `<span style="font-size: 10px; color: #64748b; background: #e2e8f0; padding: 1px 5px; border-radius: 4px;">${g.brand}</span>` : ''}
+                    </div>
+                    <span style="font-size: 10px; color: ${totalAvail > 0 ? '#059669' : '#e11d48'}; font-weight: 600;">
+                        Stock Disp.: ${totalAvail} unid. ${g.projectUnits.length > 0 ? `(${g.projectUnits.length} ya en obra)` : ''}
+                    </span>
+                </label>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                <button type="button" onclick="adjustTransferToolQty(${idx}, -1)" class="btn-qty-minus" style="width: 24px; height: 24px; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 4px; font-weight: 800; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 12px;">-</button>
+                <input type="number" id="tg_qty_${idx}" class="tg-tool-qty-input" data-index="${idx}" min="0" max="${Math.max(1, totalAvail)}" value="${initialQty}" oninput="onTransferToolQtyInput(${idx})" style="width: 52px; height: 24px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 800; color: #0284c7;">
+                <button type="button" onclick="adjustTransferToolQty(${idx}, 1)" class="btn-qty-plus" style="width: 24px; height: 24px; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 4px; font-weight: 800; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 12px;">+</button>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    filterTransferToolsChecklist();
+}
+
+function onToggleTransferToolRow(idx) {
+    const chk = document.getElementById(`tg_chk_${idx}`);
+    const input = document.getElementById(`tg_qty_${idx}`);
+    const row = chk?.closest('.tg-tool-item');
+    if (!chk || !input || !row) return;
+
+    const g = transferToolsGrouped[idx];
+    const totalAvail = (g?.availableUnits?.length || 0) + (g?.projectUnits?.length || 0);
+
+    if (chk.checked) {
+        if (parseInt(input.value) <= 0) {
+            input.value = totalAvail > 0 ? "1" : "0";
+        }
+        row.style.background = '#f0fdf4';
+        row.style.borderColor = '#86efac';
+    } else {
+        input.value = "0";
+        row.style.background = '#f8fafc';
+        row.style.borderColor = '#e2e8f0';
+    }
+}
+
+function adjustTransferToolQty(idx, delta) {
+    const input = document.getElementById(`tg_qty_${idx}`);
+    const chk = document.getElementById(`tg_chk_${idx}`);
+    const row = input?.closest('.tg-tool-item');
+    if (!input || !chk || !row) return;
+
+    const g = transferToolsGrouped[idx];
+    const totalAvail = (g?.availableUnits?.length || 0) + (g?.projectUnits?.length || 0);
+    let val = parseInt(input.value || "0") + delta;
+    if (val < 0) val = 0;
+    if (val > totalAvail && totalAvail > 0) val = totalAvail;
+
+    input.value = String(val);
+    chk.checked = val > 0;
+    row.style.background = val > 0 ? '#f0fdf4' : '#f8fafc';
+    row.style.borderColor = val > 0 ? '#86efac' : '#e2e8f0';
+}
+
+function onTransferToolQtyInput(idx) {
+    const input = document.getElementById(`tg_qty_${idx}`);
+    const chk = document.getElementById(`tg_chk_${idx}`);
+    const row = input?.closest('.tg-tool-item');
+    if (!input || !chk || !row) return;
+
+    const g = transferToolsGrouped[idx];
+    const totalAvail = (g?.availableUnits?.length || 0) + (g?.projectUnits?.length || 0);
+    let val = parseInt(input.value || "0");
+    if (isNaN(val) || val < 0) val = 0;
+    if (val > totalAvail && totalAvail > 0) val = totalAvail;
+
+    input.value = String(val);
+    chk.checked = val > 0;
+    row.style.background = val > 0 ? '#f0fdf4' : '#f8fafc';
+    row.style.borderColor = val > 0 ? '#86efac' : '#e2e8f0';
+}
+
+function filterTransferToolsChecklist() {
+    const input = document.getElementById("tg_tools_search");
+    const q = (input?.value || "").toLowerCase().trim();
+    let visibleCount = 0;
+
+    document.querySelectorAll(".tg-tool-item").forEach(item => {
+        const text = (item.getAttribute("data-text") || "").toLowerCase();
+        const matches = !q || text.includes(q);
+        item.style.display = matches ? "flex" : "none";
+        if (matches) visibleCount++;
+    });
+
+    const container = document.getElementById("tg_tools_checklist_container");
+    let noMatchEl = document.getElementById("tg_tools_no_match");
+    if (visibleCount === 0) {
+        if (!noMatchEl && container) {
+            noMatchEl = document.createElement("div");
+            noMatchEl.id = "tg_tools_no_match";
+            noMatchEl.style.cssText = "text-align: center; padding: 12px; color: #94a3b8; font-size: 11px;";
+            container.appendChild(noMatchEl);
+        }
+        if (noMatchEl) {
+            noMatchEl.innerHTML = `No se encontraron herramientas que coincidan con "<strong>${q}</strong>".`;
+            noMatchEl.style.display = "block";
+        }
+    } else if (noMatchEl) {
+        noMatchEl.style.display = "none";
+    }
 }
 
 
@@ -212,83 +358,129 @@ async function submitGenerateTransferGuide(event) {
 
 
 
-    const selectedTools = [];
+    // Recolectar herramientas y cantidades seleccionadas
+    const selectedToolGroups = [];
+    let totalItemsCount = 0;
 
-    document.querySelectorAll(".tg-tool-checkbox:checked").forEach(cb => {
-
-        selectedTools.push({
-
-            id: parseInt(cb.value),
-
-            code: cb.getAttribute("data-code"),
-
-            name: cb.getAttribute("data-name")
-
-        });
-
+    (transferToolsGrouped || []).forEach((g, idx) => {
+        const input = document.getElementById(`tg_qty_${idx}`);
+        const chk = document.getElementById(`tg_chk_${idx}`);
+        const qty = parseInt(input?.value || "0");
+        if (qty > 0 || (chk && chk.checked)) {
+            const finalQty = qty > 0 ? qty : 1;
+            // Tomar primero unidades ya en este proyecto o disponibles en base
+            const allCandidates = [...g.projectUnits, ...g.availableUnits, ...g.allUnits];
+            const uniqueUnits = [];
+            const seenIds = new Set();
+            for (const u of allCandidates) {
+                if (!seenIds.has(u.id)) {
+                    seenIds.add(u.id);
+                    uniqueUnits.push(u);
+                }
+            }
+            const allocatedUnits = uniqueUnits.slice(0, finalQty);
+            selectedToolGroups.push({
+                group: g,
+                name: g.name,
+                brand: g.brand,
+                quantity: finalQty,
+                units: allocatedUnits
+            });
+            totalItemsCount += finalQty;
+        }
     });
 
-
-
-    if (selectedTools.length === 0) {
-
-        alert("Por favor selecciona al menos una herramienta o equipo a trasladar.");
-
+    if (selectedToolGroups.length === 0 || totalItemsCount === 0) {
+        alert("Por favor selecciona al menos una herramienta o equipo con cantidad mayor a 0 para trasladar.");
         return;
-
     }
-
-
 
     const proj = allProjects.find(p => p.id === projId) || { code: "DAL-2026-001", name: "Proyecto Obra" };
+    const isSedeCentralOrNoVeh = !vehId || vehId === "none" || (dest && (dest.toLowerCase().includes("sede") || dest.toLowerCase().includes("taller")));
+    const veh = (!isSedeCentralOrNoVeh && vehId && vehId !== "none") ? (allAssets.find(a => a.id == vehId) || null) : null;
 
-    const veh = allAssets.find(a => a.id == vehId) || { asset_code: "VEH-001", name: "Camioneta Toyota Hilux" };
+    const notes = document.getElementById("tg_notes")?.value || "";
+    const vehPlate = veh ? (veh.license_plate || "S/P") : "S/P";
+    const finalDriver = driver || (isSedeCentralOrNoVeh ? "Personal Dalor Sede Central / Custodia Interna" : "Chofer DALOR");
 
-    const guideNumber = `GT-DALOR-${Date.now().toString().slice(-6)}`;
+    let guideNumber = `GT-DALOR-${Date.now().toString().slice(-6)}`;
 
+    // 1. Emitir y registrar guía legal en base de datos mediante API oficial de Despacho
+    try {
+        const dispatchItems = [];
+        selectedToolGroups.forEach(tg => {
+            if (tg.units.length > 0) {
+                // Registrar cada unidad individual con su código de activo
+                tg.units.forEach(u => {
+                    dispatchItems.push({
+                        description: `[${u.asset_code}] ${u.name} (Serial: ${u.serial_number || 'S/N'})`,
+                        quantity: 1,
+                        unit: "UND",
+                        condition_status: "Operativo / Verificado"
+                    });
+                });
+            } else {
+                dispatchItems.push({
+                    description: `${tg.name} ${tg.brand ? '(' + tg.brand + ')' : ''}`,
+                    quantity: tg.quantity,
+                    unit: "UND",
+                    condition_status: "Operativo / Verificado"
+                });
+            }
+        });
 
-
-    // Reubicar herramientas en backend para el proyecto
-
-    for (const tool of selectedTools) {
-
-        try {
-
-            await authFetch(`${API_BASE}/resources/assign`, {
-
-                method: "POST",
-
-                headers: { "Content-Type": "application/json" },
-
-                body: JSON.stringify({
-
-                    resource_type: "asset",
-
-                    resource_id: tool.id,
-
-                    project_id: projId,
-
-                    destination_location: dest,
-
-                    custodian_name: driver,
-
-                    action_type: "assign"
-
-                })
-
-            });
-
-        } catch (e) {
-
-            console.error("Error asignando herramienta:", e);
-
+        const dispatchPayload = {
+            project_id: projId,
+            client_id: proj ? proj.client_id : null,
+            guide_type: isSedeCentralOrNoVeh ? "control_interno" : "traslado_externo",
+            destination_address: dest || (isSedeCentralOrNoVeh ? "Taller DALOR Guacara (Sede Central)" : "En Obra"),
+            driver_name: finalDriver,
+            vehicle_plate: vehPlate,
+            carrier_company: "DALOR C.A.",
+            asset_id: (veh && veh.id) ? parseInt(veh.id) : null,
+            transport_type: "propio_dalor",
+            notes: notes || (isSedeCentralOrNoVeh ? "Control Interno / Traslado a Sede Central DALOR" : "Guía de traslado de equipos y herramientas hacia obra"),
+            items: dispatchItems
+        };
+        const guideRes = await authFetch(`${API_BASE}/dispatch/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dispatchPayload)
+        });
+        if (guideRes.ok) {
+            const guideData = await guideRes.json();
+            if (guideData && guideData.guide_number) {
+                guideNumber = guideData.guide_number;
+            }
         }
-
+    } catch (errG) {
+        console.warn("Advertencia al persistir guía en backend:", errG);
     }
 
-
+    // 2. Reubicar herramientas en backend para el proyecto
+    for (const tg of selectedToolGroups) {
+        for (const unit of tg.units) {
+            try {
+                await authFetch(`${API_BASE}/resources/assign`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        resource_type: "asset",
+                        resource_id: unit.id,
+                        project_id: projId,
+                        destination_location: dest,
+                        custodian_name: driver,
+                        action_type: "assign"
+                    })
+                });
+            } catch (e) {
+                console.error("Error asignando herramienta:", e);
+            }
+        }
+    }
 
     closeModal("modalTransferGuide");
+
 
     await loadInitialMasterData();
 
@@ -418,28 +610,41 @@ async function submitGenerateTransferGuide(event) {
 
                 <tbody>
 
-                    ${selectedTools.map((t, i) => `
-
-                        <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: 800;">${i + 1}</td>
-
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: 800; color: #0284c7;">${t.code}</td>
-
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${t.name}</td>
-
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; color: #64748b;">${t.brand || '-'}</td>
-
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace;">${t.serial || 'S/N'}</td>
-
-                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; color: #059669; font-weight: 800;">Operativo</td>
-
-                        </tr>
-
-                    `).join('')}
-
+                    ${(() => {
+                        let rowIdx = 0;
+                        const rows = [];
+                        selectedToolGroups.forEach(tg => {
+                            if (tg.units.length > 0) {
+                                tg.units.forEach(u => {
+                                    rowIdx++;
+                                    rows.push(`
+                                        <tr style="background: ${rowIdx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: 800;">${rowIdx}</td>
+                                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: 800; color: #0284c7;">${u.asset_code}</td>
+                                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${u.name}</td>
+                                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; color: #64748b;">${u.brand || tg.brand || '-'}</td>
+                                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace;">${u.serial_number || 'S/N'}</td>
+                                            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; color: #059669; font-weight: 800;">Operativo (1 UND)</td>
+                                        </tr>
+                                    `);
+                                });
+                            } else {
+                                rowIdx++;
+                                rows.push(`
+                                    <tr style="background: ${rowIdx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                                        <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: 800;">${rowIdx}</td>
+                                        <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: 800; color: #0284c7;">${tg.group.asset_code_sample}</td>
+                                        <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 700;">${tg.name}</td>
+                                        <td style="padding: 6px 10px; border: 1px solid #cbd5e1; color: #64748b;">${tg.brand || '-'}</td>
+                                        <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-family: monospace;">LOTE</td>
+                                        <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; color: #059669; font-weight: 800;">Operativo (${tg.quantity} UND)</td>
+                                    </tr>
+                                `);
+                            }
+                        });
+                        return rows.join('');
+                    })()}
                 </tbody>
-
             </table>
 
 
@@ -505,5 +710,8 @@ if (typeof window !== 'undefined') {
     window.onTransferGuideProjectChanged = onTransferGuideProjectChanged;
     window.renderTransferToolsChecklist = renderTransferToolsChecklist;
     window.filterTransferToolsChecklist = filterTransferToolsChecklist;
+    window.onToggleTransferToolRow = onToggleTransferToolRow;
+    window.adjustTransferToolQty = adjustTransferToolQty;
+    window.onTransferToolQtyInput = onTransferToolQtyInput;
     window.submitGenerateTransferGuide = submitGenerateTransferGuide;
 }

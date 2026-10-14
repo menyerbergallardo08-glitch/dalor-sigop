@@ -79,6 +79,7 @@ class QuotationCreate(BaseModel):
     coletilla_divisas: Optional[bool] = True
     coletilla_bolivares: Optional[bool] = False
     coletilla_modalidad: Optional[bool] = True
+    created_at: Optional[datetime] = None
     items: List[QuotationItemCreate]
 
 class QuotationUpdate(BaseModel):
@@ -95,6 +96,7 @@ class QuotationUpdate(BaseModel):
     coletilla_bolivares: Optional[bool] = None
     coletilla_modalidad: Optional[bool] = None
     status: Optional[str] = None
+    created_at: Optional[datetime] = None
     items: Optional[List[QuotationItemCreate]] = None
 
 class QuotationOut(BaseModel):
@@ -134,6 +136,7 @@ class ProjectPhaseCreate(BaseModel):
     estimated_cost_usd: float = 0.0
     status: str = "pendiente"
     responsible_person: Optional[str] = None
+    weight_percent: Optional[float] = 0.0
 
 class ProjectPhaseOut(BaseModel):
     id: int
@@ -146,6 +149,7 @@ class ProjectPhaseOut(BaseModel):
     estimated_cost_usd: float
     status: str
     responsible_person: Optional[str]
+    weight_percent: Optional[float] = 0.0
 
     class Config:
         from_attributes = True
@@ -201,6 +205,7 @@ class ProjectCreate(BaseModel):
     assigned_tool_ids: Optional[List[int]] = []
     assigned_material_items: Optional[List[dict]] = []
     origin_quotation_id: Optional[int] = None
+    start_date: Optional[datetime] = None
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
@@ -222,6 +227,7 @@ class ProjectUpdate(BaseModel):
     assigned_vehicle_ids: Optional[List[int]] = None
     assigned_tool_ids: Optional[List[int]] = None
     assigned_material_items: Optional[List[dict]] = None
+    start_date: Optional[datetime] = None
 
 class ProjectOut(BaseModel):
     id: int
@@ -245,6 +251,7 @@ class ProjectOut(BaseModel):
     total_spent_usd: float = 0.0
     progress_pct: float = 0.0
     is_active: bool
+    start_date: Optional[datetime] = None
     created_at: datetime
     phases: List[ProjectPhaseOut] = []
 
@@ -256,11 +263,13 @@ class ResourceAssignRequest(BaseModel):
     project_id: Optional[int] = None
     resource_type: str # asset, personnel
     resource_id: int
+    quantity: Optional[int] = 1
     destination_location: Optional[str] = "Sede Central"
     custodian_name: Optional[str] = None
     start_odometer: Optional[float] = None
     odometer_reading: Optional[float] = None
     notes: Optional[str] = None
+
 
 class ResourceTransferRequest(BaseModel):
     from_project_id: Optional[int] = None

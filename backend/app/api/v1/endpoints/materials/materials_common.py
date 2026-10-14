@@ -73,7 +73,10 @@ class MaterialUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
     unit_measure: Optional[str] = None
+    stock_quantity: Optional[float] = None
+    adjustment_notes: Optional[str] = None
     min_stock_alert: Optional[float] = None
     unit_cost_usd: Optional[float] = None
     location: Optional[str] = None
     is_active: Optional[bool] = None
+

@@ -408,151 +408,7 @@
 
 
 
-    <!-- MODAL: GUÍA DE TRASLADO & DESPACHO DE EQUIPOS A OBRA -->
 
-    
-
-<div id="modalTransferGuide" class="modal-overlay hidden">
-
-        <div class="modal-content" style="max-width: 650px;">
-
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
-
-                <div>
-
-                    <span class="badge-tag" style="background: #e0f2fe; color: #0369a1;">Logística & Custodia</span>
-
-                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
-
-                        <i class="fa-solid fa-file-export" style="color: #0284c7;"></i> Emisión de Guía de Traslado & Despacho a Obra
-
-                    </h3>
-
-                </div>
-
-                <button onclick="closeModal('modalTransferGuide')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
-
-            </div>
-
-            <form id="transferGuideForm" onsubmit="submitGenerateTransferGuide(event)" style="display: flex; flex-direction: column; gap: 10px;">
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
-                        <label class="form-label">Proyecto Aprobado Destino *</label>
-
-                        <select id="tg_project_id" class="form-select" onchange="onTransferGuideProjectChanged()"></select>
-
-                    </div>
-
-                    <div>
-
-                        <label class="form-label">Ubicación de Destino *</label>
-
-                        <input type="text" id="tg_destination" placeholder="Planta Centro - Morón" class="form-input" required>
-
-                    </div>
-
-                </div>
-
-
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
-                        <label class="form-label">Vehículo de Transporte *</label>
-
-                        <select id="tg_vehicle_id" class="form-select" required></select>
-
-                    </div>
-
-                    <div>
-
-                        <label class="form-label">Chofer / Conductor Responsable *</label>
-
-                        <input type="text" id="tg_driver_name" placeholder="Chofer / Operador de Carga" class="form-input" required>
-
-                    </div>
-
-                </div>
-
-
-
-                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px;">
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-
-                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
-
-                            <i class="fa-solid fa-toolbox" style="color: #0284c7;"></i> Seleccionar Herramientas & Equipos a Despachar:
-
-                        </span>
-
-                        <input type="text" id="tg_tools_search" placeholder="Buscar herramienta..." class="form-input" style="padding: 4px 8px; font-size: 11px; width: 180px;" oninput="debouncedFilterTransferToolsChecklist()">
-
-                    </div>
-
-                    <div id="tg_tools_checklist_container" style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; background: white; display: flex; flex-direction: column; gap: 4px;">
-
-                        <!-- Dinámico con herramientas -->
-
-                    </div>
-
-                </div>
-
-
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-
-                    <div>
-
-                        <label class="form-label">Costo de Flete / Grúa ($ Imputable a Obra)</label>
-
-                        <input type="number" step="0.01" id="tg_freight_cost" value="0.00" class="form-input">
-
-                    </div>
-
-                    <div>
-
-                        <label class="form-label">Combustible de Traslado ($ Imputable)</label>
-
-                        <input type="number" step="0.01" id="tg_fuel_cost" value="0.00" class="form-input">
-
-                    </div>
-
-                </div>
-
-
-
-                <div>
-
-                    <label class="form-label">Observaciones / Condiciones de Entrega</label>
-
-                    <input type="text" id="tg_notes" placeholder="Equipos revisados y operativos para inicio de faena." class="form-input">
-
-                </div>
-
-
-
-                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-
-                    <button type="button" onclick="closeModal('modalTransferGuide')" class="btn-secondary">Cancelar</button>
-
-                    <button type="submit" class="btn-primary" style="background: #0284c7;">
-
-                        <i class="fa-solid fa-print"></i> Generar y Emitir Guía de Traslado
-
-                    </button>
-
-                </div>
-
-            </form>
-
-        </div>
-
-    </div>
 
     <!-- MODAL: HISTORIAL DE SERVICIOS Y MANTENIMIENTOS DE VEHÍCULO -->
     
@@ -973,6 +829,23 @@
                 </div>
             </div>
 
+            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px;">
+                    <div>
+                        <label class="form-label" style="font-size: 11px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-boxes-stacked" style="color: #0284c7;"></i> Stock Físico Actual
+                        </label>
+                        <input type="number" id="edit_mat_stock" class="form-input" step="any" min="0" placeholder="0" style="font-weight: 800; font-size: 13px; color: var(--dalor-blue);">
+                        <small style="color: #64748b; font-size: 9.5px;">Permite aumentar o restar unidades.</small>
+                    </div>
+                    <div>
+                        <label class="form-label" style="font-size: 11px; font-weight: 700; color: #475569;">Motivo / Nota de Ajuste</label>
+                        <input type="text" id="edit_mat_stock_reason" class="form-input" placeholder="Ej: Conteo físico, merma, corrección">
+                        <small style="color: #94a3b8; font-size: 9.5px;">Se registrará auditoría automática.</small>
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <label class="form-label" style="font-size: 11px; font-weight: 700;">Ubicación en Almacén</label>
                 <input type="text" id="edit_mat_location" class="form-input" placeholder="Ej: Pasillo A - Estante 2">
@@ -987,6 +860,41 @@
         </form>
     </div>
 </div>
+
+<!-- MODAL: IMPORTAR MATERIALES VÍA EXCEL -->
+<div id="modalImportMaterialsExcel" class="modal-overlay hidden" style="z-index: 2200;">
+    <div class="modal-content" style="max-width: 520px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+            <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">
+                <i class="fa-solid fa-file-excel" style="color: #16a34a;"></i> Reforma y Carga Masiva de Materiales (Excel)
+            </h3>
+            <button type="button" onclick="closeModal('modalImportMaterialsExcel')" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+        <div style="font-size: 12px; color: #475569; line-height: 1.5; margin-bottom: 14px;">
+            <p style="margin: 0 0 8px 0;">Descarga el catálogo oficial en Excel, corrige o agrega los materiales con sus stocks y costos, y sube el archivo actualizado para sincronizar el sistema automáticamente.</p>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 11px; color: #166534; font-weight: 700;">¿Descargar catálogo actual?</span>
+                <button type="button" onclick="downloadMaterialsExcelTemplate()" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #166534; border-color: #86efac; background: white;">
+                    <i class="fa-solid fa-download"></i> Descargar Excel
+                </button>
+            </div>
+        </div>
+        <form id="importMaterialsExcelForm" onsubmit="submitImportMaterialsExcel(event)" style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+                <label class="form-label" style="font-weight: 700;">Seleccionar Archivo Excel (.xlsx) *</label>
+                <input type="file" id="materials_excel_file_input" accept=".xlsx, .xls" class="form-input" style="padding: 8px;" required>
+            </div>
+            <div id="materialsExcelImportFeedback" class="hidden" style="padding: 10px; border-radius: 6px; font-size: 11.5px;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <button type="button" onclick="closeModal('modalImportMaterialsExcel')" class="btn-secondary">Cancelar</button>
+                <button type="submit" id="btnSubmitImportMaterialsExcel" class="btn-primary" style="background: #16a34a;">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Procesar Carga Masiva
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 
 <!-- MODAL: SUSTITUIR RECURSO EN OBRA (PERSONAL / HERRAMIENTAS / VEHÍCULOS) -->
 

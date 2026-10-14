@@ -47,24 +47,8 @@ def get_projects(db: Session = Depends(get_db)):
         cxp_spent = float(cxp_sums.get(proj.id, 0.0) or 0.0)
         spent = round(exp_spent + cxp_spent, 2)
         
-        # Calculate physical progress percentage based on tasks or completed phases
-        total_tasks = 0
-        completed_tasks = 0
-        if proj.phases:
-            for ph in proj.phases:
-                raw_tasks = [t.strip() for t in (ph.description or "").split(";") if t.strip()]
-                if not raw_tasks and (ph.description or "").strip():
-                    raw_tasks = [t.strip() for t in ph.description.split("\n") if t.strip()]
-                
-                if raw_tasks:
-                    total_tasks += len(raw_tasks)
-                    completed_tasks += sum(1 for t in raw_tasks if t.startswith("[x]") or t.startswith("[X]"))
-                else:
-                    total_tasks += 1
-                    if ph.status == "completado":
-                        completed_tasks += 1
-        
-        prog_pct = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else (100.0 if proj.status == "completado" else 0.0)
+        # Calculate physical progress percentage based on tasks or completed phases (ponderado)
+        prog_pct = calculate_project_progress(proj.phases, proj.status)
         
         # Consultar si ya tiene factura en Cuentas por Cobrar (CxC) y su estado
         cxc_recs = db.query(AccountReceivable).filter(AccountReceivable.project_id == proj.id).all()
@@ -118,6 +102,7 @@ def get_projects(db: Session = Depends(get_db)):
             "addendums_count": len(proj.addendums) if proj.addendums else 0,
             "total_addendums_usd": round(sum(a.additional_contract_usd for a in (proj.addendums or [])), 2),
             "is_active": proj.is_active,
+            "start_date": proj.start_date.isoformat() if proj.start_date else (proj.created_at.isoformat() if proj.created_at else None),
             "created_at": proj.created_at.isoformat() if proj.created_at else None,
             "phases": [
                 {
@@ -130,7 +115,8 @@ def get_projects(db: Session = Depends(get_db)):
                     "estimated_duration": float(getattr(ph, "estimated_duration", ph.duration_days) or ph.duration_days or 0.0),
                     "estimated_cost_usd": ph.estimated_cost_usd,
                     "status": ph.status,
-                    "responsible_person": ph.responsible_person
+                    "responsible_person": ph.responsible_person,
+                    "weight_percent": float(getattr(ph, "weight_percent", 0.0) or 0.0)
                 } for ph in (proj.phases or [])
             ]
         })
@@ -258,10 +244,14 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
         "status": proj.status,
         "scope_of_work": proj.scope_of_work,
         "duration_days": proj.duration_days,
+        "execution_time": proj.execution_time,
+        "start_date": proj.start_date.isoformat() if proj.start_date else (proj.created_at.isoformat() if proj.created_at else None),
+        "created_at": proj.created_at.isoformat() if proj.created_at else None,
         "contract_amount_usd": proj.contract_amount_usd,
         "budget_limit_usd": proj.budget_limit_usd,
         "total_spent_usd": round(total_spent, 2),
         "gross_margin_usd": round(proj.contract_amount_usd - total_spent, 2),
+        "progress_pct": calculate_project_progress(proj.phases, proj.status),
         "total_billed_cxc_usd": round(total_billed_cxc, 2),
         "total_collected_usd": round(total_collected_usd, 2),
         "balance_receivable_usd": round(balance_receivable_usd, 2),
@@ -294,7 +284,8 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
                 "estimated_duration": float(getattr(ph, "estimated_duration", ph.duration_days) or ph.duration_days or 0.0),
                 "estimated_cost_usd": ph.estimated_cost_usd,
                 "status": ph.status,
-                "responsible_person": ph.responsible_person
+                "responsible_person": ph.responsible_person,
+                "weight_percent": float(getattr(ph, "weight_percent", 0.0) or 0.0)
             } for ph in proj.phases
         ],
         "assigned_fleet": [
@@ -397,6 +388,7 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
         exec_t = f"{exec_t} días hábiles"
 
     try:
+        start_d = project_in.start_date or datetime.utcnow()
         new_project = Project(
             code=code,
             name=project_in.name,
@@ -407,6 +399,7 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
             scope_of_work=project_in.scope_of_work,
             duration_days=project_in.duration_days,
             execution_time=exec_t,
+            start_date=start_d,
             contract_amount_usd=project_in.contract_amount_usd,
             estimated_labor_usd=project_in.estimated_labor_usd,
             estimated_fuel_usd=project_in.estimated_fuel_usd,
@@ -414,13 +407,20 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
             estimated_tools_usd=project_in.estimated_tools_usd,
             estimated_services_usd=project_in.estimated_services_usd,
             budget_limit_usd=total_budget if total_budget > 0 else (project_in.contract_amount_usd * 0.70),
-            is_active=True
+            is_active=True,
+            created_at=start_d
         )
         db.add(new_project)
         db.flush() # Obtiene ID sin cerrar la transacción atómica
 
         # 1. Crear Etapas / Fases del Proyecto
         if project_in.phases and len(project_in.phases) > 0:
+            total_weight = sum(round(getattr(p, "weight_percent", 0.0) or 0.0, 2) for p in project_in.phases)
+            if total_weight > 100.05:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Inconsistencia en Ponderación: Las etapas suman {round(total_weight, 1)}%, lo cual excede el 100% permitido. Ajuste los porcentajes para que no superen el 100%."
+                )
             for idx, phase_data in enumerate(project_in.phases, start=1):
                 d_unit = getattr(phase_data, "duration_unit", "dias") or "dias"
                 e_dur = getattr(phase_data, "estimated_duration", None)
@@ -438,7 +438,8 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
                     estimated_duration=e_dur,
                     estimated_cost_usd=phase_data.estimated_cost_usd,
                     status=phase_data.status or "pendiente",
-                    responsible_person=phase_data.responsible_person
+                    responsible_person=phase_data.responsible_person,
+                    weight_percent=round(getattr(phase_data, "weight_percent", 0.0) or 0.0, 2)
                 )
                 db.add(phase)
             db.flush()
@@ -593,6 +594,7 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
         "total_spent_usd": 0.0,
         "progress_pct": 0.0,
         "is_active": new_project.is_active,
+        "start_date": new_project.start_date.isoformat() if new_project.start_date else (new_project.created_at.isoformat() if new_project.created_at else None),
         "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
         "phases": [{
             "id": ph.id,
@@ -659,6 +661,9 @@ def update_project(project_id: int, project_in: ProjectUpdate, db: Session = Dep
             proj.scope_of_work = project_in.scope_of_work
         if project_in.duration_days is not None:
             proj.duration_days = project_in.duration_days
+        if project_in.start_date is not None:
+            proj.start_date = project_in.start_date
+            proj.created_at = project_in.start_date
         if project_in.execution_time is not None:
             exec_t = project_in.execution_time.strip()
             if "hábil" not in exec_t.lower() and "habil" not in exec_t.lower():
@@ -690,6 +695,12 @@ def update_project(project_id: int, project_in: ProjectUpdate, db: Session = Dep
 
         # Si se envían fases válidas para actualización/reemplazo
         if project_in.phases is not None and len(project_in.phases) > 0:
+            total_weight = sum(round(getattr(p, "weight_percent", 0.0) or 0.0, 2) for p in project_in.phases)
+            if total_weight > 100.05:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Inconsistencia en Ponderación: Las etapas suman {round(total_weight, 1)}%, lo cual excede el 100% permitido. Ajuste los porcentajes para que no superen el 100%."
+                )
             db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).delete()
             for idx, phase_data in enumerate(project_in.phases, start=1):
                 d_unit = getattr(phase_data, "duration_unit", "dias") or "dias"
@@ -708,7 +719,8 @@ def update_project(project_id: int, project_in: ProjectUpdate, db: Session = Dep
                     estimated_duration=e_dur,
                     estimated_cost_usd=float(phase_data.estimated_cost_usd or 0.0),
                     status=phase_data.status or "pendiente",
-                    responsible_person=phase_data.responsible_person
+                    responsible_person=phase_data.responsible_person,
+                    weight_percent=round(getattr(phase_data, "weight_percent", 0.0) or 0.0, 2)
                 )
                 db.add(new_p)
 

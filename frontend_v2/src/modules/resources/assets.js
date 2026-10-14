@@ -62,10 +62,18 @@ function openAssignModal(type, id, name, action) {
     
 
     const isAsset = type === 'asset';
+    const qtyContainer = document.getElementById("modal_quantity_container");
+    const qtyInput = document.getElementById("modal_res_quantity");
+    if (qtyContainer) {
+        qtyContainer.style.display = (isAsset && action === 'assign') ? 'block' : 'none';
+    }
+    if (qtyInput) {
+        qtyInput.value = "1";
+    }
 
     document.getElementById("modal_odometer_container").style.display = isAsset ? 'block' : 'none';
-
     document.getElementById("modal_custodian_container").style.display = isAsset ? 'block' : 'none';
+
 
 
 
@@ -123,16 +131,19 @@ async function submitResourceAction(event) {
     const location = document.getElementById("modal_res_location").value;
     const custodian = document.getElementById("modal_res_custodian").value;
     const odometer = parseFloat(document.getElementById("modal_res_odometer").value) || null;
+    const quantity = parseInt(document.getElementById("modal_res_quantity")?.value || "1", 10) || 1;
 
     const endpoint = action === 'assign' ? `${API_BASE}/resources/assign` : `${API_BASE}/resources/transfer`;
     const payload = action === 'assign' ? {
         project_id: targetProjId,
         resource_type: type,
         resource_id: id,
+        quantity: quantity,
         destination_location: location,
         custodian_name: custodian,
         start_odometer: odometer
     } : {
+
         target_project_id: targetProjId,
         resource_type: type,
         resource_id: id,

@@ -84,4 +84,10 @@ export const openEditAssetModal = (...args) => (window.openEditAssetModal ? wind
 export const submitEditAsset = (...args) => (window.submitEditAsset ? window.submitEditAsset(...args) : undefined);
 export const toggleAssetStatus = (...args) => (window.toggleAssetStatus ? window.toggleAssetStatus(...args) : undefined);
 export const onEditAssetTypeChanged = (...args) => (window.onEditAssetTypeChanged ? window.onEditAssetTypeChanged(...args) : undefined);
+export const openRemoveToolUnitsModal = (...args) => (window.openRemoveToolUnitsModal ? window.openRemoveToolUnitsModal(...args) : undefined);
+export const submitRemoveToolUnits = (...args) => (window.submitRemoveToolUnits ? window.submitRemoveToolUnits(...args) : undefined);
+export const confirmRemoveSingleToolUnit = (...args) => (window.confirmRemoveSingleToolUnit ? window.confirmRemoveSingleToolUnit(...args) : undefined);
+export const downloadAssetsExcelTemplate = (...args) => (window.downloadAssetsExcelTemplate ? window.downloadAssetsExcelTemplate(...args) : undefined);
+export const submitImportAssetsExcel = (...args) => (window.submitImportAssetsExcel ? window.submitImportAssetsExcel(...args) : undefined);
+
 

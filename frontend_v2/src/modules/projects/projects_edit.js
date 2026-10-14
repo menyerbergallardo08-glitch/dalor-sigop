@@ -28,7 +28,7 @@ function safeNum(val, def = 0) {
 // ==============================================================================
 let editPhaseCount = 0;
 
-function addEditProjectPhaseRow(defName = "", defDuration = 7, defUnit = "dias", defCost = 0, defDesc = "", defStatus = "pendiente") {
+function addEditProjectPhaseRow(defName = "", defDuration = 7, defUnit = "dias", defCost = 0, defDesc = "", defStatus = "pendiente", defWeight = 0) {
     editPhaseCount++;
     const container = document.getElementById("editProjectPhasesContainer");
     if (!container) return;
@@ -37,7 +37,7 @@ function addEditProjectPhaseRow(defName = "", defDuration = 7, defUnit = "dias",
     const div = document.createElement("div");
     div.id = rowId;
     div.className = "edit-phase-row";
-    div.style.cssText = "background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; display: grid; grid-template-columns: 2fr 1fr 1fr 24px; gap: 8px; align-items: center;";
+    div.style.cssText = "background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 24px; gap: 8px; align-items: center;";
 
     div.innerHTML = `
         <div>
@@ -59,6 +59,10 @@ function addEditProjectPhaseRow(defName = "", defDuration = 7, defUnit = "dias",
         <div>
             <label style="font-size: 9.5px; font-weight: 700; color: #64748b; display: block;">Ppto ($):</label>
             <input type="text" inputmode="decimal" class="form-input eph-cost" value="${defCost}" style="font-size: 11px; padding: 4px 6px; font-weight: 800; color: var(--dalor-blue);">
+        </div>
+        <div>
+            <label style="font-size: 9.5px; font-weight: 700; color: #64748b; display: block;">Peso (%):</label>
+            <input type="text" inputmode="decimal" class="form-input eph-weight" value="${defWeight || 0}" placeholder="0-100%" style="font-size: 11px; padding: 4px 6px; font-weight: 800; color: #059669;">
         </div>
         <button type="button" onclick="document.getElementById('${rowId}')?.remove()" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding-top: 10px;" title="Eliminar etapa">&times;</button>
     `;
@@ -234,13 +238,32 @@ function addEditProjectResource(type) {
         }
     } else if (type === 'tools') {
         const sel = document.getElementById('edit_select_tools');
+        const qtyInp = document.getElementById('edit_tool_quantity');
         const id = parseInt(sel?.value);
-        if (id && !editSelectedToolIds.includes(id)) {
-            editSelectedToolIds.push(id);
+        const qty = parseInt(qtyInp?.value || "1", 10) || 1;
+        if (id) {
+            const allAss = window.allAssets || [];
+            const targetAsset = allAss.find(a => a.id === id);
+            if (targetAsset && qty > 1) {
+                const sameModelAssets = allAss.filter(a => 
+                    (a.name || '').trim().toUpperCase() === (targetAsset.name || '').trim().toUpperCase() &&
+                    (a.status === 'disponible_base' || !a.current_project_id)
+                );
+                const candidates = sameModelAssets.slice(0, qty);
+                candidates.forEach(c => {
+                    if (!editSelectedToolIds.includes(c.id)) editSelectedToolIds.push(c.id);
+                });
+            } else {
+                if (!editSelectedToolIds.includes(id)) {
+                    editSelectedToolIds.push(id);
+                }
+            }
             renderEditAssignedTags();
             sel.value = '';
+            if (qtyInp) qtyInp.value = '1';
         }
     } else if (type === 'material') {
+
         const sel = document.getElementById('edit_select_materials');
         const qtyInp = document.getElementById('edit_mat_quantity');
         const matId = parseInt(sel?.value);
@@ -368,6 +391,10 @@ async function openEditProjectModal(projectId) {
         document.getElementById("edit_project_id").value = p.id;
         document.getElementById("edit_project_code").value = p.code || "";
         document.getElementById("edit_project_name").value = p.name || "";
+        if (document.getElementById("edit_project_start_date")) {
+            let startVal = (p.start_date || p.created_at || '').substring(0, 10);
+            document.getElementById("edit_project_start_date").value = startVal || new Date().toISOString().substring(0, 10);
+        }
         document.getElementById("edit_project_location").value = p.location || "Sede Central";
         document.getElementById("edit_project_status").value = (p.status || "activo").toLowerCase();
         document.getElementById("edit_project_duration").value = p.duration_days || 30;
@@ -407,10 +434,10 @@ async function openEditProjectModal(projectId) {
                 p.phases.forEach(ph => {
                     const durUnit = ph.duration_unit || "dias";
                     const durVal = ph.estimated_duration !== undefined ? ph.estimated_duration : (ph.duration_days || 7);
-                    addEditProjectPhaseRow(ph.name, durVal, durUnit, ph.estimated_cost_usd || 0, ph.description || ph.name, ph.status || "pendiente");
+                    addEditProjectPhaseRow(ph.name, durVal, durUnit, ph.estimated_cost_usd || 0, ph.description || ph.name, ph.status || "pendiente", ph.weight_percent || 0);
                 });
             } else {
-                addEditProjectPhaseRow("Fase 1: Ejecución Inicial", 7, "dias", 0, "", "pendiente");
+                addEditProjectPhaseRow("Fase 1: Ejecución Inicial", 7, "dias", 0, "", "pendiente", 0);
             }
         }
 
@@ -478,6 +505,7 @@ async function submitEditProject(event) {
         const durVal = safeNum(rawDur, 7);
         const durUnit = row.querySelector(".eph-dur-unit")?.value || "dias";
         const cost = safeNum(row.querySelector(".eph-cost")?.value, 0.0);
+        const weightVal = safeNum(row.querySelector(".eph-weight")?.value, 0.0);
         const desc = row.querySelector(".eph-desc")?.value || phName;
         const phStatus = row.querySelector(".eph-status")?.value || "pendiente";
         const days = durUnit === "horas" ? Math.max(1, Math.round(durVal / 8)) : Math.max(1, Math.round(durVal));
@@ -490,6 +518,7 @@ async function submitEditProject(event) {
             duration_unit: durUnit,
             estimated_duration: durVal,
             estimated_cost_usd: cost,
+            weight_percent: weightVal,
             status: phStatus
         });
     });
@@ -507,6 +536,27 @@ async function submitEditProject(event) {
         });
     }
 
+    // Validar Ponderación de Etapas en edición (no puede superar 100%)
+    const totalWeights = phases.reduce((acc, p) => acc + (p.weight_percent || 0), 0);
+    if (totalWeights > 100.05) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ponderación Inválida de Etapas',
+                text: `La suma de ponderaciones de las etapas es ${totalWeights.toFixed(1)}%, no puede superar el 100%. Por favor corrige los porcentajes antes de guardar.`
+            });
+        } else {
+            alert(`⚠️ Error de Ponderación: La suma de las etapas es ${totalWeights.toFixed(1)}%, no puede superar el 100%.`);
+        }
+        return;
+    }
+
+    const editStartDateVal = document.getElementById("edit_project_start_date")?.value;
+    let formattedEditStartDate = undefined;
+    if (editStartDateVal) {
+        formattedEditStartDate = `${editStartDateVal}T12:00:00`;
+    }
+
     const payload = {
         name: name,
         client_id: clientId,
@@ -514,6 +564,7 @@ async function submitEditProject(event) {
         location: (document.getElementById("edit_project_location")?.value || "Sede Central").trim(),
         status: document.getElementById("edit_project_status")?.value || "activo",
         duration_days: parseInt(document.getElementById("edit_project_duration")?.value) || 30,
+        start_date: formattedEditStartDate,
         execution_time: (document.getElementById("edit_project_execution_time")?.value || "").trim() || "15 días hábiles",
         contract_amount_usd: safeNum(document.getElementById("edit_project_contract")?.value, 0.0),
         scope_of_work: document.getElementById("edit_project_scope")?.value || "",

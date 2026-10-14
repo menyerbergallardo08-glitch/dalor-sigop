@@ -353,6 +353,8 @@ async function openEditMaterialModal(materialId) {
     const nameInput = document.getElementById("edit_mat_name");
     const catInput = document.getElementById("edit_mat_category");
     const unitInput = document.getElementById("edit_mat_unit");
+    const stockInput = document.getElementById("edit_mat_stock");
+    const stockReasonInput = document.getElementById("edit_mat_stock_reason");
     const minStockInput = document.getElementById("edit_mat_min_stock");
     const unitCostInput = document.getElementById("edit_mat_unit_cost");
     const locInput = document.getElementById("edit_mat_location");
@@ -362,6 +364,8 @@ async function openEditMaterialModal(materialId) {
     if (nameInput) nameInput.value = mat.name || '';
     if (catInput) catInput.value = mat.category || 'Acero Estructural';
     if (unitInput) unitInput.value = (mat.unit_measure || 'UND').toUpperCase();
+    if (stockInput) stockInput.value = mat.stock_quantity !== undefined ? mat.stock_quantity : 0;
+    if (stockReasonInput) stockReasonInput.value = '';
     if (minStockInput) minStockInput.value = mat.min_stock_alert !== undefined ? mat.min_stock_alert : 5;
     if (unitCostInput) unitCostInput.value = mat.unit_cost_usd ? Number(mat.unit_cost_usd).toFixed(2) : '0.00';
     if (locInput) locInput.value = mat.location || '';
@@ -377,10 +381,13 @@ async function submitEditMaterial(event) {
     const matId = document.getElementById("edit_mat_id")?.value;
     if (!matId) return;
 
+    const rawStock = document.getElementById("edit_mat_stock")?.value;
     const payload = {
         name: (document.getElementById("edit_mat_name")?.value || "").trim(),
         category: (document.getElementById("edit_mat_category")?.value || "").trim(),
         unit_measure: (document.getElementById("edit_mat_unit")?.value || "").trim().toUpperCase(),
+        stock_quantity: (rawStock !== "" && rawStock !== null && rawStock !== undefined) ? parseFloat(rawStock) : null,
+        adjustment_notes: (document.getElementById("edit_mat_stock_reason")?.value || "").trim() || null,
         min_stock_alert: parseFloat(document.getElementById("edit_mat_min_stock")?.value) || 0,
         unit_cost_usd: parseFloat(document.getElementById("edit_mat_unit_cost")?.value) || 0,
         location: (document.getElementById("edit_mat_location")?.value || "").trim()
@@ -424,6 +431,94 @@ async function submitEditMaterial(event) {
     }
 }
 
+async function downloadMaterialsExcelTemplate() {
+    try {
+        const token = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+        const res = await fetch(`${API_BASE}/materials/excel-template`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error("Error del servidor al generar plantilla");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `DALOR_Catalogo_Materiales_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        alert("Error al descargar plantilla de materiales: " + e.message);
+    }
+}
+
+async function submitImportMaterialsExcel(event) {
+    event.preventDefault();
+    const fileInput = document.getElementById("materials_excel_file_input");
+    const feedback = document.getElementById("materialsExcelImportFeedback");
+    const btn = document.getElementById("btnSubmitImportMaterialsExcel");
+
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert("Por favor selecciona un archivo Excel (.xlsx).");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Procesando archivo...`;
+    }
+    if (feedback) {
+        feedback.className = "";
+        feedback.style.display = "block";
+        feedback.style.background = "#eff6ff";
+        feedback.style.color = "#1e40af";
+        feedback.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Leyendo catálogo y sincronizando existencias y costos...`;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/materials/import-excel`, {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            if (feedback) {
+                feedback.style.background = "#f0fdf4";
+                feedback.style.color = "#166534";
+                feedback.innerHTML = `<b>✅ Carga masiva exitosa:</b> ${data.message || ''}`;
+            }
+            alert(`✅ ${data.message || 'Carga completada con éxito.'}`);
+            closeModal("modalImportMaterialsExcel");
+            fileInput.value = "";
+            await loadMaterialsList();
+        } else {
+            if (feedback) {
+                feedback.style.background = "#fef2f2";
+                feedback.style.color = "#991b1b";
+                feedback.innerHTML = `<b>❌ Error:</b> ${data.detail || JSON.stringify(data)}`;
+            }
+            alert("Error al procesar archivo: " + (data.detail || JSON.stringify(data)));
+        }
+    } catch (e) {
+        if (feedback) {
+            feedback.style.background = "#fef2f2";
+            feedback.style.color = "#991b1b";
+            feedback.innerHTML = `<b>❌ Error de conexión:</b> ${e.message}`;
+        }
+        alert("Error de conexión al subir Excel: " + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Procesar Carga Masiva`;
+        }
+    }
+}
+
 
 // Exponer al objeto global window para eventos inline y compatibilidad
 if (typeof window !== 'undefined') {
@@ -440,4 +535,7 @@ if (typeof window !== 'undefined') {
     window.submitCreateMaterial = submitCreateMaterial;
     window.openEditMaterialModal = openEditMaterialModal;
     window.submitEditMaterial = submitEditMaterial;
+    window.downloadMaterialsExcelTemplate = downloadMaterialsExcelTemplate;
+    window.submitImportMaterialsExcel = submitImportMaterialsExcel;
 }
+

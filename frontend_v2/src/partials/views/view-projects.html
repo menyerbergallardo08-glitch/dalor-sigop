@@ -250,46 +250,38 @@
 
 
 
-                            <div class="grid-4" style="margin-bottom: 10px;">
+                            <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; margin-bottom: 10px;">
 
                                 <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Código de Obra <span style="font-size: 9px; color: #059669; font-weight: 700;">(Correlativo Oficial Protegido)</span></label>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Código de Obra <span style="font-size: 9px; color: #059669; font-weight: 700;">(Correlativo Oficial)</span></label>
                                     <input type="text" id="new_proj_code" readonly placeholder="Auto-asignado por sistema" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; text-transform: uppercase; background-color: #f1f5f9; cursor: not-allowed; font-weight: 800; color: #1e3a8a;">
-
                                 </div>
 
                                 <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Proyecto / Obra *</label>
-
-                                    <input type="text" id="new_proj_name" required placeholder="Ej: Mantenimiento Mayor Tolvas 3 y 4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Nombre del Proyecto / Obra * <span style="font-size: 9px; color: #059669; font-weight: 600;">(Capacidad ampliada para especificaciones oficiales)</span></label>
+                                    <textarea id="new_proj_name" required rows="2" placeholder="Ej: Servicio de mantenimiento mayor y fabricación de tolvas..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; resize: vertical;"></textarea>
                                 </div>
 
                                 <div>
-
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Cliente Asignado *</label>
-
                                     <select id="new_proj_client_id" required style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-
                                         <option value="">-- Seleccionar Cliente --</option>
-
                                     </select>
-
-                                </div>
-
-                                <div>
-
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Ubicación / Planta / Frente *</label>
-
-                                    <input type="text" id="new_proj_location" required placeholder="Ej: Planta Guacara / Frente 2" oninput="onProjectLocationInput(this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-
                                 </div>
 
                             </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 10px;">
+                                <div>
+                                    <label style="font-size: 11px; font-weight: 700; color: var(--dalor-navy);">
+                                        <i class="fa-regular fa-calendar-days" style="color: var(--dalor-gold);"></i> Fecha Inicio / Arranque *
+                                    </label>
+                                    <input type="date" id="new_proj_start_date" required style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--dalor-navy); cursor: pointer;" title="Permite seleccionar cualquier fecha anterior o posterior">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Ubicación / Planta / Frente *</label>
+                                    <input type="text" id="new_proj_location" required placeholder="Ej: Planta Guacara / Frente 2" oninput="onProjectLocationInput(this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                </div>
                                 <div>
                                     <label style="font-size: 11px; font-weight: 700; color: #475569;">Duración (Días Calendario) *</label>
                                     <input type="number" id="new_proj_duration" value="30" min="1" required style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
@@ -330,17 +322,33 @@
 
                                 </h4>
 
-                                <button type="button" onclick="addProjectPhaseRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;">
-
-                                    <i class="fa-solid fa-plus"></i> Agregar Etapa
-
-                                </button>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <button type="button" onclick="distributePhaseWeightsEqually()" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; background: #f0fdf4; color: #166534; border-color: #86efac; font-weight: 700;" title="Repartir 100% de manera proporcional entre todas las etapas">
+                                        ⚖️ Repartir 100% Equitativo
+                                    </button>
+                                    <button type="button" onclick="addProjectPhaseRow()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;">
+                                        <i class="fa-solid fa-plus"></i> Agregar Etapa
+                                    </button>
+                                </div>
 
                             </div>
 
-                            <p style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Agrega las etapas principales. En cada una puedes desglosar las tareas operativas de campo que se marcarán como completadas durante la ejecución.</p>
+                            <p style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Agrega las etapas principales. La suma de pesos de las etapas debe ser exactamente 100% del proyecto (o 0% para equiponderación automática). Cada tarea a su vez suma al 100% de su propia etapa.</p>
 
-                            
+                            <!-- Barra de Control de Ponderación en Vivo -->
+                            <div id="project_phases_weight_bar" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 11.5px; font-weight: 800; color: var(--dalor-navy);">
+                                        <i class="fa-solid fa-scale-balanced" style="color: var(--dalor-blue);"></i> Control de Ponderación General:
+                                    </span>
+                                    <span id="project_phases_weight_total_badge" style="font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 6px; background: #e2e8f0; color: #334155;">
+                                        Total Etapas: 0%
+                                    </span>
+                                </div>
+                                <small id="project_phases_weight_hint" style="font-size: 11px; color: #64748b; font-weight: 600;">
+                                    Equiponderación activa o balancea los pesos manualmente.
+                                </small>
+                            </div>
 
                             <!-- Contenedor dinámico de tarjetas de fases -->
 
@@ -397,8 +405,10 @@
                                         <select id="plan_select_tools" style="flex: 1; min-width: 0; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; background: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
                                             <option value="">-- Seleccionar Equipo Mayor --</option>
                                         </select>
-                                        <button type="button" onclick="addPlanResource('tools')" class="btn-secondary" style="padding: 6px 10px; font-size: 11px; font-weight: 700;"><i class="fa-solid fa-plus"></i></button>
+                                        <input type="number" id="plan_tool_quantity" value="1" min="1" placeholder="Cant." style="width: 55px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; text-align: center; font-weight: 700;" title="Cantidad a asignar">
+                                        <button type="button" onclick="addPlanResource('tools')" class="btn-secondary" style="padding: 6px 10px; font-size: 11px; font-weight: 700;" title="Agregar a la obra"><i class="fa-solid fa-plus"></i></button>
                                     </div>
+
                                     <div id="plan_tags_tools" class="assigned-tags-container" style="margin-top: 6px;"></div>
                                 </div>
                                 <div style="min-width: 0; overflow: hidden; grid-column: 1 / -1; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; margin-top: 6px;">

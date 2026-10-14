@@ -182,6 +182,11 @@ async function switchProjectSubtab(subtabName) {
         } catch (e) {
             console.warn("Error fetching next project code:", e);
         }
+
+        const dateInp = document.getElementById("new_proj_start_date");
+        if (dateInp && !dateInp.value) {
+            dateInp.value = new Date().toISOString().substring(0, 10);
+        }
     }
 }
 
@@ -368,12 +373,30 @@ function addPlanResource(type) {
     } else if (type === 'tools' || type === 'tool') {
         const sel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
         const val = parseInt(sel?.value);
-        if (val && !selectedToolIds.includes(val)) {
-            selectedToolIds.push(val);
+        const qtyInp = document.getElementById("plan_tool_quantity");
+        const qty = parseInt(qtyInp?.value || "1", 10) || 1;
+        if (val) {
+            const targetAsset = (allAssets || []).find(a => a.id === val);
+            if (targetAsset && qty > 1) {
+                const sameModelAssets = (allAssets || []).filter(a => 
+                    (a.name || '').trim().toUpperCase() === (targetAsset.name || '').trim().toUpperCase() &&
+                    (a.status === 'disponible_base' || !a.current_project_id)
+                );
+                const candidates = sameModelAssets.slice(0, qty);
+                candidates.forEach(c => {
+                    if (!selectedToolIds.includes(c.id)) selectedToolIds.push(c.id);
+                });
+            } else {
+                if (!selectedToolIds.includes(val)) {
+                    selectedToolIds.push(val);
+                }
+            }
             renderAssignedTags();
         }
         if (sel) sel.value = "";
+        if (qtyInp) qtyInp.value = "1";
     } else if (type === 'material' || type === 'materials') {
+
         const sel = document.getElementById("plan_select_materials") || document.getElementById("plan_mat_select");
         const val = parseInt(sel?.value);
         if (!val) {
@@ -694,7 +717,154 @@ function renderAssignedTags() {
 
 // Creador Dinámico de Etapas / Fases con Sub-campos de Tareas Operativas
 
-function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 0, defUnit = "dias") {
+function updatePhaseWeightsSumIndicator() {
+    const badge = document.getElementById("project_phases_weight_total_badge");
+    const hint = document.getElementById("project_phases_weight_hint");
+    if (!badge) return;
+
+    const weightInputs = document.querySelectorAll("#projectPhasesContainer .ph-weight");
+    let sum = 0;
+    let anyExplicit = false;
+
+    weightInputs.forEach(inp => {
+        const v = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value);
+        if (!isNaN(v) && v > 0) {
+            sum += v;
+            anyExplicit = true;
+        }
+    });
+
+    if (!anyExplicit || weightInputs.length === 0) {
+        badge.innerHTML = `Total Etapas: 0% (Equiponderación Automática)`;
+        badge.style.background = '#e2e8f0';
+        badge.style.color = '#334155';
+        badge.style.border = 'none';
+        if (hint) {
+            hint.innerText = "Equiponderación activa o balancea los pesos manualmente.";
+            hint.style.color = '#64748b';
+            hint.style.fontWeight = '600';
+        }
+    } else if (Math.abs(sum - 100) <= 0.05) {
+        badge.innerHTML = `✅ Total Etapas: 100% (Balanceado)`;
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#166534';
+        badge.style.border = '1px solid #86efac';
+        if (hint) {
+            hint.innerText = "Ponderación perfecta: El 100% de la obra está distribuido.";
+            hint.style.color = '#166534';
+            hint.style.fontWeight = '700';
+        }
+    } else if (sum > 100.05) {
+        badge.innerHTML = `❌ Total Etapas: ${sum.toFixed(1)}% (¡Supera el 100%!)`;
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+        badge.style.border = '1px solid #fca5a5';
+        if (hint) {
+            hint.innerText = "⚠️ La suma no puede exceder el 100%. Por favor ajusta los valores o pulsa 'Repartir 100% Equitativo'.";
+            hint.style.color = '#b91c1c';
+            hint.style.fontWeight = '800';
+        }
+    } else {
+        const remaining = (100 - sum).toFixed(1);
+        badge.innerHTML = `⚠️ Total Etapas: ${sum.toFixed(1)}% (Falta ${remaining}%)`;
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+        badge.style.border = '1px solid #fcd34d';
+        if (hint) {
+            hint.innerText = `Falta un ${remaining}% para completar el 100% del proyecto.`;
+            hint.style.color = '#92400e';
+            hint.style.fontWeight = '700';
+        }
+    }
+}
+
+function distributePhaseWeightsEqually() {
+    const weightInputs = document.querySelectorAll("#projectPhasesContainer .ph-weight");
+    const n = weightInputs.length;
+    if (n === 0) return;
+
+    const baseWeight = Math.floor((100 / n) * 100) / 100;
+    let remainder = Math.round((100 - (baseWeight * n)) * 100) / 100;
+
+    weightInputs.forEach((inp, idx) => {
+        let w = baseWeight;
+        if (idx === 0) {
+            w = Math.round((baseWeight + remainder) * 100) / 100;
+        }
+        inp.value = w;
+    });
+
+    updatePhaseWeightsSumIndicator();
+}
+
+function updateTaskWeightsSumIndicator(phaseCardId) {
+    if (!phaseCardId) return;
+    const card = document.getElementById(phaseCardId);
+    if (!card) return;
+
+    const badge = card.querySelector('.phase-tasks-weight-badge');
+    if (!badge) return;
+
+    const weightInputs = card.querySelectorAll('.ph-task-weight');
+    let sum = 0;
+    let anyExplicit = false;
+
+    weightInputs.forEach(inp => {
+        const v = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value);
+        if (!isNaN(v) && v > 0) {
+            sum += v;
+            anyExplicit = true;
+        }
+    });
+
+    if (!anyExplicit || weightInputs.length === 0) {
+        badge.innerHTML = `Suma Tareas: 0% <span style="font-size: 9px; opacity: 0.8;">(Equiponderadas)</span>`;
+        badge.style.background = '#e2e8f0';
+        badge.style.color = '#475569';
+        badge.style.border = 'none';
+    } else if (Math.abs(sum - 100) <= 0.05) {
+        badge.innerHTML = `✅ Tareas: 100% (Balanceado)`;
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#166534';
+        badge.style.border = '1px solid #86efac';
+    } else if (sum > 100.05) {
+        badge.innerHTML = `❌ Tareas: ${sum.toFixed(1)}% (Supera 100%)`;
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+        badge.style.border = '1px solid #fca5a5';
+    } else {
+        const remaining = (100 - sum).toFixed(1);
+        badge.innerHTML = `⚠️ Tareas: ${sum.toFixed(1)}% (Falta ${remaining}%)`;
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+        badge.style.border = '1px solid #fcd34d';
+    }
+}
+
+function distributeTaskWeightsEqually(phaseCardId) {
+    if (!phaseCardId) return;
+    const card = document.getElementById(phaseCardId);
+    if (!card) return;
+
+    const weightInputs = card.querySelectorAll('.ph-task-weight');
+    const n = weightInputs.length;
+    if (n === 0) return;
+
+    const baseWeight = Math.floor((100 / n) * 100) / 100;
+    let remainder = Math.round((100 - (baseWeight * n)) * 100) / 100;
+
+    weightInputs.forEach((inp, idx) => {
+        let w = baseWeight;
+        if (idx === 0) {
+            w = Math.round((baseWeight + remainder) * 100) / 100;
+        }
+        inp.value = w;
+    });
+
+    updateTaskWeightsSumIndicator(phaseCardId);
+}
+
+function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 0, defUnit = "dias", defWeight = 0) {
 
     phaseRowsCount++;
 
@@ -745,7 +915,7 @@ function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 
         </div>
 
         <!-- Campos de la Fase -->
-        <div style="display: grid; grid-template-columns: 2.5fr 1.5fr 1.2fr; gap: 10px;">
+        <div style="display: grid; grid-template-columns: 2.2fr 1.3fr 1fr 1fr; gap: 8px;">
             <div>
                 <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
                     Nombre de la Etapa / Hito
@@ -766,118 +936,107 @@ function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 
             </div>
             <div>
                 <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
-                    Presupuesto Fase ($)
+                    Presupuesto ($)
                 </label>
                 <input type="text" inputmode="decimal" class="form-input ph-cost" placeholder="Ppto ($)" value="${defCost}" style="font-size: 12px; font-weight: 800; color: var(--dalor-blue);">
             </div>
+            <div>
+                <label style="display: block; font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 3px;">
+                    Peso / Ponderación (%)
+                </label>
+                <input type="text" inputmode="decimal" class="form-input ph-weight" oninput="updatePhaseWeightsSumIndicator()" placeholder="0 - 100%" value="${defWeight || 0}" style="font-size: 12px; font-weight: 800; color: #059669;" title="Porcentaje de aporte de esta etapa al proyecto total (0 a 100%)">
+            </div>
         </div>
-
-
 
         <!-- Sub-campo de Tareas / Actividades Asignadas a esta Fase -->
-
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-
-                <label style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); display: flex; align-items: center; gap: 6px;">
-
-                    <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas / Actividades Operativas de esta Etapa:
-
-                </label>
-
-                <button type="button" onclick="addProjectPhaseTask('${phaseId}')" class="btn-primary" style="font-size: 10px; padding: 3px 8px; background: #0284c7;">
-
-                    <i class="fa-solid fa-plus"></i> Añadir Tarea
-
-                </button>
-
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: 800; color: var(--dalor-navy); display: flex; align-items: center; gap: 6px; margin: 0;">
+                        <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas Operativas de esta Etapa:
+                    </label>
+                    <span class="phase-tasks-weight-badge" style="font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 4px; background: #e2e8f0; color: #475569;">
+                        Suma Tareas: 0%
+                    </span>
+                </div>
+                <div style="display: flex; gap: 4px; align-items: center;">
+                    <button type="button" onclick="distributeTaskWeightsEqually('${phaseId}')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px; background: #f0fdf4; color: #166534; border-color: #86efac; font-weight: 700;" title="Repartir 100% de la etapa equitativamente entre las tareas">
+                        ⚖️ Repartir 100%
+                    </button>
+                    <button type="button" onclick="addProjectPhaseTask('${phaseId}')" class="btn-primary" style="font-size: 10px; padding: 3px 8px; background: #0284c7;">
+                        <i class="fa-solid fa-plus"></i> Añadir Tarea
+                    </button>
+                </div>
             </div>
-
             
-
             <div class="phase-tasks-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
-
         </div>
-
     `;
-
-
 
     container.appendChild(card);
 
-    
-
     // Poblar las tareas iniciales
-
     const tasksContainer = card.querySelector('.phase-tasks-container');
-
     defTasks.forEach((taskText) => {
-
         addProjectPhaseTaskRow(tasksContainer, taskText);
-
     });
 
-
-
     renumberPhasesAndTasks();
-
+    updatePhaseWeightsSumIndicator();
+    updateTaskWeightsSumIndicator(phaseId);
 }
 
-
-
 function addProjectPhaseTask(phaseCardId) {
-
     const card = document.getElementById(phaseCardId);
-
     if (!card) return;
 
     const tasksContainer = card.querySelector('.phase-tasks-container');
-
     addProjectPhaseTaskRow(tasksContainer, "");
-
     renumberPhasesAndTasks();
-
+    updateTaskWeightsSumIndicator(phaseCardId);
 }
 
+function addProjectPhaseTaskRow(container, textValue = "", weightValue = "") {
+    let cleanText = textValue;
+    let taskWeight = weightValue;
+    const wMatch = cleanText.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
+    if (wMatch) {
+        if (!taskWeight) taskWeight = wMatch[1];
+        cleanText = cleanText.replace(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i, '').trim();
+    }
+    for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
+        if (cleanText.startsWith(pref)) cleanText = cleanText.substring(pref.length).trim();
+    }
 
-
-function addProjectPhaseTaskRow(container, textValue = "") {
+    const card = container.closest('.project-phase-card');
+    const phaseCardId = card ? card.id : '';
 
     const taskRow = document.createElement("div");
-
     taskRow.className = "phase-task-row";
-
     taskRow.style.cssText = "display: flex; align-items: center; gap: 6px;";
 
     taskRow.innerHTML = `
-
         <span class="task-number-badge" style="font-size: 10px; font-weight: 800; background: #e2e8f0; color: #334155; padding: 4px 6px; border-radius: 4px; min-width: 34px; text-align: center;">
-
             -
-
         </span>
-
-        <input type="text" class="form-input ph-task-input" placeholder="Escribe la tarea puntual (ej: Corte con oxicorte, Pases de planta...)" value="${textValue}" style="font-size: 11px; flex: 1;" required>
-
-        <button type="button" onclick="this.closest('.phase-task-row').remove(); renumberPhasesAndTasks();" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding: 0 4px;" title="Eliminar Tarea">&times;</button>
-
+        <input type="text" class="form-input ph-task-input" placeholder="Escribe la tarea puntual (ej: Corte con oxicorte, Pases de planta...)" value="${cleanText.replaceAll('"', '&quot;')}" style="font-size: 11px; flex: 1;" required>
+        <div style="display: flex; align-items: center; gap: 3px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1;" title="Ponderación de la tarea dentro de esta etapa (deben sumar 100%)">
+            <span style="font-size: 9.5px; font-weight: 700; color: #475569; white-space: nowrap;">Peso en Etapa:</span>
+            <input type="text" inputmode="decimal" class="form-input ph-task-weight" placeholder="Auto" value="${taskWeight || ''}" oninput="updateTaskWeightsSumIndicator('${phaseCardId}')" style="width: 48px; font-size: 11px; text-align: center; font-weight: bold; color: #0284c7; padding: 2px 4px; border: 1px solid #94a3b8; background: white; border-radius: 4px;">
+            <span style="font-weight: 800; font-size: 10px; color: #64748b;">%</span>
+        </div>
+        <button type="button" onclick="const pId='${phaseCardId}'; this.closest('.phase-task-row').remove(); renumberPhasesAndTasks(); updateTaskWeightsSumIndicator(pId);" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding: 0 4px;" title="Eliminar Tarea">&times;</button>
     `;
 
     container.appendChild(taskRow);
-
+    if (phaseCardId) updateTaskWeightsSumIndicator(phaseCardId);
 }
 
-
-
 function removeProjectPhaseRow(phaseId) {
-
     const el = document.getElementById(phaseId);
-
     if (el) el.remove();
-
     renumberPhasesAndTasks();
-
+    updatePhaseWeightsSumIndicator();
 }
 
 
@@ -990,10 +1149,22 @@ async function submitCreateProject(event) {
         const durVal = parseLocalizedNumber(rawDur) || 7;
         const durUnit = card.querySelector(".ph-duration-unit")?.value || "dias";
         const cost = parseLocalizedNumber(card.querySelector(".ph-cost")?.value) || 0.0;
+        const weightVal = parseLocalizedNumber(card.querySelector(".ph-weight")?.value) || 0.0;
         const days = durUnit === "horas" ? Math.max(1, Math.round(durVal / 8)) : Math.max(1, Math.round(durVal));
         
-        const taskInputs = card.querySelectorAll(".ph-task-input");
-        const tasksList = Array.from(taskInputs).map(inp => inp.value.trim()).filter(Boolean);
+        const taskRows = card.querySelectorAll(".phase-task-row");
+        const tasksList = [];
+        taskRows.forEach(row => {
+            const tName = row.querySelector(".ph-task-input")?.value.trim();
+            const tWeight = parseLocalizedNumber(row.querySelector(".ph-task-weight")?.value);
+            if (tName) {
+                if (tWeight && tWeight > 0) {
+                    tasksList.push(`[ ] ${tName} [W:${tWeight}%]`);
+                } else {
+                    tasksList.push(`[ ] ${tName}`);
+                }
+            }
+        });
         const description = tasksList.length > 0 ? tasksList.join("; ") : name;
 
         phases.push({
@@ -1004,15 +1175,60 @@ async function submitCreateProject(event) {
             duration_unit: durUnit,
             estimated_duration: durVal,
             estimated_cost_usd: cost,
+            weight_percent: weightVal,
             status: "pendiente"
         });
     });
+
+    // Validar Ponderación de Etapas (no puede superar 100%)
+    const totalPhaseWeight = phases.reduce((acc, p) => acc + (p.weight_percent || 0), 0);
+    if (totalPhaseWeight > 100.05) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ponderación de Etapas Inválida',
+                text: `La suma de ponderaciones de las etapas es ${totalPhaseWeight.toFixed(1)}%, no puede superar el 100%. Por favor corrige los porcentajes o pulsa 'Repartir 100% Equitativo'.`
+            });
+        } else {
+            alert(`⚠️ Error de Ponderación: La suma de las etapas es ${totalPhaseWeight.toFixed(1)}%, no puede superar el 100%.`);
+        }
+        return;
+    }
+
+    // Validar Ponderación de Tareas por cada Etapa (no puede superar 100%)
+    for (let i = 0; i < phaseCards.length; i++) {
+        const card = phaseCards[i];
+        const pName = card.querySelector(".ph-name")?.value.trim() || `Etapa ${i + 1}`;
+        const taskWeights = Array.from(card.querySelectorAll(".ph-task-weight"))
+            .map(wInp => parseLocalizedNumber(wInp.value) || 0)
+            .filter(w => w > 0);
+        const taskSum = taskWeights.reduce((a, b) => a + b, 0);
+        if (taskSum > 100.05) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: `Ponderación Inválida en ${pName}`,
+                    text: `La suma de pesos de las tareas en "${pName}" es ${taskSum.toFixed(1)}%, no puede superar el 100% de la etapa.`
+                });
+            } else {
+                alert(`⚠️ Error en ${pName}: La suma de pesos de las tareas es ${taskSum.toFixed(1)}%, supera el 100%.`);
+            }
+            return;
+        }
+    }
+
+    const startDateVal = document.getElementById("new_proj_start_date") ? document.getElementById("new_proj_start_date").value : "";
+    let formattedStartDate = undefined;
+    if (startDateVal) {
+        formattedStartDate = `${startDateVal}T12:00:00`;
+    }
 
     const payload = {
         code: document.getElementById("new_proj_code").value,
         name: document.getElementById("new_proj_name").value,
         client_id: parseInt(document.getElementById("new_proj_client_id").value) || null,
         location: document.getElementById("new_proj_location").value,
+        start_date: formattedStartDate,
         duration_days: parseInt(document.getElementById("new_proj_duration").value) || 30,
         execution_time: (document.getElementById("new_proj_execution_time")?.value || "").trim() || "15 días hábiles",
         contract_amount_usd: parseLocalizedNumber(document.getElementById("new_proj_contract").value),
@@ -1406,9 +1622,9 @@ function renderProjectCardHtml(p, canSeeFinances, isDirector) {
                         <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 8px; border-radius: 4px;">${p.code}</span>
                         ${cxcBadgeHtml}
                     </div>
-                    <h4 style="font-size: 14.5px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${p.name}">${p.name}</h4>
+                    <h4 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px; line-height: 1.35; word-break: break-word;" title="${p.name}">${p.name}</h4>
                     <p style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                        <i class="fa-solid fa-building-user"></i> Cliente: <b>${p.client_name || 'General'}</b> &bull; <i class="fa-solid fa-location-dot"></i> <b>${p.location}</b>
+                        <i class="fa-solid fa-building-user"></i> Cliente: <b>${p.client_name || 'General'}</b> &bull; <i class="fa-solid fa-location-dot"></i> <b>${p.location}</b> &bull; <i class="fa-regular fa-calendar-days" style="color: var(--dalor-gold);"></i> Inicio: <b>${(d => !d ? '-' : (d.includes('-') ? (pts => `${pts[2]}/${pts[1]}/${pts[0]}`)(d.substring(0, 10).split('-')) : new Date(d).toLocaleDateString('es-VE')))(p.start_date || p.created_at)}</b>
                     </p>
                 </div>
                 <span style="font-size: 10px; background: ${statusBg}; color: ${statusColor}; padding: 3px 10px; border-radius: 9999px; font-weight: 800; text-transform: uppercase; white-space: nowrap;">
@@ -1711,68 +1927,97 @@ async function viewProjectDetails(projectId) {
 
 
 
-        // Cálculo de Avance Físico Global Exacto basado en Tareas y Etapas
-
+        // Cálculo de Avance Físico Global Ponderado basado en Tareas y Etapas
         let totalAllTasks = 0;
-
         let completedAllTasks = 0;
+        let phaseProgressList = [];
+        let explicitPhaseWeightsSum = 0;
 
-        if (data.phases) {
-
+        if (data.phases && data.phases.length > 0) {
             data.phases.forEach(ph => {
+                const phWeight = parseFloat(ph.weight_percent || 0);
+                if (phWeight > 0) explicitPhaseWeightsSum += phWeight;
 
-                const rawTasks = (ph.description || "").split(";").map(t => t.trim()).filter(Boolean);
-
-                if (rawTasks.length > 0) {
-
-                    totalAllTasks += rawTasks.length;
-
-                    completedAllTasks += rawTasks.filter(t => t.startsWith("[x]") || t.startsWith("[X]")).length;
-
-                } else {
-
-                    totalAllTasks += 1;
-
-                    if (ph.status === 'completado') completedAllTasks += 1;
-
+                let rawTasks = (ph.description || "").split(";").map(t => t.trim()).filter(Boolean);
+                if (rawTasks.length === 0 && (ph.description || "").trim().length > 0) {
+                    rawTasks = (ph.description || "").split("\n").map(t => t.trim()).filter(Boolean);
                 }
 
-            });
+                let phaseProg = 0;
+                if (ph.status === 'completado') {
+                    phaseProg = 100;
+                    totalAllTasks += Math.max(1, rawTasks.length);
+                    completedAllTasks += Math.max(1, rawTasks.length);
+                } else if (rawTasks.length > 0) {
+                    let explicitTaskWeightsSum = 0;
+                    let completedTaskWeight = 0;
+                    let cCount = 0;
 
+                    rawTasks.forEach(t => {
+                        totalAllTasks++;
+                        const isDone = t.startsWith("[x]") || t.startsWith("[X]") || t.includes("✅");
+                        if (isDone) {
+                            completedAllTasks++;
+                            cCount++;
+                        }
+                        const wMatch = t.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
+                        const tw = wMatch ? parseFloat(wMatch[1]) : 0;
+                        if (tw > 0) {
+                            explicitTaskWeightsSum += tw;
+                            if (isDone) completedTaskWeight += tw;
+                        }
+                    });
+
+                    if (explicitTaskWeightsSum > 0) {
+                        phaseProg = Math.min(100, Math.round((completedTaskWeight / explicitTaskWeightsSum) * 100));
+                    } else {
+                        phaseProg = Math.min(100, Math.round((cCount / rawTasks.length) * 100));
+                    }
+                } else {
+                    totalAllTasks += 1;
+                    if (ph.status === 'en_progreso') {
+                        phaseProg = 50;
+                    } else {
+                        phaseProg = 0;
+                    }
+                }
+                phaseProgressList.push(phaseProg);
+            });
         }
 
         const totalPhases = data.phases ? data.phases.length : 0;
-
         const completedPhases = data.phases ? data.phases.filter(p => p.status === 'completado').length : 0;
 
-        const physicalProgressPct = totalAllTasks > 0 ? Math.round((completedAllTasks / totalAllTasks) * 100) : 0;
-
-
+        let physicalProgressPct = 0;
+        if (data.status === 'culminado') {
+            physicalProgressPct = 100;
+        } else if (data.phases && data.phases.length > 0) {
+            if (explicitPhaseWeightsSum > 0) {
+                let weightedSum = 0;
+                data.phases.forEach((ph, idx) => {
+                    const pw = parseFloat(ph.weight_percent || 0);
+                    weightedSum += (phaseProgressList[idx] * pw);
+                });
+                physicalProgressPct = Math.min(100, Math.round(weightedSum / explicitPhaseWeightsSum));
+            } else {
+                let sumProg = phaseProgressList.reduce((acc, v) => acc + v, 0);
+                physicalProgressPct = Math.min(100, Math.round(sumProg / data.phases.length));
+            }
+        }
 
         // Etapas con Checklist Interactivo y Barra de Progreso Dinámica
-
         const phasesList = document.getElementById("detail_proj_phases_list");
 
         if (data.phases && data.phases.length > 0) {
-
             let html = `
-
             <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
-
                 <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 800; margin-bottom: 6px;">
-
                     <span style="color: var(--dalor-navy);">
-
                         <i class="fa-solid fa-bars-progress" style="color: var(--dalor-blue);"></i> Avance Físico Global de la Obra:
-
                     </span>
-
                     <span style="color: ${physicalProgressPct === 100 ? '#059669' : 'var(--dalor-blue)'}; font-size: 13px;">
-
                         ${physicalProgressPct}% (${completedAllTasks} de ${totalAllTasks} Tareas Culminadas &bull; ${completedPhases} de ${totalPhases} Etapas)
-
                     </span>
-
                 </div>
                 <div style="height: 12px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
                     <div style="width: ${physicalProgressPct}%; height: 100%; background: linear-gradient(90deg, #0284c7 0%, #059669 100%); transition: width 0.4s ease;"></div>
@@ -1804,51 +2049,36 @@ async function viewProjectDetails(projectId) {
 
             html += `<div style="display: flex; flex-direction: column; gap: 8px;">`;
 
-
-
             html += data.phases.map((ph, idx) => {
-
                 const isDone = ph.status === 'completado';
-
                 const isInProg = ph.status === 'en_progreso';
+                const phaseProg = phaseProgressList[idx] || 0;
+                const phWeight = parseFloat(ph.weight_percent || 0);
 
-                
-
-                // Restricción Secuencial Estricta:
-
-                const prevPhases = data.phases.slice(0, idx);
-
-                const isUnlocked = prevPhases.every(p => p.status === 'completado');
-
-
-
-                // Tareas desglosadas por etapa con checkboxes interactivos
-
+                // Tareas desglosadas por etapa con checkboxes interactivos (sin prelación)
                 let tasksHtml = '';
-
                 const rawDesc = ph.description || "";
-
                 let tasksList = rawDesc.split(";").map(t => t.trim()).filter(Boolean);
-
                 if (tasksList.length === 0 && rawDesc.trim().length > 0) {
-
                     tasksList = rawDesc.split("\n").map(t => t.trim()).filter(Boolean);
-
                 }
-
-
 
                 const doneTasksCount = tasksList.filter(t => t.startsWith('[x]') || t.startsWith('[X]')).length;
 
                 tasksHtml = `
                 <div style="margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
                         <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">
                             <i class="fa-solid fa-list-check" style="color: var(--dalor-blue);"></i> Tareas / Actividades Asignadas:
                         </span>
-                        <span style="font-size: 10px; font-weight: 700; color: ${isDone ? '#059669' : '#0284c7'};">
-                            ${doneTasksCount} de ${tasksList.length} completadas
-                        </span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 10px; font-weight: 800; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;">
+                                Avance Etapa: ${phaseProg}%
+                            </span>
+                            <span style="font-size: 10px; font-weight: 700; color: ${isDone ? '#059669' : '#64748b'};">
+                                ${doneTasksCount} de ${tasksList.length} completadas
+                            </span>
+                        </div>
                     </div>
 
                     ${tasksList.length > 0 ? `
@@ -1859,11 +2089,18 @@ async function viewProjectDetails(projectId) {
                             for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
                                 if (cleanName.startsWith(pref)) cleanName = cleanName.substring(pref.length).trim();
                             }
+                            let taskWeight = null;
+                            const wMatch = cleanName.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
+                            if (wMatch) {
+                                taskWeight = parseFloat(wMatch[1]);
+                                cleanName = cleanName.replace(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i, '').trim();
+                            }
                             return `
                             <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 5px 8px; border-radius: 6px; background: ${isChecked ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isChecked ? '#bbf7d0' : '#e2e8f0'};">
-                                <input type="checkbox" ${isChecked ? 'checked' : ''} ${!isUnlocked && !isChecked ? 'disabled' : ''} onchange="toggleProjectTask(${data.id}, ${ph.id}, ${tIdx}, this.checked)" style="width: 16px; height: 16px; accent-color: #059669; cursor: pointer;">
+                                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProjectTask(${data.id}, ${ph.id}, ${tIdx}, this.checked)" style="width: 16px; height: 16px; accent-color: #059669; cursor: pointer;">
                                 <span style="font-weight: 800; color: ${isChecked ? '#166534' : 'var(--dalor-navy)'}; font-family: monospace;">${idx + 1}.${tIdx + 1}</span>
                                 <span style="${isChecked ? 'text-decoration: line-through; color: #15803d; font-weight: 600;' : 'color: #334155;'} flex: 1;">${cleanName}</span>
+                                ${taskWeight !== null ? `<span style="font-size: 10px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;" title="Ponderación de la tarea">${taskWeight}%</span>` : ''}
                                 ${isChecked ? '<span style="font-size: 10px; font-weight: 800; color: #059669;"><i class="fa-solid fa-check"></i> Hecho</span>' : ''}
                                 <button type="button" onclick="deleteProjectTask(${data.id}, ${ph.id}, ${tIdx})" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;" title="Eliminar tarea de esta etapa">&times;</button>
                             </div>`;
@@ -1872,72 +2109,43 @@ async function viewProjectDetails(projectId) {
 
                     <div style="display: flex; gap: 6px; align-items: center;">
                         <input type="text" id="new_task_inp_${ph.id}" placeholder="+ Escribir nueva tarea / actividad para esta etapa..." style="flex: 1; font-size: 11px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addProjectTask(${data.id}, ${ph.id});}">
+                        <input type="text" inputmode="decimal" id="new_task_weight_${ph.id}" placeholder="Peso %" title="Ponderación de la tarea (%)" style="width: 65px; font-size: 11px; padding: 5px 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; text-align: center; font-weight: bold; color: #0284c7;">
                         <button type="button" onclick="addProjectTask(${data.id}, ${ph.id})" class="btn-primary" style="font-size: 11px; padding: 5px 10px; background: #0284c7; font-weight: 700; border-radius: 6px; white-space: nowrap; display: flex; align-items: center; gap: 4px;">
                             <i class="fa-solid fa-plus"></i> + Tarea
                         </button>
                     </div>
                 </div>`;
 
-
-
                 return `
-
-                <div style="background: ${isDone ? '#f0fdf4' : (!isUnlocked ? '#f8fafc' : '#ffffff')}; border: 1px solid ${isDone ? '#86efac' : (!isUnlocked ? '#e2e8f0' : '#cbd5e1')}; border-radius: 8px; padding: 10px 12px; ${!isUnlocked ? 'opacity: 0.8;' : ''}">
-
+                <div style="background: ${isDone ? '#f0fdf4' : '#ffffff'}; border: 1px solid ${isDone ? '#86efac' : '#cbd5e1'}; border-radius: 8px; padding: 10px 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
-
                         <div style="display: flex; align-items: center; gap: 8px;">
-
-                            <span style="background: ${isDone ? '#059669' : (!isUnlocked ? '#94a3b8' : '#002B49')}; color: white; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 2px 6px;">
-
+                            <span style="background: ${isDone ? '#059669' : '#002B49'}; color: white; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 2px 6px;">
                                 Etapa ${idx + 1}
-
                             </span>
-
                             <div>
-
                                 <b style="font-size: 13px; color: var(--dalor-navy); ${isDone ? 'text-decoration: line-through; color: #166534;' : ''}">${ph.name}</b>
-
-                                <span style="font-size: 11px; color: #64748b; margin-left: 6px;">(${ph.duration_days || 0} días &bull; Ppto: $${Number(ph.estimated_cost_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})})</span>
-
+                                <span style="font-size: 11px; color: #64748b; margin-left: 6px;">(${ph.duration_days || 0} días &bull; Ppto: $${Number(ph.estimated_cost_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}${phWeight > 0 ? ' &bull; Peso: ' + phWeight + '%' : ''})</span>
                             </div>
-
                         </div>
 
                         <div style="display: flex; align-items: center; gap: 6px;">
-
-                            ${!isUnlocked 
-
-                                ? `<span style="font-size: 10px; font-weight: 800; background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px;"><i class="fa-solid fa-lock"></i> Bloqueada (Culmina Etapa ${idx})</span>`
-
-                                : (isDone 
-
-                                    ? `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'pendiente')" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #64748b;" title="Reabrir Etapa"><i class="fa-solid fa-rotate-left"></i> Reabrir</button>`
-
-                                    : `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'completado')" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669; font-weight: 800;"><i class="fa-solid fa-check"></i> Culminar Etapa</button>`
-
-                                )
-
+                            <button type="button" onclick="openConfigurePhaseWeightsModal(${data.id}, ${ph.id}, '${(ph.name || '').replace(/'/g, "\\'")}', ${phWeight})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; background: #f0fdf4; color: #166534; border-color: #86efac; font-weight: 700;" title="Ponderar tareas y peso de esta etapa">
+                                <i class="fa-solid fa-scale-balanced"></i> Ponderar
+                            </button>
+                            ${isDone 
+                                ? `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'pendiente')" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #64748b;" title="Reabrir Etapa"><i class="fa-solid fa-rotate-left"></i> Reabrir</button>`
+                                : `<button onclick="updatePhaseStatus(${data.id}, ${ph.id}, 'completado')" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #059669; font-weight: 800;"><i class="fa-solid fa-check"></i> Culminar Etapa</button>`
                             }
-
-                            <select onchange="updatePhaseStatus(${data.id}, ${ph.id}, this.value)" style="font-size: 11px; padding: 3px 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700;" ${!isUnlocked ? 'disabled' : ''}>
-
+                            <select onchange="updatePhaseStatus(${data.id}, ${ph.id}, this.value)" style="font-size: 11px; padding: 3px 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700;">
                                 <option value="pendiente" ${ph.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-
                                 <option value="en_progreso" ${ph.status === 'en_progreso' ? 'selected' : ''}>🔄 En Progreso</option>
-
                                 <option value="completado" ${ph.status === 'completado' ? 'selected' : ''}>✅ Culminada</option>
-
                             </select>
-
                         </div>
-
                     </div>
-
                     ${tasksHtml}
-
                 </div>`;
-
             }).join('');
 
 
@@ -2203,14 +2411,245 @@ async function updatePhaseStatus(projectId, phaseId, newStatus) {
         }
 
     } catch (e) {
-
         console.error("Error al actualizar etapa:", e);
-
     }
-
 }
 
+// ==============================================================================
+// GESTOR DE PONDERACIÓN EN CALIENTE: ETAPAS & TAREAS (WBS WEIGHTS MODAL)
+// ==============================================================================
 
+let currentPhaseWeightsTasksData = [];
+
+async function openConfigurePhaseWeightsModal(projectId, phaseId, phaseName, currentWeight) {
+    const pIdInput = document.getElementById("cfg_weights_project_id");
+    const phIdInput = document.getElementById("cfg_weights_phase_id");
+    const phNameEl = document.getElementById("cfg_weights_phase_name");
+    const phPctInput = document.getElementById("cfg_weights_phase_percent");
+    if (!pIdInput || !phIdInput) return;
+
+    pIdInput.value = projectId;
+    phIdInput.value = phaseId;
+    if (phNameEl) phNameEl.innerText = `Etapa: ${phaseName}`;
+    if (phPctInput) phPctInput.value = currentWeight || 0;
+
+    try {
+        const res = await authFetch(`${API_BASE}/projects/${projectId}/details`);
+        if (!res.ok) throw new Error("No se pudo obtener información del proyecto.");
+        const proj = await res.json();
+        const phase = (proj.phases || []).find(p => p.id === phaseId);
+        if (!phase) throw new Error("Etapa no encontrada en el proyecto.");
+
+        const otherPhases = (proj.phases || []).filter(p => p.id !== phaseId);
+        const otherSum = otherPhases.reduce((acc, p) => acc + (parseFloat(p.weight_percent) || 0), 0);
+        const maxAvailable = Math.max(0, 100 - otherSum);
+        const hintEl = document.getElementById("cfg_weights_phase_context_hint");
+        if (hintEl) {
+            hintEl.innerText = `Las demás etapas suman ${otherSum.toFixed(1)}%. El peso máximo disponible para esta etapa es ${maxAvailable.toFixed(1)}% (Total <= 100%).`;
+        }
+
+        let rawTasks = (phase.description || "").split(";").map(t => t.trim()).filter(Boolean);
+        if (rawTasks.length === 0 && (phase.description || "").trim().length > 0) {
+            rawTasks = (phase.description || "").split("\n").map(t => t.trim()).filter(Boolean);
+        }
+
+        const tasksListEl = document.getElementById("cfg_weights_tasks_list");
+        currentPhaseWeightsTasksData = [];
+
+        if (!tasksListEl) return;
+
+        if (rawTasks.length === 0) {
+            tasksListEl.innerHTML = `<p style="font-size: 11px; color: #94a3b8; font-style: italic; margin: 4px 0;">Esta etapa no tiene tareas registradas aún.</p>`;
+        } else {
+            tasksListEl.innerHTML = rawTasks.map((t, idx) => {
+                let cleanName = t;
+                for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
+                    if (cleanName.startsWith(pref)) cleanName = cleanName.substring(pref.length).trim();
+                }
+                let taskWeight = "";
+                const wMatch = cleanName.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
+                if (wMatch) {
+                    taskWeight = wMatch[1];
+                    cleanName = cleanName.replace(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i, '').trim();
+                }
+                currentPhaseWeightsTasksData.push({ idx, name: cleanName });
+
+                return `
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                        <span style="font-size: 10px; font-weight: 800; background: #e2e8f0; color: #334155; padding: 2px 6px; border-radius: 4px;">#${idx + 1}</span>
+                        <span style="font-size: 11.5px; font-weight: 600; color: #1e293b;">${cleanName}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <span style="font-size: 10px; font-weight: 700; color: #475569;">Peso:</span>
+                        <input type="text" inputmode="decimal" class="form-input cfg-modal-task-weight" data-idx="${idx}" value="${taskWeight}" placeholder="Auto" oninput="updateModalTaskWeightsSumIndicator()" style="width: 55px; font-size: 11px; text-align: center; font-weight: bold; color: #0284c7; padding: 3px 4px; border: 1px solid #94a3b8; background: white; border-radius: 4px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #64748b;">%</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        updateModalTaskWeightsSumIndicator();
+        if (typeof openModal === 'function') {
+            openModal("modalConfigurePhaseWeights");
+        } else {
+            document.getElementById("modalConfigurePhaseWeights")?.classList.remove("hidden");
+        }
+    } catch (e) {
+        console.error("Error al abrir modal de ponderación:", e);
+        alert("Error: " + (e.message || e));
+    }
+}
+
+function updateModalTaskWeightsSumIndicator() {
+    const badge = document.getElementById("cfg_weights_tasks_sum_badge");
+    if (!badge) return;
+
+    const inps = document.querySelectorAll(".cfg-modal-task-weight");
+    let sum = 0;
+    let anyExplicit = false;
+
+    inps.forEach(inp => {
+        const v = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value);
+        if (!isNaN(v) && v > 0) {
+            sum += v;
+            anyExplicit = true;
+        }
+    });
+
+    if (!anyExplicit || inps.length === 0) {
+        badge.innerHTML = `Total: 0% (Equiponderadas)`;
+        badge.style.background = '#e2e8f0';
+        badge.style.color = '#334155';
+        badge.style.border = 'none';
+    } else if (Math.abs(sum - 100) <= 0.05) {
+        badge.innerHTML = `✅ Total: 100% (Balanceado)`;
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#166534';
+        badge.style.border = '1px solid #86efac';
+    } else if (sum > 100.05) {
+        badge.innerHTML = `❌ Total: ${sum.toFixed(1)}% (Supera 100%)`;
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+        badge.style.border = '1px solid #fca5a5';
+    } else {
+        const remaining = (100 - sum).toFixed(1);
+        badge.innerHTML = `⚠️ Total: ${sum.toFixed(1)}% (Falta ${remaining}%)`;
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+        badge.style.border = '1px solid #fcd34d';
+    }
+}
+
+function distributeModalTaskWeightsEqually() {
+    const inps = document.querySelectorAll(".cfg-modal-task-weight");
+    const n = inps.length;
+    if (n === 0) return;
+
+    const baseWeight = Math.floor((100 / n) * 100) / 100;
+    let remainder = Math.round((100 - (baseWeight * n)) * 100) / 100;
+
+    inps.forEach((inp, idx) => {
+        let w = baseWeight;
+        if (idx === 0) {
+            w = Math.round((baseWeight + remainder) * 100) / 100;
+        }
+        inp.value = w;
+    });
+
+    updateModalTaskWeightsSumIndicator();
+}
+
+async function submitConfigurePhaseWeights(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    const projectId = parseInt(document.getElementById("cfg_weights_project_id")?.value);
+    const phaseId = parseInt(document.getElementById("cfg_weights_phase_id")?.value);
+    const phaseWeightRaw = document.getElementById("cfg_weights_phase_percent")?.value;
+    const phaseWeight = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(phaseWeightRaw) : parseFloat(phaseWeightRaw);
+
+    const taskInps = document.querySelectorAll(".cfg-modal-task-weight");
+    let taskWeights = [];
+    let taskSum = 0;
+    let anyTaskWeight = false;
+
+    taskInps.forEach(inp => {
+        const v = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value);
+        const val = (!isNaN(v) && v > 0) ? v : 0.0;
+        taskWeights.push(val);
+        taskSum += val;
+        if (val > 0) anyTaskWeight = true;
+    });
+
+    if (taskSum > 100.05) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ponderación de Tareas Inválida',
+                text: `La suma de pesos de las tareas es ${taskSum.toFixed(1)}%, no puede superar el 100% de la etapa.`
+            });
+        } else {
+            alert(`⚠️ Error: La suma de pesos de las tareas es ${taskSum.toFixed(1)}%, no puede superar el 100%.`);
+        }
+        return;
+    }
+
+    const payload = {
+        weight_percent: !isNaN(phaseWeight) ? phaseWeight : 0.0,
+        tasks_weights: anyTaskWeight ? taskWeights : taskWeights.map(() => 0.0)
+    };
+
+    const btn = document.getElementById("btn_save_phase_weights");
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/projects/${projectId}/phases/${phaseId}/weights`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al actualizar ponderaciones.");
+        }
+
+        const data = await res.json();
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(data.message || "✅ Ponderaciones actualizadas correctamente.", "success");
+        } else {
+            alert(data.message || "✅ Ponderaciones actualizadas.");
+        }
+
+        if (typeof closeModal === 'function') {
+            closeModal("modalConfigurePhaseWeights");
+        } else {
+            document.getElementById("modalConfigurePhaseWeights")?.classList.add("hidden");
+        }
+
+        await viewProjectDetails(projectId);
+        if (typeof loadProjectsList === 'function') await loadProjectsList();
+    } catch (e) {
+        console.error("Error al guardar ponderaciones:", e);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo guardar la ponderación',
+                text: e.message || String(e)
+            });
+        } else {
+            alert("Error: " + (e.message || e));
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Ponderaciones`;
+        }
+    }
+}
 
 function downloadExcelTemplate() {
 
@@ -2366,6 +2805,14 @@ if (typeof window !== 'undefined') {
     window.handleExcelFileSelected = handleExcelFileSelected;
     window.deleteProject = deleteProject;
     window.closeAndCulminateProject = closeAndCulminateProject;
+    window.updatePhaseWeightsSumIndicator = updatePhaseWeightsSumIndicator;
+    window.distributePhaseWeightsEqually = distributePhaseWeightsEqually;
+    window.updateTaskWeightsSumIndicator = updateTaskWeightsSumIndicator;
+    window.distributeTaskWeightsEqually = distributeTaskWeightsEqually;
+    window.openConfigurePhaseWeightsModal = openConfigurePhaseWeightsModal;
+    window.updateModalTaskWeightsSumIndicator = updateModalTaskWeightsSumIndicator;
+    window.distributeModalTaskWeightsEqually = distributeModalTaskWeightsEqually;
+    window.submitConfigurePhaseWeights = submitConfigurePhaseWeights;
 }
 
 export { setProjectType };
@@ -2410,3 +2857,11 @@ export { triggerExcelImport };
 export { handleExcelFileSelected };
 export { deleteProject };
 export { closeAndCulminateProject };
+export { updatePhaseWeightsSumIndicator };
+export { distributePhaseWeightsEqually };
+export { updateTaskWeightsSumIndicator };
+export { distributeTaskWeightsEqually };
+export { openConfigurePhaseWeightsModal };
+export { updateModalTaskWeightsSumIndicator };
+export { distributeModalTaskWeightsEqually };
+export { submitConfigurePhaseWeights };

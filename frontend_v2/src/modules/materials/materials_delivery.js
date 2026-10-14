@@ -191,9 +191,9 @@ function addMaterialDeliveryRow(defaultName = '', defaultUnit = 'Pza', defaultQt
 
 
 
-function submitGenerateMaterialDeliveryGuide(event) {
-
+async function submitGenerateMaterialDeliveryGuide(event) {
     event.preventDefault();
+
 
     const projId = parseInt(document.getElementById("md_project_id").value);
 
@@ -239,13 +239,79 @@ function submitGenerateMaterialDeliveryGuide(event) {
 
     const proj = allProjects.find(p => p.id === projId) || { code: "DAL-2026-001", name: "Proyecto en Obra", client_name: "General" };
 
-    const guideNumber = `NE-MAT-${Date.now().toString().slice(-6)}`;
+    let guideNumber = `NE-MAT-${Date.now().toString().slice(-6)}`;
+
+    // 1. Descontar existencias físicas reales del inventario central mediante consumo
+    try {
+        const consumeItems = [];
+        items.forEach(it => {
+            const found = (allMaterials || []).find(m => 
+                (m.name || '').toLowerCase().trim() === it.name.toLowerCase().trim() || 
+                (m.code || '').toLowerCase().trim() === it.name.toLowerCase().trim()
+            );
+            if (found) {
+                consumeItems.push({ material_id: found.id, quantity: it.qty });
+            }
+        });
+        if (consumeItems.length > 0) {
+            await authFetch(`${API_BASE}/materials/consume`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    project_id: projId,
+                    destination: dest,
+                    notes: notes || "Despacho directo vía Nota Oficial de Entrega a Obra",
+                    performed_by: dispatcher || "Jefe de Almacén",
+                    items: consumeItems
+                })
+            });
+        }
+    } catch (errC) {
+        console.warn("Advertencia al descontar inventario:", errC);
+    }
+
+    // 2. Registrar Guía / Nota de Entrega oficial en la base de datos de Despachos
+    try {
+        const dispatchPayload = {
+            project_id: projId,
+            client_id: proj ? proj.client_id : null,
+            guide_type: "traslado_externo",
+            destination_address: dest,
+            driver_name: dispatcher,
+            notes: notes || "Nota de entrega de materiales e insumos a obra",
+            items: items.map(it => {
+                const found = (allMaterials || []).find(m => 
+                    (m.name || '').toLowerCase().trim() === it.name.toLowerCase().trim() || 
+                    (m.code || '').toLowerCase().trim() === it.name.toLowerCase().trim()
+                );
+                return {
+                    item_description: it.name,
+                    quantity: it.qty,
+                    unit_measure: it.unit,
+                    material_id: found ? found.id : null
+                };
+            })
+        };
+        const guideRes = await authFetch(`${API_BASE}/dispatch/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dispatchPayload)
+        });
+        if (guideRes.ok) {
+            const guideData = await guideRes.json();
+            if (guideData && guideData.guide_number) {
+                guideNumber = guideData.guide_number;
+            }
+        }
+    } catch (errG) {
+        console.warn("Advertencia al persistir guía en backend:", errG);
+    }
 
     const nowStr = new Date().toLocaleDateString('es-VE') + ' ' + new Date().toLocaleTimeString('es-VE', {hour: '2-digit', minute:'2-digit'});
 
-
-
     closeModal("modalMaterialDelivery");
+    if (typeof loadMaterialsList === 'function') loadMaterialsList();
+
 
 
 

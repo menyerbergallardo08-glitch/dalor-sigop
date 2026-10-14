@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.database import get_db
 from app.models.models import Material, MaterialMovement
+from app.services.inventory_excel_service import InventoryExcelService
 from .materials_common import MaterialCreate, MaterialUpdate
+
 
 router = APIRouter()
 
@@ -110,11 +113,30 @@ def update_material_item(material_id: int, req: MaterialUpdate, db: Session = De
         mat.category = req.category.strip()
     if req.unit_measure is not None and req.unit_measure.strip():
         mat.unit_measure = req.unit_measure.strip().upper()
+    if req.stock_quantity is not None:
+        new_stock = max(0.0, float(req.stock_quantity))
+        old_stock = float(mat.stock_quantity or 0.0)
+        if abs(new_stock - old_stock) > 1e-4:
+            diff = new_stock - old_stock
+            mov = MaterialMovement(
+                material_id=mat.id,
+                movement_type="ajuste_inventario",
+                quantity=abs(diff),
+                unit_cost_usd=mat.unit_cost_usd or 0.0,
+                total_cost_usd=round(abs(diff) * (mat.unit_cost_usd or 0.0), 2),
+                destination="Ajuste manual de ficha técnica",
+                notes=req.adjustment_notes or f"Ajuste directo de stock: {old_stock:.2f} -> {new_stock:.2f} ({'+' if diff > 0 else ''}{diff:.2f})",
+                performed_by="Custodio de Almacén"
+            )
+            db.add(mov)
+            mat.stock_quantity = new_stock
+
     if req.min_stock_alert is not None:
         mat.min_stock_alert = max(0.0, float(req.min_stock_alert))
     if req.unit_cost_usd is not None:
         mat.unit_cost_usd = max(0.0, float(req.unit_cost_usd))
-        mat.total_cost_usd = round((mat.stock_quantity or 0.0) * mat.unit_cost_usd, 2)
+    
+    mat.total_cost_usd = round((mat.stock_quantity or 0.0) * (mat.unit_cost_usd or 0.0), 2)
     if req.location is not None:
         mat.location = req.location.strip()
     if req.is_active is not None:
@@ -139,5 +161,39 @@ def update_material_item(material_id: int, req: MaterialUpdate, db: Session = De
             "is_active": mat.is_active
         }
     }
+
+
+@router.get("/excel-template")
+def download_materials_excel_template(db: Session = Depends(get_db)):
+    """
+    Descarga la plantilla oficial en Excel (.xlsx) con los materiales actuales para revisión o reforma masiva.
+    """
+    excel_stream = InventoryExcelService.generate_materials_template(db)
+    headers = {
+        "Content-Disposition": "attachment; filename=DALOR_Catalogo_Materiales.xlsx",
+        "Access-Control-Expose-Headers": "Content-Disposition"
+    }
+    return StreamingResponse(
+        excel_stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers
+    )
+
+
+@router.post("/import-excel")
+async def import_materials_from_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Importa masivamente materiales desde la plantilla Excel de DALOR SIGO-P.
+    """
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Formato de archivo inválido. Debe subir un archivo Excel (.xlsx).")
+
+    contents = await file.read()
+    try:
+        result = InventoryExcelService.import_materials_excel(contents, db)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al procesar el archivo Excel: {str(e)}")
+
 
 

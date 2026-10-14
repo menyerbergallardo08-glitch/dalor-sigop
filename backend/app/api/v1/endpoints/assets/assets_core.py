@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional
@@ -11,9 +12,11 @@ from app.models.models import (
     DispatchGuide, AssetRentalLoanItem
 )
 from app.core.security import verify_password
+from app.services.inventory_excel_service import InventoryExcelService
 from .assets_common import *
 
 router = APIRouter()
+
 
 def get_next_asset_code_value(db: Session, asset_type: str = "herramienta") -> str:
     import re
@@ -352,6 +355,129 @@ def add_tool_units(req: ToolAddUnitsRequest, db: Session = Depends(get_db)):
         "new_codes": created_assets,
         "message": f"Se agregaron exitosamente {len(created_assets)} unidades al modelo '{base_name}'."
     }
+
+
+@router.post("/tools/remove-units")
+def remove_tool_units(req: ToolRemoveUnitsRequest, db: Session = Depends(get_db)):
+    """
+    Resta o desincorpora N unidades físicas de una herramienta existente (solo unidades disponibles en base).
+    """
+    if req.quantity < 1:
+        raise HTTPException(status_code=400, detail="La cantidad a restar debe ser al menos 1.")
+
+    base_name = req.tool_name.strip()
+
+    # Si viene un ID específico a restar/desincorporar
+    if req.specific_asset_id:
+        target_asset = db.query(Asset).filter(
+            Asset.id == req.specific_asset_id,
+            Asset.is_active == True
+        ).first()
+        if not target_asset:
+            raise HTTPException(status_code=404, detail="La unidad física especificada no existe o ya está inactiva.")
+
+        target_asset.is_active = False
+        target_asset.status = "desincorporado"
+        target_asset.current_custodian_name = "Desincorporado / Baja"
+
+        hist = ResourceAssignmentHistory(
+            project_id=None,
+            resource_type="asset",
+            resource_id=target_asset.id,
+            resource_code=target_asset.asset_code,
+            resource_name=target_asset.name,
+            custodian_name="Desincorporado / Baja",
+            origin_location=target_asset.current_location or "Sede Central Dalor",
+            destination_location="Baja Definitiva",
+            status="desincorporado",
+            notes=f"Baja de inventario físico: {req.reason}"
+        )
+        db.add(hist)
+        db.commit()
+        return {
+            "success": True,
+            "removed_count": 1,
+            "removed_codes": [target_asset.asset_code],
+            "message": f"Se dio de baja exitosamente la unidad [{target_asset.asset_code}] de '{target_asset.name}'."
+        }
+
+    # Resta por lote de un modelo agrupado
+    available_units = db.query(Asset).filter(
+        func.trim(func.upper(Asset.name)) == base_name.upper(),
+        Asset.is_active == True,
+        (Asset.status == "disponible_base") | (Asset.current_project_id == None)
+    ).order_by(Asset.id.desc()).all()
+
+    if len(available_units) < req.quantity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Operación rechazada: Solo hay {len(available_units)} unidades disponibles en base de '{base_name}' para restar (solicitadas: {req.quantity}). Las unidades en obra no pueden restarse sin previo retorno a base."
+        )
+
+    removed_codes = []
+    units_to_remove = available_units[:req.quantity]
+    for unit in units_to_remove:
+        unit.is_active = False
+        unit.status = "desincorporado"
+        unit.current_custodian_name = "Desincorporado / Baja"
+        hist = ResourceAssignmentHistory(
+            project_id=None,
+            resource_type="asset",
+            resource_id=unit.id,
+            resource_code=unit.asset_code,
+            resource_name=unit.name,
+            custodian_name="Desincorporado / Baja",
+            origin_location=unit.current_location or "Sede Central Dalor",
+            destination_location="Baja Definitiva",
+            status="desincorporado",
+            notes=f"Baja de inventario físico: {req.reason}"
+        )
+        db.add(hist)
+        removed_codes.append(unit.asset_code)
+
+    db.commit()
+
+
+    return {
+        "success": True,
+        "removed_count": len(removed_codes),
+        "removed_codes": removed_codes,
+        "message": f"Se restaron exitosamente {len(removed_codes)} unidades de '{base_name}' ({', '.join(removed_codes)})."
+    }
+
+
+@router.get("/excel-template")
+def download_assets_excel_template(db: Session = Depends(get_db)):
+    """
+    Descarga la plantilla oficial en Excel (.xlsx) con las herramientas, maquinarias y equipos para reforma masiva.
+    """
+    excel_stream = InventoryExcelService.generate_assets_template(db)
+    headers = {
+        "Content-Disposition": "attachment; filename=DALOR_Catalogo_Activos_Herramientas.xlsx",
+        "Access-Control-Expose-Headers": "Content-Disposition"
+    }
+    return StreamingResponse(
+        excel_stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers
+    )
+
+
+@router.post("/import-excel")
+async def import_assets_from_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Importa masivamente herramientas, maquinarias y activos desde la plantilla Excel de DALOR SIGO-P.
+    """
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Formato de archivo inválido. Debe subir un archivo Excel (.xlsx).")
+
+    contents = await file.read()
+    try:
+        result = InventoryExcelService.import_assets_excel(contents, db)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al procesar el archivo Excel: {str(e)}")
+
 
 
 @router.get("/categories/list")

@@ -62,6 +62,12 @@ async function openNewQuotationModal() {
     if (document.getElementById("quote_coletilla_bolivares")) document.getElementById("quote_coletilla_bolivares").checked = false;
     if (document.getElementById("quote_notes")) document.getElementById("quote_notes").value = "";
     if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "15 días hábiles";
+    if (document.getElementById("quote_date")) {
+        document.getElementById("quote_date").value = new Date().toISOString().substring(0, 10);
+    }
+    if (document.getElementById("quote_validity")) {
+        document.getElementById("quote_validity").value = 15;
+    }
 
     const riskAlert = document.getElementById("quoteClientRiskAlert");
     if (riskAlert) riskAlert.style.display = "none";
@@ -419,6 +425,15 @@ async function editQuotation(quoteId) {
 
         if (document.getElementById("quote_title")) document.getElementById("quote_title").value = q.project_title || "";
         if (document.getElementById("quote_location")) document.getElementById("quote_location").value = q.location || "Sede Central";
+        if (document.getElementById("quote_date")) {
+            let dateStr = "";
+            if (q.created_at) {
+                dateStr = q.created_at.substring(0, 10);
+            } else {
+                dateStr = new Date().toISOString().substring(0, 10);
+            }
+            document.getElementById("quote_date").value = dateStr;
+        }
         if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = q.execution_time || "15 días hábiles";
         if (document.getElementById("quote_validity")) document.getElementById("quote_validity").value = q.validity_days || 15;
         if (document.getElementById("quote_currency")) {
@@ -509,6 +524,12 @@ async function submitCreateQuotation(event) {
     const editId = document.getElementById("edit_quotation_id") ? document.getElementById("edit_quotation_id").value : "";
     const isEdit = Boolean(editId);
 
+    const quoteDateVal = document.getElementById("quote_date") ? document.getElementById("quote_date").value : "";
+    let formattedCreatedAt = undefined;
+    if (quoteDateVal) {
+        formattedCreatedAt = `${quoteDateVal}T12:00:00`;
+    }
+
     const payload = {
         client_id: clientId,
         project_title: document.getElementById("quote_title").value,
@@ -522,6 +543,7 @@ async function submitCreateQuotation(event) {
         coletilla_divisas: document.getElementById("quote_coletilla_divisas") ? document.getElementById("quote_coletilla_divisas").checked : false,
         coletilla_modalidad: document.getElementById("quote_coletilla_modalidad") ? document.getElementById("quote_coletilla_modalidad").checked : false,
         coletilla_bolivares: document.getElementById("quote_coletilla_bolivares") ? document.getElementById("quote_coletilla_bolivares").checked : false,
+        created_at: formattedCreatedAt,
         items: items
     };
 
@@ -647,8 +669,11 @@ async function convertQuoteToProject(quoteId) {
                 });
         }
 
-        // 4. Pre-llenar datos principales y seleccionar cliente dinámicamente
         if (document.getElementById("new_proj_name")) document.getElementById("new_proj_name").value = q.project_title || "";
+        if (document.getElementById("new_proj_start_date")) {
+            let qDate = (q.created_at || '').substring(0, 10);
+            document.getElementById("new_proj_start_date").value = qDate || new Date().toISOString().substring(0, 10);
+        }
         
         const projClientSelect = document.getElementById("new_proj_client_id");
         if (projClientSelect && q.client_id) {

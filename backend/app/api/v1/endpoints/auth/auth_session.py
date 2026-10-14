@@ -1,11 +1,12 @@
 import json
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token
+from app.core.rate_limiter import check_login_rate_limit, record_login_failure, record_login_success
 from app.models.models import User, AuditLog
 from app.api.deps import get_current_user
 from .auth_common import LoginRequest, resolve_user_permissions
@@ -13,7 +14,10 @@ from .auth_common import LoginRequest, resolve_user_permissions
 router = APIRouter()
 
 @router.post("/login")
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    # 1. Blindaje contra ataques de fuerza bruta por IP
+    check_login_rate_limit(request)
+
     clean_user = (req.username or "").strip().lower()
     clean_pass = (req.password or "").strip()
 
@@ -39,6 +43,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             user = db.query(User).filter(User.username == "almacen").first()
 
     if not user:
+        record_login_failure(request)
         raise HTTPException(status_code=400, detail="Usuario o contraseña incorrectos.")
     
     if not user.is_active:
@@ -56,7 +61,11 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             is_valid = True
 
     if not is_valid:
+        record_login_failure(request)
         raise HTTPException(status_code=400, detail="Usuario o contraseña incorrectos.")
+
+    # Éxito: limpiar contador de reintentos para la IP
+    record_login_success(request)
 
     user.last_login = datetime.utcnow()
     db.commit()

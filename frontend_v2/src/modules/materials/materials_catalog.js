@@ -187,24 +187,45 @@ function filterMaterialsTable() {
     renderMaterialsTable(filtered);
 }
 
-function populateMaterialCategories() {
-    const baseCats = [
-        "Planchas de Acero",
-        "Acero Estructural",
-        "Perfiles y Vigas",
-        "Tuberías y Bridas",
-        "Soldadura y Gases",
-        "Abrasivos y Discos",
-        "Tornillería y Fijaciones",
-        "Pinturas y Recubrimientos",
-        "Consumibles de Almacén"
-    ];
+let customCategoryDebounceTimer = null;
 
+async function fetchNextMaterialCode(category) {
+    if (!category || !category.trim()) return;
+    try {
+        const res = await authFetch(`${API_BASE}/materials/next-code?category=${encodeURIComponent(category.trim())}`);
+        if (res.ok) {
+            const data = await res.json();
+            const codeInp = document.getElementById("nmat_code");
+            if (codeInp && data.next_code) {
+                codeInp.value = data.next_code;
+                codeInp.style.borderColor = "#10b981";
+                codeInp.style.backgroundColor = "#f0fdf4";
+                setTimeout(() => {
+                    codeInp.style.borderColor = "";
+                    codeInp.style.backgroundColor = "";
+                }, 1000);
+            }
+        }
+    } catch (e) {
+        console.error("Error al obtener próximo código de material:", e);
+    }
+}
+
+function onCustomCategoryTyped(val) {
+    if (customCategoryDebounceTimer) clearTimeout(customCategoryDebounceTimer);
+    customCategoryDebounceTimer = setTimeout(() => {
+        if (val && val.trim().length >= 2) {
+            fetchNextMaterialCode(val.trim());
+        }
+    }, 300);
+}
+
+function populateMaterialCategories() {
     const currentCats = (allMaterials || [])
         .map(m => (m.category || '').trim())
-        .filter(c => c && c.length > 0);
+        .filter(c => c && c.length > 0 && c.toLowerCase() !== 'general' && c.toLowerCase() !== 'none');
 
-    const uniqueCats = Array.from(new Set([...baseCats, ...currentCats])).sort((a, b) => a.localeCompare(b, 'es'));
+    const uniqueCats = Array.from(new Set(currentCats)).sort((a, b) => a.localeCompare(b, 'es'));
 
     // Selector de filtro de la tabla de inventario
     const filterSel = document.getElementById("filterMaterialCategory");
@@ -217,12 +238,28 @@ function populateMaterialCategories() {
 
     // Selector dentro del modal de crear material
     const modalSel = document.getElementById("nmat_category");
+    const customInp = document.getElementById("nmat_category_custom");
     if (modalSel) {
-        const prevModalVal = modalSel.value;
-        modalSel.innerHTML = uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('') +
-            `<option value="__NEW__" style="font-weight: bold; color: #2563eb;">➕ Crear Nueva Categoría...</option>`;
-        if (prevModalVal && (uniqueCats.includes(prevModalVal) || prevModalVal === '__NEW__')) {
-            modalSel.value = prevModalVal;
+        if (uniqueCats.length > 0) {
+            modalSel.innerHTML = `<option value="">-- Seleccionar Categoría --</option>` +
+                uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('') +
+                `<option value="__NEW__" style="font-weight: bold; color: #2563eb;">➕ Crear Nueva Categoría...</option>`;
+            if (customInp) {
+                customInp.classList.add("hidden");
+                customInp.style.display = "none";
+                customInp.required = false;
+                customInp.value = "";
+            }
+        } else {
+            // Cero categorías existentes: modo directo para crear la primera
+            modalSel.innerHTML = `<option value="__NEW__" selected>➕ Crear Nueva Categoría...</option>`;
+            if (customInp) {
+                customInp.classList.remove("hidden");
+                customInp.style.display = "block";
+                customInp.required = true;
+                customInp.value = "";
+                setTimeout(() => customInp.focus(), 150);
+            }
         }
     }
 }
@@ -236,11 +273,17 @@ function onNewMaterialCategoryChanged() {
         customInp.style.display = "block";
         customInp.required = true;
         customInp.focus();
+        if (customInp.value.trim()) {
+            fetchNextMaterialCode(customInp.value.trim());
+        }
     } else {
         customInp.classList.add("hidden");
         customInp.style.display = "none";
         customInp.required = false;
         customInp.value = "";
+        if (sel.value) {
+            fetchNextMaterialCode(sel.value);
+        }
     }
 }
 

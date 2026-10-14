@@ -312,20 +312,12 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
-
                         <label class="form-label">Categoría *</label>
                         <select id="nmat_category" class="form-select" required onchange="onNewMaterialCategoryChanged()">
-                            <option value="Planchas y Laminas">Planchas y Láminas</option>
-                            <option value="Acero Estructural">Acero Estructural / Vigas</option>
-                            <option value="Tuberias y Canerias">Tuberías y Cañerías</option>
-                            <option value="Soldadura y Gases">Soldadura y Gases</option>
-                            <option value="Abrasivos y Corte">Abrasivos y Corte</option>
-                            <option value="Tornilleria y Fijaciones">Tornillería y Fijaciones</option>
-                            <option value="Pinturas y Revestimientos">Pinturas y Revestimientos</option>
-                            <option value="Consumibles de Taller">Consumibles de Taller</option>
+                            <option value="">-- Seleccionar Categoría --</option>
                             <option value="__NEW__" style="font-weight: bold; color: #2563eb;">+ Crear Nueva Categoría...</option>
                         </select>
-                        <input type="text" id="nmat_category_custom" class="form-input hidden" style="margin-top: 6px;" placeholder="Escribe el nombre de la nueva categoría...">
+                        <input type="text" id="nmat_category_custom" class="form-input hidden" style="margin-top: 6px;" placeholder="Escribe el nombre de la nueva categoría..." oninput="onCustomCategoryTyped(this.value)">
                     </div>
 
                     <div>

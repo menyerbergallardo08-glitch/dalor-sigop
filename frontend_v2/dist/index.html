@@ -125,19 +125,19 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-Brknfxv9.js"></script>
+  <script type="module" crossorigin src="/assets/main-DVPHyACn.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-CIuFNoPi.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-DdmdQ_lL.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-Bu6RXjlz.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-requisitions-CzeNVT0E.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-core-DOpgRiz_.js">
-  <link rel="modulepreload" crossorigin href="/assets/resources-BHgn9mFn.js">
+  <link rel="modulepreload" crossorigin href="/assets/resources-DhXFgl8g.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-D6PSYnYO.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-cxc-CF6CA-18.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-cxp-BR8VjDdS.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-treasury-fdjj_Yv9.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-core-CACgq82B.js">
-  <link rel="modulepreload" crossorigin href="/assets/materials-b5ju96xh.js">
+  <link rel="modulepreload" crossorigin href="/assets/materials-CLyrMRa7.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-CbT3sLx2.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-CgUdPGhY.js">
 </head>
@@ -9432,19 +9432,14 @@
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
 
                     <div>
-
                         <label class="form-label">Código *</label>
-
-                        <input type="text" id="tool_code" placeholder="HER-005" class="form-input" required>
-
+                        <input type="text" id="tool_code" placeholder="HERR-001" class="form-input" required>
+                        <small style="font-size: 10px; color: #0284c7; display: block; margin-top: 2px;">⚡ Correlativo automático por categoría</small>
                     </div>
 
                     <div>
-
                         <label class="form-label">Nombre del Equipo *</label>
-
                         <input type="text" id="tool_name" placeholder="Ej: Generador Eléctrico 10kVA" class="form-input" required>
-
                     </div>
 
                 </div>
@@ -9452,29 +9447,26 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
-
-                        <label class="form-label">Tipo de Recurso</label>
-
-                        <select id="tool_type" class="form-select">
-
-                            <option value="herramienta">Herramienta Menor</option>
-
-                            <option value="maquinaria">Maquinaria Pesada</option>
-
-                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
-
-                            <option value="equipo_especial">Equipo Especial</option>
-
+                        <label class="form-label">Tipo de Recurso *</label>
+                        <select id="tool_type" class="form-select" onchange="onToolTypeOrCategoryChanged()">
+                            <option value="herramienta">Herramienta Menor (HERR)</option>
+                            <option value="equipo_medicion">Equipo de Medición (MED)</option>
+                            <option value="maquinaria">Maquinaria (MAQ)</option>
                         </select>
-
                     </div>
 
                     <div>
+                        <label class="form-label">Categoría / Especialidad</label>
+                        <input type="text" id="tool_category" placeholder="Ej: Neumática, Eléctrica, Manual..." class="form-input" oninput="onToolCategoryTyped(this.value)">
+                    </div>
 
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
                         <label class="form-label">Marca / Modelo</label>
-
                         <input type="text" id="tool_brand" placeholder="Ej: Caterpillar / DeWalt" class="form-input">
-
                     </div>
 
                 </div>
@@ -10723,20 +10715,12 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
-
                         <label class="form-label">Categoría *</label>
                         <select id="nmat_category" class="form-select" required onchange="onNewMaterialCategoryChanged()">
-                            <option value="Planchas y Laminas">Planchas y Láminas</option>
-                            <option value="Acero Estructural">Acero Estructural / Vigas</option>
-                            <option value="Tuberias y Canerias">Tuberías y Cañerías</option>
-                            <option value="Soldadura y Gases">Soldadura y Gases</option>
-                            <option value="Abrasivos y Corte">Abrasivos y Corte</option>
-                            <option value="Tornilleria y Fijaciones">Tornillería y Fijaciones</option>
-                            <option value="Pinturas y Revestimientos">Pinturas y Revestimientos</option>
-                            <option value="Consumibles de Taller">Consumibles de Taller</option>
+                            <option value="">-- Seleccionar Categoría --</option>
                             <option value="__NEW__" style="font-weight: bold; color: #2563eb;">+ Crear Nueva Categoría...</option>
                         </select>
-                        <input type="text" id="nmat_category_custom" class="form-input hidden" style="margin-top: 6px;" placeholder="Escribe el nombre de la nueva categoría...">
+                        <input type="text" id="nmat_category_custom" class="form-input hidden" style="margin-top: 6px;" placeholder="Escribe el nombre de la nueva categoría..." oninput="onCustomCategoryTyped(this.value)">
                     </div>
 
                     <div>

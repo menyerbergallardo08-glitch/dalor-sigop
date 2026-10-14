@@ -462,27 +462,73 @@ async function openToolHistoryModal(encodedName) {
 
 
 
-function openNewToolModal() {
+let toolCategoryDebounceTimer = null;
 
-    document.getElementById("toolForm").reset();
-
-    openModal("modalTool");
-
+async function fetchNextToolCode(assetType, category) {
+    try {
+        let url = `${API_BASE}/assets/next-code?asset_type=${encodeURIComponent(assetType || 'herramienta')}`;
+        if (category && category.trim()) {
+            url += `&category=${encodeURIComponent(category.trim())}`;
+        }
+        const res = await authFetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            const codeInp = document.getElementById("tool_code");
+            if (codeInp && data.next_code) {
+                codeInp.value = data.next_code;
+                codeInp.style.borderColor = "#10b981";
+                codeInp.style.backgroundColor = "#f0fdf4";
+                setTimeout(() => {
+                    codeInp.style.borderColor = "";
+                    codeInp.style.backgroundColor = "";
+                }, 1000);
+            }
+        }
+    } catch (e) {
+        console.error("Error al obtener próximo código de herramienta:", e);
+    }
 }
 
+function onToolTypeOrCategoryChanged() {
+    const type = document.getElementById("tool_type")?.value || 'herramienta';
+    const cat = document.getElementById("tool_category")?.value || '';
+    fetchNextToolCode(type, cat);
+}
 
+function onToolCategoryTyped(val) {
+    if (toolCategoryDebounceTimer) clearTimeout(toolCategoryDebounceTimer);
+    toolCategoryDebounceTimer = setTimeout(() => {
+        const type = document.getElementById("tool_type")?.value || 'herramienta';
+        fetchNextToolCode(type, val);
+    }, 300);
+}
+
+function openNewToolModal() {
+    const form = document.getElementById("toolForm");
+    if (form) form.reset();
+    
+    const catInp = document.getElementById("tool_category");
+    if (catInp) catInp.value = "";
+    
+    const type = document.getElementById("tool_type")?.value || 'herramienta';
+    fetchNextToolCode(type, '');
+
+    openModal("modalTool");
+}
 
 async function submitCreateTool(event) {
     event.preventDefault();
     const qty = parseInt(document.getElementById("tool_quantity")?.value || "1", 10) || 1;
+    const catVal = (document.getElementById("tool_category")?.value || "").trim() || "General";
 
     const payload = {
-        asset_code: document.getElementById("tool_code").value,
-        name: document.getElementById("tool_name").value,
+        asset_code: document.getElementById("tool_code").value.trim(),
+        name: document.getElementById("tool_name").value.trim(),
         asset_type: document.getElementById("tool_type").value,
-        brand: document.getElementById("tool_brand").value,
-        serial_number: document.getElementById("tool_serial").value,
-        current_location: document.getElementById("tool_location").value || "Sede Central",
+        category: catVal,
+        brand: document.getElementById("tool_brand").value.trim(),
+        serial_number: document.getElementById("tool_serial").value.trim(),
+        current_location: document.getElementById("tool_location").value || "Sede Central Dalor (Guacara)",
         is_exclusive: true,
         quantity: qty
     };

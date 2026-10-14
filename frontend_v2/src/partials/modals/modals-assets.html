@@ -15,19 +15,14 @@
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
 
                     <div>
-
                         <label class="form-label">Código *</label>
-
-                        <input type="text" id="tool_code" placeholder="HER-005" class="form-input" required>
-
+                        <input type="text" id="tool_code" placeholder="HERR-001" class="form-input" required>
+                        <small style="font-size: 10px; color: #0284c7; display: block; margin-top: 2px;">⚡ Correlativo automático por categoría</small>
                     </div>
 
                     <div>
-
                         <label class="form-label">Nombre del Equipo *</label>
-
                         <input type="text" id="tool_name" placeholder="Ej: Generador Eléctrico 10kVA" class="form-input" required>
-
                     </div>
 
                 </div>
@@ -35,29 +30,26 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
 
                     <div>
-
-                        <label class="form-label">Tipo de Recurso</label>
-
-                        <select id="tool_type" class="form-select">
-
-                            <option value="herramienta">Herramienta Menor</option>
-
-                            <option value="maquinaria">Maquinaria Pesada</option>
-
-                            <option value="equipo_medicion">Equipo de Medición / Calibración</option>
-
-                            <option value="equipo_especial">Equipo Especial</option>
-
+                        <label class="form-label">Tipo de Recurso *</label>
+                        <select id="tool_type" class="form-select" onchange="onToolTypeOrCategoryChanged()">
+                            <option value="herramienta">Herramienta Menor (HERR)</option>
+                            <option value="equipo_medicion">Equipo de Medición (MED)</option>
+                            <option value="maquinaria">Maquinaria (MAQ)</option>
                         </select>
-
                     </div>
 
                     <div>
+                        <label class="form-label">Categoría / Especialidad</label>
+                        <input type="text" id="tool_category" placeholder="Ej: Neumática, Eléctrica, Manual..." class="form-input" oninput="onToolCategoryTyped(this.value)">
+                    </div>
 
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+
+                    <div>
                         <label class="form-label">Marca / Modelo</label>
-
                         <input type="text" id="tool_brand" placeholder="Ej: Caterpillar / DeWalt" class="form-input">
-
                     </div>
 
                 </div>

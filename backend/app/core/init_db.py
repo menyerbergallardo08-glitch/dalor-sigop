@@ -445,114 +445,50 @@ def init_db():
             db.query(Personnel).update({"role_title": ""})
             db.commit()
 
-        # 3. Assets, Heavy Machinery, Welding Rigs & Vehicles (Ensure real Dalor fleet & tools loaded)
-        if db.query(func.count(Asset.id)).scalar() < 916:
-            print("--> Seeding complete industrial catalog of tools, machinery, and vehicles (916 items)...")
-            # 8 Vehículos Oficiales DALOR C.A. (Extracción certificada de VEHICULOS.xlsx)
-            vehicles = [
-                {"code": "1-V-1-01", "name": "Camión NPR Baranda 350 Blanco 2013", "type": "vehiculo", "brand": "CHEVROLET", "model": "NPR-350", "plate": "A47CC2V"},
-                {"code": "1-V-1-02", "name": "Camioneta Dodge RAM Doble Cabina Gris", "type": "vehiculo", "brand": "DODGE", "model": "RAM-250", "plate": "A31AJ5B"},
-                {"code": "1-V-1-03", "name": "Camioneta Toyota Hilux Kavak Azul 2009", "type": "vehiculo", "brand": "TOYOTA", "model": "HILUX KAVAK", "plate": "A45AC91"},
-                {"code": "3-V-1-04", "name": "Carro Fiat Palio Gris 2003", "type": "vehiculo", "brand": "FIAT", "model": "PALIO SX 1.3", "plate": "DBP20K"},
-                {"code": "3-V-1-05", "name": "Montacargas Toyota 2005 3.5T", "type": "maquinaria", "brand": "TOYOTA", "model": "7FGCU30", "plate": "MONT-01"},
-                {"code": "3-V-1-06", "name": "Camioneta Toyota 4Runner Negra", "type": "vehiculo", "brand": "TOYOTA", "model": "4RUNNER TRD", "plate": "AI619DK"},
-                {"code": "3-V-1-07", "name": "Carro SpaceFox Azul 2011", "type": "vehiculo", "brand": "VOLKSWAGEN", "model": "SPACE FOX", "plate": "AA293TD"},
-                {"code": "3-V-1-08", "name": "Camión de Carga Doble Cabina Neptunia", "type": "vehiculo", "brand": "BAW", "model": "NEPTUNIA D/C", "plate": "A41AE34"}
-            ]
-            for v in vehicles:
-                existing_v = db.query(Asset).filter(Asset.asset_code == v["code"]).first()
-                if not existing_v:
-                    db.add(Asset(
-                        asset_code=v["code"],
-                        name=v["name"],
-                        asset_type=v["type"],
-                        brand=v["brand"],
-                        model=v["model"],
-                        license_plate=v["plate"],
-                        current_odometer=0.0,
-                        last_service_odometer=0.0,
-                        service_interval_km=5000.0,
-                        current_location="Sede Central Dalor (Guacara)",
-                        status="disponible_base",
-                        is_active=True
-                    ))
-                else:
-                    existing_v.is_active = True
-                    existing_v.status = "disponible_base"
-                    existing_v.current_location = "Sede Central Dalor (Guacara)"
+        # 3. Assets: Asegurar ÚNICAMENTE los 16 Activos Intactos (Vehículos y Maquinarias Pesadas)
+        # NOTA OPERATIVA: Herramientas menores y materiales NO se auto-precargan; se registran desde la UI.
+        base_assets = [
+            {"code": "1-V-1-01", "name": "Camión NPR Baranda 350 Blanco 2013", "type": "vehiculo", "brand": "CHEVROLET", "model": "NPR-350", "plate": "A47CC2V"},
+            {"code": "1-V-1-02", "name": "Camioneta Dodge RAM Doble Cabina Gris", "type": "vehiculo", "brand": "DODGE", "model": "RAM-250", "plate": "A31AJ5B"},
+            {"code": "1-V-1-03", "name": "Camioneta Toyota Hilux Kavak Azul 2009", "type": "vehiculo", "brand": "TOYOTA", "model": "HILUX KAVAK", "plate": "A45AC91"},
+            {"code": "3-V-1-04", "name": "Carro Fiat Palio Gris 2003", "type": "vehiculo", "brand": "FIAT", "model": "PALIO SX 1.3", "plate": "DBP20K"},
+            {"code": "3-V-1-05", "name": "Montacargas Toyota 2005 3.5T", "type": "maquinaria", "brand": "TOYOTA", "model": "7FGCU30", "plate": "MONT-01"},
+            {"code": "3-V-1-06", "name": "Camioneta Toyota 4Runner Negra", "type": "vehiculo", "brand": "TOYOTA", "model": "4RUNNER TRD", "plate": "AI619DK"},
+            {"code": "3-V-1-07", "name": "Carro SpaceFox Azul 2011", "type": "vehiculo", "brand": "VOLKSWAGEN", "model": "SPACE FOX", "plate": "AA293TD"},
+            {"code": "3-V-1-08", "name": "Camión de Carga Doble Cabina Neptunia", "type": "vehiculo", "brand": "BAW", "model": "NEPTUNIA D/C", "plate": "A41AE34"},
+            {"code": "MAQ-001", "name": "MAQUINA DE SOLDAR ELECTRICA", "type": "maquinaria", "brand": "MILLER", "model": "GOLD STAR 452", "serial_number": "165597"},
+            {"code": "MAQ-002", "name": "MAQUINA DE SOLDAR ELECTRICA ARGON", "type": "maquinaria", "brand": "MILLER", "model": "CST 280", "serial_number": "MC300121G"},
+            {"code": "MAQ-003", "name": "TORNO CONTROL NUMERICO", "type": "maquinaria", "brand": "ROMI", "model": "M680", "serial_number": "002-093533-405"},
+            {"code": "MAQ-004", "name": "CENTRO DE MECANIZADO", "type": "maquinaria", "brand": "VICTOR TAICHUNG", "model": "VCENTER 1020", "serial_number": "WB-1232"},
+            {"code": "MAQ-005", "name": "COMPRESOR DE AIRE PORTATIL", "type": "maquinaria", "brand": "SULLAIR", "model": "185 CA", "serial_number": "200805160062"},
+            {"code": "MAQ-006", "name": "MAQUINA DE SOLDAR PORTATIL A GASOIL", "type": "maquinaria", "brand": "MILLER", "model": "BIG BLUE 400 CX CC", "serial_number": "LG170077E"},
+            {"code": "MAQ-007", "name": "MAQUINA DE SOLDAR PORTATIL A GASOIL", "type": "maquinaria", "brand": "MILLER", "model": "BIG BLUE 500 X CC", "serial_number": "LG084886"},
+            {"code": "MAQ-008", "name": "HIDROJET CON TEMPERATURA", "type": "maquinaria", "brand": "MAZZONI", "model": "PH400 15/200 TST", "serial_number": "36 13 1734"}
+        ]
+        for a_item in base_assets:
+            existing_a = db.query(Asset).filter(Asset.asset_code == a_item["code"]).first()
+            if not existing_a:
+                db.add(Asset(
+                    asset_code=a_item["code"],
+                    name=a_item["name"],
+                    asset_type=a_item["type"],
+                    brand=a_item.get("brand"),
+                    model=a_item.get("model"),
+                    license_plate=a_item.get("plate"),
+                    serial_number=a_item.get("serial_number"),
+                    current_odometer=0.0,
+                    last_service_odometer=0.0,
+                    service_interval_km=250.0 if a_item["type"] == "maquinaria" else 5000.0,
+                    current_location="Sede Central Dalor (Guacara)",
+                    status="disponible_base",
+                    is_active=True
+                ))
+            else:
+                existing_a.is_active = True
+        db.commit()
 
-            # Cargar herramientas y equipos desde clean_tools.json si existe
-            tools_json_paths = [
-                "/app/backend/clean_tools.json",
-                "/app/backend/app/data/clean_tools.json",
-                "/app/clean_tools.json",
-                os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "clean_tools.json"),
-                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "clean_tools.json"),
-                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "backend", "clean_tools.json"),
-                os.path.join(os.getcwd(), "clean_tools.json"),
-                os.path.join(os.getcwd(), "backend", "clean_tools.json"),
-                os.path.join(os.getcwd(), "backend", "app", "data", "clean_tools.json"),
-                r"C:\Users\GATEWAY\Desktop\CLIENTES DE CONSULTORIA\Metalmecanica Dalor\clean_tools.json"
-            ]
-            loaded_tools = False
-            for tjp in tools_json_paths:
-                if os.path.exists(tjp):
-                    try:
-                        import json
-                        with open(tjp, "r", encoding="utf-8") as tjf:
-                            tools_data = json.load(tjf)
-                        for t in tools_data:
-                            code = t.get("code")
-                            if code:
-                                existing_t = db.query(Asset).filter(Asset.asset_code == code).first()
-                                if not existing_t:
-                                    db.add(Asset(
-                                        asset_code=code,
-                                        name=t.get("name"),
-                                        asset_type=t.get("asset_type", "herramienta"),
-                                        brand=t.get("brand"),
-                                        model=t.get("model"),
-                                        serial_number=t.get("serial_number"),
-                                        status="disponible_base",
-                                        current_location=t.get("location", "Sede Central Dalor (Guacara)"),
-                                        current_odometer=0.0,
-                                        last_service_odometer=0.0,
-                                        is_active=True
-                                    ))
-                                else:
-                                    existing_t.is_active = True
-                        loaded_tools = True
-                        break
-                    except Exception as e:
-                        print(f"Warning loading clean_tools: {e}")
-
-            db.commit()
-
-                # 4. Materials & Consumables Catalog (Ensure 15 materials exist)
-        if db.query(func.count(Material.id)).scalar() < 15:
-            print("--> Seeding/Syncing 15 authentic raw materials & consumables...")
-            existing_mats = {m.code for m in db.query(Material.code).all()}
-            materials_list = [
-                Material(code='MAT-PLA-01', name='Plancha de Acero ASTM A36 12mm x 2.44m x 6.00m', category='Planchas de Acero', unit_measure='Planchas', stock_quantity=18.0, min_stock_alert=5.0, unit_cost_usd=480.0, total_cost_usd=8640.0),
-                Material(code='MAT-PLA-02', name='Plancha de Acero ASTM A36 6mm x 2.44m x 6.00m', category='Planchas de Acero', unit_measure='Planchas', stock_quantity=24.0, min_stock_alert=6.0, unit_cost_usd=245.0, total_cost_usd=5880.0),
-                Material(code='MAT-PLA-03', name='Plancha Antidesgaste Hardox 450 10mm x 2m x 6m', category='Planchas de Acero', unit_measure='Planchas', stock_quantity=8.0, min_stock_alert=2.0, unit_cost_usd=1350.0, total_cost_usd=10800.0),
-                Material(code='MAT-VIG-01', name='Viga Estructural IPE 200 x 12 metros', category='Perfiles y Vigas', unit_measure='Barras', stock_quantity=32.0, min_stock_alert=10.0, unit_cost_usd=310.0, total_cost_usd=9920.0),
-                Material(code='MAT-VIG-02', name='Viga Estructural HEA 240 x 12 metros', category='Perfiles y Vigas', unit_measure='Barras', stock_quantity=14.0, min_stock_alert=4.0, unit_cost_usd=590.0, total_cost_usd=8260.0),
-                Material(code='MAT-TUB-01', name='Tubo de Acero al Carbono Sin Costura ASTM A106 Gr.B 4" SCH 40 (6m)', category='Tuberías y Bridas', unit_measure='Tubos', stock_quantity=45.0, min_stock_alert=15.0, unit_cost_usd=145.0, total_cost_usd=6525.0),
-                Material(code='MAT-TUB-02', name='Tubo de Acero al Carbono ASTM A53 6" SCH 80 (6m)', category='Tuberías y Bridas', unit_measure='Tubos', stock_quantity=20.0, min_stock_alert=8.0, unit_cost_usd=260.0, total_cost_usd=5200.0),
-                Material(code='MAT-SOL-01', name='Electrodos de Soldadura E-7018 1/8" (Caja 20 Kg)', category='Soldadura y Gases', unit_measure='Cajas', stock_quantity=65.0, min_stock_alert=20.0, unit_cost_usd=55.0, total_cost_usd=3575.0),
-                Material(code='MAT-SOL-02', name='Electrodos de Soldadura E-6010 / E-6013 1/8" (Caja 20 Kg)', category='Soldadura y Gases', unit_measure='Cajas', stock_quantity=40.0, min_stock_alert=15.0, unit_cost_usd=48.0, total_cost_usd=1920.0),
-                Material(code='MAT-SOL-03', name='Alambre Tubular para Soldadura MIG/FCAW E71T-1 0.045" (Rollo 15 Kg)', category='Soldadura y Gases', unit_measure='Rollos', stock_quantity=28.0, min_stock_alert=10.0, unit_cost_usd=62.0, total_cost_usd=1736.0),
-                Material(code='MAT-ABR-01', name='Discos de Corte Abrasivo 9" x 1/8" x 7/8" para Acero (Caja 25 Und)', category='Abrasivos y Discos', unit_measure='Cajas', stock_quantity=35.0, min_stock_alert=10.0, unit_cost_usd=42.0, total_cost_usd=1470.0),
-                Material(code='MAT-ABR-02', name='Discos de Desbaste 7" x 1/4" x 7/8" (Caja 20 Und)', category='Abrasivos y Discos', unit_measure='Cajas', stock_quantity=25.0, min_stock_alert=8.0, unit_cost_usd=38.0, total_cost_usd=950.0),
-                Material(code='MAT-REC-01', name='Pintura Anticorrosiva Epóxica Poliamida Grís (Kit Galón A+B)', category='Pinturas y Recubrimientos', unit_measure='Kits', stock_quantity=42.0, min_stock_alert=12.0, unit_cost_usd=58.0, total_cost_usd=2436.0),
-                Material(code='MAT-REC-02', name='Esmalte Poliuretano de Alto Brillo Blanco/Seguridad (Kit Galón)', category='Pinturas y Recubrimientos', unit_measure='Kits', stock_quantity=30.0, min_stock_alert=10.0, unit_cost_usd=72.0, total_cost_usd=2160.0),
-                Material(code='MAT-ABR-03', name='Granalla de Acero / Abrasivo para Sandblasting G-40 (Saco 25 Kg)', category='Abrasivos y Discos', unit_measure='Sacos', stock_quantity=80.0, min_stock_alert=25.0, unit_cost_usd=28.0, total_cost_usd=2240.0),
-            ]
-            for m in materials_list:
-                if m.code not in existing_mats:
-                    db.add(m)
-            db.commit()
+        # 4. Materials & Tools Catalog:
+        # Cero auto-seed: Los materiales y herramientas menores se mantienen vacíos para carga limpia vía UI.
 
         # 5. Categories and Cost Centers (Estructura Original Dalor 20 Categorías + Subcuentas)
         dalor_cats_data = [

@@ -62,6 +62,13 @@ export const changeToolsPageSize = (...args) => (window.changeToolsPageSize ? wi
 export const renderGroupedToolsPaginated = (...args) => (window.renderGroupedToolsPaginated ? window.renderGroupedToolsPaginated(...args) : undefined);
 export const openVehicleServicesModal = (...args) => (window.openVehicleServicesModal ? window.openVehicleServicesModal(...args) : undefined);
 export const filterFleetList = (...args) => (window.filterFleetList ? window.filterFleetList(...args) : undefined);
+export const goToFleetPage = (...args) => (window.goToFleetPage ? window.goToFleetPage(...args) : undefined);
+export const changeFleetPageSize = (...args) => (window.changeFleetPageSize ? window.changeFleetPageSize(...args) : undefined);
+export const renderFleetTablePaginated = (...args) => (window.renderFleetTablePaginated ? window.renderFleetTablePaginated(...args) : undefined);
+export const filterMachineryList = (...args) => (window.filterMachineryList ? window.filterMachineryList(...args) : undefined);
+export const goToMachineryPage = (...args) => (window.goToMachineryPage ? window.goToMachineryPage(...args) : undefined);
+export const changeMachineryPageSize = (...args) => (window.changeMachineryPageSize ? window.changeMachineryPageSize(...args) : undefined);
+export const renderMachineryTablePaginated = (...args) => (window.renderMachineryTablePaginated ? window.renderMachineryTablePaginated(...args) : undefined);
 export const filterPersonnelList = (...args) => (window.filterPersonnelList ? window.filterPersonnelList(...args) : undefined);
 export const onAssetCategorySelected = (...args) => (window.onAssetCategorySelected ? window.onAssetCategorySelected(...args) : undefined);
 export const goToVehServicesPage = (...args) => (window.goToVehServicesPage ? window.goToVehServicesPage(...args) : undefined);

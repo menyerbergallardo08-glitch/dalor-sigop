@@ -55,12 +55,27 @@ async function loadFleetList() {
 }
 
 let rawFleetList = [];
+let fleetCurrentPage = 1;
+let fleetPageSize = 10;
+let lastFilteredFleetList = [];
+
+function goToFleetPage(page) {
+    fleetCurrentPage = page;
+    renderFleetTablePaginated();
+    const tableEl = document.getElementById("fleetTableBody");
+    if (tableEl) tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function changeFleetPageSize(size) {
+    fleetPageSize = parseInt(size) || 10;
+    fleetCurrentPage = 1;
+    renderFleetTablePaginated();
+}
 
 function filterFleetList() {
     const q = (document.getElementById("fleetSearchInput")?.value || '').trim().toLowerCase();
     const status = document.getElementById("fleetStatusFilter")?.value || 'all';
     const maint = document.getElementById("fleetMaintFilter")?.value || 'all';
-    const tbody = document.getElementById("fleetTableBody");
     const countBadge = document.getElementById("fleetCountBadge");
 
     let filtered = (rawFleetList || []).filter(v => {
@@ -82,15 +97,42 @@ function filterFleetList() {
     });
 
     if (countBadge) countBadge.innerText = `${filtered.length} de ${rawFleetList.length} vehículos`;
+    lastFilteredFleetList = filtered;
+    fleetCurrentPage = 1;
+    renderFleetTablePaginated();
+}
 
+function renderFleetTablePaginated() {
+    const tbody = document.getElementById("fleetTableBody");
+    const container = document.getElementById("fleetPaginationContainer");
     if (!tbody) return;
 
-    if (filtered.length === 0) {
+    const list = lastFilteredFleetList || [];
+    if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 20px; color: #94a3b8;">No hay vehículos que coincidan con la búsqueda o filtros aplicados.</td></tr>`;
+        if (container) container.innerHTML = '';
         return;
     }
 
-    tbody.innerHTML = filtered.map(v => {
+    const paginateFn = typeof window.renderPaginationControls === 'function'
+        ? window.renderPaginationControls
+        : (typeof renderPaginationControls === 'function' ? renderPaginationControls : () => ({ startIndex: 0, endIndex: list.length }));
+
+    const { startIndex, endIndex, currentPage } = paginateFn({
+        containerId: "fleetPaginationContainer",
+        totalItems: list.length,
+        currentPage: fleetCurrentPage,
+        pageSize: fleetPageSize,
+        onPageChange: "goToFleetPage",
+        onPageSizeChange: "changeFleetPageSize",
+        itemLabel: "vehículo(s) en flota",
+        pageSizeOptions: [5, 10, 25, 50]
+    });
+    fleetCurrentPage = currentPage;
+
+    const pageItems = list.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageItems.map(v => {
         if (!v) return '';
         let semColor = '#166534';
         let semBg = '#dcfce7';
@@ -678,6 +720,9 @@ async function submitCreateVehicle(event) {
 if (typeof window !== 'undefined') {
     window.loadFleetList = loadFleetList;
     window.filterFleetList = filterFleetList;
+    window.goToFleetPage = goToFleetPage;
+    window.changeFleetPageSize = changeFleetPageSize;
+    window.renderFleetTablePaginated = renderFleetTablePaginated;
     window.openOdometerOcrModal = openOdometerOcrModal;
     window.handleOdometerImageSelected = handleOdometerImageSelected;
     window.submitConfirmOdometer = submitConfirmOdometer;

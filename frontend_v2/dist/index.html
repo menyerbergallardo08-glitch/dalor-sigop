@@ -125,13 +125,13 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-DLT8DTmS.js"></script>
+  <script type="module" crossorigin src="/assets/main-4FuDri43.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-CIuFNoPi.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-113FKypR.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-Bu6RXjlz.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-requisitions-CzeNVT0E.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-core-DOpgRiz_.js">
-  <link rel="modulepreload" crossorigin href="/assets/resources-DhXFgl8g.js">
+  <link rel="modulepreload" crossorigin href="/assets/resources-DkARGuMO.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-D6PSYnYO.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-cxc-CF6CA-18.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-cxp-BR8VjDdS.js">
@@ -4325,6 +4325,7 @@
                         </table>
 
                     </div>
+                    <div id="fleetPaginationContainer"></div>
 
                 </div>
 
@@ -4366,6 +4367,22 @@
 
                     </div>
 
+                    <!-- Filtros y Búsqueda en Tiempo Real Maquinaria -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 250px; position: relative;">
+                            <input type="search" id="machinerySearchInput" oninput="filterMachineryList()" placeholder="🔍 Buscar maquinaria por código, nombre, marca o serial..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="machineryStatusFilter" onchange="filterMachineryList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
+                                <option value="all">Todos los Estados</option>
+                                <option value="disponible_base">Disponible en Base</option>
+                                <option value="en_obra">En Obra / Operación</option>
+                                <option value="mantenimiento">En Taller / Mtto</option>
+                            </select>
+                            <span id="machineryCountBadge" style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 6px 10px; border-radius: 6px;">0 equipos</span>
+                        </div>
+                    </div>
+
                     <div class="table-wrapper">
 
                         <table>
@@ -4403,6 +4420,7 @@
                         </table>
 
                     </div>
+                    <div id="machineryPaginationContainer"></div>
 
                 </div>
 

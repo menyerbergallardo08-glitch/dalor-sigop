@@ -144,7 +144,22 @@ function renderGroupedToolsPaginated() {
     if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">No se encontraron herramientas con los filtros seleccionados.</td></tr>`;
         const container = document.getElementById("toolsPaginationContainer");
-        if (container) container.innerHTML = "";
+        if (container) {
+            container.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 11.5px; color: #64748b; margin-top: 8px;">
+                    <span>Mostrando <b>0</b> modelo(s) de herramientas</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>Mostrar:</span>
+                        <select onchange="changeToolsPageSize(this.value)" style="padding: 2px 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-weight: 700; cursor: pointer;">
+                            <option value="10" ${toolsPageSize === 10 ? 'selected' : ''}>10</option>
+                            <option value="20" ${toolsPageSize === 20 ? 'selected' : ''}>20</option>
+                            <option value="50" ${toolsPageSize === 50 ? 'selected' : ''}>50</option>
+                            <option value="100" ${toolsPageSize === 100 ? 'selected' : ''}>100</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+        }
         return;
     }
 

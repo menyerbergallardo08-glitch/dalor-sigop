@@ -88,9 +88,12 @@ def get_next_material_code(
     custom_prefix: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    prefix = (custom_prefix or "").strip().upper()
+    clean_custom = custom_prefix if isinstance(custom_prefix, str) else None
+    clean_cat = category if isinstance(category, str) else None
+    
+    prefix = (clean_custom or "").strip().upper()
     if not prefix:
-        prefix = generate_category_prefix(category or "Material")
+        prefix = generate_category_prefix(clean_cat or "Material")
     
     candidates = db.query(Material.code).filter(Material.code.like(f"{prefix}-%")).all()
     max_num = 0

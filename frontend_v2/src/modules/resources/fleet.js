@@ -41,7 +41,7 @@ async function loadFleetList() {
              a.asset_type === 'camioneta' || 
              (typeof a.asset_code === 'string' && (a.asset_code.includes('-V-') || a.asset_code.startsWith('FLT-'))) ||
              (typeof a.category === 'string' && a.category.toLowerCase().includes('flota')))
-            && !((a.name || '').toLowerCase().includes('montacarga') || a.asset_code === '3-V-1-05')
+            && !((a.name || '').toLowerCase().includes('montacarga') || a.asset_code === 'MAQ-001' || a.asset_code === '3-V-1-05')
         ));
         window.rawFleetList = rawFleetList;
 

@@ -459,18 +459,18 @@ def init_db():
             {"code": "1-V-1-02", "name": "Camioneta Dodge RAM Doble Cabina Gris", "type": "vehiculo", "brand": "DODGE", "model": "RAM-250", "plate": "A31AJ5B"},
             {"code": "1-V-1-03", "name": "Camioneta Toyota Hilux Kavak Azul 2009", "type": "vehiculo", "brand": "TOYOTA", "model": "HILUX KAVAK", "plate": "A45AC91"},
             {"code": "3-V-1-04", "name": "Carro Fiat Palio Gris 2003", "type": "vehiculo", "brand": "FIAT", "model": "PALIO SX 1.3", "plate": "DBP20K"},
-            {"code": "3-V-1-05", "name": "Montacargas Toyota 2005 3.5T", "type": "maquinaria", "brand": "TOYOTA", "model": "7FGCU30", "plate": "MONT-01"},
             {"code": "3-V-1-06", "name": "Camioneta Toyota 4Runner Negra", "type": "vehiculo", "brand": "TOYOTA", "model": "4RUNNER TRD", "plate": "AI619DK"},
             {"code": "3-V-1-07", "name": "Carro SpaceFox Azul 2011", "type": "vehiculo", "brand": "VOLKSWAGEN", "model": "SPACE FOX", "plate": "AA293TD"},
             {"code": "3-V-1-08", "name": "Camión de Carga Doble Cabina Neptunia", "type": "vehiculo", "brand": "BAW", "model": "NEPTUNIA D/C", "plate": "A41AE34"},
-            {"code": "MAQ-001", "name": "MAQUINA DE SOLDAR ELECTRICA", "type": "maquinaria", "brand": "MILLER", "model": "GOLD STAR 452", "serial_number": "165597"},
-            {"code": "MAQ-002", "name": "MAQUINA DE SOLDAR ELECTRICA ARGON", "type": "maquinaria", "brand": "MILLER", "model": "CST 280", "serial_number": "MC300121G"},
-            {"code": "MAQ-003", "name": "TORNO CONTROL NUMERICO", "type": "maquinaria", "brand": "ROMI", "model": "M680", "serial_number": "002-093533-405"},
-            {"code": "MAQ-004", "name": "CENTRO DE MECANIZADO", "type": "maquinaria", "brand": "VICTOR TAICHUNG", "model": "VCENTER 1020", "serial_number": "WB-1232"},
-            {"code": "MAQ-005", "name": "COMPRESOR DE AIRE PORTATIL", "type": "maquinaria", "brand": "SULLAIR", "model": "185 CA", "serial_number": "200805160062"},
-            {"code": "MAQ-006", "name": "MAQUINA DE SOLDAR PORTATIL A GASOIL", "type": "maquinaria", "brand": "MILLER", "model": "BIG BLUE 400 CX CC", "serial_number": "LG170077E"},
-            {"code": "MAQ-007", "name": "MAQUINA DE SOLDAR PORTATIL A GASOIL", "type": "maquinaria", "brand": "MILLER", "model": "BIG BLUE 500 X CC", "serial_number": "LG084886"},
-            {"code": "MAQ-008", "name": "HIDROJET CON TEMPERATURA", "type": "maquinaria", "brand": "MAZZONI", "model": "PH400 15/200 TST", "serial_number": "36 13 1734"}
+            {"code": "MAQ-001", "name": "Montacargas Toyota 2005 3.5T", "type": "maquinaria", "brand": "TOYOTA", "model": "7FGCU30", "plate": "MONT-01"},
+            {"code": "MAQ-002", "name": "MAQUINA DE SOLDAR ELECTRICA", "type": "maquinaria", "brand": "MILLER", "model": "GOLD STAR 452", "serial_number": "165597"},
+            {"code": "MAQ-003", "name": "MAQUINA DE SOLDAR ELECTRICA ARGON", "type": "maquinaria", "brand": "MILLER", "model": "CST 280", "serial_number": "MC300121G"},
+            {"code": "MAQ-004", "name": "TORNO CONTROL NUMERICO", "type": "maquinaria", "brand": "ROMI", "model": "M680", "serial_number": "002-093533-405"},
+            {"code": "MAQ-005", "name": "CENTRO DE MECANIZADO", "type": "maquinaria", "brand": "VICTOR TAICHUNG", "model": "VCENTER 1020", "serial_number": "WB-1232"},
+            {"code": "MAQ-006", "name": "COMPRESOR DE AIRE PORTATIL", "type": "maquinaria", "brand": "SULLAIR", "model": "185 CA", "serial_number": "200805160062"},
+            {"code": "MAQ-007", "name": "MAQUINA DE SOLDAR PORTATIL A GASOIL", "type": "maquinaria", "brand": "MILLER", "model": "BIG BLUE 400 CX CC", "serial_number": "LG170077E"},
+            {"code": "MAQ-008", "name": "MAQUINA DE SOLDAR PORTATIL A GASOIL", "type": "maquinaria", "brand": "MILLER", "model": "BIG BLUE 500 X CC", "serial_number": "LG084886"},
+            {"code": "MAQ-009", "name": "HIDROJET CON TEMPERATURA", "type": "maquinaria", "brand": "MAZZONI", "model": "PH400 15/200 TST", "serial_number": "36 13 1734"}
         ]
         for a_item in base_assets:
             existing_a = db.query(Asset).filter(Asset.asset_code == a_item["code"]).first()

@@ -190,7 +190,7 @@ async function loadMachineryList() {
 
         const machinery = assets.filter(a => 
             (['maquinaria', 'planta', 'generador', 'compresor', 'equipo_mayor'].includes(a.asset_type) ||
-            (a.asset_code === '3-V-1-05')) && a.asset_type !== 'herramienta'
+            (a.asset_code === 'MAQ-001') || (a.asset_code === '3-V-1-05')) && a.asset_type !== 'herramienta'
         );
         window.rawMachineryList = machinery;
 

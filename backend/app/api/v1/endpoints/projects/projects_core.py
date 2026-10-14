@@ -24,7 +24,6 @@ def get_projects(db: Session = Depends(get_db)):
         db.query(Project)
         .options(
             joinedload(Project.client),
-            selectinload(Project.expenses),
             selectinload(Project.phases),
             selectinload(Project.addendums)
         )
@@ -33,7 +32,15 @@ def get_projects(db: Session = Depends(get_db)):
         .all()
     )
     
-    # Compras y Facturas CxP pagadas imputadas a proyectos
+    # 1. Gastos aprobados agrupados por proyecto (SQL directo ultrarrápido)
+    exp_sums = dict(
+        db.query(Expense.project_id, func.sum(Expense.amount_usd))
+        .filter(Expense.project_id.isnot(None), Expense.status == 'aprobado')
+        .group_by(Expense.project_id)
+        .all()
+    )
+
+    # 2. Compras y Facturas CxP pagadas imputadas a proyectos
     cxp_sums = dict(
         db.query(AccountPayable.project_id, func.sum(AccountPayable.paid_amount_usd))
         .filter(AccountPayable.project_id.isnot(None))
@@ -41,21 +48,44 @@ def get_projects(db: Session = Depends(get_db)):
         .all()
     )
 
+    # 3. Cuentas por Cobrar (CxC) agregadas por proyecto en una sola consulta
+    cxc_agg = {}
+    cxc_rows = (
+        db.query(
+            AccountReceivable.project_id,
+            func.sum(AccountReceivable.amount_usd),
+            func.sum(AccountReceivable.paid_amount_usd),
+            func.sum(AccountReceivable.balance_usd),
+            func.count(AccountReceivable.id)
+        )
+        .filter(AccountReceivable.project_id.isnot(None))
+        .group_by(AccountReceivable.project_id)
+        .all()
+    )
+    for p_id, billed, paid, pending, cnt in cxc_rows:
+        cxc_agg[p_id] = {
+            "has_cxc": (cnt or 0) > 0,
+            "billed": float(billed or 0.0),
+            "paid": float(paid or 0.0),
+            "pending": float(pending or 0.0),
+            "count": int(cnt or 0)
+        }
+
     results = []
     for proj in projects:
-        exp_spent = sum(e.amount_usd for e in proj.expenses if e.status == 'aprobado') if proj.expenses else 0.0
+        exp_spent = float(exp_sums.get(proj.id, 0.0) or 0.0)
         cxp_spent = float(cxp_sums.get(proj.id, 0.0) or 0.0)
         spent = round(exp_spent + cxp_spent, 2)
         
         # Calculate physical progress percentage based on tasks or completed phases (ponderado)
         prog_pct = calculate_project_progress(proj.phases, proj.status)
         
-        # Consultar si ya tiene factura en Cuentas por Cobrar (CxC) y su estado
-        cxc_recs = db.query(AccountReceivable).filter(AccountReceivable.project_id == proj.id).all()
-        has_cxc = len(cxc_recs) > 0
-        total_billed_cxc = sum(r.amount_usd for r in cxc_recs)
-        total_paid_cxc = sum(r.paid_amount_usd for r in cxc_recs)
-        total_pending_cxc = sum(r.balance_usd for r in cxc_recs)
+        # Cuentas por Cobrar (CxC) desde la agregación previa en memoria
+        cxc_info = cxc_agg.get(proj.id, {"has_cxc": False, "billed": 0.0, "paid": 0.0, "pending": 0.0, "count": 0})
+        has_cxc = cxc_info["has_cxc"]
+        total_billed_cxc = cxc_info["billed"]
+        total_paid_cxc = cxc_info["paid"]
+        total_pending_cxc = cxc_info["pending"]
         contract_amt = proj.contract_amount_usd or 0.0
         unbilled_contract = max(0.0, round(contract_amt - total_billed_cxc, 2))
         is_fully_billed = (total_billed_cxc >= contract_amt - 0.05) and (contract_amt > 0)
@@ -98,7 +128,7 @@ def get_projects(db: Session = Depends(get_db)):
             "total_billed_cxc_usd": round(total_billed_cxc, 2),
             "unbilled_contract_usd": unbilled_contract,
             "is_fully_billed": is_fully_billed,
-            "cxc_count": len(cxc_recs),
+            "cxc_count": cxc_info.get("count", 0),
             "addendums_count": len(proj.addendums) if proj.addendums else 0,
             "total_addendums_usd": round(sum(a.additional_contract_usd for a in (proj.addendums or [])), 2),
             "is_active": proj.is_active,

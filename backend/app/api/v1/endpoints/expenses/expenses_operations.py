@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
@@ -13,11 +13,14 @@ router = APIRouter()
 
 @router.get("/", response_model=List[ExpenseOut])
 def get_expenses(
+    response: Response,
     project_id: Optional[int] = None,
     category_id: Optional[int] = None,
     direct_only: bool = False,
     alert_only: bool = False,
     status: Optional[str] = "aprobado",
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="Límite para paginación"),
+    offset: int = Query(0, ge=0, description="Desplazamiento para paginación"),
     db: Session = Depends(get_db)
 ):
     query = db.query(Expense).options(
@@ -46,7 +49,20 @@ def get_expenses(
                 query = query.filter(Expense.category_id == category_id)
     if alert_only:
         query = query.filter(Expense.alert_flag == True)
-    return query.order_by(Expense.expense_date.desc()).all()
+        
+    # Normalizar limit y offset para soportar llamadas HTTP directas y llamadas internas
+    clean_limit = limit if isinstance(limit, int) else None
+    clean_offset = offset if isinstance(offset, int) else 0
+
+    ordered_query = query.order_by(Expense.expense_date.desc())
+
+    if clean_limit is not None:
+        total_count = query.count()
+        if response and hasattr(response, 'headers'):
+            response.headers["X-Total-Count"] = str(total_count)
+        return ordered_query.offset(clean_offset).limit(clean_limit).all()
+
+    return ordered_query.all()
 
 @router.post("/import-batch")
 def import_batch_expenses(rows: List[BatchExpenseRow], db: Session = Depends(get_db)):

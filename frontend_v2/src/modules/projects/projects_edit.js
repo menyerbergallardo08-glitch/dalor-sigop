@@ -209,8 +209,8 @@ function renderEditAssignedTags() {
 }
 
 function updateEditProjectMaterialsCost() {
-    let allMats = window.allMaterials || [];
-    const totalCost = editSelectedMaterials.reduce((acc, m) => {
+    let allMats = (typeof window !== 'undefined' && Array.isArray(window.allMaterials)) ? window.allMaterials : [];
+    const totalCost = (Array.isArray(editSelectedMaterials) ? editSelectedMaterials : []).reduce((acc, m) => {
         let uCost = m.unit_cost_usd;
         if (uCost === undefined || uCost === null) {
             const found = allMats.find(x => x.id === m.material_id);
@@ -325,12 +325,17 @@ async function populateEditProjectDropdowns(currentProjId) {
     if (allPers.length === 0) {
         try {
             const res = await authFetch(`${API_BASE}/personnel/?include_inactive=false`);
-            if (res.ok) allPers = window.allPersonnel = await res.json();
+            if (res.ok) {
+                const pData = await res.json();
+                allPers = Array.isArray(pData) ? pData : (pData.personnel || pData.items || []);
+                window.allPersonnel = allPers;
+            }
         } catch(e) {}
     }
     const persSel = document.getElementById('edit_select_personnel');
     if (persSel) {
-        const validPers = allPers.filter(p => (!p.current_project_id || p.current_project_id === currentProjId || editSelectedPersonnelIds.includes(p.id) || p.status === 'disponible_base' || p.status === 'disponible') && p.is_active !== false && p.status !== 'inactivo');
+        const safePers = Array.isArray(allPers) ? allPers : [];
+        const validPers = safePers.filter(p => (!p.current_project_id || p.current_project_id === currentProjId || editSelectedPersonnelIds.includes(p.id) || p.status === 'disponible_base' || p.status === 'disponible') && p.is_active !== false && p.status !== 'inactivo');
         persSel.innerHTML = `<option value="">-- Seleccionar Trabajador (${validPers.length} disp. en base) --</option>` +
             validPers.map(p => `<option value="${p.id}">[${p.code}] ${p.full_name} (${p.role_title || 'Operario'})</option>`).join('');
     }
@@ -340,12 +345,17 @@ async function populateEditProjectDropdowns(currentProjId) {
     if (allAss.length === 0) {
         try {
             const res = await authFetch(`${API_BASE}/assets/`);
-            if (res.ok) allAss = window.allAssets = await res.json();
+            if (res.ok) {
+                const aData = await res.json();
+                allAss = Array.isArray(aData) ? aData : (aData.assets || aData.items || []);
+                window.allAssets = allAss;
+            }
         } catch(e) {}
     }
+    const safeAss = Array.isArray(allAss) ? allAss : [];
     const fleetSel = document.getElementById('edit_select_fleet');
     if (fleetSel) {
-        const vehicles = allAss.filter(a => {
+        const vehicles = safeAss.filter(a => {
             const isVeh = ['vehiculo', 'camioneta'].includes((a.asset_type || '').toLowerCase()) ||
                 (a.category && a.category.toLowerCase().includes('veh'));
             return isVeh && (!a.current_project_id || a.current_project_id === currentProjId || editSelectedVehicleIds.includes(a.id));
@@ -356,7 +366,7 @@ async function populateEditProjectDropdowns(currentProjId) {
 
     const toolSel = document.getElementById('edit_select_tools');
     if (toolSel) {
-        const tools = allAss.filter(a => {
+        const tools = safeAss.filter(a => {
             const isVeh = ['vehiculo', 'camioneta'].includes((a.asset_type || '').toLowerCase()) ||
                 (a.category && a.category.toLowerCase().includes('veh'));
             return !isVeh && (!a.current_project_id || a.current_project_id === currentProjId || editSelectedToolIds.includes(a.id));
@@ -370,13 +380,18 @@ async function populateEditProjectDropdowns(currentProjId) {
     if (allMats.length === 0) {
         try {
             const res = await authFetch(`${API_BASE}/materials/`);
-            if (res.ok) allMats = window.allMaterials = await res.json();
+            if (res.ok) {
+                const mData = await res.json();
+                allMats = Array.isArray(mData) ? mData : (mData.materials || mData.items || []);
+                window.allMaterials = allMats;
+            }
         } catch(e) {}
     }
+    const safeMats = Array.isArray(allMats) ? allMats : [];
     const matSel = document.getElementById('edit_select_materials');
     if (matSel) {
         matSel.innerHTML = '<option value="">-- Seleccionar Material / Consumible --</option>' +
-            allMats.map(m => `<option value="${m.id}" data-name="${m.name}" data-code="${m.code}" data-unit="${m.unit_measure || 'UND'}">[${m.code}] ${m.name} (Stock: ${m.stock_quantity || 0} ${m.unit_measure || 'UND'})</option>`).join('');
+            safeMats.map(m => `<option value="${m.id}" data-name="${m.name}" data-code="${m.code}" data-unit="${m.unit_measure || 'UND'}">[${m.code}] ${m.name} (Stock: ${m.stock_quantity || 0} ${m.unit_measure || 'UND'})</option>`).join('');
     }
 }
 
@@ -420,7 +435,10 @@ async function openEditProjectModal(projectId) {
         if (!window.allClients || !Array.isArray(window.allClients) || window.allClients.length === 0) {
             try {
                 const resCli = await authFetch(`${API_BASE}/clients/`);
-                if (resCli.ok) window.allClients = await resCli.json();
+                if (resCli.ok) {
+                    const cData = await resCli.json();
+                    window.allClients = Array.isArray(cData) ? cData : (cData.clients || cData.items || []);
+                }
             } catch(e) {}
         }
         const clientSel = document.getElementById("edit_project_client_id");
@@ -437,8 +455,9 @@ async function openEditProjectModal(projectId) {
         if (phasesContainer) {
             phasesContainer.innerHTML = "";
             editPhaseCount = 0;
-            if (p.phases && p.phases.length > 0) {
-                p.phases.forEach(ph => {
+            const pPhases = Array.isArray(p.phases) ? p.phases : [];
+            if (pPhases.length > 0) {
+                pPhases.forEach(ph => {
                     const durUnit = ph.duration_unit || "dias";
                     const durVal = ph.estimated_duration !== undefined ? ph.estimated_duration : (ph.duration_days || 7);
                     addEditProjectPhaseRow(ph.name, durVal, durUnit, ph.estimated_cost_usd || 0, ph.description || ph.name, ph.status || "pendiente", ph.weight_percent || 0);
@@ -449,10 +468,10 @@ async function openEditProjectModal(projectId) {
         }
 
         // Cargar Recursos y Materiales Asignados
-        editSelectedPersonnelIds = (p.assigned_personnel || []).map(x => x.id);
-        editSelectedVehicleIds = (p.assigned_fleet || []).map(x => x.id);
-        editSelectedToolIds = (p.assigned_tools || []).map(x => x.id);
-        editSelectedMaterials = (p.requested_materials || []).map(r => ({
+        editSelectedPersonnelIds = (Array.isArray(p.assigned_personnel) ? p.assigned_personnel : []).map(x => x.id);
+        editSelectedVehicleIds = (Array.isArray(p.assigned_fleet) ? p.assigned_fleet : []).map(x => x.id);
+        editSelectedToolIds = (Array.isArray(p.assigned_tools) ? p.assigned_tools : []).map(x => x.id);
+        editSelectedMaterials = (Array.isArray(p.requested_materials) ? p.requested_materials : []).map(r => ({
             material_id: r.material_id,
             name: r.material_name,
             code: r.material_code,

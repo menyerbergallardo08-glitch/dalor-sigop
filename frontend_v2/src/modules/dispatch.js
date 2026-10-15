@@ -1436,12 +1436,15 @@ async function renderDispatchPickerItems(filterText = '') {
 
             items = assets.filter(a => getAssetKind(a) === currentPickerTab);
         } else if (currentPickerTab === 'materials') {
-            let materials = window.allMaterials || [];
+            let materials = (typeof window !== 'undefined' && Array.isArray(window.allMaterials) && window.allMaterials.length > 0) ? window.allMaterials : [];
             if (materials.length === 0) {
                 const res = await authFetch(`${API_BASE}/materials/`);
-                if (res.ok) materials = window.allMaterials = await res.json();
+                if (res.ok) {
+                    const mData = await res.json();
+                    materials = window.allMaterials = Array.isArray(mData) ? mData : (mData.materials || mData.items || []);
+                }
             }
-            items = materials;
+            items = Array.isArray(materials) ? materials : [];
         }
 
         // Conteo de badges en pestañas
@@ -1452,7 +1455,7 @@ async function renderDispatchPickerItems(filterText = '') {
             if (cTools) cTools.textContent = window.allAssets.filter(a => getAssetKind(a) === 'tools').length;
             if (cMach) cMach.textContent = window.allAssets.filter(a => getAssetKind(a) === 'machinery').length;
         }
-        if (window.allMaterials && cMats) {
+        if (Array.isArray(window.allMaterials) && cMats) {
             cMats.textContent = window.allMaterials.length;
         }
 

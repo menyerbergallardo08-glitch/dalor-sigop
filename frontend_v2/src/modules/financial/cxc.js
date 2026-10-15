@@ -279,6 +279,7 @@ function renderReceivablesPaginated() {
             <td style="font-weight: 700;">
                 <div>${r.client_name}</div>
                 <div style="font-size: 10px; color: #64748b; font-family: monospace;">RIF: ${r.client_rif || '-'}</div>
+                ${r.client_id ? `<div><button type="button" onclick="printClientAccountStatement(${r.client_id})" class="btn-secondary" style="font-size: 9px; padding: 1px 6px; margin-top: 3px; border-color: #bae6fd; background: #f0f9ff; color: #0284c7; font-weight: 800; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;" title="Ver e Imprimir Estado de Cuenta Oficial"><i class="fa-solid fa-file-pdf"></i> Estado de Cuenta</button></div>` : ''}
             </td>
             <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;">${r.project_code || 'General'}</span></td>
             <td style="font-size: 11.5px; color: #334155; max-width: 200px;">${r.description || '-'}</td>
@@ -1610,6 +1611,221 @@ async function submitBadDebtWriteOff(event) {
 // Helper para despachar materiales directamente desde la ficha de proyecto
 
 
+async function exportCxcExcel() {
+    try {
+        const res = await authFetch(`${API_BASE}/financial/reports/cxc/excel`);
+        if (!res.ok) throw new Error("Error al generar Excel de CxC");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `DALOR_Cuentas_Por_Cobrar_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        alert("Error al descargar Excel de CxC: " + e.message);
+    }
+}
+
+async function printClientAccountStatement(clientId) {
+    if (!clientId) {
+        alert("Por favor seleccione un cliente para generar el estado de cuenta.");
+        return;
+    }
+    try {
+        const res = await authFetch(`${API_BASE}/financial/reports/client-statement/${clientId}`);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al obtener estado de cuenta");
+        }
+        const data = await res.json();
+        const comp = data.company;
+        const cli = data.client;
+        const tot = data.totals;
+        const aging = tot.aging || {};
+
+        let invRows = (data.invoices || []).map((inv) => `
+            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                <td style="padding: 6px 8px; font-weight: 800; color: #002B49; font-family: monospace;">${inv.invoice_number}</td>
+                <td style="padding: 6px 8px; color: #475569;">${inv.issue_date}</td>
+                <td style="padding: 6px 8px; color: ${inv.days_overdue > 0 ? '#dc2626' : '#475569'}; font-weight: ${inv.days_overdue > 0 ? '700' : '500'};">${inv.due_date}</td>
+                <td style="padding: 6px 8px; font-weight: 600;">[${inv.project_code}] ${inv.concept}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 700; color: #334155;">$${Number(inv.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 700; color: #0284c7;">$${Number(inv.paid_amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 800; color: ${inv.balance_usd > 0.05 ? '#dc2626' : '#059669'};">$${Number(inv.balance_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td style="padding: 6px 8px; text-align: center;">
+                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${inv.days_overdue > 0 ? 'background: #fee2e2; color: #991b1b;' : (inv.balance_usd <= 0.05 ? 'background: #dcfce7; color: #166534;' : 'background: #e0f2fe; color: #0369a1;')}">
+                        ${inv.days_overdue > 0 ? `Vencida (${inv.days_overdue}d)` : (inv.balance_usd <= 0.05 ? 'Solvente' : 'Corriente')}
+                    </span>
+                </td>
+            </tr>
+        `).join('');
+
+        if (!invRows) {
+            invRows = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 14px;">No se registran documentos de cobro para este cliente.</td></tr>`;
+        }
+
+        let payRows = (data.payments || []).map(p => `
+            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                <td style="padding: 6px 8px; font-weight: 800; color: #002B49; font-family: monospace;">${p.payment_number}</td>
+                <td style="padding: 6px 8px; color: #475569;">${p.date}</td>
+                <td style="padding: 6px 8px; font-weight: 700;">${p.invoice_number || '-'}</td>
+                <td style="padding: 6px 8px;"><span style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700;">${p.method}</span> Ref: ${p.reference}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 800; color: #059669;">$${Number(p.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 700; color: #475569;">Bs. ${Number(p.amount_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            </tr>
+        `).join('');
+
+        if (!payRows) {
+            payRows = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran abonos o pagos bancarios aplicados aún.</td></tr>`;
+        }
+
+        const printHtml = `
+        <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 820px; margin: auto; padding: 24px; border: 1px solid #cbd5e1; background: #ffffff;">
+            <!-- Header Corporativo -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #002B49; padding-bottom: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <img src="logo_dalor.jpg" alt="DALOR" style="height: 52px; max-width: 150px; object-fit: contain;" onerror="this.style.display='none'">
+                    <div>
+                        <h1 style="font-size: 19px; font-weight: 900; color: #002B49; margin: 0; text-transform: uppercase; letter-spacing: -0.5px;">${comp.name}</h1>
+                        <p style="font-size: 11px; color: #0284c7; margin: 2px 0 0 0; font-weight: 800;">RIF: ${comp.rif} &bull; ${comp.address}</p>
+                        <p style="font-size: 10px; color: #64748b; margin: 1px 0 0 0;">Tel: ${comp.phone} &bull; Email: ${comp.email}</p>
+                    </div>
+                </div>
+                <div style="text-align: right; border: 2px solid #002B49; padding: 6px 14px; border-radius: 6px; background: #f8fafc;">
+                    <div style="font-size: 10px; font-weight: 900; color: #002B49; text-transform: uppercase;">ESTADO DE CUENTA CLIENTE</div>
+                    <div style="font-size: 13px; font-weight: 900; color: #0284c7;">AL: ${data.statement_date}</div>
+                    <div style="font-size: 10px; color: #475569; font-weight: 700;">Tasa BCV: Bs. ${Number(data.exchange_rate).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                </div>
+            </div>
+
+            <!-- Ficha del Cliente -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; font-size: 11.5px;">
+                    <div>
+                        <div style="font-size: 14px; font-weight: 900; color: #002B49; margin-bottom: 4px;">${cli.name}</div>
+                        <div><b>RIF:</b> ${cli.rif} &bull; <b>Contacto:</b> ${cli.contact_person}</div>
+                        <div><b>Dirección:</b> ${cli.address}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div><b>Teléfono:</b> ${cli.phone}</div>
+                        <div><b>Correo:</b> ${cli.email}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen Financiero & Aging -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
+                <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; text-align: center;">
+                    <span style="font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase;">Total Facturado</span>
+                    <div style="font-size: 14px; font-weight: 900; color: #1e293b; margin-top: 2px;">$${tot.total_billed_usd.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+                <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 8px; text-align: center;">
+                    <span style="font-size: 10px; font-weight: 800; color: #047857; text-transform: uppercase;">Total Cobrado / Abonos</span>
+                    <div style="font-size: 14px; font-weight: 900; color: #059669; margin-top: 2px;">$${tot.total_paid_usd.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+                <div style="background: ${tot.total_pending_usd > 0.05 ? '#fef2f2' : '#f0fdf4'}; border: 1.5px solid ${tot.total_pending_usd > 0.05 ? '#fca5a5' : '#86efac'}; border-radius: 6px; padding: 8px; text-align: center;">
+                    <span style="font-size: 10px; font-weight: 800; color: ${tot.total_pending_usd > 0.05 ? '#991b1b' : '#166534'}; text-transform: uppercase;">Saldo Deudor (USD)</span>
+                    <div style="font-size: 15px; font-weight: 900; color: ${tot.total_pending_usd > 0.05 ? '#dc2626' : '#059669'}; margin-top: 2px;">$${tot.total_pending_usd.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px; text-align: center;">
+                    <span style="font-size: 10px; font-weight: 800; color: #1d4ed8; text-transform: uppercase;">Saldo Deudor (Bs. BCV)</span>
+                    <div style="font-size: 13px; font-weight: 900; color: #2563eb; margin-top: 2px;">Bs. ${tot.total_pending_bs.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+            </div>
+
+            <!-- Antigüedad de la Deuda (Aging) -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 11px;">
+                <div style="font-weight: 800; color: #002B49; margin-bottom: 4px; text-transform: uppercase; font-size: 10px;">Antigüedad de Saldos por Vencer y Vencidos:</div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center;">
+                    <div style="background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px;">Corriente: <b>$${(aging.current_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</b></div>
+                    <div style="background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px;">1 a 30 días: <b>$${(aging.days_1_30_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</b></div>
+                    <div style="background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px;">31 a 60 días: <b>$${(aging.days_31_60_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</b></div>
+                    <div style="background: white; border: 1px solid #fca5a5; border-radius: 4px; padding: 4px; color: #991b1b;">+60 días: <b>$${(aging.days_61_plus_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</b></div>
+                </div>
+            </div>
+
+            <!-- Detalle de Facturas y Valuaciones -->
+            <h3 style="font-size: 12px; font-weight: 900; color: #002B49; margin: 0 0 6px 0; text-transform: uppercase;">1. Facturas, Valuaciones y Notas de Cobro:</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+                <thead style="background: #002B49; color: white; font-size: 10.5px;">
+                    <tr>
+                        <th style="padding: 6px 8px; text-align: left;">N° Doc</th>
+                        <th style="padding: 6px 8px; text-align: left;">Emisión</th>
+                        <th style="padding: 6px 8px; text-align: left;">Vence</th>
+                        <th style="padding: 6px 8px; text-align: left;">Imputación / Concepto</th>
+                        <th style="padding: 6px 8px; text-align: right;">Total Factura</th>
+                        <th style="padding: 6px 8px; text-align: right;">Cobrado</th>
+                        <th style="padding: 6px 8px; text-align: right;">Saldo</th>
+                        <th style="padding: 6px 8px; text-align: center;">Condición</th>
+                    </tr>
+                </thead>
+                <tbody>${invRows}</tbody>
+            </table>
+
+            <!-- Detalle de Abonos y Pagos Bancarios -->
+            <h3 style="font-size: 12px; font-weight: 900; color: #002B49; margin: 0 0 6px 0; text-transform: uppercase;">2. Histórico de Pagos y Abonos Registrados:</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <thead style="background: #f1f5f9; color: #1e293b; font-size: 10.5px; border-bottom: 2px solid #cbd5e1;">
+                    <tr>
+                        <th style="padding: 6px 8px; text-align: left;">N° Recibo</th>
+                        <th style="padding: 6px 8px; text-align: left;">Fecha</th>
+                        <th style="padding: 6px 8px; text-align: left;">Factura Aplicada</th>
+                        <th style="padding: 6px 8px; text-align: left;">Forma de Pago & Referencia</th>
+                        <th style="padding: 6px 8px; text-align: right;">Monto USD</th>
+                        <th style="padding: 6px 8px; text-align: right;">Monto Bs.</th>
+                    </tr>
+                </thead>
+                <tbody>${payRows}</tbody>
+            </table>
+
+            <!-- Firmas -->
+            <div style="display: flex; justify-content: space-between; margin-top: 36px; padding-top: 8px;">
+                <div style="text-align: center; width: 42%; border-top: 1px solid #94a3b8; padding-top: 6px; font-size: 10.5px;">
+                    <b>Administración y Finanzas DALOR</b><br>Firma y Sello Oficial
+                </div>
+                <div style="text-align: center; width: 42%; border-top: 1px solid #94a3b8; padding-top: 6px; font-size: 10.5px;">
+                    <b>${cli.name}</b><br>Recibido Conforme (Firma y Sello)
+                </div>
+            </div>
+        </div>
+        `;
+
+        const container = document.getElementById("modalPrintPreviewContent");
+        if (container) {
+            container.innerHTML = printHtml;
+            const titleEl = document.getElementById("previewModalTitle");
+            if (titleEl) titleEl.innerText = `Estado de Cuenta - ${cli.name}`;
+            if (typeof window.openModal === 'function') {
+                window.openModal('modalPrintPreview');
+            } else {
+                document.getElementById('modalPrintPreview')?.classList.remove('hidden');
+            }
+        }
+    } catch(err) {
+        alert("Error al generar Estado de Cuenta: " + err.message);
+    }
+}
+
+function openClientStatementSelectorModal() {
+    const clients = window.allClients || [];
+    if (clients.length === 0) {
+        alert("No hay clientes registrados en el directorio.");
+        return;
+    }
+    const clientOptions = clients.map(c => `${c.id}: ${c.name} (${c.rif || 'S/R'})`).join('\n');
+    const input = prompt("Ingrese el ID del Cliente para generar su Estado de Cuenta Oficial:\n\n" + clientOptions.slice(0, 1000) + (clientOptions.length > 1000 ? "\n..." : ""));
+    if (!input) return;
+    const cid = parseInt(input.trim());
+    if (isNaN(cid)) {
+        alert("ID de cliente inválido.");
+        return;
+    }
+    printClientAccountStatement(cid);
+}
+
 // Auto-window binding & ES6 exports
 if (typeof window !== 'undefined') {
     window.openFinancialSubtab = openFinancialSubtab;
@@ -1642,6 +1858,9 @@ if (typeof window !== 'undefined') {
     window.openCreateCxCForProject = openCreateCxCForProject;
     window.openBadDebtModal = openBadDebtModal;
     window.submitBadDebtWriteOff = submitBadDebtWriteOff;
+    window.exportCxcExcel = exportCxcExcel;
+    window.printClientAccountStatement = printClientAccountStatement;
+    window.openClientStatementSelectorModal = openClientStatementSelectorModal;
 }
 
 export { openFinancialSubtab };
@@ -1674,3 +1893,7 @@ export { submitDirectClientPayment };
 export { openCreateCxCForProject };
 export { openBadDebtModal };
 export { submitBadDebtWriteOff };
+export { exportCxcExcel };
+export { printClientAccountStatement };
+export { openClientStatementSelectorModal };
+

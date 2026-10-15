@@ -113,4 +113,6 @@ export const distributeTaskWeightsEqually = (...args) => (typeof window !== 'und
 export const openConfigurePhaseWeightsModal = (...args) => (typeof window !== 'undefined' && window.openConfigurePhaseWeightsModal ? window.openConfigurePhaseWeightsModal(...args) : undefined);
 export const updateModalTaskWeightsSumIndicator = (...args) => (typeof window !== 'undefined' && window.updateModalTaskWeightsSumIndicator ? window.updateModalTaskWeightsSumIndicator(...args) : undefined);
 export const distributeModalTaskWeightsEqually = (...args) => (typeof window !== 'undefined' && window.distributeModalTaskWeightsEqually ? window.distributeModalTaskWeightsEqually(...args) : undefined);
+export const distributeModalTaskWeightsByHours = (...args) => (typeof window !== 'undefined' && window.distributeModalTaskWeightsByHours ? window.distributeModalTaskWeightsByHours(...args) : undefined);
+export const updateProjectTaskProgress = (...args) => (typeof window !== 'undefined' && window.updateProjectTaskProgress ? window.updateProjectTaskProgress(...args) : undefined);
 export const submitConfigurePhaseWeights = (...args) => (typeof window !== 'undefined' && window.submitConfigurePhaseWeights ? window.submitConfigurePhaseWeights(...args) : undefined);

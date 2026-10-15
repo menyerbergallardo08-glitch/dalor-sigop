@@ -803,5 +803,556 @@ class FinancialExcelService:
             "imported_compras": imported_compras,
             "linked_municipal": linked_municipal
         }
+
+    @staticmethod
+    def export_cxc_excel(db: Session):
+        """
+        Exporta la cartera completa de Cuentas por Cobrar (CxC) en formato Excel ejecutivo OpenPyXL.
+        """
+        receivables = db.query(AccountReceivable).options(
+            joinedload(AccountReceivable.client),
+            joinedload(AccountReceivable.project)
+        ).order_by(AccountReceivable.issue_date.desc()).all()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Cuentas por Cobrar"
+        ws.views.sheetView[0].showGridLines = True
+
+        font_company = Font(name="Calibri", size=13, bold=True, color="002B49")
+        font_sub = Font(name="Calibri", size=9, color="555555")
+        font_bold = Font(name="Calibri", size=10, bold=True)
+        font_regular = Font(name="Calibri", size=9)
+        font_header = Font(name="Calibri", size=9, bold=True, color="FFFFFF")
+        fill_header = PatternFill(start_color="002B49", end_color="002B49", fill_type="solid")
+        fill_totals = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
+
+        border_cell = Border(
+            left=Side(style='thin', color='E2E8F0'),
+            right=Side(style='thin', color='E2E8F0'),
+            top=Side(style='thin', color='E2E8F0'),
+            bottom=Side(style='thin', color='E2E8F0')
+        )
+
+        ws['A1'] = "METALMECÁNICA DALOR, C.A."
+        ws['A1'].font = font_company
+        ws['A2'] = "REPORTE CONSOLIDADO DE CUENTAS POR COBRAR (CxC CLIENTES)"
+        ws['A2'].font = font_sub
+        ws['A3'] = f"FECHA DE EMISIÓN: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        ws['A3'].font = font_bold
+
+        headers = [
+            "N° Factura", "Fecha Emisión", "Vencimiento", "Cliente / Razón Social",
+            "RIF", "Proyecto / Obra", "Total Facturado (USD)", "Cobrado (USD)",
+            "Saldo Pendiente (USD)", "Tasa BCV", "Saldo Pendiente (Bs.)", "Estado"
+        ]
+
+        ws.row_dimensions[5].height = 26
+        for c_idx, h_text in enumerate(headers, 1):
+            cell = ws.cell(row=5, column=c_idx, value=h_text)
+            cell.font = font_header
+            cell.fill = fill_header
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        tot_billed = 0.0
+        tot_paid = 0.0
+        tot_pending = 0.0
+        tot_pending_bs = 0.0
+
+        row_num = 6
+        for r in receivables:
+            rate = float(r.exchange_rate or 859.06)
+            billed = float(r.amount_usd or 0.0)
+            paid = float(r.paid_amount_usd or 0.0)
+            bal = float(r.balance_usd if r.balance_usd is not None else max(0.0, billed - paid))
+            bal_bs = round(bal * rate, 2)
+
+            tot_billed += billed
+            tot_paid += paid
+            tot_pending += bal
+            tot_pending_bs += bal_bs
+
+            cli_name = r.client.name if r.client else "Cliente General"
+            cli_rif = r.client.rif if r.client else "J-00000000-0"
+            proj_str = f"[{r.project.code}] {r.project.name}" if r.project else "General / Sede"
+
+            ws.cell(row=row_num, column=1, value=r.invoice_number or f"CxC-{r.id:04d}").font = font_bold
+            ws.cell(row=row_num, column=2, value=r.issue_date.strftime("%d/%m/%Y") if r.issue_date else "-").font = font_regular
+            ws.cell(row=row_num, column=3, value=r.due_date.strftime("%d/%m/%Y") if r.due_date else "-").font = font_regular
+            ws.cell(row=row_num, column=4, value=cli_name).font = font_regular
+            ws.cell(row=row_num, column=5, value=cli_rif).font = font_regular
+            ws.cell(row=row_num, column=6, value=proj_str).font = font_regular
+
+            c7 = ws.cell(row=row_num, column=7, value=billed)
+            c7.font = font_regular
+            c7.number_format = "$#,##0.00"
+
+            c8 = ws.cell(row=row_num, column=8, value=paid)
+            c8.font = font_regular
+            c8.number_format = "$#,##0.00"
+
+            c9 = ws.cell(row=row_num, column=9, value=bal)
+            c9.font = font_bold
+            c9.number_format = "$#,##0.00"
+
+            c10 = ws.cell(row=row_num, column=10, value=rate)
+            c10.font = font_regular
+            c10.number_format = "#,##0.00"
+
+            c11 = ws.cell(row=row_num, column=11, value=bal_bs)
+            c11.font = font_regular
+            c11.number_format = "Bs. #,##0.00"
+
+            ws.cell(row=row_num, column=12, value=(r.status or "pendiente").upper()).font = font_bold
+
+            for col in range(1, 13):
+                ws.cell(row=row_num, column=col).border = border_cell
+
+            row_num += 1
+
+        # Fila de Totales
+        ws.row_dimensions[row_num].height = 22
+        t_cell = ws.cell(row=row_num, column=1, value="TOTAL CONSOLIDADO")
+        t_cell.font = font_bold
+        ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=6)
+
+        c7_t = ws.cell(row=row_num, column=7, value=tot_billed)
+        c7_t.font = font_bold
+        c7_t.number_format = "$#,##0.00"
+
+        c8_t = ws.cell(row=row_num, column=8, value=tot_paid)
+        c8_t.font = font_bold
+        c8_t.number_format = "$#,##0.00"
+
+        c9_t = ws.cell(row=row_num, column=9, value=tot_pending)
+        c9_t.font = font_bold
+        c9_t.number_format = "$#,##0.00"
+
+        c11_t = ws.cell(row=row_num, column=11, value=tot_pending_bs)
+        c11_t.font = font_bold
+        c11_t.number_format = "Bs. #,##0.00"
+
+        for col in range(1, 13):
+            ws.cell(row=row_num, column=col).fill = fill_totals
+            ws.cell(row=row_num, column=col).border = border_cell
+
+        # Auto ajuste de anchos de columna
+        for c_idx in range(1, len(headers) + 1):
+            col_letter = openpyxl.utils.get_column_letter(c_idx)
+            ws.column_dimensions[col_letter].width = 18
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        fname = f"DALOR_Cuentas_Por_Cobrar_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={fname}"}
+        )
+
+    @staticmethod
+    def export_cxp_excel(db: Session):
+        """
+        Exporta la cartera completa de Cuentas por Pagar (CxP) en formato Excel ejecutivo OpenPyXL.
+        """
+        payables = db.query(AccountPayable).options(
+            joinedload(AccountPayable.project)
+        ).order_by(AccountPayable.issue_date.desc()).all()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Cuentas por Pagar"
+        ws.views.sheetView[0].showGridLines = True
+
+        font_company = Font(name="Calibri", size=13, bold=True, color="002B49")
+        font_sub = Font(name="Calibri", size=9, color="555555")
+        font_bold = Font(name="Calibri", size=10, bold=True)
+        font_regular = Font(name="Calibri", size=9)
+        font_header = Font(name="Calibri", size=9, bold=True, color="FFFFFF")
+        fill_header = PatternFill(start_color="002B49", end_color="002B49", fill_type="solid")
+        fill_totals = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
+
+        border_cell = Border(
+            left=Side(style='thin', color='E2E8F0'),
+            right=Side(style='thin', color='E2E8F0'),
+            top=Side(style='thin', color='E2E8F0'),
+            bottom=Side(style='thin', color='E2E8F0')
+        )
+
+        ws['A1'] = "METALMECÁNICA DALOR, C.A."
+        ws['A1'].font = font_company
+        ws['A2'] = "REPORTE CONSOLIDADO DE CUENTAS POR PAGAR (CxP PROVEEDORES)"
+        ws['A2'].font = font_sub
+        ws['A3'] = f"FECHA DE EMISIÓN: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        ws['A3'].font = font_bold
+
+        headers = [
+            "N° Factura", "N° Control", "Fecha Emisión", "Vencimiento", "Proveedor / Razón Social",
+            "RIF", "Imputación / Obra", "Total Factura (USD)", "Pagado (USD)",
+            "Saldo Deuda (USD)", "Tasa BCV", "Saldo Deuda (Bs.)", "Estado"
+        ]
+
+        ws.row_dimensions[5].height = 26
+        for c_idx, h_text in enumerate(headers, 1):
+            cell = ws.cell(row=5, column=c_idx, value=h_text)
+            cell.font = font_header
+            cell.fill = fill_header
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        tot_amt = 0.0
+        tot_paid = 0.0
+        tot_bal = 0.0
+        tot_bal_bs = 0.0
+
+        row_num = 6
+        for p in payables:
+            rate = float(p.exchange_rate or 859.06)
+            amt = float(p.amount_usd or 0.0)
+            paid = float(p.paid_amount_usd or 0.0)
+            bal = float(p.balance_usd if p.balance_usd is not None else max(0.0, amt - paid))
+            bal_bs = round(bal * rate, 2)
+
+            tot_amt += amt
+            tot_paid += paid
+            tot_bal += bal
+            tot_bal_bs += bal_bs
+
+            proj_str = f"[{p.project.code}] {p.project.name}" if p.project else "General / Sede"
+
+            ws.cell(row=row_num, column=1, value=p.invoice_number or f"CxP-{p.id:04d}").font = font_bold
+            ws.cell(row=row_num, column=2, value=p.control_number or "-").font = font_regular
+            ws.cell(row=row_num, column=3, value=p.issue_date.strftime("%d/%m/%Y") if p.issue_date else "-").font = font_regular
+            ws.cell(row=row_num, column=4, value=p.due_date.strftime("%d/%m/%Y") if p.due_date else "-").font = font_regular
+            ws.cell(row=row_num, column=5, value=p.supplier_name or "Proveedor").font = font_regular
+            ws.cell(row=row_num, column=6, value=p.supplier_rif or "J-00000000-0").font = font_regular
+            ws.cell(row=row_num, column=7, value=proj_str).font = font_regular
+
+            c8 = ws.cell(row=row_num, column=8, value=amt)
+            c8.font = font_regular
+            c8.number_format = "$#,##0.00"
+
+            c9 = ws.cell(row=row_num, column=9, value=paid)
+            c9.font = font_regular
+            c9.number_format = "$#,##0.00"
+
+            c10 = ws.cell(row=row_num, column=10, value=bal)
+            c10.font = font_bold
+            c10.number_format = "$#,##0.00"
+
+            c11 = ws.cell(row=row_num, column=11, value=rate)
+            c11.font = font_regular
+            c11.number_format = "#,##0.00"
+
+            c12 = ws.cell(row=row_num, column=12, value=bal_bs)
+            c12.font = font_regular
+            c12.number_format = "Bs. #,##0.00"
+
+            ws.cell(row=row_num, column=13, value=(p.status or "pendiente").upper()).font = font_bold
+
+            for col in range(1, 14):
+                ws.cell(row=row_num, column=col).border = border_cell
+
+            row_num += 1
+
+        # Totales
+        ws.row_dimensions[row_num].height = 22
+        t_cell = ws.cell(row=row_num, column=1, value="TOTAL CONSOLIDADO")
+        t_cell.font = font_bold
+        ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=7)
+
+        c8_t = ws.cell(row=row_num, column=8, value=tot_amt)
+        c8_t.font = font_bold
+        c8_t.number_format = "$#,##0.00"
+
+        c9_t = ws.cell(row=row_num, column=9, value=tot_paid)
+        c9_t.font = font_bold
+        c9_t.number_format = "$#,##0.00"
+
+        c10_t = ws.cell(row=row_num, column=10, value=tot_bal)
+        c10_t.font = font_bold
+        c10_t.number_format = "$#,##0.00"
+
+        c12_t = ws.cell(row=row_num, column=12, value=tot_bal_bs)
+        c12_t.font = font_bold
+        c12_t.number_format = "Bs. #,##0.00"
+
+        for col in range(1, 14):
+            ws.cell(row=row_num, column=col).fill = fill_totals
+            ws.cell(row=row_num, column=col).border = border_cell
+
+        for c_idx in range(1, len(headers) + 1):
+            col_letter = openpyxl.utils.get_column_letter(c_idx)
+            ws.column_dimensions[col_letter].width = 18
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        fname = f"DALOR_Cuentas_Por_Pagar_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={fname}"}
+        )
+
+    @staticmethod
+    def export_expenses_excel(db: Session):
+        """
+        Exporta el histórico general de auditoría de gastos en formato Excel ejecutivo OpenPyXL.
+        """
+        expenses = db.query(Expense).options(
+            joinedload(Expense.project),
+            joinedload(Expense.category)
+        ).order_by(Expense.expense_date.desc()).all()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Histórico de Gastos"
+        ws.views.sheetView[0].showGridLines = True
+
+        font_company = Font(name="Calibri", size=13, bold=True, color="002B49")
+        font_sub = Font(name="Calibri", size=9, color="555555")
+        font_bold = Font(name="Calibri", size=10, bold=True)
+        font_regular = Font(name="Calibri", size=9)
+        font_header = Font(name="Calibri", size=9, bold=True, color="FFFFFF")
+        fill_header = PatternFill(start_color="002B49", end_color="002B49", fill_type="solid")
+        fill_totals = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
+
+        border_cell = Border(
+            left=Side(style='thin', color='E2E8F0'),
+            right=Side(style='thin', color='E2E8F0'),
+            top=Side(style='thin', color='E2E8F0'),
+            bottom=Side(style='thin', color='E2E8F0')
+        )
+
+        ws['A1'] = "METALMECÁNICA DALOR, C.A."
+        ws['A1'].font = font_company
+        ws['A2'] = "HISTÓRICO Y AUDITORÍA GENERAL DE GASTOS"
+        ws['A2'].font = font_sub
+        ws['A3'] = f"FECHA DE EMISIÓN: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        ws['A3'].font = font_bold
+
+        headers = [
+            "Fecha", "Proyecto / Imputación", "Partida / Categoría", "Proveedor / Beneficiario",
+            "N° Factura / Control", "Descripción", "Monto (USD)", "Tasa BCV", "Monto (Bs.)",
+            "Reportado Por", "Estado"
+        ]
+
+        ws.row_dimensions[5].height = 26
+        for c_idx, h_text in enumerate(headers, 1):
+            cell = ws.cell(row=5, column=c_idx, value=h_text)
+            cell.font = font_header
+            cell.fill = fill_header
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        tot_usd = 0.0
+        tot_bs = 0.0
+
+        row_num = 6
+        for e in expenses:
+            usd = float(e.amount_usd or 0.0)
+            bs = float(e.amount_bs or 0.0)
+            rate = float(e.exchange_rate or (bs / usd if usd > 0 else 859.06))
+            tot_usd += usd
+            tot_bs += bs
+
+            proj_str = f"[{e.project.code}] {e.project.name}" if e.project else "Sede Central / General"
+            cat_str = f"[{e.category.code}] {e.category.name}" if e.category else (e.category_code or "General")
+
+            rep_name = "Admin"
+            if getattr(e, 'reported_by', None):
+                rep_name = getattr(e.reported_by, 'full_name', None) or getattr(e.reported_by, 'username', 'Admin')
+
+            ws.cell(row=row_num, column=1, value=e.expense_date.strftime("%d/%m/%Y") if e.expense_date else "-").font = font_regular
+            ws.cell(row=row_num, column=2, value=proj_str).font = font_regular
+            ws.cell(row=row_num, column=3, value=cat_str).font = font_regular
+            ws.cell(row=row_num, column=4, value=e.supplier_vendor or "-").font = font_regular
+            ws.cell(row=row_num, column=5, value=getattr(e, 'expense_type', '-') or "-").font = font_bold
+            ws.cell(row=row_num, column=6, value=e.description or "-").font = font_regular
+
+            c7 = ws.cell(row=row_num, column=7, value=usd)
+            c7.font = font_bold
+            c7.number_format = "$#,##0.00"
+
+            c8 = ws.cell(row=row_num, column=8, value=rate)
+            c8.font = font_regular
+            c8.number_format = "#,##0.00"
+
+            c9 = ws.cell(row=row_num, column=9, value=bs)
+            c9.font = font_regular
+            c9.number_format = "Bs. #,##0.00"
+
+            ws.cell(row=row_num, column=10, value=rep_name).font = font_regular
+            ws.cell(row=row_num, column=11, value=(e.status or "pendiente").upper()).font = font_bold
+
+            for col in range(1, 12):
+                ws.cell(row=row_num, column=col).border = border_cell
+
+            row_num += 1
+
+        # Totales
+        ws.row_dimensions[row_num].height = 22
+        t_cell = ws.cell(row=row_num, column=1, value="TOTAL GASTOS AUDITADOS")
+        t_cell.font = font_bold
+        ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=6)
+
+        c7_t = ws.cell(row=row_num, column=7, value=tot_usd)
+        c7_t.font = font_bold
+        c7_t.number_format = "$#,##0.00"
+
+        c9_t = ws.cell(row=row_num, column=9, value=tot_bs)
+        c9_t.font = font_bold
+        c9_t.number_format = "Bs. #,##0.00"
+
+        for col in range(1, 12):
+            ws.cell(row=row_num, column=col).fill = fill_totals
+            ws.cell(row=row_num, column=col).border = border_cell
+
+        for c_idx in range(1, len(headers) + 1):
+            col_letter = openpyxl.utils.get_column_letter(c_idx)
+            ws.column_dimensions[col_letter].width = 18
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        fname = f"DALOR_Auditoria_Gastos_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={fname}"}
+        )
+
+    @staticmethod
+    def get_client_statement_data(client_id: int, db: Session):
+        """
+        Retorna la estructura financiera completa para el Estado de Cuenta oficial del Cliente:
+        - Metadatos corporativos y del cliente
+        - Facturas / Valuaciones con antigüedad (aging)
+        - Pagos / Abonos aplicados
+        - Totales en USD y Bs. al cambio oficial BCV
+        """
+        client = db.query(Client).filter(Client.id == client_id).first()
+        if not client:
+            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+
+        receivables = db.query(AccountReceivable).options(
+            joinedload(AccountReceivable.project),
+            joinedload(AccountReceivable.payments)
+        ).filter(AccountReceivable.client_id == client_id).order_by(AccountReceivable.issue_date.asc()).all()
+
+        today = datetime.now().date()
+        invoices = []
+        payments = []
+
+        total_billed = 0.0
+        total_paid = 0.0
+        total_pending = 0.0
+
+        aging_current = 0.0      # No vencido o 0 días
+        aging_1_30 = 0.0         # 1 a 30 días de mora
+        aging_31_60 = 0.0        # 31 a 60 días
+        aging_61_plus = 0.0      # Más de 60 días
+
+        latest_rate = 859.06
+
+        for r in receivables:
+            if r.exchange_rate and r.exchange_rate > 0:
+                latest_rate = float(r.exchange_rate)
+
+            amt = float(r.amount_usd or 0.0)
+            paid = float(r.paid_amount_usd or 0.0)
+            bal = float(r.balance_usd if r.balance_usd is not None else max(0.0, amt - paid))
+
+            total_billed += amt
+            total_paid += paid
+            total_pending += bal
+
+            issue_d = r.issue_date.date() if isinstance(r.issue_date, datetime) else r.issue_date
+            due_d = r.due_date.date() if isinstance(r.due_date, datetime) else (r.due_date or issue_d)
+
+            days_overdue = 0
+            if bal > 0.01 and due_d:
+                delta = (today - due_d).days
+                if delta > 0:
+                    days_overdue = delta
+
+            if bal > 0.01:
+                if days_overdue == 0:
+                    aging_current += bal
+                elif days_overdue <= 30:
+                    aging_1_30 += bal
+                elif days_overdue <= 60:
+                    aging_31_60 += bal
+                else:
+                    aging_61_plus += bal
+
+            invoices.append({
+                "id": r.id,
+                "invoice_number": r.invoice_number or f"CxC-{r.id:04d}",
+                "issue_date": str(issue_d) if issue_d else "-",
+                "due_date": str(due_d) if due_d else "-",
+                "project_code": r.project.code if r.project else "General",
+                "project_name": r.project.name if r.project else "Servicio General",
+                "concept": r.notes or f"Facturación de servicios u obra {r.project.code if r.project else ''}",
+                "amount_usd": amt,
+                "paid_amount_usd": paid,
+                "balance_usd": bal,
+                "days_overdue": days_overdue,
+                "status": "vencida" if days_overdue > 0 and bal > 0.01 else ("solvente" if bal <= 0.01 else "corriente")
+            })
+
+            # Recolectar pagos asociados
+            if r.payments:
+                for p in r.payments:
+                    p_date = p.payment_date.strftime("%d/%m/%Y") if p.payment_date else "-"
+                    payments.append({
+                        "id": p.id,
+                        "payment_number": p.payment_number or f"REC-{p.id:04d}",
+                        "date": p_date,
+                        "invoice_number": r.invoice_number,
+                        "method": (p.payment_method or "transferencia").upper(),
+                        "reference": p.reference_number or "-",
+                        "amount_usd": float(p.amount_usd or 0.0),
+                        "amount_bs": float(p.amount_bs or 0.0)
+                    })
+
+        total_pending_bs = round(total_pending * latest_rate, 2)
+
+        return {
+            "success": True,
+            "company": {
+                "name": "METALMECÁNICA DALOR, C.A.",
+                "rif": "J-31601195-0",
+                "address": "Av. Cámara de las Industrias, Zona Industrial El Tigre, Galpón N° 10, Guacara, Edo. Carabobo",
+                "email": "administracion@metaldalor.com",
+                "phone": "+58 (245) 564-8890"
+            },
+            "client": {
+                "id": client.id,
+                "name": client.name,
+                "rif": client.rif or "J-00000000-0",
+                "contact_person": getattr(client, 'contact_name', None) or getattr(client, 'contact_person', '-') or "-",
+                "phone": client.contact_phone or "-",
+                "email": client.contact_email or "-",
+                "address": client.address or "Venezuela"
+            },
+            "statement_date": datetime.now().strftime("%d/%m/%Y"),
+            "exchange_rate": latest_rate,
+            "totals": {
+                "total_billed_usd": round(total_billed, 2),
+                "total_paid_usd": round(total_paid, 2),
+                "total_pending_usd": round(total_pending, 2),
+                "total_pending_bs": total_pending_bs,
+                "aging": {
+                    "current_usd": round(aging_current, 2),
+                    "days_1_30_usd": round(aging_1_30, 2),
+                    "days_31_60_usd": round(aging_31_60, 2),
+                    "days_61_plus_usd": round(aging_61_plus, 2)
+                }
+            },
+            "invoices": invoices,
+            "payments": payments
+        }
+
     
     

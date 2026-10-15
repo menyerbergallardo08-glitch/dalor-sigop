@@ -224,3 +224,30 @@ def create_expense_concept(c_in: ExpenseConceptCreate, db: Session = Depends(get
             "group_type": new_cat.group_type
         }
     }
+
+# ------------------------------------------------------------------------------
+# 6. EXPORTACIONES EJECUTIVAS A EXCEL (.XLSX) PARA CxC, CxP Y GASTOS
+# ------------------------------------------------------------------------------
+@router.get("/reports/cxc/excel")
+def export_cxc_excel_endpoint(db: Session = Depends(get_db)):
+    """Descarga la cartera consolidada de Cuentas por Cobrar en formato Excel (.xlsx)"""
+    return FinancialExcelService.export_cxc_excel(db=db)
+
+@router.get("/reports/cxp/excel")
+def export_cxp_excel_endpoint(db: Session = Depends(get_db)):
+    """Descarga la cartera consolidada de Cuentas por Pagar en formato Excel (.xlsx)"""
+    return FinancialExcelService.export_cxp_excel(db=db)
+
+@router.get("/reports/expenses/excel")
+def export_expenses_excel_endpoint(db: Session = Depends(get_db)):
+    """Descarga la auditoría completa de Gastos en formato Excel (.xlsx)"""
+    return FinancialExcelService.export_expenses_excel(db=db)
+
+# ------------------------------------------------------------------------------
+# 7. ESTADO DE CUENTA DE CLIENTE (DATA CONSOLIDADA & AGING)
+# ------------------------------------------------------------------------------
+@router.get("/reports/client-statement/{client_id}")
+def get_client_statement_endpoint(client_id: int, db: Session = Depends(get_db)):
+    """Retorna la data completa estructurada para el Estado de Cuenta corporativo de un Cliente"""
+    return FinancialExcelService.get_client_statement_data(client_id=client_id, db=db)
+

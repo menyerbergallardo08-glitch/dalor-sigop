@@ -39,6 +39,9 @@ export const submitDirectClientPayment = (...args) => (typeof window !== 'undefi
 export const openCreateCxCForProject = (...args) => (typeof window !== 'undefined' && window.openCreateCxCForProject ? window.openCreateCxCForProject(...args) : undefined);
 export const openBadDebtModal = (...args) => (typeof window !== 'undefined' && window.openBadDebtModal ? window.openBadDebtModal(...args) : undefined);
 export const submitBadDebtWriteOff = (...args) => (typeof window !== 'undefined' && window.submitBadDebtWriteOff ? window.submitBadDebtWriteOff(...args) : undefined);
+export const exportCxcExcel = (...args) => (typeof window !== 'undefined' && window.exportCxcExcel ? window.exportCxcExcel(...args) : undefined);
+export const printClientAccountStatement = (...args) => (typeof window !== 'undefined' && window.printClientAccountStatement ? window.printClientAccountStatement(...args) : undefined);
+export const openClientStatementSelectorModal = (...args) => (typeof window !== 'undefined' && window.openClientStatementSelectorModal ? window.openClientStatementSelectorModal(...args) : undefined);
 // --- cxp.js ---
 export const loadPayablesList = (...args) => (typeof window !== 'undefined' && window.loadPayablesList ? window.loadPayablesList(...args) : undefined);
 export const updateCxpFilterBadges = (...args) => (typeof window !== 'undefined' && window.updateCxpFilterBadges ? window.updateCxpFilterBadges(...args) : undefined);
@@ -75,6 +78,7 @@ export const deletePayablePrompt = (...args) => (typeof window !== 'undefined' &
 export const openPayableHistoryModal = (...args) => (typeof window !== 'undefined' && window.openPayableHistoryModal ? window.openPayableHistoryModal(...args) : undefined);
 export const openDeclareBadDebtModal = (...args) => (typeof window !== 'undefined' && window.openDeclareBadDebtModal ? window.openDeclareBadDebtModal(...args) : undefined);
 export const submitDeclareBadDebt = (...args) => (typeof window !== 'undefined' && window.submitDeclareBadDebt ? window.submitDeclareBadDebt(...args) : undefined);
+export const exportCxpExcel = (...args) => (typeof window !== 'undefined' && window.exportCxpExcel ? window.exportCxpExcel(...args) : undefined);
 // --- fiscal_withholdings.js ---
 export const openWithholdingVoucherModal = (...args) => (typeof window !== 'undefined' && window.openWithholdingVoucherModal ? window.openWithholdingVoucherModal(...args) : undefined);
 export const printWithholdingVoucher = (...args) => (typeof window !== 'undefined' && window.printWithholdingVoucher ? window.printWithholdingVoucher(...args) : undefined);

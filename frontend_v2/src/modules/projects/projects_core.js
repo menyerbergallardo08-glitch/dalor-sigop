@@ -1988,29 +1988,38 @@ async function viewProjectDetails(projectId) {
                     totalAllTasks += Math.max(1, rawTasks.length);
                     completedAllTasks += Math.max(1, rawTasks.length);
                 } else if (rawTasks.length > 0) {
-                    let explicitTaskWeightsSum = 0;
-                    let completedTaskWeight = 0;
-                    let cCount = 0;
-
-                    rawTasks.forEach(t => {
-                        totalAllTasks++;
-                        const isDone = t.startsWith("[x]") || t.startsWith("[X]") || t.includes("✅");
-                        if (isDone) {
-                            completedAllTasks++;
-                            cCount++;
-                        }
+                    let parsedTasks = rawTasks.map(t => {
+                        let prog = 0;
+                        const pMatch = t.match(/\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]/);
+                        if (pMatch) prog = parseFloat(pMatch[1]);
+                        else if (t.startsWith("[x]") || t.startsWith("[X]") || t.includes("✅")) prog = 100;
+                        
+                        let w = null;
                         const wMatch = t.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
-                        const tw = wMatch ? parseFloat(wMatch[1]) : 0;
-                        if (tw > 0) {
-                            explicitTaskWeightsSum += tw;
-                            if (isDone) completedTaskWeight += tw;
-                        }
+                        if (wMatch) w = parseFloat(wMatch[1]);
+
+                        let h = null;
+                        const hMatch = t.match(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i);
+                        if (hMatch) h = parseFloat(hMatch[1]);
+
+                        return { prog: Math.max(0, Math.min(100, prog)), weight: w, hours: h, isDone: prog >= 100 };
                     });
 
+                    totalAllTasks += parsedTasks.length;
+                    completedAllTasks += parsedTasks.filter(t => t.isDone).length;
+
+                    const explicitTaskWeightsSum = parsedTasks.reduce((acc, t) => acc + (t.weight || 0), 0);
+                    const totalHoursSum = parsedTasks.reduce((acc, t) => acc + (t.hours || 0), 0);
+
                     if (explicitTaskWeightsSum > 0) {
-                        phaseProg = Math.min(100, Math.round((completedTaskWeight / explicitTaskWeightsSum) * 100));
+                        const weightedSum = parsedTasks.reduce((acc, t) => acc + (t.prog * (t.weight || 0)), 0);
+                        phaseProg = Math.min(100, Math.round(weightedSum / explicitTaskWeightsSum));
+                    } else if (totalHoursSum > 0) {
+                        const weightedSum = parsedTasks.reduce((acc, t) => acc + (t.prog * (t.hours || 0)), 0);
+                        phaseProg = Math.min(100, Math.round(weightedSum / totalHoursSum));
                     } else {
-                        phaseProg = Math.min(100, Math.round((cCount / rawTasks.length) * 100));
+                        const sumProg = parsedTasks.reduce((acc, t) => acc + t.prog, 0);
+                        phaseProg = Math.min(100, Math.round(sumProg / parsedTasks.length));
                     }
                 } else {
                     totalAllTasks += 1;
@@ -2123,32 +2132,55 @@ async function viewProjectDetails(projectId) {
                     ${tasksList.length > 0 ? `
                     <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px;">
                         ${tasksList.map((t, tIdx) => {
-                            const isChecked = t.startsWith("[x]") || t.startsWith("[X]");
+                            let prog = 0;
+                            const pMatch = t.match(/\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]/);
+                            if (pMatch) prog = parseFloat(pMatch[1]);
+                            else if (t.startsWith("[x]") || t.startsWith("[X]") || t.includes("✅")) prog = 100;
+                            const isChecked = prog >= 100;
+
                             let cleanName = t;
                             for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
                                 if (cleanName.startsWith(pref)) cleanName = cleanName.substring(pref.length).trim();
                             }
+                            cleanName = cleanName.replace(/\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]/, '').trim();
+
                             let taskWeight = null;
                             const wMatch = cleanName.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
                             if (wMatch) {
                                 taskWeight = parseFloat(wMatch[1]);
                                 cleanName = cleanName.replace(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i, '').trim();
                             }
+
+                            let taskHours = null;
+                            const hMatch = cleanName.match(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i);
+                            if (hMatch) {
+                                taskHours = parseFloat(hMatch[1]);
+                                cleanName = cleanName.replace(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i, '').trim();
+                            }
+
                             return `
-                            <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 5px 8px; border-radius: 6px; background: ${isChecked ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isChecked ? '#bbf7d0' : '#e2e8f0'};">
-                                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProjectTask(${data.id}, ${ph.id}, ${tIdx}, this.checked)" style="width: 16px; height: 16px; accent-color: #059669; cursor: pointer;">
-                                <span style="font-weight: 800; color: ${isChecked ? '#166534' : 'var(--dalor-navy)'}; font-family: monospace;">${idx + 1}.${tIdx + 1}</span>
-                                <span style="${isChecked ? 'text-decoration: line-through; color: #15803d; font-weight: 600;' : 'color: #334155;'} flex: 1;">${cleanName}</span>
-                                ${taskWeight !== null ? `<span style="font-size: 10px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;" title="Ponderación de la tarea">${taskWeight}%</span>` : ''}
-                                ${isChecked ? '<span style="font-size: 10px; font-weight: 800; color: #059669;"><i class="fa-solid fa-check"></i> Hecho</span>' : ''}
-                                <button type="button" onclick="deleteProjectTask(${data.id}, ${ph.id}, ${tIdx})" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;" title="Eliminar tarea de esta etapa">&times;</button>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 5px 8px; border-radius: 6px; background: ${isChecked ? '#f0fdf4' : (prog > 0 ? '#f0f9ff' : '#f8fafc')}; border: 1px solid ${isChecked ? '#bbf7d0' : (prog > 0 ? '#bae6fd' : '#e2e8f0')}; position: relative; overflow: hidden;">
+                                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: ${prog}%; background: ${isChecked ? 'rgba(187, 247, 208, 0.4)' : 'rgba(186, 230, 253, 0.45)'}; pointer-events: none; z-index: 0;"></div>
+                                <div style="display: flex; align-items: center; gap: 8px; z-index: 1; width: 100%;">
+                                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProjectTask(${data.id}, ${ph.id}, ${tIdx}, this.checked)" style="width: 16px; height: 16px; accent-color: #059669; cursor: pointer;">
+                                    <span style="font-weight: 800; color: ${isChecked ? '#166534' : 'var(--dalor-navy)'}; font-family: monospace;">${idx + 1}.${tIdx + 1}</span>
+                                    <span style="${isChecked ? 'text-decoration: line-through; color: #15803d; font-weight: 600;' : 'color: #334155; font-weight: 600;'} flex: 1;">${cleanName}</span>
+                                    ${taskHours !== null ? `<span style="font-size: 10px; font-weight: 700; color: #059669; background: #dcfce7; padding: 2px 6px; border-radius: 4px;" title="Horas de trabajo estimadas (Work / HH)"><i class="fa-regular fa-clock"></i> ${taskHours} HH</span>` : ''}
+                                    ${taskWeight !== null ? `<span style="font-size: 10px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;" title="Ponderación de la tarea">${taskWeight}%</span>` : ''}
+                                    <div style="display: inline-flex; align-items: center; gap: 2px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;" title="Editar porcentaje de avance de la tarea (0 - 100%)">
+                                        <input type="number" min="0" max="100" value="${prog}" onchange="updateProjectTaskProgress(${data.id}, ${ph.id}, ${tIdx}, this.value)" style="width: 44px; font-size: 11px; border: none; text-align: center; font-weight: 800; color: ${isChecked ? '#166534' : (prog > 0 ? '#0284c7' : '#64748b')}; outline: none;">
+                                        <span style="font-size: 10px; font-weight: 800; color: #64748b;">%</span>
+                                    </div>
+                                    <button type="button" onclick="deleteProjectTask(${data.id}, ${ph.id}, ${tIdx})" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;" title="Eliminar tarea de esta etapa">&times;</button>
+                                </div>
                             </div>`;
                         }).join('')}
                     </div>` : '<p style="font-size: 11px; color: #94a3b8; margin: 4px 0 8px 0; font-style: italic;">No hay tareas asignadas en esta etapa.</p>'}
 
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <input type="text" id="new_task_inp_${ph.id}" placeholder="+ Escribir nueva tarea / actividad para esta etapa..." style="flex: 1; font-size: 11px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addProjectTask(${data.id}, ${ph.id});}">
-                        <input type="text" inputmode="decimal" id="new_task_weight_${ph.id}" placeholder="Peso %" title="Ponderación de la tarea (%)" style="width: 65px; font-size: 11px; padding: 5px 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; text-align: center; font-weight: bold; color: #0284c7;">
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="new_task_inp_${ph.id}" placeholder="+ Escribir nueva tarea / actividad para esta etapa..." style="flex: 2; min-width: 180px; font-size: 11px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addProjectTask(${data.id}, ${ph.id});}">
+                        <input type="number" id="new_task_hours_${ph.id}" placeholder="Horas HH" title="Horas de trabajo estimadas (Work / HH)" style="width: 75px; font-size: 11px; padding: 5px 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; text-align: center; font-weight: bold; color: #059669;">
+                        <input type="text" inputmode="decimal" id="new_task_weight_${ph.id}" placeholder="Peso %" title="Ponderación manual (%) opcional" style="width: 65px; font-size: 11px; padding: 5px 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; text-align: center; font-weight: bold; color: #0284c7;">
                         <button type="button" onclick="addProjectTask(${data.id}, ${ph.id})" class="btn-primary" style="font-size: 11px; padding: 5px 10px; background: #0284c7; font-weight: 700; border-radius: 6px; white-space: nowrap; display: flex; align-items: center; gap: 4px;">
                             <i class="fa-solid fa-plus"></i> + Tarea
                         </button>
@@ -2438,6 +2470,30 @@ async function toggleProjectTask(projectId, phaseId, taskIndex, isChecked) {
     }
 }
 
+async function updateProjectTaskProgress(projectId, phaseId, taskIndex, newPct) {
+    const pct = Math.max(0, Math.min(100, parseFloat(newPct) || 0));
+    try {
+        const res = await authFetch(`${API_BASE}/projects/${projectId}/phases/${phaseId}/toggle-task`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                task_index: taskIndex,
+                progress_percent: pct
+            })
+        });
+
+        if (res.ok) {
+            await viewProjectDetails(projectId);
+        } else {
+            const err = await res.json();
+            alert("⚠️ " + (err.detail || "No se pudo actualizar el avance de la tarea."));
+            await viewProjectDetails(projectId);
+        }
+    } catch (e) {
+        alert("Error de conexión al actualizar el avance de la tarea.");
+    }
+}
+
 async function updatePhaseStatus(projectId, phaseId, newStatus) {
     try {
         const res = await authFetch(`${API_BASE}/projects/${projectId}/phases/${phaseId}/status`, {
@@ -2505,12 +2561,22 @@ async function openConfigurePhaseWeightsModal(projectId, phaseId, phaseName, cur
                 for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
                     if (cleanName.startsWith(pref)) cleanName = cleanName.substring(pref.length).trim();
                 }
+                cleanName = cleanName.replace(/\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]/, '').trim();
+
                 let taskWeight = "";
                 const wMatch = cleanName.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
                 if (wMatch) {
                     taskWeight = wMatch[1];
                     cleanName = cleanName.replace(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i, '').trim();
                 }
+
+                let taskHours = "";
+                const hMatch = cleanName.match(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i);
+                if (hMatch) {
+                    taskHours = hMatch[1];
+                    cleanName = cleanName.replace(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i, '').trim();
+                }
+
                 currentPhaseWeightsTasksData.push({ idx, name: cleanName });
 
                 return `
@@ -2519,10 +2585,16 @@ async function openConfigurePhaseWeightsModal(projectId, phaseId, phaseName, cur
                         <span style="font-size: 10px; font-weight: 800; background: #e2e8f0; color: #334155; padding: 2px 6px; border-radius: 4px;">#${idx + 1}</span>
                         <span style="font-size: 11.5px; font-weight: 600; color: #1e293b;">${cleanName}</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <span style="font-size: 10px; font-weight: 700; color: #475569;">Peso:</span>
-                        <input type="text" inputmode="decimal" class="form-input cfg-modal-task-weight" data-idx="${idx}" value="${taskWeight}" placeholder="Auto" oninput="updateModalTaskWeightsSumIndicator()" style="width: 55px; font-size: 11px; text-align: center; font-weight: bold; color: #0284c7; padding: 3px 4px; border: 1px solid #94a3b8; background: white; border-radius: 4px;">
-                        <span style="font-size: 11px; font-weight: 700; color: #64748b;">%</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 3px;">
+                            <span style="font-size: 10px; font-weight: 700; color: #059669;" title="Horas de trabajo estimadas (Work / HH)">HH:</span>
+                            <input type="text" inputmode="decimal" class="form-input cfg-modal-task-hours" data-idx="${idx}" value="${taskHours}" placeholder="Horas" style="width: 50px; font-size: 11px; text-align: center; font-weight: bold; color: #059669; padding: 3px 4px; border: 1px solid #cbd5e1; background: white; border-radius: 4px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 3px;">
+                            <span style="font-size: 10px; font-weight: 700; color: #475569;">Peso:</span>
+                            <input type="text" inputmode="decimal" class="form-input cfg-modal-task-weight" data-idx="${idx}" value="${taskWeight}" placeholder="Auto" oninput="updateModalTaskWeightsSumIndicator()" style="width: 50px; font-size: 11px; text-align: center; font-weight: bold; color: #0284c7; padding: 3px 4px; border: 1px solid #94a3b8; background: white; border-radius: 4px;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b;">%</span>
+                        </div>
                     </div>
                 </div>`;
             }).join('');
@@ -2599,6 +2671,35 @@ function distributeModalTaskWeightsEqually() {
     updateModalTaskWeightsSumIndicator();
 }
 
+function distributeModalTaskWeightsByHours() {
+    const hourInps = document.querySelectorAll(".cfg-modal-task-hours");
+    const weightInps = document.querySelectorAll(".cfg-modal-task-weight");
+    let totalHours = 0;
+    hourInps.forEach(inp => {
+        const h = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value);
+        if (!isNaN(h) && h > 0) totalHours += h;
+    });
+    if (totalHours <= 0) {
+        alert("Por favor ingrese las horas estimadas (HH) en las tareas para calcular su ponderación automática.");
+        return;
+    }
+    let runningSum = 0;
+    hourInps.forEach((inp, idx) => {
+        const h = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value);
+        const wInp = weightInps[idx];
+        if (wInp) {
+            let pct = parseFloat(((h / totalHours) * 100).toFixed(1));
+            wInp.value = pct;
+            runningSum += pct;
+        }
+    });
+    if (weightInps.length > 0 && Math.abs(100 - runningSum) > 0.01 && Math.abs(100 - runningSum) < 0.5) {
+        const lastInp = weightInps[weightInps.length - 1];
+        lastInp.value = parseFloat((parseFloat(lastInp.value) + (100 - runningSum)).toFixed(1));
+    }
+    updateModalTaskWeightsSumIndicator();
+}
+
 async function submitConfigurePhaseWeights(event) {
     if (event && event.preventDefault) event.preventDefault();
 
@@ -2620,6 +2721,16 @@ async function submitConfigurePhaseWeights(event) {
         if (val > 0) anyTaskWeight = true;
     });
 
+    const hourInps = document.querySelectorAll(".cfg-modal-task-hours");
+    let taskHours = [];
+    let anyTaskHours = false;
+    hourInps.forEach(inp => {
+        const v = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value);
+        const val = (!isNaN(v) && v > 0) ? v : 0.0;
+        taskHours.push(val);
+        if (val > 0) anyTaskHours = true;
+    });
+
     if (taskSum > 100.05) {
         if (typeof Swal !== 'undefined') {
             Swal.fire({
@@ -2635,7 +2746,8 @@ async function submitConfigurePhaseWeights(event) {
 
     const payload = {
         weight_percent: !isNaN(phaseWeight) ? phaseWeight : 0.0,
-        tasks_weights: anyTaskWeight ? taskWeights : taskWeights.map(() => 0.0)
+        tasks_weights: anyTaskWeight ? taskWeights : null,
+        tasks_hours: anyTaskHours ? taskHours : null
     };
 
     const btn = document.getElementById("btn_save_phase_weights");
@@ -2851,6 +2963,8 @@ if (typeof window !== 'undefined') {
     window.openConfigurePhaseWeightsModal = openConfigurePhaseWeightsModal;
     window.updateModalTaskWeightsSumIndicator = updateModalTaskWeightsSumIndicator;
     window.distributeModalTaskWeightsEqually = distributeModalTaskWeightsEqually;
+    window.distributeModalTaskWeightsByHours = distributeModalTaskWeightsByHours;
+    window.updateProjectTaskProgress = updateProjectTaskProgress;
     window.submitConfigurePhaseWeights = submitConfigurePhaseWeights;
 }
 
@@ -2890,6 +3004,7 @@ export { renderProjectsPaginationControls };
 export { renderProjectCardHtml };
 export { viewProjectDetails };
 export { toggleProjectTask };
+export { updateProjectTaskProgress };
 export { updatePhaseStatus };
 export { downloadExcelTemplate };
 export { triggerExcelImport };
@@ -2903,4 +3018,5 @@ export { distributeTaskWeightsEqually };
 export { openConfigurePhaseWeightsModal };
 export { updateModalTaskWeightsSumIndicator };
 export { distributeModalTaskWeightsEqually };
+export { distributeModalTaskWeightsByHours };
 export { submitConfigurePhaseWeights };

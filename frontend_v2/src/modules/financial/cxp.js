@@ -1223,6 +1223,25 @@ if (typeof window !== 'undefined') {
     window.openPayableHistoryModal = openPayableHistoryModal;
     window.openDeclareBadDebtModal = openDeclareBadDebtModal;
     window.submitDeclareBadDebt = submitDeclareBadDebt;
+    window.exportCxpExcel = exportCxpExcel;
+}
+
+async function exportCxpExcel() {
+    try {
+        const res = await authFetch(`${API_BASE}/financial/reports/cxp/excel`);
+        if (!res.ok) throw new Error("Error al generar Excel de CxP");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `DALOR_Cuentas_Por_Pagar_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        alert("Error al descargar Excel de CxP: " + e.message);
+    }
 }
 
 export { loadPayablesList };
@@ -1260,3 +1279,5 @@ export { deletePayablePrompt };
 export { openPayableHistoryModal };
 export { openDeclareBadDebtModal };
 export { submitDeclareBadDebt };
+export { exportCxpExcel };
+

@@ -475,8 +475,10 @@ async function submitAddProjectPhase(event) {
 async function addProjectTask(projectId, phaseId) {
     const inp = document.getElementById(`new_task_inp_${phaseId}`);
     const weightInp = document.getElementById(`new_task_weight_${phaseId}`);
+    const hoursInp = document.getElementById(`new_task_hours_${phaseId}`);
     const taskName = inp?.value?.trim();
     const taskWeight = weightInp ? (parseLocalizedNumber(weightInp.value) || null) : null;
+    const taskHours = hoursInp ? (parseLocalizedNumber(hoursInp.value) || null) : null;
     if (!taskName) {
         alert("Escriba la descripción de la tarea antes de agregar.");
         return;
@@ -488,7 +490,8 @@ async function addProjectTask(projectId, phaseId) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 task_name: taskName,
-                weight_percent: taskWeight
+                weight_percent: taskWeight,
+                work_hours: taskHours
             })
         });
 
@@ -499,6 +502,7 @@ async function addProjectTask(projectId, phaseId) {
 
         if (inp) inp.value = "";
         if (weightInp) weightInp.value = "";
+        if (hoursInp) hoursInp.value = "";
         await viewProjectDetails(projectId);
     } catch (e) {
         console.error("Error al agregar tarea:", e);

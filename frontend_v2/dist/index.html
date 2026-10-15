@@ -136,18 +136,18 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-BjS9N5GI.js"></script>
+  <script type="module" crossorigin src="/assets/main-CJ5AQwvU.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-CIuFNoPi.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-D6uChE89.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-tracking-Bu6RXjlz.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-tracking-B2X5ibre.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-requisitions-CzeNVT0E.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-core-Gh03iLXc.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-core-E47y5Frr.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-Bta-SBMp.js">
-  <link rel="modulepreload" crossorigin href="/assets/expenses-B6xhCXPD.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-cxc-QsOzhHoS.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-cxp-CBJP1o4B.js">
+  <link rel="modulepreload" crossorigin href="/assets/expenses-Fx7EiKgK.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-cxc-BPaAlccC.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-cxp-C8n8YPTm.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-treasury-fdjj_Yv9.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-core-BLzg1Y7W.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-core-BABYbPnB.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-CLyrMRa7.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-CbT3sLx2.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-CgUdPGhY.js">
@@ -1995,7 +1995,13 @@
                         <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
                             <i class="fa-solid fa-hand-holding-dollar" style="color: #059669;"></i> Cartera de Facturas y Valuaciones por Cobrar
                         </h3>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" onclick="openClientStatementSelectorModal()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; color: #0284c7; font-weight: 700; border-color: #bae6fd; background: #f0f9ff;" title="Generar e Imprimir Estado de Cuenta de Cliente en PDF">
+                                <i class="fa-solid fa-file-pdf"></i> 📄 Estado de Cuenta
+                            </button>
+                            <button type="button" onclick="exportCxcExcel()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; color: #166534; font-weight: 700; border-color: #bbf7d0; background: #f0fdf4;" title="Descargar cartera de CxC a Excel (.xlsx)">
+                                <i class="fa-solid fa-file-excel"></i> Descargar Excel
+                            </button>
                             <button type="button" onclick="openNewReceivableModal()" class="btn-primary" style="font-size: 11px; padding: 5px 10px; background: #059669; font-weight: 700;">
                                 <i class="fa-solid fa-file-invoice-dollar"></i> + Facturar Obra / Servicio
                             </button>
@@ -2082,6 +2088,9 @@
                             <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Control de pasivos comerciales, fletes, retenciones oficiales SENIAT (Providencia SNAT/2015/0049) y notas de entrega.</p>
                         </div>
                         <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <button onclick="exportCxpExcel()" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; font-weight: 700; color: #166534; border-color: #bbf7d0; background: #f0fdf4;" title="Descargar cartera de CxP a Excel (.xlsx)">
+                                <i class="fa-solid fa-file-excel"></i> Descargar Excel
+                            </button>
                             <button onclick="switchFinancialSubtab('fiscal')" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; font-weight: 700; color: #c2410c; border-color: #fdba74; background: #fff7ed;" title="Consultar Libros de Ventas y Compras SENIAT">
                                 <i class="fa-solid fa-book-journal-whills"></i> Libros Fiscales SENIAT
                             </button>
@@ -12910,14 +12919,18 @@
                             <span id="cfg_weights_tasks_sum_badge" style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 4px; background: #e2e8f0; color: #334155;">
                                 Total: 0%
                             </span>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                            <button type="button" onclick="distributeModalTaskWeightsByHours()" class="btn-secondary" style="font-size: 10.5px; padding: 3px 8px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;" title="Ponderar proporcionalmente según las Horas de Trabajo (Work / HH)">
+                                ⏱️ Ponderar por Horas (HH)
+                            </button>
+                            <button type="button" onclick="distributeModalTaskWeightsEqually()" class="btn-secondary" style="font-size: 10.5px; padding: 3px 8px; background: #f0fdf4; color: #166534; border-color: #86efac; font-weight: 700;">
+                                ⚖️ Repartir 100% Equitativo
+                            </button>
                         </div>
-                        <button type="button" onclick="distributeModalTaskWeightsEqually()" class="btn-secondary" style="font-size: 10.5px; padding: 3px 8px; background: #f0fdf4; color: #166534; border-color: #86efac; font-weight: 700;">
-                            ⚖️ Repartir 100% Equitativo
-                        </button>
                     </div>
 
                     <p style="font-size: 10.5px; color: #64748b; margin: 0 0 8px 0;">
-                        Indica el porcentaje de aporte de cada tarea al progreso de esta etapa. Deben sumar 100% (o 0% para ponderación equitativa automática).
+                        Indica las horas estimadas (HH) o el porcentaje de aporte de cada tarea. El sistema calcula automáticamente la ponderación estilo Microsoft Project.
                     </p>
 
                     <div id="cfg_weights_tasks_list" style="display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto;">

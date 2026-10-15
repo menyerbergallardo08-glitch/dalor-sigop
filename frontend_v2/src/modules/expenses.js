@@ -1856,54 +1856,48 @@ window.viewReceiptImage = viewReceiptImage;
 
 
 
-function exportExpensesLogExcel() {
-
-    if (!allExpensesCache || allExpensesCache.length === 0) {
-
-        alert("No hay gastos cargados para exportar.");
-
-        return;
-
+async function exportExpensesLogExcel() {
+    try {
+        const res = await authFetch(`${API_BASE}/financial/reports/expenses/excel`);
+        if (res.ok) {
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `DALOR_Auditoria_Gastos_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            return;
+        }
+    } catch(err) {
+        console.warn("Backend Excel export fallback to client-side CSV:", err);
     }
 
-    // Formato CSV delimitado por punto y coma compatible con Excel en español
+    if (!allExpensesCache || allExpensesCache.length === 0) {
+        alert("No hay gastos cargados para exportar.");
+        return;
+    }
 
-    let csv = "Fecha;Proyecto;Partida;Proveedor;Factura;Condicion Fiscal;Base USD;IVA USD;Total USD;Total Bs;Reportado Por;Estado\n";
-
+    let csv = "Fecha;Proyecto;Partida;Proveedor;Tipo/Factura;Condicion Fiscal;Base USD;IVA USD;Total USD;Total Bs;Reportado Por;Estado\n";
     allExpensesCache.forEach(e => {
-
-        const proj = allProjects.find(p => p.id === e.project_id);
-
+        const proj = (allProjects || []).find(p => p.id === e.project_id);
         const projLabel = proj ? `[${proj.code}] ${proj.name}` : 'Sede General';
-
         const cat = (allCategories || []).find(c => c.id === e.category_id);
-
         const catLabel = cat ? `${cat.code} ${cat.name}` : (e.category_code || 'General');
-
         const cond = (!e.is_tax_exempt && (e.tax_amount_usd || 0) > 0) ? 'Fiscal Con IVA' : 'Sin IVA / Exento';
-
         
-
-        csv += `"${(e.expense_date||'').split('T')[0]}";"${projLabel}";"${catLabel}";"${e.vendor||''}";"${e.invoice_number||''}";"${cond}";"${(e.base_amount_usd||0).toFixed(2)}";"${(e.tax_amount_usd||0).toFixed(2)}";"${(e.amount_usd||0).toFixed(2)}";"${(e.amount_bs||0).toFixed(2)}";"${e.reported_by||''}";"${e.status||''}"\n`;
-
+        csv += `"${(e.expense_date||'').split('T')[0]}";"${projLabel}";"${catLabel}";"${e.supplier_vendor||e.vendor||''}";"${e.expense_type||e.invoice_number||''}";"${cond}";"${(e.base_amount_usd||0).toFixed(2)}";"${(e.tax_amount_usd||0).toFixed(2)}";"${(e.amount_usd||0).toFixed(2)}";"${(e.amount_bs||0).toFixed(2)}";"${e.reported_by_name||e.reported_by||''}";"${e.status||''}"\n`;
     });
 
-
-
     const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-
     const link = document.createElement("a");
-
     link.href = URL.createObjectURL(blob);
-
     link.setAttribute("download", `Auditoria_Gastos_DALOR_${Date.now()}.csv`);
-
     document.body.appendChild(link);
-
     link.click();
-
     document.body.removeChild(link);
-
 }
 
 

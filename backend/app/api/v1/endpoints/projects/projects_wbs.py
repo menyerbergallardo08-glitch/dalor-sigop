@@ -91,7 +91,6 @@ def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, 
     if not phase:
         raise HTTPException(status_code=404, detail="Etapa no encontrada.")
 
-    # Prelación eliminada: se permite marcar o desmarcar cualquier tarea sin depender de etapas previas
     raw_desc = phase.description or ""
     tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
     if not tasks:
@@ -99,32 +98,108 @@ def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, 
 
     if 0 <= task_in.task_index < len(tasks):
         current_t = tasks[task_in.task_index]
-        clean_t = current_t
-        for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
-            if clean_t.startswith(pref):
-                clean_t = clean_t[len(pref):].strip()
+        parsed = parse_task_string(current_t)
 
-        if task_in.is_completed:
-            tasks[task_in.task_index] = f"[x] {clean_t}"
+        # Determinar nuevo progreso
+        if task_in.progress_percent is not None:
+            new_prog = max(0.0, min(100.0, float(task_in.progress_percent)))
+        elif task_in.is_completed is not None:
+            new_prog = 100.0 if task_in.is_completed else 0.0
         else:
-            tasks[task_in.task_index] = f"[ ] {clean_t}"
+            new_prog = 0.0 if parsed["progress_pct"] >= 100.0 else 100.0
+
+        new_hours = task_in.work_hours if task_in.work_hours is not None else parsed["work_hours"]
+        new_weight = parsed["weight_percent"]
+
+        tasks[task_in.task_index] = format_task_string(
+            name=parsed["name"],
+            progress_pct=new_prog,
+            work_hours=new_hours,
+            weight_percent=new_weight
+        )
 
         phase.description = "; ".join(tasks)
-        
-        all_done = all(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
-        any_done = any(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
+
+        # Actualizar estatus de la fase
+        parsed_all = [parse_task_string(t) for t in tasks]
+        all_done = all(t["progress_pct"] >= 100.0 for t in parsed_all)
+        any_done = any(t["progress_pct"] > 0.0 for t in parsed_all)
+
         if all_done:
             phase.status = "completado"
         elif any_done:
             phase.status = "en_progreso"
-        elif phase.status == "completado":
-            phase.status = "en_progreso"
+        else:
+            phase.status = "pendiente"
 
         db.commit()
+
+        # Calcular avance global de proyecto
+        all_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
+        proj_prog = calculate_project_progress(all_phases)
+
         return {
             "success": True,
             "phase_status": phase.status,
-            "tasks": tasks
+            "project_progress_pct": proj_prog,
+            "tasks": tasks,
+            "parsed_tasks": parsed_all
+        }
+    raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
+
+@router.put("/{project_id}/phases/{phase_id}/tasks/{task_index}")
+def update_phase_task(project_id: int, phase_id: int, task_index: int, payload: TaskUpdateInput, db: Session = Depends(get_db)):
+    phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    raw_desc = phase.description or ""
+    tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
+    if not tasks:
+        tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
+
+    if 0 <= task_index < len(tasks):
+        current_t = tasks[task_index]
+        parsed = parse_task_string(current_t)
+
+        new_name = payload.task_name.strip() if payload.task_name and payload.task_name.strip() else parsed["name"]
+        new_prog = max(0.0, min(100.0, float(payload.progress_percent))) if payload.progress_percent is not None else parsed["progress_pct"]
+        new_hours = payload.work_hours if payload.work_hours is not None else parsed["work_hours"]
+        new_weight = payload.weight_percent if payload.weight_percent is not None else parsed["weight_percent"]
+
+        tasks[task_index] = format_task_string(
+            name=new_name,
+            progress_pct=new_prog,
+            work_hours=new_hours,
+            weight_percent=new_weight
+        )
+
+        phase.description = "; ".join(tasks)
+
+        # Actualizar estatus de la fase
+        parsed_all = [parse_task_string(t) for t in tasks]
+        all_done = all(t["progress_pct"] >= 100.0 for t in parsed_all)
+        any_done = any(t["progress_pct"] > 0.0 for t in parsed_all)
+
+        if all_done:
+            phase.status = "completado"
+        elif any_done:
+            phase.status = "en_progreso"
+        else:
+            phase.status = "pendiente"
+
+        db.commit()
+
+        all_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
+        proj_prog = calculate_project_progress(all_phases)
+
+        return {
+            "success": True,
+            "message": f"Tarea '{new_name}' actualizada correctamente.",
+            "phase_status": phase.status,
+            "project_progress_pct": proj_prog,
+            "tasks": tasks,
+            "parsed_tasks": parsed_all
         }
     raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
 
@@ -138,25 +213,36 @@ def add_phase_task(project_id: int, phase_id: int, payload: TaskCreateInput, db:
     if not clean_task:
         raise HTTPException(status_code=400, detail="El nombre de la tarea no puede estar vacío.")
     
-    for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
-        if clean_task.startswith(pref):
-            clean_task = clean_task[len(pref):].strip()
-            
     raw_desc = phase.description or ""
     tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
     if not tasks and raw_desc.strip():
         tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
-        
-    task_str = f"[ ] {clean_task}"
-    if payload.weight_percent is not None and payload.weight_percent > 0:
-        task_str = f"[ ] {clean_task} [W:{round(payload.weight_percent, 2)}%]"
+
+    prog = payload.progress_percent if payload.progress_percent is not None else 0.0
+    task_str = format_task_string(
+        name=clean_task,
+        progress_pct=prog,
+        work_hours=payload.work_hours,
+        weight_percent=payload.weight_percent
+    )
     tasks.append(task_str)
     phase.description = "; ".join(tasks)
+
+    # Actualizar estatus si la tarea agregada tiene avance
+    parsed_all = [parse_task_string(t) for t in tasks]
+    all_done = all(t["progress_pct"] >= 100.0 for t in parsed_all)
+    any_done = any(t["progress_pct"] > 0.0 for t in parsed_all)
+    if all_done:
+        phase.status = "completado"
+    elif any_done:
+        phase.status = "en_progreso"
+
     db.commit()
     return {
         "success": True,
         "message": f"Tarea '{clean_task}' agregada a la etapa '{phase.name}'.",
-        "tasks": tasks
+        "tasks": tasks,
+        "parsed_tasks": parsed_all
     }
 
 @router.delete("/{project_id}/phases/{phase_id}/tasks/{task_index}")
@@ -176,8 +262,9 @@ def delete_phase_task(project_id: int, phase_id: int, task_index: int, db: Sessi
         if not tasks:
             phase.status = "pendiente"
         else:
-            all_done = all(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
-            any_done = any(t.startswith("[x]") or t.startswith("[X]") for t in tasks)
+            parsed_all = [parse_task_string(t) for t in tasks]
+            all_done = all(t["progress_pct"] >= 100.0 for t in parsed_all)
+            any_done = any(t["progress_pct"] > 0.0 for t in parsed_all)
             if all_done:
                 phase.status = "completado"
             elif any_done:
@@ -213,36 +300,41 @@ def update_phase_weights(project_id: int, phase_id: int, payload: PhaseWeightsUp
             )
         phase.weight_percent = new_weight
 
-    # 2. Validar y actualizar pesos de las tareas de la etapa
-    if payload.tasks_weights is not None:
-        tasks_sum = sum(payload.tasks_weights)
-        if tasks_sum > 100.05:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Inconsistencia en Tareas: La suma de pesos de las tareas es {round(tasks_sum, 1)}%, lo cual supera el 100% de la etapa."
-            )
+    raw_desc = phase.description or ""
+    tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
+    if not tasks and raw_desc.strip():
+        tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
 
-        raw_desc = phase.description or ""
-        tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
-        if not tasks and raw_desc.strip():
-            tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
+    # 2. Si se suministran horas de trabajo por tarea, calcular pesos proporcionales automáticos si no vienen pesos explícitos
+    calc_weights = payload.tasks_weights
+    if payload.tasks_hours is not None and len(payload.tasks_hours) > 0:
+        tot_hrs = sum(payload.tasks_hours)
+        if tot_hrs > 0:
+            if calc_weights is None or len(calc_weights) == 0:
+                calc_weights = [round((h / tot_hrs) * 100.0, 2) for h in payload.tasks_hours]
+
+    # 3. Validar y actualizar pesos y/o horas de las tareas
+    if calc_weights is not None or payload.tasks_hours is not None:
+        if calc_weights is not None:
+            tasks_sum = sum(calc_weights)
+            if tasks_sum > 100.05:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Inconsistencia en Tareas: La suma de pesos de las tareas es {round(tasks_sum, 1)}%, lo cual supera el 100% de la etapa."
+                )
 
         updated_tasks = []
         for idx, t in enumerate(tasks):
-            is_done = t.startswith("[x]") or t.startswith("[X]") or "✅" in t
-            clean_title = t
-            for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
-                if clean_title.startswith(pref):
-                    clean_title = clean_title[len(pref):].strip()
-            # Limpiar peso previo
-            clean_title = re.sub(r'\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]', '', clean_title, flags=re.IGNORECASE).strip()
+            parsed = parse_task_string(t)
+            w = calc_weights[idx] if (calc_weights is not None and idx < len(calc_weights)) else parsed["weight_percent"]
+            h = payload.tasks_hours[idx] if (payload.tasks_hours is not None and idx < len(payload.tasks_hours)) else parsed["work_hours"]
 
-            prefix = "[x]" if is_done else "[ ]"
-            w = payload.tasks_weights[idx] if idx < len(payload.tasks_weights) else 0.0
-            if w > 0:
-                updated_tasks.append(f"{prefix} {clean_title} [W:{round(w, 2)}%]")
-            else:
-                updated_tasks.append(f"{prefix} {clean_title}")
+            updated_tasks.append(format_task_string(
+                name=parsed["name"],
+                progress_pct=parsed["progress_pct"],
+                work_hours=h,
+                weight_percent=w
+            ))
 
         phase.description = "; ".join(updated_tasks)
 

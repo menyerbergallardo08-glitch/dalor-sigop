@@ -143,21 +143,31 @@ function renderFleetTablePaginated() {
 
     tbody.innerHTML = pageItems.map(v => {
         if (!v) return '';
+        const light = String(v?.traffic_light ?? 'VERDE_OK');
+        const curOdo = Number(v?.current_odometer ?? 0);
+        const remKm = Number(v?.remaining_km_to_service ?? 0);
+        const isOverdue = light === 'ROJO_VENCIDO' || remKm <= 0;
+        const isWarning = (light === 'AMARILLO_PROXIMO' || (remKm > 0 && remKm <= 500)) && !isOverdue;
+
         let semColor = '#166534';
         let semBg = '#dcfce7';
-        const light = String(v?.traffic_light ?? 'VERDE_OK');
-        if (light === 'ROJO_VENCIDO') {
+        let semIcon = 'fa-circle-check';
+        let semLabel = 'VERDE AL DÍA';
+
+        if (isOverdue) {
             semColor = '#991b1b';
             semBg = '#fee2e2';
-        } else if (light === 'AMARILLO_PROXIMO') {
+            semIcon = 'fa-triangle-exclamation';
+            semLabel = remKm <= 0 ? `VENCIDO (${Math.abs(remKm).toLocaleString()} Km)` : 'MTTO VENCIDO';
+        } else if (isWarning) {
             semColor = '#92400e';
             semBg = '#fef3c7';
+            semIcon = 'fa-clock';
+            semLabel = `PRÓXIMO (${remKm.toLocaleString()} Km)`;
         }
 
         const isEnRuta = v?.status === 'en_obra' || (v?.current_location && v.current_location.toLowerCase().includes('en ruta'));
         const inBase = (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && !isEnRuta && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
-        const curOdo = Number(v?.current_odometer ?? 0);
-        const remKm = Number(v?.remaining_km_to_service ?? 0);
         const plateStr = v?.license_plate || '-';
         const locStr = inBase 
             ? (v?.current_location || 'Sede Central Dalor (Guacara)')
@@ -197,15 +207,17 @@ function renderFleetTablePaginated() {
         }
 
         return `
-        <tr>
+        <tr style="${isOverdue ? 'background: #fff5f5;' : ''}">
             <td style="font-weight: 800; color: var(--dalor-blue); font-family: monospace;">${safeCode}</td>
             <td style="font-weight: 700; color: var(--dalor-navy);">${vName} ${vBrand}</td>
             <td style="font-weight: 800; font-family: monospace;">${plateStr}</td>
-            <td style="font-weight: 800;">${curOdo.toLocaleString()} Km</td>
-            <td>En ${remKm.toLocaleString()} Km</td>
+            <td style="font-weight: 800; color: ${isOverdue ? '#e11d48' : '#0f172a'};">${curOdo.toLocaleString()} Km</td>
+            <td style="font-weight: 600; color: ${isOverdue ? '#e11d48' : (isWarning ? '#d97706' : '#166534')};">
+                ${remKm <= 0 ? `Vencido hace ${Math.abs(remKm).toLocaleString()} Km` : `En ${remKm.toLocaleString()} Km`}
+            </td>
             <td>
-                <span style="font-size: 10px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${semBg}; color: ${semColor};">
-                    ${light.replace(/_/g, ' ')}
+                <span style="font-size: 10px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; background: ${semBg}; color: ${semColor}; border: 1px solid ${isOverdue ? '#fca5a5' : (isWarning ? '#fde68a' : '#bbf7d0')}; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid ${semIcon}"></i> ${semLabel}
                 </span>
             </td>
             <td style="text-align: center;">
@@ -344,17 +356,15 @@ async function handleOdometerImageSelected(event) {
 
 
 
-    // Enviar al backend para OCR
-
+    // Enviar al backend para OCR con compresión previa en cliente
     try {
+        const uploadFile = (typeof window.compressImageForOCR === 'function') 
+            ? await window.compressImageForOCR(file, 1280, 1280, 0.85) 
+            : file;
 
         const formData = new FormData();
-
-        formData.append("file", file);
-
+        formData.append("file", uploadFile);
         if (assetId) formData.append("asset_id", assetId);
-
-
 
         const res = await authFetch(`${API_BASE}/ocr/scan-odometer`, {
 

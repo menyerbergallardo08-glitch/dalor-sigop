@@ -123,18 +123,37 @@ function renderMachineryTablePaginated() {
             badgeStyle = 'background: #fef3c7; color: #92400e;';
         }
 
+        const odo = Number(m.current_odometer || 0);
+        const interval = Number(m.service_interval_km || 250);
+        const lastSrvOdo = Number(m.last_service_odometer || 0);
+        const delta = Math.max(0, odo - lastSrvOdo);
+        const isMaintOverdue = delta >= interval && interval > 0;
+        const isMaintWarning = delta >= (interval * 0.85) && !isMaintOverdue && interval > 0;
+
+        let maintBadge = '';
+        if (isMaint) {
+            maintBadge = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #fee2e2; color: #991b1b;"><i class="fa-solid fa-wrench"></i> EN TALLER</span>`;
+        } else if (isMaintOverdue) {
+            maintBadge = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;" title="Uso acumulado (${delta} hrs) excede el ciclo de servicio de ${interval} hrs"><i class="fa-solid fa-triangle-exclamation"></i> MTTO VENCIDO</span>`;
+        } else if (isMaintWarning) {
+            maintBadge = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;" title="Próximo a servicio preventivo (${delta}/${interval} hrs)"><i class="fa-solid fa-clock"></i> MTTO PRÓXIMO</span>`;
+        } else {
+            maintBadge = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #dcfce7; color: #166534;"><i class="fa-solid fa-circle-check"></i> OPERATIVO</span>`;
+        }
+
         return `
-        <tr>
+        <tr style="${isMaintOverdue ? 'background: #fff5f5;' : ''}">
             <td style="font-weight: 800; color: #ea580c; font-family: monospace;">${m.asset_code}</td>
             <td style="font-weight: 700; color: var(--dalor-navy);">${m.name}</td>
             <td>${m.brand || ''} ${m.model ? `(${m.model})` : ''}</td>
             <td style="font-family: monospace; font-size: 11px;">${m.serial_number || '-'}</td>
-            <td style="font-weight: 800; color: #0284c7;">${(m.current_odometer || 0).toLocaleString()} Hrs/Km</td>
-            <td>
-                <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${isMaint ? 'background: #fee2e2; color: #991b1b;' : 'background: #dcfce7; color: #166534;'}">
-                    ${isMaint ? 'EN TALLER / MTTO' : 'OPERATIVO'}
-                </span>
+            <td style="font-weight: 800; color: ${isMaintOverdue ? '#e11d48' : '#0284c7'};">
+                <div>${odo.toLocaleString()} Hrs/Km</div>
+                <div style="font-size: 9.5px; color: ${isMaintOverdue ? '#e11d48' : '#64748b'}; font-weight: 600;">
+                    ${delta}/${interval} Hrs ciclo
+                </div>
             </td>
+            <td>${maintBadge}</td>
             <td>
                 <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${badgeStyle}">
                     ${obraLabel}

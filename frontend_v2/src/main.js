@@ -112,6 +112,41 @@ window.withDoubleSubmitProtection = function(btnOrForm, asyncFn) {
     };
 };
 
+// Universal Hidden Required Input Auto-Remediation:
+// Evita que cualquier navegador (Chrome/Edge/Safari) bloquee silenciosamente el envío de formularios
+// cuando un input tiene el atributo 'required' pero su contenedor está oculto (display: none / .hidden).
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button[type="submit"], input[type="submit"]');
+    if (!btn || !btn.form) return;
+    const requiredInputs = btn.form.querySelectorAll('[required]');
+    requiredInputs.forEach(input => {
+        const isHidden = (input.offsetParent === null && window.getComputedStyle(input).position !== 'fixed') ||
+                         input.classList.contains('hidden') ||
+                         input.style.display === 'none';
+        if (isHidden) {
+            input.required = false;
+        }
+    });
+}, true);
+
+document.addEventListener('invalid', function(e) {
+    const input = e.target;
+    if (!input || !input.form) return;
+    const isHidden = (input.offsetParent === null && window.getComputedStyle(input).position !== 'fixed') ||
+                     input.classList.contains('hidden') ||
+                     input.style.display === 'none';
+    if (isHidden) {
+        input.required = false;
+        input.setCustomValidity('');
+        e.preventDefault();
+        setTimeout(() => {
+            if (typeof input.form.requestSubmit === 'function') {
+                input.form.requestSubmit();
+            }
+        }, 10);
+    }
+}, true);
+
 // Global Form Submit interceptor for double-click protection across all standard forms
 document.addEventListener('submit', function(e) {
     const form = e.target;
@@ -357,9 +392,8 @@ window.mobileNavigate = function(view, category) {
     window.switchView(view, category);
 };
 
-// Bootstrap Inicial
+// Bootstrap Inicial Coordinado (Arranque Inmediato 0ms)
 async function initApp() {
-    fetchAndApplyBcvRate();
     if (typeof window.initSearchDebounceBindings === 'function') {
         window.initSearchDebounceBindings();
     }
@@ -391,9 +425,12 @@ async function initApp() {
         }
         window.switchView(savedView, savedCategory || 'proyectos');
 
-        if (typeof window.loadInitialMasterData === 'function') {
-            try { window.loadInitialMasterData(); } catch(e) { console.warn(e); }
-        }
+        // Orquestación limpia de sincronización inicial en segundo plano sin bloquear la vista
+        Promise.all([
+            fetchAndApplyBcvRate(),
+            (typeof window.loadInitialMasterData === 'function' ? window.loadInitialMasterData() : Promise.resolve())
+        ]).catch(e => console.warn("Aviso en arranque coordinado:", e));
+
         if (typeof window.initSearchDebounceBindings === 'function') {
             setTimeout(window.initSearchDebounceBindings, 300);
         }

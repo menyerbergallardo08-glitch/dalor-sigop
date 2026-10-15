@@ -1729,8 +1729,12 @@ window.handleModalReceiptUpload = async function(file) {
     try {
         if (btnText) btnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Subiendo...';
         
+        const uploadFile = (file && file.type && file.type.startsWith('image/'))
+            ? await compressImageForOCR(file, 1600, 1600, 0.85)
+            : file;
+
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", uploadFile);
         const res = await authFetch(`${API_BASE}/expenses/${expId}/receipt`, {
             method: "POST",
             body: formData

@@ -888,7 +888,7 @@ window.renderPaginationControls = renderPaginationControls;
 // Carga Inicial de Datos Maestros con Coalescencia y Caché en Memoria
 let _masterDataPromise = null;
 let _lastMasterDataFetchTime = 0;
-const MASTER_DATA_TTL_MS = 8000; // 8 segundos para absorber ráfagas de recargas concurrentes
+const MASTER_DATA_TTL_MS = 60000; // 60 segundos de caché fresca en cliente para navegación ultra-rápida (0 ms)
 
 async function loadInitialMasterData(force = false) {
     const now = Date.now();

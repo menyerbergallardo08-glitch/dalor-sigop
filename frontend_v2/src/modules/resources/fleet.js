@@ -22,7 +22,13 @@ async function loadFleetList() {
     const tbody = document.getElementById("fleetTableBody");
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando flota...</td></tr>`;
+    // SWR: Si ya existe flota en memoria, renderizar de inmediato (0 ms)
+    const hasCached = Array.isArray(rawFleetList) && rawFleetList.length > 0;
+    if (hasCached) {
+        filterFleetList();
+    } else {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando flota...</td></tr>`;
+    }
 
     try {
         const token = window.authToken || localStorage.getItem('dalor_token');
@@ -32,7 +38,9 @@ async function loadFleetList() {
         const fleet = await res.json();
         
         if (!Array.isArray(fleet)) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No se pudo procesar la respuesta de la flota.</td></tr>`;
+            if (!hasCached) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;">No se pudo procesar la respuesta de la flota.</td></tr>`;
+            }
             return;
         }
 
@@ -49,8 +57,9 @@ async function loadFleetList() {
 
     } catch (e) {
         console.error("[FLEET ERROR]", e);
-        const tbody = document.getElementById("fleetTableBody");
-        if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #e11d48;">Error al cargar flota: ${e?.message || e}</td></tr>`;
+        if (!hasCached && tbody) {
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #e11d48;">Error al cargar flota: ${e?.message || e}</td></tr>`;
+        }
     }
 }
 

@@ -237,24 +237,37 @@ function renderQuotationsPaginated() {
 
 async function loadQuotations() {
     const tbody = document.getElementById("quotationsTableBody");
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cotizaciones...</td></tr>`;
+
+    // SWR: Si ya existen cotizaciones en memoria, renderizarlas de inmediato (0 ms) sin spinner
+    const hasCached = Array.isArray(lastQuotationsList) && lastQuotationsList.length > 0;
+    if (hasCached) {
+        renderQuotationsPaginated();
+    } else if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cotizaciones...</td></tr>`;
+    }
 
     try {
-        // Carga fresca paralela de cotizaciones, clientes y servicios
-        const [resQuotes, resCli, resSrv] = await Promise.all([
-            authFetch(`${API_BASE}/quotations/`),
-            authFetch(`${API_BASE}/clients/`),
-            authFetch(`${API_BASE}/services/`)
-        ]);
-
-        if (resCli.ok) {
-            const cData = await resCli.json();
-            allClients = Array.isArray(cData) ? cData : [];
-        }
-
-        if (resSrv.ok) {
-            const sData = await resSrv.json();
-            allServices = Array.isArray(sData) ? sData : [];
+        const needsMasterData = (!allClients || allClients.length === 0) || (!allServices || allServices.length === 0);
+        
+        let resQuotes, resCli, resSrv;
+        if (needsMasterData) {
+            [resQuotes, resCli, resSrv] = await Promise.all([
+                authFetch(`${API_BASE}/quotations/`),
+                authFetch(`${API_BASE}/clients/`),
+                authFetch(`${API_BASE}/services/`)
+            ]);
+            if (resCli && resCli.ok) {
+                const cData = await resCli.json();
+                allClients = Array.isArray(cData) ? cData : [];
+                window.allClients = allClients;
+            }
+            if (resSrv && resSrv.ok) {
+                const sData = await resSrv.json();
+                allServices = Array.isArray(sData) ? sData : [];
+                window.allServices = allServices;
+            }
+        } else {
+            resQuotes = await authFetch(`${API_BASE}/quotations/`);
         }
 
         try {
@@ -270,12 +283,13 @@ async function loadQuotations() {
         if (!resQuotes.ok) throw new Error("Error HTTP " + resQuotes.status);
         const quotesData = await resQuotes.json();
         lastQuotationsList = Array.isArray(quotesData) ? quotesData : [];
-        quotationsCurrentPage = 1;
         renderQuotationsPaginated();
 
     } catch (e) {
         console.error("Error al cargar cotizaciones:", e);
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar cotizaciones: ${e.message || 'Error de conexión'}</td></tr>`;
+        if (!hasCached && tbody) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #e11d48; padding: 20px;">Error al cargar cotizaciones: ${e.message || 'Error de conexión'}</td></tr>`;
+        }
     }
 }
 

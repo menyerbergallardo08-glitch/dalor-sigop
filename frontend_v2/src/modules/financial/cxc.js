@@ -304,7 +304,14 @@ function renderReceivablesPaginated() {
 async function loadReceivablesList() {
     const tbody = document.getElementById("cxcTableBody");
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cuentas por cobrar...</td></tr>`;
+
+    // SWR: Si ya existen cuentas por cobrar en memoria, renderizar de inmediato (0 ms)
+    const hasCached = Array.isArray(allReceivablesList) && allReceivablesList.length > 0;
+    if (hasCached) {
+        renderReceivablesPaginated();
+    } else {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cuentas por cobrar...</td></tr>`;
+    }
 
     try {
         const res = await authFetch(`${API_BASE}/financial/cxc`);
@@ -313,7 +320,9 @@ async function loadReceivablesList() {
         allReceivablesList = Array.isArray(list) ? list : [];
         renderReceivablesPaginated();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar cuentas por cobrar.</td></tr>`;
+        if (!hasCached) {
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar cuentas por cobrar.</td></tr>`;
+        }
     }
 }
 

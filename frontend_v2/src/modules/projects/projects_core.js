@@ -1360,7 +1360,15 @@ var lastFilteredProjects = [];
 async function loadProjectsList() {
     const container = document.getElementById("projectsCardsContainer");
     if (!container) return;
-    container.innerHTML = `<div style="grid-column: span 2; text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando proyectos...</div>`;
+
+    // SWR: Si ya existen proyectos en memoria, renderizarlos de inmediato (0 ms) sin spinner bloqueante
+    const hasCached = (Array.isArray(allProjects) && allProjects.length > 0) || (Array.isArray(window.allProjects) && window.allProjects.length > 0);
+    if (hasCached) {
+        if (!allProjects || allProjects.length === 0) allProjects = window.allProjects || [];
+        renderProjectsWithPagination(false);
+    } else {
+        container.innerHTML = `<div style="grid-column: span 2; text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando proyectos...</div>`;
+    }
 
     try {
         const res = await authFetch(`${API_BASE}/projects/`);
@@ -1382,10 +1390,12 @@ async function loadProjectsList() {
             if (currentSelected) clientFilterSelect.value = currentSelected;
         }
 
-        renderProjectsWithPagination(true);
+        renderProjectsWithPagination(false);
     } catch (e) {
         console.error("Error al cargar proyectos:", e);
-        if (container) container.innerHTML = `<div style="grid-column: span 2; text-align: center; color: #e11d48; padding: 20px;">Error al cargar proyectos.</div>`;
+        if (!hasCached && container) {
+            container.innerHTML = `<div style="grid-column: span 2; text-align: center; color: #e11d48; padding: 20px;">Error al cargar proyectos.</div>`;
+        }
     }
 }
 

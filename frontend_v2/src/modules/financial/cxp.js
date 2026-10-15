@@ -47,7 +47,13 @@ let unbilledWarehouseEntriesCache = [];
 
 async function loadPayablesList() {
     const tbody = document.getElementById("cxpTableBody");
-    if (tbody) {
+
+    // SWR: Si ya existen cuentas por pagar en memoria, renderizarlas de inmediato (0 ms)
+    const hasCached = Array.isArray(lastPayablesList) && lastPayablesList.length > 0;
+    if (hasCached) {
+        updateCxpFilterBadges();
+        renderPayablesPaginated();
+    } else if (tbody) {
         tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 16px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando cuentas por pagar...</td></tr>`;
     }
 
@@ -72,7 +78,7 @@ async function loadPayablesList() {
         renderPayablesPaginated();
     } catch (e) {
         console.error("Error al cargar CxP:", e);
-        if (tbody) {
+        if (!hasCached && tbody) {
             tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar cuentas por pagar: ${e.message}</td></tr>`;
         }
     }

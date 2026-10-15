@@ -26,6 +26,6 @@ WORKDIR /app/backend
 # Exponer puertos
 EXPOSE 8000 10000
 
-# Iniciar servidor Uvicorn usando el puerto dinamico de Render ($PORT) o 8000 por defecto
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Iniciar servidor Uvicorn con 2 workers concurrentes usando el puerto dinamico de Render ($PORT) o 8000 por defecto
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2
 

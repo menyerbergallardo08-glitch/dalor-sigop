@@ -181,7 +181,13 @@ async function loadMachineryList() {
     const tbody = document.getElementById("machineryTableBody");
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando maquinaria pesada y plantas...</td></tr>`;
+    // SWR: Si ya existe maquinaria en memoria, renderizar de inmediato (0 ms)
+    const hasCached = Array.isArray(window.rawMachineryList) && window.rawMachineryList.length > 0;
+    if (hasCached) {
+        filterMachineryList();
+    } else {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando maquinaria pesada y plantas...</td></tr>`;
+    }
 
     try {
         const res = await authFetch(`${API_BASE}/assets/`);
@@ -198,7 +204,9 @@ async function loadMachineryList() {
 
     } catch (e) {
         console.error("Error al cargar maquinaria pesada:", e);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar maquinaria pesada.</td></tr>`;
+        if (!hasCached && tbody) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #e11d48;">Error al cargar maquinaria pesada.</td></tr>`;
+        }
     }
 }
 

@@ -297,6 +297,7 @@ function openNewAssetModal(presetType = 'herramienta_mayor') {
     const newTypeInput = document.getElementById("nass_new_type");
     if (newTypeInput) {
         newTypeInput.classList.add('hidden');
+        newTypeInput.required = false;
         newTypeInput.value = '';
     }
     if (typeSelect) {
@@ -308,6 +309,7 @@ function openNewAssetModal(presetType = 'herramienta_mayor') {
     const newCatInput = document.getElementById("nass_new_category");
     if (newCatInput) {
         newCatInput.classList.add('hidden');
+        newCatInput.required = false;
         newCatInput.value = '';
     }
 
@@ -387,7 +389,10 @@ function onAssetTypeChanged() {
     if (qtyRow) {
         qtyRow.style.display = isTool ? "flex" : "none";
         const qInput = document.getElementById("nass_quantity");
-        if (qInput && !qInput.value) qInput.value = "1";
+        if (qInput) {
+            qInput.required = false;
+            if (!qInput.value) qInput.value = "1";
+        }
     }
     const heavyRow = document.getElementById("nass_heavy_fields");
     if (heavyRow) {
@@ -427,6 +432,9 @@ function onAssetTypeChanged() {
 
 async function submitCreateAsset(e) {
     e.preventDefault();
+
+    const submitBtn = e.target ? (e.target.querySelector('button[type="submit"]') || e.submitter) : null;
+    const originalBtnHtml = submitBtn ? submitBtn.innerHTML : null;
 
     let type = document.getElementById("nass_type").value;
     if (type === '__NEW__') {
@@ -470,6 +478,11 @@ async function submitCreateAsset(e) {
         quantity: quantity
     };
 
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registrando Activo...';
+    }
+
     try {
         const res = await authFetch(`${API_BASE}/assets/`, {
             method: "POST",
@@ -502,6 +515,11 @@ async function submitCreateAsset(e) {
 
     } catch (err) {
         alert(`❌ Error: ${err.message}`);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHtml;
+        }
     }
 }
 

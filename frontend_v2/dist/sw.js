@@ -1,7 +1,7 @@
 // DALOR SIGO-P ERP — Service Worker Oficial (v2.1.0-LIVE)
 // Políticas: Network-First universal con Fallback a Caché Offline para continuidad operativa
 
-const CACHE_NAME = 'dalor-sigop-pwa-v2.4.0';
+const CACHE_NAME = 'dalor-sigop-pwa-v3.0.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -60,26 +60,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // B. HTML Principal y Navegación: STALE-WHILE-REVALIDATE instantáneo (<15ms)
+  // B. HTML Principal y Navegación: NETWORK-FIRST (garantiza siempre la última versión) con Fallback Offline
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/index.html').then((cached) => {
-        const fetchPromise = fetch(request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              const clone = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
-            }
-            return networkResponse;
-          })
-          .catch(() => null);
-
-        // Si ya está en caché, responder de inmediato (<15ms) y revalidar en segundo plano
-        if (cached) {
-          return cached;
-        }
-        return fetchPromise.then((res) => res || caches.match('/'));
-      })
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match('/index.html').then((cached) => cached || caches.match('/'));
+        })
     );
     return;
   }

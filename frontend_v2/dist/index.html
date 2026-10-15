@@ -43,6 +43,17 @@
             } else {
                 window.addEventListener('load', function() {
                     navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                        reg.addEventListener('updatefound', function() {
+                            var newWorker = reg.installing;
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', function() {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        console.log('[PWA] Nueva versión disponible, actualizando automáticamente...');
+                                        window.location.reload();
+                                    }
+                                });
+                            }
+                        });
                         console.log('[PWA] Service Worker registrado exitosamente:', reg.scope);
                     }).catch(function(err) {
                         console.warn('[PWA] Fallo registro SW:', err);

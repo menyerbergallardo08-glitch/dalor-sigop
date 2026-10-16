@@ -136,7 +136,7 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-BafDp2ht.js"></script>
+  <script type="module" crossorigin src="/assets/main-B8sTddfa.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-CIuFNoPi.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-D6uChE89.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-B2X5ibre.js">
@@ -148,8 +148,8 @@
   <link rel="modulepreload" crossorigin href="/assets/financial-cxp-C8n8YPTm.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-treasury-fdjj_Yv9.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-core-BABYbPnB.js">
-  <link rel="modulepreload" crossorigin href="/assets/materials-CLyrMRa7.js">
-  <link rel="modulepreload" crossorigin href="/assets/dispatch-DDPyFKzd.js">
+  <link rel="modulepreload" crossorigin href="/assets/materials-CVLLI96J.js">
+  <link rel="modulepreload" crossorigin href="/assets/dispatch-eAb7411B.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-CgUdPGhY.js">
 </head>
 <body>
@@ -3920,10 +3920,13 @@
                                 <!-- Transporte: Flota Propia -->
                                 <div id="disp_sec_propio" class="grid-4" style="margin-bottom: 10px;">
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Vehículo DALOR Registrado</label>
-                                        <select id="disp_select_asset" onchange="onDispatchAssetChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff;">
-                                            <option value="">-- Seleccionar Vehículo --</option>
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">
+                                            Vehículo (Seleccionar de Flota o Escribir)
+                                        </label>
+                                        <select id="disp_select_asset" onchange="onDispatchAssetChanged()" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; margin-bottom: 4px;">
+                                            <option value="">-- Seleccionar Vehículo de Flota --</option>
                                         </select>
+                                        <input type="text" id="disp_vehicle_model_propio" placeholder="O escribir vehículo (ej. Camioneta Particular)" class="form-input" style="font-size: 12px;">
                                     </div>
                                     <div>
                                         <label style="font-size: 11px; font-weight: 700; color: #475569;">

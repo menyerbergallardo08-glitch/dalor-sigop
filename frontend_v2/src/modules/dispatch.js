@@ -494,13 +494,18 @@ async function loadProjectResourcesIntoDispatch() {
 
 function onDispatchAssetChanged() {
     const sel = document.getElementById('disp_select_asset');
-    if (!sel || !sel.value) return;
+    if (!sel) return;
 
     const opt = sel.options[sel.selectedIndex];
-    const plate = opt.getAttribute('data-plate') || '';
+    const plate = opt ? (opt.getAttribute('data-plate') || '') : '';
+    const model = opt ? (opt.getAttribute('data-model') || '') : '';
     const plateInput = document.getElementById('disp_plate_propio');
+    const manualVehInput = document.getElementById('disp_vehicle_model_propio');
     if (plateInput && plate) {
         plateInput.value = plate.toUpperCase();
+    }
+    if (manualVehInput && model) {
+        manualVehInput.value = model;
     }
 }
 
@@ -522,7 +527,7 @@ function normalizeDispatchUnit(u) {
     return u;
 }
 
-function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Reparado / Listo para Montaje", weight = 0) {
+function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Reparado / Listo para Montaje", weight = 0, resourceType = null, resourceId = null) {
     const tableBody = document.getElementById('dispatchItemsTableBody');
     if (!tableBody) return;
 
@@ -532,6 +537,8 @@ function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Reparado 
     const tr = document.createElement('tr');
     tr.id = rowId;
     tr.style.borderBottom = '1px solid #e2e8f0';
+    if (resourceType) tr.dataset.resourceType = resourceType;
+    if (resourceId) tr.dataset.resourceId = resourceId;
 
     const normUnit = normalizeDispatchUnit(unit);
     const standardUnits = ['Pzas', 'Unid', 'Kg', 'Metros', 'Litros', 'Galones', 'Lote', 'Juego', 'Tambor'];
@@ -668,6 +675,7 @@ async function submitCreateDispatchGuide(event) {
     let freightCost = 0.0;
     let freightPrice = 0.0;
     let assetId = null;
+    let vehicleModel = (document.getElementById('disp_vehicle_model_propio')?.value || "").trim() || null;
 
     if (guideType === 'control_interno') {
         driverName = (document.getElementById('disp_ci_movement_type')?.value || "Personal Interno DALOR").trim();
@@ -679,6 +687,7 @@ async function submitCreateDispatchGuide(event) {
         if (assetId) {
             const selectedVeh = (window.allAssets || []).find(a => String(a.id) === String(assetId));
             if (selectedVeh) {
+                if (!vehicleModel) vehicleModel = selectedVeh.name;
                 const st = (selectedVeh.status || '').toLowerCase().trim();
                 const isUnavail = selectedVeh.is_active === false || 
                     ['en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
@@ -716,6 +725,8 @@ async function submitCreateDispatchGuide(event) {
         const unit = tr.querySelector('.disp-item-unit')?.value || "Pzas";
         const cond = tr.querySelector('.disp-item-cond')?.value || "Reparado / Listo para Montaje";
         const weight = parseFloat(tr.querySelector('.disp-item-weight')?.value || 0) || 0.0;
+        const resType = tr.dataset.resourceType || null;
+        const resId = tr.dataset.resourceId ? parseInt(tr.dataset.resourceId) : null;
 
         if (desc) {
             items.push({
@@ -723,7 +734,10 @@ async function submitCreateDispatchGuide(event) {
                 quantity: qty,
                 unit: unit,
                 condition_status: cond,
-                approx_weight_kg: weight
+                approx_weight_kg: weight,
+                resource_type: resType,
+                asset_id: (resType !== 'material' ? resId : null),
+                material_id: (resType === 'material' ? resId : null)
             });
         }
     });
@@ -746,6 +760,7 @@ async function submitCreateDispatchGuide(event) {
         destination_address: destAddress,
         transport_type: transportType,
         asset_id: assetId ? parseInt(assetId) : null,
+        vehicle_model: vehicleModel,
         carrier_company: carrierCompany,
         driver_name: driverName,
         driver_id_doc: driverIdDoc,
@@ -1635,7 +1650,8 @@ function confirmAddSelectedResourcesToDispatch() {
             const prefix = (item.category === 'machinery') ? 'Maquinaria / Equipo' : 'Herramienta';
             desc = `${prefix}: ${item.name} (${item.code})`;
         }
-        addDispatchItemRow(desc, item.qty, item.unit, item.cond, 0);
+        const resType = item.type === 'mat' ? 'material' : 'asset';
+        addDispatchItemRow(desc, item.qty, item.unit, item.cond, 0, resType, item.id);
         addedCount++;
     });
 

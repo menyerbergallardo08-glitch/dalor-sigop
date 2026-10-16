@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from datetime import datetime
@@ -39,6 +40,8 @@ def get_project_material_requisitions(
         )
     if status and status != "all":
         query = query.filter(ProjectMaterialRequisition.status == status)
+    elif not status:
+        query = query.filter(ProjectMaterialRequisition.status != "cancelado")
 
     rows = query.order_by(ProjectMaterialRequisition.id.desc()).all()
 
@@ -397,5 +400,69 @@ def dispatch_project_requisition(req_in: RequisitionDispatchCreate, db: Session 
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Fallo al despachar lista de requisición: {str(e)}")
+
+
+class RequisitionCancelRequest(BaseModel):
+    reason: str
+    notes: Optional[str] = None
+
+
+@router.post("/project-requisitions/{req_id}/cancel")
+def cancel_project_requisition(
+    req_id: int,
+    cancel_in: RequisitionCancelRequest,
+    db: Session = Depends(get_db)
+):
+    from app.models.models import AuditLog
+    req_item = db.query(ProjectMaterialRequisition).filter(ProjectMaterialRequisition.id == req_id).first()
+    if not req_item:
+        raise HTTPException(status_code=404, detail="Requisición no encontrada.")
+
+    reason_str = (cancel_in.reason or "Descartado en almacén").strip()
+    user_note = (cancel_in.notes or "").strip()
+    note_full = f"[Cancelado/Abortado: {reason_str}. {user_note}]".strip()
+
+    proj = db.query(Project).filter(Project.id == req_item.project_id).first()
+    dispatched_qty = float(req_item.quantity_dispatched or 0.0)
+    original_req_qty = float(req_item.quantity_required or 0.0)
+    pending_qty = max(0.0, original_req_qty - dispatched_qty)
+
+    # Si ya se despachó una parte, se cierra el saldo restante igualando la cantidad requerida
+    if dispatched_qty > 0:
+        req_item.quantity_required = dispatched_qty
+        req_item.status = "despachado_total"
+    else:
+        req_item.status = "cancelado"
+
+    req_item.notes = f"{req_item.notes or ''} {note_full}".strip()
+
+    # Descontar del costo estimado de la obra si aplica
+    if proj and pending_qty > 0 and req_item.estimated_cost_usd:
+        unit_cost = req_item.estimated_cost_usd / max(1.0, original_req_qty)
+        discount_amount = round(pending_qty * unit_cost, 2)
+        proj.estimated_materials_usd = max(0.0, round((proj.estimated_materials_usd or 0.0) - discount_amount, 2))
+        proj.budget_limit_usd = round(
+            (proj.estimated_labor_usd or 0.0) +
+            (proj.estimated_fuel_usd or 0.0) +
+            (proj.estimated_materials_usd or 0.0) +
+            (proj.estimated_tools_usd or 0.0) +
+            (proj.estimated_services_usd or 0.0), 2
+        )
+
+    # Registrar auditoría
+    audit = AuditLog(
+        username="almacen",
+        module="requisiciones",
+        action="abortar_requisicion",
+        details=f"Requisición #{req_item.id} ([{req_item.material_code}] {req_item.material_name}) abortada/cancelada para obra {proj.code if proj else 'S/P'}. Motivo: {reason_str}"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Requisición #{req_item.id} ({req_item.material_name}) cancelada con éxito.",
+        "status": req_item.status
+    }
 
 

@@ -137,7 +137,7 @@ function filterProjectRequisitionsView() {
     let filtered = allProjectRequisitions || [];
 
     if (statusFilter === "pending") {
-        filtered = filtered.filter(r => (r.quantity_pending || 0) > 0 && r.status !== "despachado");
+        filtered = filtered.filter(r => (r.quantity_pending || 0) > 0 && r.status !== "despachado" && r.status !== "cancelado" && r.status !== "abortado" && r.status !== "despachado_total");
     }
 
     if (projFilter) {
@@ -478,17 +478,27 @@ function renderProjectRequisitionsGroups(reqs, resetPage = true) {
                                               hasZeroStock ? `
                                                 <div style="display: flex; flex-direction: column; gap: 3px; align-items: center;">
                                                     <span style="color: #ef4444; font-size: 9.5px; font-weight: 800;"><i class="fa-solid fa-ban"></i> Sin Stock</span>
-                                                    <button type="button" onclick="closeModal('modalProjectRequisitionsInbox'); openSubstituteMaterialModal(${it.id}, ${it.material_id || 0}, '${(it.material_name || '').replace(/'/g, "\\'")}', ${grp.project_id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; background: #fef3c7; color: #b45309; border-color: #fde68a; font-weight: 800;" title="Sustituir por otro insumo con inventario">
-                                                        <i class="fa-solid fa-shuffle"></i> Sustituir
-                                                    </button>
-                                                    <button type="button" onclick="closeModal('modalProjectRequisitionsInbox'); openNewPayableModal(); setTimeout(() => { const pSel = document.getElementById('new_cxp_project_id'); if (pSel) pSel.value = '${grp.project_id}'; const desc = document.getElementById('new_cxp_description'); if (desc) desc.value = 'Compra urgente de ${(it.material_name || '').replace(/'/g, "\\'")} para obra ${grp.project_code}'; }, 200);" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 800;" title="Cargar CxP / Orden de Compra para este material">
-                                                        <i class="fa-solid fa-cart-shopping"></i> Comprar
+                                                    <div style="display: flex; gap: 2px;">
+                                                        <button type="button" onclick="closeModal('modalProjectRequisitionsInbox'); openSubstituteMaterialModal(${it.id}, ${it.material_id || 0}, '${(it.material_name || '').replace(/'/g, "\\'")}', ${grp.project_id})" class="btn-secondary" style="font-size: 8.5px; padding: 2px 5px; background: #fef3c7; color: #b45309; border-color: #fde68a; font-weight: 800;" title="Sustituir por otro insumo con inventario">
+                                                            <i class="fa-solid fa-shuffle"></i> Sustituir
+                                                        </button>
+                                                        <button type="button" onclick="closeModal('modalProjectRequisitionsInbox'); openNewPayableModal(); setTimeout(() => { const pSel = document.getElementById('new_cxp_project_id'); if (pSel) pSel.value = '${grp.project_id}'; const desc = document.getElementById('new_cxp_description'); if (desc) desc.value = 'Compra urgente de ${(it.material_name || '').replace(/'/g, "\\'")} para obra ${grp.project_code}'; }, 200);" class="btn-secondary" style="font-size: 8.5px; padding: 2px 5px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 800;" title="Cargar CxP / Orden de Compra para este material">
+                                                            <i class="fa-solid fa-cart-shopping"></i> Comprar
+                                                        </button>
+                                                    </div>
+                                                    <button type="button" onclick="abortProjectRequisition(${it.id}, '${(it.material_name || '').replace(/'/g, "\\'")}', '${grp.project_code}')" class="btn-secondary" style="font-size: 8.5px; padding: 2px 7px; background: #fee2e2; color: #b91c1c; border-color: #fca5a5; font-weight: 800; width: 100%;" title="Abortar y sacar este ítem sin stock de la bandeja">
+                                                        <i class="fa-solid fa-ban"></i> Abortar
                                                     </button>
                                                 </div>
                                               ` : `
-                                                <button type="button" onclick="quickDispatchSingleRequisition(${it.id}, ${grp.project_id})" class="btn-secondary" style="font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;" title="Despachar solo este ítem ahora">
-                                                    ⚡ Rápido
-                                                </button>
+                                                <div style="display: flex; gap: 4px; align-items: center; justify-content: center;">
+                                                    <button type="button" onclick="quickDispatchSingleRequisition(${it.id}, ${grp.project_id})" class="btn-secondary" style="font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;" title="Despachar solo este ítem ahora">
+                                                        ⚡ Rápido
+                                                    </button>
+                                                    <button type="button" onclick="abortProjectRequisition(${it.id}, '${(it.material_name || '').replace(/'/g, "\\'")}', '${grp.project_code}')" class="btn-secondary" style="font-size: 10px; padding: 3px 6px; border-radius: 4px; background: #fef2f2; color: #b91c1c; border-color: #fecaca;" title="Abortar o cancelar este requerimiento">
+                                                        <i class="fa-solid fa-ban"></i>
+                                                    </button>
+                                                </div>
                                             `}
                                         </td>
                                     </tr>
@@ -823,6 +833,35 @@ async function quickDispatchSingleRequisition(reqId, projectId) {
     }
 }
 
+async function abortProjectRequisition(reqId, matName, projectCode) {
+    const reason = prompt(`⚠️ ¿Deseas abortar o cancelar la requisición de '${matName}' para la obra ${projectCode}?\n\nIndica el motivo de cancelación (ej: Sin disponibilidad en mercado / Desestimado por obra / Compra directa en sitio / Error de cálculo):`, "Sin disponibilidad en stock / No aplica");
+    if (!reason || !reason.trim()) return;
+
+    try {
+        const res = await authFetch(`${API_BASE}/materials/project-requisitions/${reqId}/cancel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason.trim() })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || "Error al cancelar requisición.");
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast(`Requisición de '${matName}' abortada con éxito.`, 'info');
+        } else {
+            alert(`✅ Requisición de '${matName}' cancelada con éxito.`);
+        }
+        await loadProjectRequisitionsInbox();
+        if (typeof window.loadProjectRequisitionsBadge === 'function') {
+            window.loadProjectRequisitionsBadge();
+        }
+    } catch (e) {
+        console.error("Error al abortar requisición:", e);
+        alert("Error: " + e.message);
+    }
+}
+
 // Exponer al objeto global window para eventos inline y compatibilidad
 if (typeof window !== 'undefined') {
     window.loadProjectRequisitionsBadge = loadProjectRequisitionsBadge;
@@ -836,4 +875,5 @@ if (typeof window !== 'undefined') {
     window.toggleSelectAllProjectReqs = toggleSelectAllProjectReqs;
     window.submitDispatchProjectGroup = submitDispatchProjectGroup;
     window.quickDispatchSingleRequisition = quickDispatchSingleRequisition;
+    window.abortProjectRequisition = abortProjectRequisition;
 }

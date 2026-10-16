@@ -38,10 +38,73 @@ class OCRReceiptParser:
     """
 
     @staticmethod
-    def extract_with_gemini(file_path: str, default_rate: float = 800.0) -> Optional[Dict[str, Any]]:
-        api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GOOGLE_API_KEY")
-        if not api_key or len(str(api_key).strip()) < 10:
+    def get_gemini_key_tiers():
+        """
+        Retorna la lista ordenada de claves API agrupadas por nivel:
+        Nivel 1: Llaves Gratuitas (GEMINI_API_KEYS_FREE o GEMINI_API_KEY)
+        Nivel 2: Llave Comercial Paga de Respaldo (GEMINI_API_KEY_PAID)
+        """
+        tiers = []
+        # Nivel 1: Gratuitas
+        free_raw = os.getenv("GEMINI_API_KEYS_FREE") or getattr(settings, "GEMINI_API_KEYS_FREE", "")
+        if not free_raw:
+            free_raw = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
+        for k in str(free_raw).split(","):
+            k = k.strip()
+            if len(k) > 10:
+                tiers.append({"key": k, "tier": "free"})
+
+        # Nivel 2: Paga de Respaldo
+        paid_raw = os.getenv("GEMINI_API_KEY_PAID") or getattr(settings, "GEMINI_API_KEY_PAID", "")
+        for k in str(paid_raw).split(","):
+            k = k.strip()
+            if len(k) > 10:
+                tiers.append({"key": k, "tier": "paid"})
+
+        return tiers
+
+    @staticmethod
+    def call_gemini_vision(payload: dict, candidate_models: list, timeout: int = 8) -> Optional[str]:
+        tiers = OCRReceiptParser.get_gemini_key_tiers()
+        if not tiers:
             return None
+
+        import urllib.request
+        import urllib.error
+        import json
+
+        for item in tiers:
+            api_key = item["key"]
+            tier_label = item["tier"]
+            for model_name in candidate_models:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    with urllib.request.urlopen(req, timeout=timeout) as res:
+                        resp_data = json.loads(res.read().decode("utf-8"))
+                        candidates = resp_data.get("candidates", [])
+                        if candidates and "content" in candidates[0]:
+                            parts = candidates[0]["content"].get("parts", [])
+                            if parts and "text" in parts[0]:
+                                text_resp = parts[0]["text"].strip()
+                                if text_resp:
+                                    return text_resp
+                except urllib.error.HTTPError as m_err:
+                    if m_err.code in [429, 403]:
+                        print(f"⚠️ [OCR Failover] Llave ({tier_label}) agotada/saturada (HTTP {m_err.code}). Conmutando al siguiente nivel...")
+                        break
+                    continue
+                except Exception:
+                    continue
+
+        return None
+
+    @staticmethod
+    def extract_with_gemini(file_path: str, default_rate: float = 800.0) -> Optional[Dict[str, Any]]:
 
         try:
             import urllib.request
@@ -131,38 +194,12 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
 
             # Modelos ordenados por disponibilidad activa (con cuota verificada)
             candidate_models = [
-                "models/gemini-3.5-flash-lite",
-                "models/gemini-3.5-flash",
-                "models/gemini-3.8-flash",
-                "models/gemini-3.6-flash",
-                "models/gemini-3.7-flash",
-                "models/gemini-flash-latest"
+                "models/gemini-2.5-flash",
+                "models/gemini-2.0-flash",
+                "models/gemini-1.5-flash",
+                "models/gemini-1.5-flash-latest"
             ]
-            text_resp = None
-            for model_name in candidate_models:
-                try:
-                    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
-                    req = urllib.request.Request(
-                        url,
-                        data=json.dumps(payload).encode("utf-8"),
-                        headers={"Content-Type": "application/json"}
-                    )
-                    with urllib.request.urlopen(req, timeout=8) as res:
-                        resp_data = json.loads(res.read().decode("utf-8"))
-                        candidates = resp_data.get("candidates", [])
-                        if candidates and "content" in candidates[0]:
-                            parts = candidates[0]["content"].get("parts", [])
-                            if parts and "text" in parts[0]:
-                                text_resp = parts[0]["text"].strip()
-                                if text_resp:
-                                    break
-                except urllib.error.HTTPError as m_err:
-                    print(f"Gemini model {model_name} HTTP {m_err.code}")
-                    continue
-                except Exception as m_err:
-                    print(f"Gemini model {model_name} error: {m_err}")
-                    continue
-
+            text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=8)
 
             if not text_resp:
                 return None
@@ -565,28 +602,25 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
         Extrae la lectura del odómetro (kilometraje total) desde una fotografía del tablero
         del vehículo mediante Visión Multimodal por IA (Gemini) o OCR local con filtros numéricos.
         """
-        api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GOOGLE_API_KEY")
+        # 1. Intentar con Gemini Vision (con failover multi-key)
+        try:
+            import urllib.request
+            import json
+            import io
 
-        # 1. Intentar con Gemini Vision
-        if api_key:
-            try:
-                import urllib.request
-                import json
-                import io
+            with Image.open(file_path) as img:
+                img = ImageOps.exif_transpose(img)
+                img = img.convert("RGB")
+                max_dim = max(img.width, img.height)
+                if max_dim > 1600:
+                    scale = 1600 / max_dim
+                    img = img.resize((int(img.width * scale), int(img.height * scale)), Image.Resampling.LANCZOS)
+                
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=85)
+                b64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-                with Image.open(file_path) as img:
-                    img = ImageOps.exif_transpose(img)
-                    img = img.convert("RGB")
-                    max_dim = max(img.width, img.height)
-                    if max_dim > 1600:
-                        scale = 1600 / max_dim
-                        img = img.resize((int(img.width * scale), int(img.height * scale)), Image.Resampling.LANCZOS)
-                    
-                    buffer = io.BytesIO()
-                    img.save(buffer, format="JPEG", quality=85)
-                    b64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-                prompt = """Actúa como un sistema experto de visión por computador para gestión de flotas y mantenimiento vehicular.
+            prompt = """Actúa como un sistema experto de visión por computador para gestión de flotas y mantenimiento vehicular.
 Analiza detenidamente esta fotografía del tablero de instrumentos / clúster de un vehículo y extrae el KILOMETRAJE TOTAL DEL ODÓMETRO (ODO).
 
 REGLAS CRÍTICAS:
@@ -607,64 +641,48 @@ Responde ÚNICAMENTE con este JSON válido:
   "notes": "Lectura clara del odómetro principal"
 }"""
 
-                payload = {
-                    "contents": [{
-                        "parts": [
-                            {"text": prompt},
-                            {
-                                "inline_data": {
-                                    "mime_type": "image/jpeg",
-                                    "data": b64_image
-                                }
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": prompt},
+                        {
+                            "inline_data": {
+                                "mime_type": "image/jpeg",
+                                "data": b64_image
                             }
-                        ]
-                    }],
-                    "generationConfig": {
-                        "temperature": 0.1,
-                        "response_mime_type": "application/json"
-                    }
+                        }
+                    ]
+                }],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "response_mime_type": "application/json"
                 }
+            }
 
-                candidate_models = [
-                    "models/gemini-2.5-flash",
-                    "models/gemini-2.0-flash",
-                    "models/gemini-1.5-flash",
-                    "models/gemini-1.5-flash-latest"
-                ]
-                for model_name in candidate_models:
-                    try:
-                        url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
-                        req = urllib.request.Request(
-                            url,
-                            data=json.dumps(payload).encode("utf-8"),
-                            headers={"Content-Type": "application/json"}
-                        )
-                        with urllib.request.urlopen(req, timeout=8) as res:
-                            resp_data = json.loads(res.read().decode("utf-8"))
-                            candidates = resp_data.get("candidates", [])
-                            if candidates and "content" in candidates[0]:
-                                parts = candidates[0]["content"].get("parts", [])
-                                if parts and "text" in parts[0]:
-                                    text_resp = parts[0]["text"].strip()
-                                    if "```json" in text_resp:
-                                        text_resp = text_resp.split("```json")[1].split("```")[0].strip()
-                                    elif "```" in text_resp:
-                                        text_resp = text_resp.split("```")[1].split("```")[0].strip()
-                                    parsed = json.loads(text_resp)
-                                    odo_val = float(parsed.get("detected_odometer") or 0.0)
-                                    if odo_val > 0:
-                                        return {
-                                            "detected_odometer": round(odo_val, 1),
-                                            "confidence": float(parsed.get("confidence", 0.9)),
-                                            "dashboard_type": parsed.get("dashboard_type", "digital"),
-                                            "is_ai_vision": True,
-                                            "notes": parsed.get("notes", "Odómetro identificado con IA de Visión")
-                                        }
-                    except Exception as e:
-                        print(f"Error en Gemini Odometer Vision ({model_name}):", e)
-                        continue
-            except Exception as outer_e:
-                print("Error general en OCR Odometer Gemini:", outer_e)
+            candidate_models = [
+                "models/gemini-2.5-flash",
+                "models/gemini-2.0-flash",
+                "models/gemini-1.5-flash",
+                "models/gemini-1.5-flash-latest"
+            ]
+            text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=8)
+            if text_resp:
+                if "```json" in text_resp:
+                    text_resp = text_resp.split("```json")[1].split("```")[0].strip()
+                elif "```" in text_resp:
+                    text_resp = text_resp.split("```")[1].split("```")[0].strip()
+                parsed = json.loads(text_resp)
+                odo_val = float(parsed.get("detected_odometer") or 0.0)
+                if odo_val > 0:
+                    return {
+                        "detected_odometer": round(odo_val, 1),
+                        "confidence": float(parsed.get("confidence", 0.9)),
+                        "dashboard_type": parsed.get("dashboard_type", "digital"),
+                        "is_ai_vision": True,
+                        "notes": parsed.get("notes", "Odómetro identificado con IA de Visión")
+                    }
+        except Exception as e:
+            print("Error en Gemini Odometer Vision:", e)
 
         # 2. Fallback: OCR de texto con pytesseract/regex
         try:

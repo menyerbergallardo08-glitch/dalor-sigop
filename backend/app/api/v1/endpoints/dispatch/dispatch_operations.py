@@ -5,7 +5,8 @@ from datetime import datetime
 from app.core.database import get_db
 from app.models.models import (
     DispatchGuide, DispatchGuideItem, Project, Client, Asset,
-    AccountPayable, AccountReceivable, Expense, ExpenseCategory, AuditLog, ProjectAddendum
+    AccountPayable, AccountReceivable, Expense, ExpenseCategory, AuditLog, ProjectAddendum,
+    Material, MaterialMovement, ResourceAssignmentHistory
 )
 from .dispatch_common import DispatchGuideCreate
 
@@ -109,7 +110,7 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     db.add(new_guide)
     db.flush()
 
-    # Agregar ítems
+    # Agregar ítems y actualizar estatus de recursos (bloqueo real de herramientas/maquinaria)
     for idx, it in enumerate(g_in.items):
         item_obj = DispatchGuideItem(
             dispatch_guide_id=new_guide.id,
@@ -121,6 +122,51 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
             approx_weight_kg=it.approx_weight_kg or 0.0
         )
         db.add(item_obj)
+
+        # Si el ítem es un Activo (Herramienta o Maquinaria): Bloqueo operativo inmediato
+        if getattr(it, "asset_id", None):
+            cargo_asset = db.query(Asset).filter(Asset.id == it.asset_id).first()
+            if cargo_asset and cargo_asset.is_active:
+                target_status = "en_obra" if g_in.project_id else "en_transito"
+                cargo_asset.status = target_status
+                if g_in.project_id:
+                    cargo_asset.current_project_id = g_in.project_id
+                cargo_asset.current_location = dest_addr or "En Custodia de Despacho"
+                hist = ResourceAssignmentHistory(
+                    project_id=g_in.project_id,
+                    resource_type="asset",
+                    resource_id=cargo_asset.id,
+                    resource_code=cargo_asset.asset_code,
+                    resource_name=cargo_asset.name,
+                    destination_location=dest_addr,
+                    status=target_status,
+                    transfer_code=guide_num,
+                    driver_name=d_name,
+                    notes=f"Despachado en Guía {guide_num} para {recipient}"
+                )
+                db.add(hist)
+
+        # Si el ítem es un Material consumible de almacén: Descuento de stock
+        elif getattr(it, "material_id", None):
+            cargo_mat = db.query(Material).filter(Material.id == it.material_id).with_for_update().first()
+            if cargo_mat:
+                deduct_qty = min(float(it.quantity or 0.0), float(cargo_mat.stock_quantity or 0.0))
+                if deduct_qty > 0:
+                    cargo_mat.stock_quantity = round(cargo_mat.stock_quantity - deduct_qty, 2)
+                    cargo_mat.total_cost_usd = round(cargo_mat.stock_quantity * (cargo_mat.unit_cost_usd or 0.0), 2)
+                    mov = MaterialMovement(
+                        material_id=cargo_mat.id,
+                        movement_type="despacho_obra" if g_in.project_id else "salida_ajuste",
+                        quantity=deduct_qty,
+                        unit_cost_usd=cargo_mat.unit_cost_usd or 0.0,
+                        total_cost_usd=round(deduct_qty * (cargo_mat.unit_cost_usd or 0.0), 2),
+                        project_id=g_in.project_id,
+                        destination=dest_addr,
+                        reference_doc=guide_num,
+                        notes=f"Salida en Guía {guide_num} - {recipient}",
+                        performed_by=g_in.dispatcher_name or "Despacho Taller"
+                    )
+                    db.add(mov)
 
     # 1. Si el transporte es TERCERIZADO y tiene costo > 0: Generar Cuenta por Pagar (CxP) automática
     if g_in.transport_type == "tercerizado_flete" and (g_in.freight_cost_usd or 0.0) > 0:

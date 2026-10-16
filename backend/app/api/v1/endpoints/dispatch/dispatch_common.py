@@ -8,6 +8,9 @@ class DispatchItemIn(BaseModel):
     unit: str = "Pzas"
     condition_status: str = "Reparado / Listo para Montaje"
     approx_weight_kg: Optional[float] = 0.0
+    resource_type: Optional[str] = None
+    asset_id: Optional[int] = None
+    material_id: Optional[int] = None
 
 class DispatchGuideCreate(BaseModel):
     guide_number: Optional[str] = None

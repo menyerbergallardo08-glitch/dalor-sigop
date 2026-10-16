@@ -31,5 +31,7 @@ class Settings(BaseModel):
     
     UPLOAD_DIR: str = os.path.join(BACKEND_DIR, "uploads")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_API_KEYS_FREE: str = os.getenv("GEMINI_API_KEYS_FREE", "")
+    GEMINI_API_KEY_PAID: str = os.getenv("GEMINI_API_KEY_PAID", "")
 
 settings = Settings()

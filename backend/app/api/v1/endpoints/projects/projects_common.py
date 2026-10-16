@@ -42,12 +42,17 @@ class TaskCreateInput(BaseModel):
     weight_percent: Optional[float] = None
     work_hours: Optional[float] = None
     progress_percent: Optional[float] = 0.0
+    level: Optional[int] = 1
 
 class TaskUpdateInput(BaseModel):
     task_name: Optional[str] = None
     progress_percent: Optional[float] = None
     work_hours: Optional[float] = None
     weight_percent: Optional[float] = None
+    level: Optional[int] = None
+
+class TaskIndentInput(BaseModel):
+    direction: str  # "indent" (+1 level) or "outdent" (-1 level)
 
 class PhaseWeightsUpdate(BaseModel):
     weight_percent: Optional[float] = None
@@ -112,15 +117,21 @@ def compute_next_project_code(db: Session, current_year: int) -> str:
 
 def parse_task_string(task_raw: str) -> dict:
     """
-    Parsea una cadena de tarea con formato MS Project:
+    Parsea una cadena de tarea con formato MS Project y WBS jerárquico:
     Formatos soportados:
-    - [89%] Tarea A [H:40] [W:40%]
-    - [x] Tarea B [H:16] [W:60%] (100% completada)
-    - [ ] Tarea C (0% completada)
+    - [L2] [89%] Tarea A [H:40] [W:40%]
+    - [L3] [x] Tarea B [H:16] [W:60%] (100% completada)
+    - [ ] Tarea C (0% completada, L1 por defecto)
     - Tarea D
     """
     t = task_raw.strip()
     
+    # 0. Nivel jerárquico WBS (L1, L2, L3)
+    level = 1
+    lvl_match = re.search(r'\[\s*(?:L|LVL|INDENT)(?::|\s*)?([1-9])\s*\]', t, re.IGNORECASE)
+    if lvl_match:
+        level = int(lvl_match.group(1))
+
     # 1. Porcentaje de avance
     prog = None
     pct_match = re.search(r'\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]', t)
@@ -150,6 +161,7 @@ def parse_task_string(task_raw: str) -> dict:
     for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
         if clean_name.startswith(pref):
             clean_name = clean_name[len(pref):].strip()
+    clean_name = re.sub(r'\[\s*(?:L|LVL|INDENT)(?::|\s*)?([1-9])\s*\]', '', clean_name, flags=re.IGNORECASE).strip()
     clean_name = re.sub(r'\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]', '', clean_name).strip()
     clean_name = re.sub(r'\[\s*(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\s*\]', '', clean_name, flags=re.IGNORECASE).strip()
     clean_name = re.sub(r'\[\s*W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\s*\]', '', clean_name, flags=re.IGNORECASE).strip()
@@ -157,6 +169,7 @@ def parse_task_string(task_raw: str) -> dict:
     return {
         "raw": t,
         "name": clean_name,
+        "level": max(1, min(3, level)),
         "progress_pct": max(0.0, min(100.0, prog)),
         "progress_percent": max(0.0, min(100.0, prog)),
         "work_hours": hours,
@@ -165,12 +178,13 @@ def parse_task_string(task_raw: str) -> dict:
         "completed": prog >= 100.0
     }
 
-def format_task_string(name: str, progress_pct: float = 0.0, work_hours: Optional[float] = None, weight_percent: Optional[float] = None) -> str:
+def format_task_string(name: str, progress_pct: float = 0.0, work_hours: Optional[float] = None, weight_percent: Optional[float] = None, level: int = 1) -> str:
     """Formatea una tarea serializada para almacenamiento en la BD"""
     clean_name = name.strip()
     for pref in ["[x]", "[X]", "[ ]", "✅", "⏳"]:
         if clean_name.startswith(pref):
             clean_name = clean_name[len(pref):].strip()
+    clean_name = re.sub(r'\[\s*(?:L|LVL|INDENT)(?::|\s*)?([1-9])\s*\]', '', clean_name, flags=re.IGNORECASE).strip()
     clean_name = re.sub(r'\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]', '', clean_name).strip()
     clean_name = re.sub(r'\[\s*(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\s*\]', '', clean_name, flags=re.IGNORECASE).strip()
     clean_name = re.sub(r'\[\s*W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\s*\]', '', clean_name, flags=re.IGNORECASE).strip()
@@ -184,7 +198,12 @@ def format_task_string(name: str, progress_pct: float = 0.0, work_hours: Optiona
     else:
         prefix = f"[{int(round(prog)) if round(prog, 1) == int(prog) else round(prog, 1)}%]"
 
-    parts = [prefix, clean_name]
+    parts = []
+    lvl = max(1, min(3, int(level or 1)))
+    if lvl > 1:
+        parts.append(f"[L{lvl}]")
+    parts.append(prefix)
+    parts.append(clean_name)
     if work_hours is not None and work_hours > 0:
         parts.append(f"[H:{round(work_hours, 1) if round(work_hours, 1) != int(work_hours) else int(work_hours)}]")
     if weight_percent is not None and weight_percent > 0:
@@ -192,10 +211,75 @@ def format_task_string(name: str, progress_pct: float = 0.0, work_hours: Optiona
 
     return " ".join(parts)
 
+def roll_up_hierarchical_tasks(tasks_raw: List[str]) -> List[dict]:
+    """
+    Toma la lista de tareas en texto plano, identifica nodos resumen (padres con nivel menor que sus sucesores)
+    y calcula automáticamente su porcentaje de avance y horas en cascada (Roll-up estilo MS Project).
+    """
+    if not tasks_raw:
+        return []
+
+    parsed = [parse_task_string(t) for t in tasks_raw]
+    n = len(parsed)
+
+    # Identificar cuáles son nodos resumen (is_summary: True si el siguiente ítem tiene mayor nivel)
+    for i in range(n):
+        curr_lvl = parsed[i]["level"]
+        is_sum = False
+        if i + 1 < n and parsed[i + 1]["level"] > curr_lvl:
+            is_sum = True
+        parsed[i]["is_summary"] = is_sum
+
+    # Recalcular de abajo hacia arriba (bottom-up roll-up)
+    for i in range(n - 1, -1, -1):
+        if parsed[i]["is_summary"]:
+            parent_lvl = parsed[i]["level"]
+            child_tasks = []
+            for j in range(i + 1, n):
+                if parsed[j]["level"] <= parent_lvl:
+                    break
+                # Solo hijos directos (parent_lvl + 1)
+                if parsed[j]["level"] == parent_lvl + 1:
+                    child_tasks.append(parsed[j])
+
+            if child_tasks:
+                # 1. Total horas rollup
+                total_h = sum((c["work_hours"] or 0.0) for c in child_tasks)
+                if total_h > 0:
+                    parsed[i]["work_hours"] = total_h
+
+                # 2. Progreso rollup (ponderado por horas si existen, o por peso, o equitativo)
+                has_weights = any(c.get("weight_percent") is not None and c["weight_percent"] > 0 for c in child_tasks)
+                has_hours = any(c.get("work_hours") is not None and c["work_hours"] > 0 for c in child_tasks)
+
+                if has_weights:
+                    w_sum = sum((c["weight_percent"] or 0.0) for c in child_tasks)
+                    if w_sum > 0:
+                        prog_val = sum(c["progress_pct"] * (c["weight_percent"] or 0.0) for c in child_tasks) / w_sum
+                    else:
+                        prog_val = sum(c["progress_pct"] for c in child_tasks) / len(child_tasks)
+                elif has_hours:
+                    h_sum = sum((c["work_hours"] or 0.0) for c in child_tasks)
+                    if h_sum > 0:
+                        prog_val = sum(c["progress_pct"] * (c["work_hours"] or 0.0) for c in child_tasks) / h_sum
+                    else:
+                        prog_val = sum(c["progress_pct"] for c in child_tasks) / len(child_tasks)
+                else:
+                    prog_val = sum(c["progress_pct"] for c in child_tasks) / len(child_tasks)
+
+                calc_prog = max(0.0, min(100.0, round(prog_val, 1)))
+                parsed[i]["progress_pct"] = calc_prog
+                parsed[i]["progress_percent"] = calc_prog
+                parsed[i]["is_completed"] = (calc_prog >= 100.0)
+                parsed[i]["completed"] = (calc_prog >= 100.0)
+
+    return parsed
+
 def calculate_project_progress(phases, project_status: Optional[str] = None) -> float:
     """
     Calcula el avance físico ponderado de un proyecto al estilo Microsoft Project:
     1. A nivel de etapa:
+       - Si contiene jerarquía multinivel, ejecuta roll_up_hierarchical_tasks()
        - Si las tareas tienen ponderación explícita ([W:xx%]), se calcula:
          Avance Etapa = sum(prog_i * weight_i) / sum(weight_i)
        - Si no tienen peso explícito pero tienen horas ([H:xx]), se calcula ponderación por HH:
@@ -244,19 +328,25 @@ def calculate_project_progress(phases, project_status: Optional[str] = None) -> 
         if ph_status == "completado":
             phase_prog = 100.0
         elif tasks_raw:
-            parsed_tasks = [parse_task_string(t) for t in tasks_raw]
+            # Procesar jerarquía y roll-up
+            parsed_tasks = roll_up_hierarchical_tasks(tasks_raw)
             
-            explicit_weights_sum = sum((t["weight_percent"] or 0.0) for t in parsed_tasks if t["weight_percent"] is not None)
-            total_hours_sum = sum((t["work_hours"] or 0.0) for t in parsed_tasks if t["work_hours"] is not None)
+            # Tomar solo las tareas de nivel raíz (L1) para calcular el total de la etapa
+            top_level_tasks = [t for t in parsed_tasks if t["level"] == 1]
+            if not top_level_tasks:
+                top_level_tasks = parsed_tasks
+
+            explicit_weights_sum = sum((t["weight_percent"] or 0.0) for t in top_level_tasks if t["weight_percent"] is not None)
+            total_hours_sum = sum((t["work_hours"] or 0.0) for t in top_level_tasks if t["work_hours"] is not None)
 
             if explicit_weights_sum > 0:
-                weighted_sum = sum(t["progress_pct"] * (t["weight_percent"] or 0.0) for t in parsed_tasks)
+                weighted_sum = sum(t["progress_pct"] * (t["weight_percent"] or 0.0) for t in top_level_tasks)
                 phase_prog = min(100.0, round(weighted_sum / explicit_weights_sum, 2))
             elif total_hours_sum > 0:
-                weighted_sum = sum(t["progress_pct"] * (t["work_hours"] or 0.0) for t in parsed_tasks)
+                weighted_sum = sum(t["progress_pct"] * (t["work_hours"] or 0.0) for t in top_level_tasks)
                 phase_prog = min(100.0, round(weighted_sum / total_hours_sum, 2))
             else:
-                phase_prog = min(100.0, round(sum(t["progress_pct"] for t in parsed_tasks) / len(parsed_tasks), 2))
+                phase_prog = min(100.0, round(sum(t["progress_pct"] for t in top_level_tasks) / len(top_level_tasks), 2))
         else:
             phase_prog = 50.0 if ph_status == "en_progreso" else 0.0
 

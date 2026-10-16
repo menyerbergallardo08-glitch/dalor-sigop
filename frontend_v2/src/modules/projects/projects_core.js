@@ -2131,50 +2131,91 @@ async function viewProjectDetails(projectId) {
 
                     ${tasksList.length > 0 ? `
                     <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px;">
-                        ${tasksList.map((t, tIdx) => {
-                            let prog = 0;
-                            const pMatch = t.match(/\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]/);
-                            if (pMatch) prog = parseFloat(pMatch[1]);
-                            else if (t.startsWith("[x]") || t.startsWith("[X]") || t.includes("✅")) prog = 100;
-                            const isChecked = prog >= 100;
+                        ${(() => {
+                            // Preprocesar jerarquía y resumen para la vista
+                            const parsedList = tasksList.map((t, idx) => {
+                                let lvl = 1;
+                                const lMatch = t.match(/\[\s*(?:L|LVL|INDENT)(?::|\s*)?([1-9])\s*\]/i);
+                                if (lMatch) lvl = parseInt(lMatch[1], 10);
 
-                            let cleanName = t;
-                            for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
-                                if (cleanName.startsWith(pref)) cleanName = cleanName.substring(pref.length).trim();
-                            }
-                            cleanName = cleanName.replace(/\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]/, '').trim();
+                                let prog = 0;
+                                const pMatch = t.match(/\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]/);
+                                if (pMatch) prog = parseFloat(pMatch[1]);
+                                else if (t.startsWith("[x]") || t.startsWith("[X]") || t.includes("✅")) prog = 100;
 
-                            let taskWeight = null;
-                            const wMatch = cleanName.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
-                            if (wMatch) {
-                                taskWeight = parseFloat(wMatch[1]);
-                                cleanName = cleanName.replace(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i, '').trim();
-                            }
+                                let clean = t;
+                                for (const pref of ["[x]", "[X]", "[ ]", "✅", "⏳"]) {
+                                    if (clean.startsWith(pref)) clean = clean.substring(pref.length).trim();
+                                }
+                                clean = clean.replace(/\[\s*(?:L|LVL|INDENT)(?::|\s*)?([1-9])\s*\]/gi, '').trim();
+                                clean = clean.replace(/\[\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\]/, '').trim();
 
-                            let taskHours = null;
-                            const hMatch = cleanName.match(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i);
-                            if (hMatch) {
-                                taskHours = parseFloat(hMatch[1]);
-                                cleanName = cleanName.replace(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i, '').trim();
-                            }
+                                let taskWeight = null;
+                                const wMatch = clean.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
+                                if (wMatch) {
+                                    taskWeight = parseFloat(wMatch[1]);
+                                    clean = clean.replace(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i, '').trim();
+                                }
 
-                            return `
-                            <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 5px 8px; border-radius: 6px; background: ${isChecked ? '#f0fdf4' : (prog > 0 ? '#f0f9ff' : '#f8fafc')}; border: 1px solid ${isChecked ? '#bbf7d0' : (prog > 0 ? '#bae6fd' : '#e2e8f0')}; position: relative; overflow: hidden;">
-                                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: ${prog}%; background: ${isChecked ? 'rgba(187, 247, 208, 0.4)' : 'rgba(186, 230, 253, 0.45)'}; pointer-events: none; z-index: 0;"></div>
-                                <div style="display: flex; align-items: center; gap: 8px; z-index: 1; width: 100%;">
-                                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProjectTask(${data.id}, ${ph.id}, ${tIdx}, this.checked)" style="width: 16px; height: 16px; accent-color: #059669; cursor: pointer;">
-                                    <span style="font-weight: 800; color: ${isChecked ? '#166534' : 'var(--dalor-navy)'}; font-family: monospace;">${idx + 1}.${tIdx + 1}</span>
-                                    <span style="${isChecked ? 'text-decoration: line-through; color: #15803d; font-weight: 600;' : 'color: #334155; font-weight: 600;'} flex: 1;">${cleanName}</span>
-                                    ${taskHours !== null ? `<span style="font-size: 10px; font-weight: 700; color: #059669; background: #dcfce7; padding: 2px 6px; border-radius: 4px;" title="Horas de trabajo estimadas (Work / HH)"><i class="fa-regular fa-clock"></i> ${taskHours} HH</span>` : ''}
-                                    ${taskWeight !== null ? `<span style="font-size: 10px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;" title="Ponderación de la tarea">${taskWeight}%</span>` : ''}
-                                    <div style="display: inline-flex; align-items: center; gap: 2px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;" title="Editar porcentaje de avance de la tarea (0 - 100%)">
-                                        <input type="number" min="0" max="100" value="${prog}" onchange="updateProjectTaskProgress(${data.id}, ${ph.id}, ${tIdx}, this.value)" style="width: 44px; font-size: 11px; border: none; text-align: center; font-weight: 800; color: ${isChecked ? '#166534' : (prog > 0 ? '#0284c7' : '#64748b')}; outline: none;">
-                                        <span style="font-size: 10px; font-weight: 800; color: #64748b;">%</span>
+                                let taskHours = null;
+                                const hMatch = clean.match(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i);
+                                if (hMatch) {
+                                    taskHours = parseFloat(hMatch[1]);
+                                    clean = clean.replace(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i, '').trim();
+                                }
+
+                                return { raw: t, idx, lvl, prog, cleanName: clean, taskWeight, taskHours };
+                            });
+
+                            return parsedList.map((item, tIdx) => {
+                                const isSummary = (tIdx + 1 < parsedList.length && parsedList[tIdx + 1].lvl > item.lvl);
+                                const isChecked = item.prog >= 100;
+                                const indentPx = (item.lvl - 1) * 22; // 0px para L1, 22px para L2, 44px para L3
+
+                                return `
+                                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 5px 8px; margin-left: ${indentPx}px; border-radius: 6px; background: ${isSummary ? '#f1f5f9' : (isChecked ? '#f0fdf4' : (item.prog > 0 ? '#f0f9ff' : '#f8fafc'))}; border: 1px solid ${isSummary ? '#94a3b8' : (isChecked ? '#bbf7d0' : (item.prog > 0 ? '#bae6fd' : '#e2e8f0'))}; border-left: ${item.lvl > 1 ? '3px solid ' + (item.lvl === 2 ? '#0284c7' : '#9333ea') : '1px solid ' + (isSummary ? '#94a3b8' : '#e2e8f0')}; position: relative; overflow: hidden;">
+                                    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: ${item.prog}%; background: ${isSummary ? 'rgba(148, 163, 184, 0.25)' : (isChecked ? 'rgba(187, 247, 208, 0.4)' : 'rgba(186, 230, 253, 0.45)')}; pointer-events: none; z-index: 0;"></div>
+                                    <div style="display: flex; align-items: center; gap: 6px; z-index: 1; width: 100%;">
+                                        <!-- Control de Sangría (Indent / Outdent estilo MS Project) -->
+                                        <div style="display: inline-flex; gap: 2px;">
+                                            <button type="button" onclick="indentProjectTask(${data.id}, ${ph.id}, ${tIdx}, 'outdent')" style="background: none; border: none; font-size: 10px; color: ${item.lvl > 1 ? '#0284c7' : '#cbd5e1'}; cursor: ${item.lvl > 1 ? 'pointer' : 'default'}; padding: 0 2px;" title="${item.lvl > 1 ? '⬅️ Disminuir sangría (Subir nivel WBS)' : 'Nivel máximo raíz'}" ${item.lvl <= 1 ? 'disabled' : ''}>◀</button>
+                                            <button type="button" onclick="indentProjectTask(${data.id}, ${ph.id}, ${tIdx}, 'indent')" style="background: none; border: none; font-size: 10px; color: ${item.lvl < 3 ? '#0284c7' : '#cbd5e1'}; cursor: ${item.lvl < 3 ? 'pointer' : 'default'}; padding: 0 2px;" title="${item.lvl < 3 ? '➡️ Aumentar sangría (Hacer sub-tarea de la anterior)' : 'Nivel máximo de anidación'}" ${item.lvl >= 3 ? 'disabled' : ''}>▶</button>
+                                        </div>
+
+                                        ${!isSummary ? `
+                                            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProjectTask(${data.id}, ${ph.id}, ${tIdx}, this.checked)" style="width: 15px; height: 15px; accent-color: #059669; cursor: pointer;">
+                                        ` : `
+                                            <span style="font-size: 10px; color: #475569;" title="Etapa resumen calculada automáticamente"><i class="fa-solid fa-folder-tree"></i></span>
+                                        `}
+
+                                        <span style="font-weight: 800; font-size: 10px; color: ${isSummary ? 'var(--dalor-navy)' : '#64748b'}; font-family: monospace;">
+                                            ${idx + 1}.${tIdx + 1}
+                                        </span>
+
+                                        <span style="${isSummary ? 'font-weight: 800; color: #0f172a;' : (isChecked ? 'text-decoration: line-through; color: #15803d; font-weight: 600;' : 'color: #334155; font-weight: 600;')} flex: 1;">
+                                            ${item.cleanName}
+                                        </span>
+
+                                        ${item.taskHours !== null ? `<span style="font-size: 10px; font-weight: 700; color: #059669; background: #dcfce7; padding: 2px 6px; border-radius: 4px;" title="Horas de trabajo (Work / HH)"><i class="fa-regular fa-clock"></i> ${item.taskHours} HH</span>` : ''}
+                                        ${item.taskWeight !== null ? `<span style="font-size: 10px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;" title="Ponderación WBS">${item.taskWeight}%</span>` : ''}
+
+                                        <!-- Porcentaje de Avance (Editable en tareas hojas, Automático no editable en resúmenes) -->
+                                        ${isSummary ? `
+                                            <span style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;" title="Calculado automáticamente por roll-up en cascada">
+                                                ${item.prog}% Auto
+                                            </span>
+                                        ` : `
+                                            <div style="display: inline-flex; align-items: center; gap: 2px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;" title="Editar porcentaje de avance de la tarea (0 - 100%)">
+                                                <input type="number" min="0" max="100" value="${item.prog}" onchange="updateProjectTaskProgress(${data.id}, ${ph.id}, ${tIdx}, this.value)" style="width: 44px; font-size: 11px; border: none; text-align: center; font-weight: 800; color: ${isChecked ? '#166534' : (item.prog > 0 ? '#0284c7' : '#64748b')}; outline: none;">
+                                                <span style="font-size: 10px; font-weight: 800; color: #64748b;">%</span>
+                                            </div>
+                                        `}
+
+                                        <button type="button" onclick="deleteProjectTask(${data.id}, ${ph.id}, ${tIdx})" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;" title="Eliminar tarea de esta etapa">&times;</button>
                                     </div>
-                                    <button type="button" onclick="deleteProjectTask(${data.id}, ${ph.id}, ${tIdx})" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;" title="Eliminar tarea de esta etapa">&times;</button>
-                                </div>
-                            </div>`;
-                        }).join('')}
+                                </div>`;
+                            }).join('');
+                        })()}
                     </div>` : '<p style="font-size: 11px; color: #94a3b8; margin: 4px 0 8px 0; font-style: italic;">No hay tareas asignadas en esta etapa.</p>'}
 
                     <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">

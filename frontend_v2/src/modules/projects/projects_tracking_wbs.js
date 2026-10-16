@@ -530,6 +530,24 @@ async function deleteProjectTask(projectId, phaseId, taskIndex) {
     }
 }
 
+async function indentProjectTask(projectId, phaseId, taskIndex, direction) {
+    try {
+        const res = await authFetch(`${API_BASE}/projects/${projectId}/phases/${phaseId}/tasks/${taskIndex}/indent`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ direction })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Error al cambiar sangría de la tarea.");
+        }
+        await viewProjectDetails(projectId);
+    } catch (e) {
+        console.error("Error al indentar tarea:", e);
+        alert("Error: " + (e.message || e));
+    }
+}
+
 async function openDirectResourceAssignModal(resourceType) {
     const pId = window.currentViewingProjectId;
     if (pId) {
@@ -1167,6 +1185,7 @@ if (typeof window !== 'undefined') {
     window.submitAddProjectPhase = submitAddProjectPhase;
     window.addProjectTask = addProjectTask;
     window.deleteProjectTask = deleteProjectTask;
+    window.indentProjectTask = indentProjectTask;
     window.openDirectResourceAssignModal = openDirectResourceAssignModal;
     window.submitDirectResourceAssign = submitDirectResourceAssign;
     window.releaseProjectResource = releaseProjectResource;

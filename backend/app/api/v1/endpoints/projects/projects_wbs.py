@@ -115,15 +115,27 @@ def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, 
             name=parsed["name"],
             progress_pct=new_prog,
             work_hours=new_hours,
-            weight_percent=new_weight
+            weight_percent=new_weight,
+            level=parsed["level"]
         )
 
-        phase.description = "; ".join(tasks)
+        # Ejecutar roll-up jerárquico automático sobre todas las tareas
+        rolled_up = roll_up_hierarchical_tasks(tasks)
+        updated_tasks = [
+            format_task_string(
+                name=t["name"],
+                progress_pct=t["progress_pct"],
+                work_hours=t["work_hours"],
+                weight_percent=t["weight_percent"],
+                level=t["level"]
+            )
+            for t in rolled_up
+        ]
+        phase.description = "; ".join(updated_tasks)
 
         # Actualizar estatus de la fase
-        parsed_all = [parse_task_string(t) for t in tasks]
-        all_done = all(t["progress_pct"] >= 100.0 for t in parsed_all)
-        any_done = any(t["progress_pct"] > 0.0 for t in parsed_all)
+        all_done = all(t["progress_pct"] >= 100.0 for t in rolled_up)
+        any_done = any(t["progress_pct"] > 0.0 for t in rolled_up)
 
         if all_done:
             phase.status = "completado"
@@ -142,8 +154,8 @@ def toggle_phase_task(project_id: int, phase_id: int, task_in: TaskToggleInput, 
             "success": True,
             "phase_status": phase.status,
             "project_progress_pct": proj_prog,
-            "tasks": tasks,
-            "parsed_tasks": parsed_all
+            "tasks": updated_tasks,
+            "parsed_tasks": rolled_up
         }
     raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
 
@@ -166,20 +178,31 @@ def update_phase_task(project_id: int, phase_id: int, task_index: int, payload: 
         new_prog = max(0.0, min(100.0, float(payload.progress_percent))) if payload.progress_percent is not None else parsed["progress_pct"]
         new_hours = payload.work_hours if payload.work_hours is not None else parsed["work_hours"]
         new_weight = payload.weight_percent if payload.weight_percent is not None else parsed["weight_percent"]
+        new_lvl = payload.level if payload.level is not None else parsed["level"]
 
         tasks[task_index] = format_task_string(
             name=new_name,
             progress_pct=new_prog,
             work_hours=new_hours,
-            weight_percent=new_weight
+            weight_percent=new_weight,
+            level=new_lvl
         )
 
-        phase.description = "; ".join(tasks)
+        rolled_up = roll_up_hierarchical_tasks(tasks)
+        updated_tasks = [
+            format_task_string(
+                name=t["name"],
+                progress_pct=t["progress_pct"],
+                work_hours=t["work_hours"],
+                weight_percent=t["weight_percent"],
+                level=t["level"]
+            )
+            for t in rolled_up
+        ]
+        phase.description = "; ".join(updated_tasks)
 
-        # Actualizar estatus de la fase
-        parsed_all = [parse_task_string(t) for t in tasks]
-        all_done = all(t["progress_pct"] >= 100.0 for t in parsed_all)
-        any_done = any(t["progress_pct"] > 0.0 for t in parsed_all)
+        all_done = all(t["progress_pct"] >= 100.0 for t in rolled_up)
+        any_done = any(t["progress_pct"] > 0.0 for t in rolled_up)
 
         if all_done:
             phase.status = "completado"
@@ -198,8 +221,61 @@ def update_phase_task(project_id: int, phase_id: int, task_index: int, payload: 
             "message": f"Tarea '{new_name}' actualizada correctamente.",
             "phase_status": phase.status,
             "project_progress_pct": proj_prog,
-            "tasks": tasks,
-            "parsed_tasks": parsed_all
+            "tasks": updated_tasks,
+            "parsed_tasks": rolled_up
+        }
+    raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
+
+@router.put("/{project_id}/phases/{phase_id}/tasks/{task_index}/indent")
+def indent_phase_task(project_id: int, phase_id: int, task_index: int, payload: TaskIndentInput, db: Session = Depends(get_db)):
+    phase = db.query(ProjectPhase).filter(ProjectPhase.id == phase_id, ProjectPhase.project_id == project_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada.")
+
+    raw_desc = phase.description or ""
+    tasks = [t.strip() for t in raw_desc.split(";") if t.strip()]
+    if not tasks:
+        tasks = [t.strip() for t in raw_desc.split("\n") if t.strip()]
+
+    if 0 <= task_index < len(tasks):
+        current_t = tasks[task_index]
+        parsed = parse_task_string(current_t)
+
+        delta = 1 if payload.direction == "indent" else -1
+        new_lvl = max(1, min(3, parsed["level"] + delta))
+
+        tasks[task_index] = format_task_string(
+            name=parsed["name"],
+            progress_pct=parsed["progress_pct"],
+            work_hours=parsed["work_hours"],
+            weight_percent=parsed["weight_percent"],
+            level=new_lvl
+        )
+
+        rolled_up = roll_up_hierarchical_tasks(tasks)
+        updated_tasks = [
+            format_task_string(
+                name=t["name"],
+                progress_pct=t["progress_pct"],
+                work_hours=t["work_hours"],
+                weight_percent=t["weight_percent"],
+                level=t["level"]
+            )
+            for t in rolled_up
+        ]
+        phase.description = "; ".join(updated_tasks)
+        db.commit()
+
+        all_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
+        proj_prog = calculate_project_progress(all_phases)
+
+        return {
+            "success": True,
+            "message": f"Nivel WBS actualizado a L{new_lvl}.",
+            "phase_status": phase.status,
+            "project_progress_pct": proj_prog,
+            "tasks": updated_tasks,
+            "parsed_tasks": rolled_up
         }
     raise HTTPException(status_code=400, detail="Índice de tarea inválido.")
 
@@ -223,26 +299,43 @@ def add_phase_task(project_id: int, phase_id: int, payload: TaskCreateInput, db:
         name=clean_task,
         progress_pct=prog,
         work_hours=payload.work_hours,
-        weight_percent=payload.weight_percent
+        weight_percent=payload.weight_percent,
+        level=payload.level or 1
     )
     tasks.append(task_str)
-    phase.description = "; ".join(tasks)
+    
+    rolled_up = roll_up_hierarchical_tasks(tasks)
+    updated_tasks = [
+        format_task_string(
+            name=t["name"],
+            progress_pct=t["progress_pct"],
+            work_hours=t["work_hours"],
+            weight_percent=t["weight_percent"],
+            level=t["level"]
+        )
+        for t in rolled_up
+    ]
+    phase.description = "; ".join(updated_tasks)
 
     # Actualizar estatus si la tarea agregada tiene avance
-    parsed_all = [parse_task_string(t) for t in tasks]
-    all_done = all(t["progress_pct"] >= 100.0 for t in parsed_all)
-    any_done = any(t["progress_pct"] > 0.0 for t in parsed_all)
+    all_done = all(t["progress_pct"] >= 100.0 for t in rolled_up)
+    any_done = any(t["progress_pct"] > 0.0 for t in rolled_up)
     if all_done:
         phase.status = "completado"
     elif any_done:
         phase.status = "en_progreso"
 
     db.commit()
+    all_phases = db.query(ProjectPhase).filter(ProjectPhase.project_id == project_id).all()
+    proj_prog = calculate_project_progress(all_phases)
+
     return {
         "success": True,
         "message": f"Tarea '{clean_task}' agregada a la etapa '{phase.name}'.",
-        "tasks": tasks,
-        "parsed_tasks": parsed_all
+        "phase_status": phase.status,
+        "project_progress_pct": proj_prog,
+        "tasks": updated_tasks,
+        "parsed_tasks": rolled_up
     }
 
 @router.delete("/{project_id}/phases/{phase_id}/tasks/{task_index}")

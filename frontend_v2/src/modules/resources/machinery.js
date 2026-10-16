@@ -106,8 +106,9 @@ function renderMachineryTablePaginated() {
         const hasProject = Boolean(m.current_project_id);
         const hasCustodian = Boolean(m.current_custodian_name && !m.current_custodian_name.toLowerCase().includes('disponible') && !m.current_custodian_name.toLowerCase().includes('base') && m.current_custodian_name !== '-');
         const isEnObra = m.status === 'en_obra' || hasProject;
+        const isEnTransito = m.status === 'en_transito' || (m.current_location && m.current_location.toLowerCase().includes('en ruta'));
         const isEnOperacion = m.status === 'en_operacion' || (!hasProject && hasCustodian);
-        const inBase = !isEnObra && !isEnOperacion && (m.status === 'disponible_base' || m.status === 'disponible' || !m.status);
+        const inBase = !isEnObra && !isEnTransito && !isEnOperacion && (m.status === 'disponible_base' || m.status === 'disponible' || !m.status);
 
         const isMaint = m.maintenance_status === 'en_mantenimiento';
 
@@ -118,6 +119,9 @@ function renderMachineryTablePaginated() {
             const projName = proj ? `[${proj.code}]` : '';
             obraLabel = `EN OBRA ${projName}`.trim();
             badgeStyle = 'background: #e0f2fe; color: #0369a1;';
+        } else if (isEnTransito) {
+            obraLabel = 'EN TRÁNSITO / DESPACHO';
+            badgeStyle = 'background: #fef3c7; color: #92400e; font-weight: 800; border: 1px solid #fde68a;';
         } else if (isEnOperacion) {
             obraLabel = 'EN OPERACIÓN / ASIGNADO';
             badgeStyle = 'background: #fef3c7; color: #92400e;';

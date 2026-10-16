@@ -97,7 +97,7 @@ async function loadToolsList() {
             }
             groups[key].items.push(t);
             groups[key].total++;
-            const inBase = t.status === 'disponible_base' || !t.current_project_id;
+            const inBase = (t.status === 'disponible_base' || t.status === 'disponible' || !t.status) && !t.current_project_id && t.status !== 'en_transito' && t.status !== 'en_obra';
             if (inBase) {
                 groups[key].available++;
             } else {

@@ -95,7 +95,10 @@ class OCRReceiptParser:
                                     return text_resp
                 except urllib.error.HTTPError as m_err:
                     if m_err.code in [429, 403]:
-                        print(f"⚠️ [OCR Failover] Llave ({tier_label}) agotada/saturada (HTTP {m_err.code}). Conmutando al siguiente nivel...")
+                        try:
+                            print(f"[OCR Failover] Llave ({tier_label}) agotada/saturada (HTTP {m_err.code}). Conmutando al siguiente nivel...")
+                        except Exception:
+                            pass
                         break
                     continue
                 except Exception:
@@ -194,14 +197,13 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
 
             # Modelos ordenados por disponibilidad activa (con cuota verificada y respuesta instantánea)
             candidate_models = [
+                "models/gemini-3.5-flash-lite",
                 "models/gemini-3.5-flash",
                 "models/gemini-flash-latest",
-                "models/gemini-3.1-flash-lite",
                 "models/gemini-3.7-flash",
-                "models/gemini-3.8-flash",
-                "models/gemini-2.5-flash"
+                "models/gemini-3.8-flash"
             ]
-            text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=8)
+            text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=12)
 
             if not text_resp:
                 return None
@@ -579,12 +581,19 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
             elif chosen_total < subtotal:
                 chosen_total = max_val
 
-        detected_amount_usd = round(chosen_total, 2)
-        if detected_amount_usd > 0:
+        detected_amount = round(chosen_total, 2)
+        # Si el texto indica explícitamente Bolívares (Bs, BS, BOLIVARES) o la cifra es muy alta (> 500) sin símbolo explícito de $
+        is_bolivares = any(w in upper_text for w in ["TOTAL BS", "TOTAL (BS)", "TOTAL BS.", "MONTO BS", "BASE IMPONIBLE BS", "BS.", "BOLIVARES", "VES"]) or (detected_amount > 500.0 and "$" not in text)
+        if is_bolivares:
+            detected_amount_bs = detected_amount
+            detected_amount_usd = round(detected_amount_bs / (rate or 800.0), 2)
+            base_usd = round(subtotal / (rate or 800.0), 2) if subtotal > 0 else detected_amount_usd
+            tax_usd = round(tax / (rate or 800.0), 2) if tax > 0 else round(detected_amount_usd - base_usd, 2)
+        else:
+            detected_amount_usd = detected_amount
             detected_amount_bs = round(detected_amount_usd * rate, 2)
-
-        base_usd = subtotal if (subtotal > 0 and subtotal <= detected_amount_usd) else detected_amount_usd
-        tax_usd = tax if (tax > 0 and tax < detected_amount_usd) else round(detected_amount_usd - base_usd, 2)
+            base_usd = subtotal if (subtotal > 0 and subtotal <= detected_amount_usd) else detected_amount_usd
+            tax_usd = tax if (tax > 0 and tax < detected_amount_usd) else round(detected_amount_usd - base_usd, 2)
 
         return {
             "detected_vendor": detected_vendor,
@@ -662,12 +671,13 @@ Responde ÚNICAMENTE con este JSON válido:
             }
 
             candidate_models = [
-                "models/gemini-2.5-flash",
-                "models/gemini-2.0-flash",
-                "models/gemini-1.5-flash",
-                "models/gemini-1.5-flash-latest"
+                "models/gemini-3.5-flash-lite",
+                "models/gemini-3.5-flash",
+                "models/gemini-flash-latest",
+                "models/gemini-3.7-flash",
+                "models/gemini-3.8-flash"
             ]
-            text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=8)
+            text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=12)
             if text_resp:
                 if "```json" in text_resp:
                     text_resp = text_resp.split("```json")[1].split("```")[0].strip()

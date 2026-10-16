@@ -248,7 +248,6 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
             if g_in.driver_name and g_in.driver_name.strip():
                 veh.current_custodian_name = g_in.driver_name.strip()
             veh.current_location = f"En ruta: {dest}"
-            from app.models.models import ResourceAssignmentHistory
             hist = ResourceAssignmentHistory(
                 resource_type="asset",
                 resource_id=veh.id,

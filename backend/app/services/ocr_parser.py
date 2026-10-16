@@ -192,12 +192,14 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
                 }
             }
 
-            # Modelos ordenados por disponibilidad activa (con cuota verificada)
+            # Modelos ordenados por disponibilidad activa (con cuota verificada y respuesta instantánea)
             candidate_models = [
-                "models/gemini-2.5-flash",
-                "models/gemini-2.0-flash",
-                "models/gemini-1.5-flash",
-                "models/gemini-1.5-flash-latest"
+                "models/gemini-3.5-flash",
+                "models/gemini-flash-latest",
+                "models/gemini-3.1-flash-lite",
+                "models/gemini-3.7-flash",
+                "models/gemini-3.8-flash",
+                "models/gemini-2.5-flash"
             ]
             text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=8)
 

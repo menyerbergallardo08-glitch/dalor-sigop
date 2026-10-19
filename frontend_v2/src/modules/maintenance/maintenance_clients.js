@@ -340,6 +340,12 @@ async function submitCreateClient(event) {
         return;
     }
 
+    const btnSubmit = document.getElementById("btnSubmitCreateClient") || document.querySelector("#clientForm button[type=\"submit\"]");
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+    }
+
     try {
         const res = await authFetch(`${API_BASE}/clients/`, {
             method: "POST",
@@ -374,12 +380,17 @@ async function submitCreateClient(event) {
                 alert(`Cliente ${newClient.name} registrado con éxito.`);
             }
         } else {
-            const err = await res.json();
+            const err = await res.json().catch(() => ({}));
             alert("Error: " + (err.detail || JSON.stringify(err)));
         }
     } catch (e) {
         console.error("Error al guardar cliente:", e);
         alert("Error de conexión al guardar cliente.");
+    } finally {
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Cliente`;
+        }
     }
 }
 

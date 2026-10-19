@@ -147,32 +147,26 @@ document.addEventListener('invalid', function(e) {
     }
 }, true);
 
-// Global Form Submit interceptor for double-click protection across all standard forms
+// Global Form Submit interceptor for double-click protection (bubble phase, non-blocking)
 document.addEventListener('submit', function(e) {
     const form = e.target;
     if (!form || form.tagName !== 'FORM') return;
     
-    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"], button:not([type="button"])');
+    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
     if (!submitBtn) return;
     
     if (submitBtn.dataset.submitting === "true") {
         e.preventDefault();
         e.stopImmediatePropagation();
-        console.warn("[DoubleSubmit] Envío de formulario bloqueado por concurrencia.");
+        console.warn("[DoubleSubmit] Envío de formulario bloqueado por concurrencia activa.");
         return false;
     }
     
     submitBtn.dataset.submitting = "true";
-    submitBtn.disabled = true;
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
-    
     setTimeout(() => {
-        submitBtn.dataset.submitting = "false";
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    }, 4000);
-}, true);
+        if (submitBtn) submitBtn.dataset.submitting = "false";
+    }, 1500);
+}, false);
 
 // Utility: Debounce for fast search inputs (250ms)
 window.debounce = function(func, wait = 250) {

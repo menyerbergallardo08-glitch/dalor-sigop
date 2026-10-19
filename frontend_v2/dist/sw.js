@@ -1,7 +1,7 @@
 // DALOR SIGO-P ERP — Service Worker Oficial (v2.1.0-LIVE)
 // Políticas: Network-First universal con Fallback a Caché Offline para continuidad operativa
 
-const CACHE_NAME = 'dalor-sigop-pwa-v3.0.0';
+const CACHE_NAME = 'dalor-sigop-pwa-v3.0.2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

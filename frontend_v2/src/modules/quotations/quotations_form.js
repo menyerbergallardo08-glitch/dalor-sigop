@@ -139,7 +139,7 @@ async function openNewQuotationModal() {
 
     if (document.getElementById("quote_tax_percent")) document.getElementById("quote_tax_percent").value = "16";
 
-    if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "";
+    if (document.getElementById("quote_execution_time")) document.getElementById("quote_execution_time").value = "15 días hábiles";
 
     if (document.getElementById("quote_currency")) document.getElementById("quote_currency").value = "USD";
     if (document.getElementById("quote_coletilla_divisas")) document.getElementById("quote_coletilla_divisas").checked = false;

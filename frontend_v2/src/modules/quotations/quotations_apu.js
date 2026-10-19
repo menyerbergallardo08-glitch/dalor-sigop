@@ -721,7 +721,19 @@ function calcEditServiceMargin() {
 
     if (!costInput?.value && !priceInput?.value) {
         if (badge) badge.innerHTML = '';
-        if (btn) btn.disabled = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.title = "";
+        }
+        return;
+    }
+
+    if (!priceInput?.value || String(priceInput.value).trim() === '') {
+        if (badge) badge.innerHTML = cost > 0 ? '<span style="color:#64748b;font-size:11px;">Indique el precio de venta para evaluar rentabilidad.</span>' : '';
+        if (btn) {
+            btn.disabled = false;
+            btn.title = "";
+        }
         return;
     }
 
@@ -765,7 +777,19 @@ function calcNewServiceMargin() {
 
     if (!costInput?.value && !priceInput?.value) {
         if (badge) badge.innerHTML = '';
-        if (btn) btn.disabled = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.title = "";
+        }
+        return;
+    }
+
+    if (!priceInput?.value || String(priceInput.value).trim() === '') {
+        if (badge) badge.innerHTML = cost > 0 ? '<span style="color:#64748b;font-size:11px;">Indique el precio de venta para evaluar rentabilidad.</span>' : '';
+        if (btn) {
+            btn.disabled = false;
+            btn.title = "";
+        }
         return;
     }
 

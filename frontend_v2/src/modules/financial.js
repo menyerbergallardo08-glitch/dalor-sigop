@@ -42,6 +42,8 @@ export const submitBadDebtWriteOff = (...args) => (typeof window !== 'undefined'
 export const exportCxcExcel = (...args) => (typeof window !== 'undefined' && window.exportCxcExcel ? window.exportCxcExcel(...args) : undefined);
 export const printClientAccountStatement = (...args) => (typeof window !== 'undefined' && window.printClientAccountStatement ? window.printClientAccountStatement(...args) : undefined);
 export const openClientStatementSelectorModal = (...args) => (typeof window !== 'undefined' && window.openClientStatementSelectorModal ? window.openClientStatementSelectorModal(...args) : undefined);
+export const printOfficialFiscalInvoice = (...args) => (typeof window !== 'undefined' && window.printOfficialFiscalInvoice ? window.printOfficialFiscalInvoice(...args) : undefined);
+export const onCxcDocTypeChanged = (...args) => (typeof window !== 'undefined' && window.onCxcDocTypeChanged ? window.onCxcDocTypeChanged(...args) : undefined);
 // --- cxp.js ---
 export const loadPayablesList = (...args) => (typeof window !== 'undefined' && window.loadPayablesList ? window.loadPayablesList(...args) : undefined);
 export const updateCxpFilterBadges = (...args) => (typeof window !== 'undefined' && window.updateCxpFilterBadges ? window.updateCxpFilterBadges(...args) : undefined);

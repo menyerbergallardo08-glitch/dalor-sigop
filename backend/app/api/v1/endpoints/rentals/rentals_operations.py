@@ -6,7 +6,8 @@ from datetime import datetime
 from app.core.database import get_db
 from app.models.models import (
     AssetRentalLoan, AssetRentalLoanItem, Asset, Project, AuditLog, Material, 
-    MaterialMovement, AccountPayable, AccountReceivable, Client, Expense, ExpenseCategory
+    MaterialMovement, AccountPayable, AccountReceivable, Client, Expense, ExpenseCategory,
+    ResourceAssignmentHistory
 )
 from app.api.deps import get_current_active_user, require_roles
 from .rentals_common import (
@@ -164,13 +165,33 @@ def create_rental_loan(
             elif it.item_type == "asset" or it.asset_id:
                 asset_obj = db.query(Asset).filter(Asset.id == it.asset_id).first() if it.asset_id else None
                 if asset_obj and req.direction == "dalor_a_tercero":
-                    if asset_obj.status != "disponible_base" and asset_obj.current_project_id is not None:
-                        raise HTTPException(status_code=400, detail=f"El activo [{asset_obj.asset_code}] {asset_obj.name} no está disponible (Estatus: {asset_obj.status}).")
-                    asset_obj.status = "alquilado_a_tercero" if req.operation_type == "alquiler" else "prestado_a_cliente"
-                    asset_obj.current_location = f"Custodia Externa: {req.external_entity.strip()}"
-                    asset_obj.current_custodian_name = req.contact_person or req.external_entity.strip()
+                    st_clean = (asset_obj.status or "").lower().strip()
+                    if st_clean not in ["disponible_base", "disponible"] or asset_obj.current_project_id is not None:
+                        raise HTTPException(status_code=400, detail=f"El activo [{asset_obj.asset_code}] '{asset_obj.name}' no está disponible (Estatus actual: {asset_obj.status}).")
+                    target_status = "alquilado_a_tercero" if req.operation_type == "alquiler" else "prestado_a_cliente"
+                    dest_desc = req.destination_reference.strip() if req.destination_reference else f"Custodia Externa: {req.external_entity.strip()}"
+                    cust_name = req.contact_person or req.external_entity.strip()
+                    
+                    asset_obj.status = target_status
+                    asset_obj.current_location = dest_desc
+                    asset_obj.current_custodian_name = cust_name
                     asset_obj.rental_rate_usd = req.rate_usd or 0.0
                     asset_obj.return_due_date = req.expected_return_date
+                    
+                    hist = ResourceAssignmentHistory(
+                        project_id=None,
+                        resource_type="asset",
+                        resource_id=asset_obj.id,
+                        resource_code=asset_obj.asset_code,
+                        resource_name=asset_obj.name,
+                        custodian_name=cust_name,
+                        origin_location="Sede Central Dalor",
+                        destination_location=dest_desc,
+                        status=target_status,
+                        transfer_code=op_code,
+                        notes=f"Salida en {req.operation_type.upper()} [{op_code}] hacia {req.external_entity.strip()}"
+                    )
+                    db.add(hist)
     else:
         # Modo legado de 1 solo recurso
         if req.material_id:
@@ -203,13 +224,33 @@ def create_rental_loan(
                 eq_name = asset_obj.name
                 eq_code = asset_obj.asset_code
                 if req.direction == "dalor_a_tercero":
-                    if asset_obj.status != "disponible_base" and asset_obj.current_project_id is not None:
-                        raise HTTPException(status_code=400, detail=f"El activo [{asset_obj.asset_code}] {asset_obj.name} no está disponible (Estatus: {asset_obj.status}).")
-                    asset_obj.status = "alquilado_a_tercero" if req.operation_type == "alquiler" else "prestado_a_cliente"
-                    asset_obj.current_location = f"Custodia Externa: {req.external_entity.strip()}"
-                    asset_obj.current_custodian_name = req.contact_person or req.external_entity.strip()
+                    st_clean = (asset_obj.status or "").lower().strip()
+                    if st_clean not in ["disponible_base", "disponible"] or asset_obj.current_project_id is not None:
+                        raise HTTPException(status_code=400, detail=f"El activo [{asset_obj.asset_code}] '{asset_obj.name}' no está disponible (Estatus actual: {asset_obj.status}).")
+                    target_status = "alquilado_a_tercero" if req.operation_type == "alquiler" else "prestado_a_cliente"
+                    dest_desc = req.destination_reference.strip() if req.destination_reference else f"Custodia Externa: {req.external_entity.strip()}"
+                    cust_name = req.contact_person or req.external_entity.strip()
+                    
+                    asset_obj.status = target_status
+                    asset_obj.current_location = dest_desc
+                    asset_obj.current_custodian_name = cust_name
                     asset_obj.rental_rate_usd = req.rate_usd or 0.0
                     asset_obj.return_due_date = req.expected_return_date
+                    
+                    hist = ResourceAssignmentHistory(
+                        project_id=None,
+                        resource_type="asset",
+                        resource_id=asset_obj.id,
+                        resource_code=asset_obj.asset_code,
+                        resource_name=asset_obj.name,
+                        custodian_name=cust_name,
+                        origin_location="Sede Central Dalor",
+                        destination_location=dest_desc,
+                        status=target_status,
+                        transfer_code=op_code,
+                        notes=f"Salida en {req.operation_type.upper()} [{op_code}] hacia {req.external_entity.strip()}"
+                    )
+                    db.add(hist)
 
     # 3. Integración Financiera Automática (CxP y CxC solo si es alquiler con costo > 0)
     created_payable_id = None
@@ -307,9 +348,9 @@ def create_rental_loan(
         operation_code=op_code,
         direction=req.direction,
         operation_type=req.operation_type,
-        asset_id=req.asset_id if not req.items else None,
-        material_id=req.material_id if not req.items else None,
-        material_quantity=req.material_quantity or 0.0,
+        asset_id=req.asset_id if not req.items else (req.items[0].asset_id if len(req.items) == 1 and req.items[0].asset_id else req.asset_id),
+        material_id=req.material_id if not req.items else (req.items[0].material_id if len(req.items) == 1 and req.items[0].material_id else req.material_id),
+        material_quantity=req.material_quantity or (req.items[0].quantity if req.items and len(req.items) == 1 and req.items[0].quantity else 0.0),
         equipment_name=eq_name,
         equipment_code=eq_code or None,
         external_entity=req.external_entity.strip(),
@@ -386,14 +427,28 @@ def delete_rental_loan(item_id: int, db: Session = Depends(get_db)):
     if not item:
         raise HTTPException(status_code=404, detail="Registro no encontrado.")
 
-    # Restaurar activo si estaba asociado
-    if item.asset_id and item.status == "activo":
-        asset_obj = db.query(Asset).filter(Asset.id == item.asset_id).first()
-        if asset_obj:
-            asset_obj.status = "disponible_base"
-            asset_obj.current_location = "Sede Central Guacara"
-            asset_obj.current_custodian_name = "Almacén Central"
-            asset_obj.return_due_date = None
+    # Restaurar activos y materiales si la operación estaba activa
+    if item.status == "activo":
+        if item.items:
+            for sub in item.items:
+                if sub.item_type == "asset" and sub.asset_id:
+                    a_sub = db.query(Asset).filter(Asset.id == sub.asset_id).first()
+                    if a_sub:
+                        a_sub.status = "disponible_base"
+                        a_sub.current_location = "Sede Central Guacara"
+                        a_sub.current_custodian_name = "Almacén Central"
+                        a_sub.return_due_date = None
+                elif sub.item_type == "material" and sub.material_id:
+                    m_sub = db.query(Material).filter(Material.id == sub.material_id).first()
+                    if m_sub:
+                        m_sub.stock_quantity += (sub.quantity - (sub.returned_quantity or 0.0))
+        if item.asset_id:
+            asset_obj = db.query(Asset).filter(Asset.id == item.asset_id).first()
+            if asset_obj:
+                asset_obj.status = "disponible_base"
+                asset_obj.current_location = "Sede Central Guacara"
+                asset_obj.current_custodian_name = "Almacén Central"
+                asset_obj.return_due_date = None
 
     db.delete(item)
     db.commit()

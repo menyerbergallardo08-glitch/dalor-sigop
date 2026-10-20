@@ -211,11 +211,12 @@ async function submitQuickFlow(event) {
 
 
 
-            if (!res.ok) throw new Error('Error al registrar retiro.');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Error al registrar retiro.');
+            }
 
             alert(`✅ Retiro de $${amount_usd.toLocaleString()} registrado con éxito para ${partner_name}.`);
-
-
 
         } else if (selected_type === 'sede') {
 
@@ -224,8 +225,6 @@ async function submitQuickFlow(event) {
             const fixedCat = document.getElementById('qf_fixed_category').value;
 
             const category_id = (allCategories[0] && allCategories[0].id) || 1;
-
-
 
             const res = await authFetch(`${API_BASE}/expenses/manual`, {
 
@@ -257,13 +256,12 @@ async function submitQuickFlow(event) {
 
             });
 
-
-
-            if (!res.ok) throw new Error('Error al registrar gasto de sede.');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Error al registrar gasto de sede.');
+            }
 
             alert(`✅ Gasto Fijo de Sede de $${amount_usd.toLocaleString()} registrado con éxito.`);
-
-
 
         } else {
 
@@ -274,8 +272,6 @@ async function submitQuickFlow(event) {
             const costCat = document.getElementById('qf_cost_category').value;
 
             const category_id = (allCategories[0] && allCategories[0].id) || 1;
-
-
 
             const res = await authFetch(`${API_BASE}/expenses/manual`, {
 
@@ -307,9 +303,10 @@ async function submitQuickFlow(event) {
 
             });
 
-
-
-            if (!res.ok) throw new Error('Error al registrar costo de obra.');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Error al registrar costo de obra.');
+            }
 
             alert(`✅ Costo de Obra de $${amount_usd.toLocaleString()} imputado exitosamente al proyecto.`);
 

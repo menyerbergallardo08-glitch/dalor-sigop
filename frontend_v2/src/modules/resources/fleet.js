@@ -94,7 +94,10 @@ function filterFleetList() {
         const safePlate = (v?.license_plate || '').toLowerCase();
         const matchText = !q || safeCode.includes(q) || safeName.includes(q) || safeBrand.includes(q) || safePlate.includes(q);
 
-        const inBase = (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
+        const st = (v?.status || '').toLowerCase().trim();
+        const isAlquilado = st === 'alquilado_a_tercero' || st === 'alquilado';
+        const isPrestado = st === 'prestado_a_cliente' || st === 'en_prestamo' || st === 'prestamo';
+        const inBase = !isAlquilado && !isPrestado && (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
         let matchStatus = true;
         if (status === 'en_obra') matchStatus = !inBase;
         if (status === 'disponible_base') matchStatus = inBase;
@@ -166,15 +169,18 @@ function renderFleetTablePaginated() {
             semLabel = `PRÓXIMO (${remKm.toLocaleString()} Km)`;
         }
 
+        const st = (v?.status || '').toLowerCase().trim();
+        const isAlquilado = st === 'alquilado_a_tercero' || st === 'alquilado';
+        const isPrestado = st === 'prestado_a_cliente' || st === 'en_prestamo' || st === 'prestamo';
         const isEnRuta = v?.status === 'en_obra' || (v?.current_location && v.current_location.toLowerCase().includes('en ruta'));
-        const inBase = (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && !isEnRuta && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
+        const inBase = !isAlquilado && !isPrestado && (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && !isEnRuta && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
         const plateStr = v?.license_plate || '-';
-        const locStr = inBase 
+        const locStr = isAlquilado ? (v?.current_location || 'Custodia Externa (Alquiler)') : (isPrestado ? (v?.current_location || 'Custodia Externa (Préstamo)') : (inBase 
             ? (v?.current_location || 'Sede Central Dalor (Guacara)')
-            : (v?.current_location || (v?.current_project_id ? 'En Operación / Obra' : 'Sede Central (Uso Administrativo / Logística)'));
-        const custStr = inBase 
+            : (v?.current_location || (v?.current_project_id ? 'En Operación / Obra' : 'Sede Central (Uso Administrativo / Logística)'))));
+        const custStr = isAlquilado ? (v?.current_custodian_name || 'Cliente / Arrendatario') : (isPrestado ? (v?.current_custodian_name || 'Tercero en Alianza') : (inBase 
             ? 'Disponible en Base'
-            : (v?.custodian && !v.custodian.toLowerCase().includes('base') ? v.custodian : (v?.current_custodian_name || (v?.current_project_id ? 'Equipo de Obra' : 'En Operación')));
+            : (v?.custodian && !v.custodian.toLowerCase().includes('base') ? v.custodian : (v?.current_custodian_name || (v?.current_project_id ? 'Equipo de Obra' : 'En Operación')))));
         const vName = v?.name || 'Vehículo';
         const safeName = String(vName).replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const safeCode = v?.asset_code || 'FLT';
@@ -187,7 +193,17 @@ function renderFleetTablePaginated() {
         let badgeColor = '#166534';
         let badgeIcon = 'fa-warehouse';
 
-        if (!inBase) {
+        if (isAlquilado) {
+            badgeText = 'ALQUILADO A TERCERO';
+            badgeBg = '#e0e7ff';
+            badgeColor = '#3730a3';
+            badgeIcon = 'fa-handshake';
+        } else if (isPrestado) {
+            badgeText = 'EN PRÉSTAMO / COMODATO';
+            badgeBg = '#fef3c7';
+            badgeColor = '#92400e';
+            badgeIcon = 'fa-handshake-angle';
+        } else if (!inBase) {
             if (isEnRuta) {
                 badgeText = 'EN RUTA / DESPACHO';
                 badgeBg = '#e0f2fe';

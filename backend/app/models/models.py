@@ -457,6 +457,8 @@ class AccountReceivable(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     invoice_number = Column(String(50), unique=True, index=True)
+    fiscal_invoice_number = Column(String(50), nullable=True) # Correlativo oficial SENIAT Forma Libre (ej: "0948")
+    control_number = Column(String(50), nullable=True) # N° Control Factura SENIAT Forma Libre, ej: "00-000558"
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     
@@ -830,6 +832,8 @@ class CompanyProfile(Base):
     primary_color = Column(String(20), default="#002B49")
     secondary_color = Column(String(20), default="#D4AF37")
     is_default = Column(Boolean, default=True)
+    next_invoice_number = Column(Integer, nullable=True) # Override correlativo factura (ej: 948)
+    next_control_number = Column(Integer, nullable=True) # Override número de control (ej: 558)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

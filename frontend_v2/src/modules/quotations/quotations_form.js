@@ -649,7 +649,7 @@ async function convertQuoteToProject(quoteId) {
         // 1. Cambiar a vista de Proyectos
         switchView('projects', 'proyectos');
         switchProjectSubtab('form');
-        populatePlanDropdownSelectors();
+        if (typeof window.populatePlanDropdownSelectors === 'function') window.populatePlanDropdownSelectors();
 
         // 2. Mostrar banner de conversión
         const convInput = document.getElementById("converting_quotation_id");

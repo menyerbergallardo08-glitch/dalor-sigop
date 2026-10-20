@@ -1307,7 +1307,7 @@ class FinancialExcelService:
                     p_date = p.payment_date.strftime("%d/%m/%Y") if p.payment_date else "-"
                     payments.append({
                         "id": p.id,
-                        "payment_number": p.payment_number or f"REC-{p.id:04d}",
+                        "payment_number": getattr(p, "voucher_number", None) or getattr(p, "reference_number", None) or f"REC-{p.id:04d}",
                         "date": p_date,
                         "invoice_number": r.invoice_number,
                         "method": (p.payment_method or "transferencia").upper(),

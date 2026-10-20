@@ -53,15 +53,19 @@ function filterMachineryList() {
 
         const hasProject = Boolean(m.current_project_id);
         const hasCustodian = Boolean(m.current_custodian_name && !m.current_custodian_name.toLowerCase().includes('disponible') && !m.current_custodian_name.toLowerCase().includes('base') && m.current_custodian_name !== '-');
+        const st = (m.status || '').toLowerCase().trim();
+        const isAlquilado = st === 'alquilado_a_tercero' || st === 'alquilado';
+        const isPrestado = st === 'prestado_a_cliente' || st === 'en_prestamo' || st === 'prestamo';
         const isEnObra = m.status === 'en_obra' || hasProject;
-        const isEnOperacion = m.status === 'en_operacion' || (!hasProject && hasCustodian);
-        const inBase = !isEnObra && !isEnOperacion && (m.status === 'disponible_base' || m.status === 'disponible' || !m.status);
+        const isEnOperacion = m.status === 'en_operacion' || (!hasProject && hasCustodian && !isAlquilado && !isPrestado);
+        const inBase = !isEnObra && !isEnOperacion && !isAlquilado && !isPrestado && (st === 'disponible_base' || st === 'disponible' || !st);
         const isMaint = m.maintenance_status === 'en_mantenimiento';
 
         let matchStatus = true;
         if (status === 'disponible_base') matchStatus = inBase && !isMaint;
         if (status === 'en_obra') matchStatus = (isEnObra || isEnOperacion) && !isMaint;
         if (status === 'mantenimiento') matchStatus = isMaint;
+        if (status === 'alquilado_prestamo') matchStatus = isAlquilado || isPrestado;
 
         return matchText && matchStatus;
     });
@@ -105,16 +109,25 @@ function renderMachineryTablePaginated() {
     tbody.innerHTML = pageItems.map(m => {
         const hasProject = Boolean(m.current_project_id);
         const hasCustodian = Boolean(m.current_custodian_name && !m.current_custodian_name.toLowerCase().includes('disponible') && !m.current_custodian_name.toLowerCase().includes('base') && m.current_custodian_name !== '-');
+        const st = (m.status || '').toLowerCase().trim();
+        const isAlquilado = st === 'alquilado_a_tercero' || st === 'alquilado';
+        const isPrestado = st === 'prestado_a_cliente' || st === 'en_prestamo' || st === 'prestamo';
         const isEnObra = m.status === 'en_obra' || hasProject;
         const isEnTransito = m.status === 'en_transito' || (m.current_location && m.current_location.toLowerCase().includes('en ruta'));
-        const isEnOperacion = m.status === 'en_operacion' || (!hasProject && hasCustodian);
-        const inBase = !isEnObra && !isEnTransito && !isEnOperacion && (m.status === 'disponible_base' || m.status === 'disponible' || !m.status);
+        const isEnOperacion = m.status === 'en_operacion' || (!hasProject && hasCustodian && !isAlquilado && !isPrestado);
+        const inBase = !isEnObra && !isEnTransito && !isEnOperacion && !isAlquilado && !isPrestado && (st === 'disponible_base' || st === 'disponible' || !st);
 
         const isMaint = m.maintenance_status === 'en_mantenimiento';
 
         let obraLabel = 'DISPONIBLE EN BASE';
         let badgeStyle = 'background: #dcfce7; color: #166534;';
-        if (isEnObra) {
+        if (isAlquilado) {
+            obraLabel = 'ALQUILADO A TERCERO';
+            badgeStyle = 'background: #e0e7ff; color: #3730a3; font-weight: 800; border: 1px solid #c7d2fe;';
+        } else if (isPrestado) {
+            obraLabel = 'EN PRÉSTAMO / COMODATO';
+            badgeStyle = 'background: #fef3c7; color: #92400e; font-weight: 800; border: 1px solid #fde68a;';
+        } else if (isEnObra) {
             const proj = (window.allProjects || []).find(p => p.id === m.current_project_id);
             const projName = proj ? `[${proj.code}]` : '';
             obraLabel = `EN OBRA ${projName}`.trim();

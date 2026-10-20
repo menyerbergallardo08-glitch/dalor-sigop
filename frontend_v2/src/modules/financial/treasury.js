@@ -52,6 +52,11 @@ function calcFinTransFromUsd() {
     }
     if (rateLbl) rateLbl.innerText = `Bs. ${officialRate.toFixed(2)}`;
     if (equivLbl) equivLbl.innerText = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
+
+    const dispHint = document.getElementById("disp_invoice_amount_hint");
+    if (dispHint) {
+        dispHint.innerText = `$${amountUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
 }
 
 function calcFinTransFromBs() {
@@ -323,9 +328,39 @@ function openRecordPaymentModal(type, targetId, currentBalance) {
     const retBsInput = document.getElementById("fin_trans_retention_bs");
     if (retBsInput) retBsInput.value = "";
 
+    const btnInvoice = document.getElementById("btnFinTransPrintInvoice");
+    if (btnInvoice) {
+        btnInvoice.style.display = (type === 'cobro_cxc') ? 'inline-flex' : 'none';
+    }
+
+    const emitBox = document.getElementById("cxc_emit_invoice_box");
+    if (emitBox) {
+        emitBox.style.display = (type === 'cobro_cxc') ? 'block' : 'none';
+        const chk = document.getElementById("fin_trans_emit_invoice");
+        if (chk) chk.checked = true;
+        const conceptInp = document.getElementById("fin_trans_custom_concept");
+        if (conceptInp) conceptInp.value = "";
+        const dispHint = document.getElementById("disp_invoice_amount_hint");
+        if (dispHint) {
+            dispHint.innerText = `$${Number(currentBalance || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+    }
+
     onFinTransMethodChanged();
     openModal("modalFinancialTransaction");
 
+}
+
+function printOfficialFiscalInvoiceFromModal() {
+    const targetId = document.getElementById("fin_trans_target_id")?.value;
+    if (targetId && typeof window.printOfficialFiscalInvoice === 'function') {
+        window.printOfficialFiscalInvoice(parseInt(targetId, 10));
+    } else if (targetId) {
+        alert("Cargando módulo de facturación...");
+    }
+}
+if (typeof window !== 'undefined') {
+    window.printOfficialFiscalInvoiceFromModal = printOfficialFiscalInvoiceFromModal;
 }
 
 
@@ -356,13 +391,18 @@ async function submitFinancialPayment(e) {
         ? `${datePrefix}[Cuenta: ${selectedAcc}] ${notesVal}`.trim() 
         : `${datePrefix}${notesVal}`.trim();
 
+    const emitInvoice = (type === 'cobro_cxc') && (document.getElementById("fin_trans_emit_invoice")?.checked || false);
+    const customConcept = document.getElementById("fin_trans_custom_concept")?.value.trim() || "";
+
     const payload = {
         amount_usd: amountUsd,
         exchange_rate: effectiveRate,
         payment_method: method,
         reference_number: document.getElementById("fin_trans_ref").value.trim(),
         notes: fullNotes,
-        payment_type: type === 'cobro_cxc' ? 'cxc_cobro' : 'cxp_pago'
+        payment_type: type === 'cobro_cxc' ? 'cxc_cobro' : 'cxp_pago',
+        emit_fiscal_invoice: emitInvoice,
+        custom_concept: customConcept
     };
 
 
@@ -392,10 +432,17 @@ async function submitFinancialPayment(e) {
         closeModal("modalFinancialTransaction");
         document.getElementById("financialTransactionForm").reset();
 
-        if (type === 'cobro_cxc') loadReceivablesList();
-        else loadPayablesList();
+        if (type === 'cobro_cxc') {
+            await loadReceivablesList();
+        } else {
+            await loadPayablesList();
+        }
 
-        alert(`✅ ${data.message}`);
+        if (data.emitted_invoice_id && typeof window.printOfficialFiscalInvoice === 'function') {
+            window.printOfficialFiscalInvoice(data.emitted_invoice_id);
+        } else {
+            alert(`✅ ${data.message}`);
+        }
     } catch (err) {
         alert("Error: " + err.message);
     }

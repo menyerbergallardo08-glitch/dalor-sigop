@@ -34,13 +34,26 @@ def assign_resource(req: ResourceAssignRequest, db: Session = Depends(get_db)):
         if not res:
             raise HTTPException(status_code=404, detail="Activo/Herramienta no encontrado.")
         
+        st_res = (res.status or "").lower().strip()
+        if st_res in ["alquilado_a_tercero", "prestado_a_cliente", "alquilado", "en_prestamo"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Operación rechazada: El recurso [{res.asset_code}] '{res.name}' se encuentra en alquiler/préstamo externo y no está disponible en base."
+            )
+        if st_res in ["en_mantenimiento", "mantenimiento"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Operación rechazada: El recurso [{res.asset_code}] '{res.name}' se encuentra en taller/mantenimiento."
+            )
+        
         req_qty = max(1, req.quantity or 1)
         if req_qty > 1 and (res.asset_type or "").lower() not in ["vehiculo", "camioneta", "camion"]:
             from sqlalchemy import func
             available_units = db.query(Asset).filter(
                 func.trim(func.upper(Asset.name)) == func.trim(func.upper(res.name)),
                 Asset.is_active == True,
-                (Asset.status == "disponible_base") | (Asset.current_project_id == None)
+                Asset.status.in_(["disponible_base", "disponible"]),
+                Asset.current_project_id == None
             ).all()
 
             if len(available_units) < req_qty:

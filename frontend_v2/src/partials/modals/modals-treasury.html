@@ -253,7 +253,12 @@
 
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
 
-                <h3 id="finTransModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy);">Registrar Transacción</h3>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <h3 id="finTransModalTitle" style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin: 0;">Registrar Transacción</h3>
+                    <button type="button" id="btnFinTransPrintInvoice" onclick="printOfficialFiscalInvoiceFromModal()" class="btn-primary" style="display: none; font-size: 11px; padding: 3px 8px; background: #0284c7; color: white; font-weight: 800; border-radius: 4px; border: none; cursor: pointer;" title="Abrir e Imprimir la Factura Fiscal de esta cuenta">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> Ver Factura Fiscal
+                    </button>
+                </div>
 
                 <button onclick="closeModal('modalFinancialTransaction')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">&times;</button>
 
@@ -364,6 +369,21 @@
                 <div>
                     <label class="form-label">Notas / Observaciones</label>
                     <input type="text" id="fin_trans_notes" placeholder="Ej: Pago a tasa O/C del martes 872.00 Bs / Retención IVA cliente" class="form-input">
+                </div>
+
+                <!-- OPCIÓN DE EMISIÓN DE FACTURA FISCAL EN COBROS DE CLIENTES -->
+                <div id="cxc_emit_invoice_box" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px; margin-top: 4px;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-weight: 800; color: #166534; cursor: pointer; font-size: 13px;">
+                        <input type="checkbox" id="fin_trans_emit_invoice" checked style="width: 17px; height: 17px; accent-color: #059669; cursor: pointer;">
+                        <span>📄 Emitir Factura Fiscal SENIAT por este Cobro</span>
+                    </label>
+                    <div style="font-size: 11px; color: #15803d; margin-top: 4px; padding-left: 25px;">
+                        Genera una factura legal independiente por los <b id="disp_invoice_amount_hint">$0.00</b> cobrados, asigna correlativo oficial Forma Libre y descuenta el saldo de la obra automáticamente.
+                    </div>
+                    <div id="cxc_custom_concept_container" style="margin-top: 8px; padding-left: 25px;">
+                        <label class="form-label" style="font-size: 11px; margin-bottom: 2px;">Concepto en la Factura Fiscal (Opcional):</label>
+                        <input type="text" id="fin_trans_custom_concept" placeholder="Ej: Valuación Nº 1 (Anticipo de Obra)" class="form-input" style="font-size: 11.5px; padding: 4px 8px; background: white;">
+                    </div>
                 </div>
 
                 <button type="submit" id="btnConfirmFinTrans" class="btn-primary" style="margin-top: 6px;">

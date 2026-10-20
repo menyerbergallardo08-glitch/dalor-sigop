@@ -17,7 +17,8 @@ from app.models.models import (
     Project,
     AuditLog,
     ReceivableFollowUpLog,
-    User as UserModel
+    User as UserModel,
+    CompanyProfile
 )
 from app.api.deps import require_roles, get_current_user
 from app.schemas.schemas import (
@@ -31,7 +32,8 @@ router = APIRouter()
 # SCHEMAS DE CUENTAS POR COBRAR (CxC)
 # ------------------------------------------------------------------------------
 class ReceivableCreate(BaseModel):
-    invoice_number: str
+    invoice_number: Optional[str] = None
+    control_number: Optional[str] = None
     client_id: int
     project_id: Optional[int] = None
     description: str
@@ -59,6 +61,8 @@ class PaymentCreate(BaseModel):
     reference_number: Optional[str] = None
     exchange_rate: float = 800.0
     notes: Optional[str] = None
+    emit_fiscal_invoice: bool = False
+    custom_concept: Optional[str] = None
 
 
 class ClientRefundCreate(BaseModel):
@@ -77,6 +81,12 @@ class BadDebtRequest(BaseModel):
 class BadDebtWriteOff(BaseModel):
     reason: str
     notes: Optional[str] = None
+
+
+class CorrelativeOverrideRequest(BaseModel):
+    next_invoice_code: Optional[str] = None
+    next_control_number: Optional[str] = None
+    reason: str
 
 
 # ------------------------------------------------------------------------------
@@ -104,6 +114,7 @@ def get_receivables(
     items = [{
         "id": r.id,
         "invoice_number": r.invoice_number,
+        "control_number": getattr(r, 'control_number', None) or "",
         "client_id": r.client_id,
         "client_name": r.client.name if r.client else "General",
         "client_rif": r.client.rif if r.client else "-",
@@ -148,27 +159,155 @@ def get_receivables(
 
 def compute_next_invoice_code(db: Session, current_year: int, prefix: str = "FAC") -> str:
     import re
+    clean_prefix = (prefix or "FAC").strip().upper()
+    if clean_prefix in ("VAL", "NE", "REC"):
+        records = db.query(AccountReceivable.invoice_number).all()
+        max_seq = 0
+        pattern = re.compile(rf"{clean_prefix}-{current_year}-(\d+)", re.IGNORECASE)
+        for (inv_code,) in records:
+            if inv_code:
+                match = pattern.search(inv_code.strip())
+                if match:
+                    try:
+                        num = int(match.group(1))
+                        if num > max_seq:
+                            max_seq = num
+                    except ValueError:
+                        pass
+        return f"{clean_prefix}-{current_year}-{(max_seq + 1):03d}"
+
+    # Correlativo Oficial de Facturas en Forma Libre (4 dígitos: 0948, 0949...)
+    # 1. Si la Dirección fijó un número en CompanyProfile, se respeta estrictamente
+    profile = db.query(CompanyProfile).first()
+    if profile and profile.next_invoice_number and profile.next_invoice_number > 0:
+        return f"{profile.next_invoice_number:04d}"
+
+    # 2. Base histórica física de Metalmecánica Dalor: 0947
     records = db.query(AccountReceivable.invoice_number).all()
-    max_seq = 0
-    pattern = re.compile(rf"{prefix}-{current_year}-(\d+)", re.IGNORECASE)
+    max_seq = 947
     for (inv_code,) in records:
         if inv_code:
-            match = pattern.search(inv_code.strip())
-            if match:
+            code_str = inv_code.strip()
+            nums = re.findall(r'\d+', code_str)
+            for part in nums:
                 try:
-                    num = int(match.group(1))
-                    if num > max_seq:
-                        max_seq = num
+                    val = int(part)
+                    if val != current_year and 900 <= val < 100000:
+                        if val > max_seq:
+                            max_seq = val
                 except ValueError:
                     pass
-    return f"{prefix}-{current_year}-{(max_seq + 1):03d}"
+    next_num = max_seq + 1
+    return f"{next_num:04d}"
+
+def compute_next_control_number(db: Session) -> str:
+    import re
+    profile = db.query(CompanyProfile).first()
+    if profile and profile.next_control_number and profile.next_control_number > 0:
+        return f"00-{profile.next_control_number:06d}"
+
+    ctrl_records = db.query(AccountReceivable.control_number).filter(AccountReceivable.control_number != None).all()
+    max_ctrl = 557 # Papel físico de muestra en taller es 00-000558
+    for (c_num,) in ctrl_records:
+        if c_num:
+            m = re.findall(r'\d+', c_num)
+            if m:
+                try:
+                    val = int(m[-1])
+                    if val > max_ctrl:
+                        max_ctrl = val
+                except ValueError:
+                    pass
+    return f"00-{max_ctrl + 1:06d}"
 
 @router.get("/next-invoice-code")
 def get_next_invoice_code(prefix: str = "FAC", db: Session = Depends(get_db)):
     current_year = datetime.utcnow().year
-    clean_prefix = "VAL" if prefix.upper().startswith("VAL") else "FAC"
-    code = compute_next_invoice_code(db, current_year, clean_prefix)
-    return {"next_code": code, "year": current_year, "prefix": clean_prefix}
+    clean_p = (prefix or "FAC").strip().upper()
+    code = compute_next_invoice_code(db, current_year, clean_p)
+    control = compute_next_control_number(db) if clean_p == "FAC" else ""
+    return {"next_code": code, "next_control": control, "year": current_year, "prefix": clean_p}
+
+@router.post("/override-correlative")
+def override_fiscal_correlative(
+    req: CorrelativeOverrideRequest,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Mecanismo de Emergencia para Directivos:
+    Permite saltar o reajustar correlativos oficiales en caso de atasco, rotura de papel
+    o anulación física de formas libres en taller/sede.
+    """
+    role = (getattr(current_user, "role_name", "") or "").lower()
+    is_director = bool(getattr(current_user, "is_superuser", False)) or any(d in role for d in ["director", "directivo", "gerencia_general", "admin", "administrador"])
+    if not is_director:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso restringido: Solo directores y administradores generales pueden modificar el correlativo fiscal de emergencia."
+        )
+
+    if not req.reason or len(req.reason.strip()) < 5:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe suministrar una justificación detallada para el ajuste de emergencia del correlativo fiscal."
+        )
+
+    profile = db.query(CompanyProfile).first()
+    if not profile:
+        profile = CompanyProfile()
+        db.add(profile)
+        db.flush()
+
+    prev_inv = profile.next_invoice_number or compute_next_invoice_code(db, datetime.utcnow().year, "FAC")
+    prev_ctrl = profile.next_control_number or compute_next_control_number(db)
+
+    inv_changed = False
+    ctrl_changed = False
+
+    if req.next_invoice_code and req.next_invoice_code.strip():
+        m = re.findall(r'\d+', req.next_invoice_code)
+        if m:
+            new_inv_num = int(m[-1])
+            profile.next_invoice_number = new_inv_num
+            inv_changed = True
+
+    if req.next_control_number and req.next_control_number.strip():
+        m = re.findall(r'\d+', req.next_control_number)
+        if m:
+            new_ctrl_num = int(m[-1])
+            profile.next_control_number = new_ctrl_num
+            ctrl_changed = True
+
+    if not inv_changed and not ctrl_changed:
+        raise HTTPException(status_code=400, detail="Debe indicar un número de factura o número de control válido.")
+
+    audit = AuditLog(
+        user_id=getattr(current_user, "id", None),
+        username=getattr(current_user, "username", "director"),
+        module="financial_correlative",
+        action="emergency_override",
+        details=str({
+            "previous_invoice": prev_inv,
+            "new_invoice": profile.next_invoice_number,
+            "previous_control": prev_ctrl,
+            "new_control": profile.next_control_number,
+            "reason": req.reason.strip()
+        })
+    )
+    db.add(audit)
+    db.commit()
+
+    current_year = datetime.utcnow().year
+    fresh_code = compute_next_invoice_code(db, current_year, "FAC")
+    fresh_control = compute_next_control_number(db)
+
+    return {
+        "success": True,
+        "message": f"Correlativo fiscal actualizado exitosamente por Dirección.",
+        "next_code": fresh_code,
+        "next_control": fresh_control
+    }
 
 @router.post("/cxc")
 def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
@@ -186,21 +325,17 @@ def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
             else:
                 inv_number = raw_inv
 
-        # Validación estricta: sólo se puede facturar si está asociado a un proyecto activo del cliente
-        if not r_in.project_id:
-            raise HTTPException(
-                status_code=400,
-                detail="No es posible facturar: Debe asociar un proyecto u obra registrada del cliente."
-            )
-
-        proj = db.query(Project).filter(Project.id == r_in.project_id).first()
-        if not proj:
-            raise HTTPException(status_code=404, detail="El proyecto imputable no existe.")
-        if proj.client_id and proj.client_id != r_in.client_id:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Inconsistencia: La obra [{proj.code}] '{proj.name}' pertenece a otro cliente y no puede imputarse a este cliente."
-            )
+        # Validación de proyecto (opcional: permite facturación libre / directa / en blanco sin obra asociada)
+        proj = None
+        if r_in.project_id and r_in.project_id > 0:
+            proj = db.query(Project).filter(Project.id == r_in.project_id).first()
+            if not proj:
+                raise HTTPException(status_code=404, detail="El proyecto imputable no existe.")
+            if proj.client_id and proj.client_id != r_in.client_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Inconsistencia: La obra [{proj.code}] '{proj.name}' pertenece a otro cliente y no puede imputarse a este cliente."
+                )
 
         # Las retenciones NO se predeterminan obligatoriamente; sólo se registran si el usuario o cliente las especifica explícitamente (> 0)
         base_usd = r_in.taxable_base_usd if (r_in.taxable_base_usd and r_in.taxable_base_usd > 0) else round(r_in.amount_usd / 1.16, 2)
@@ -211,8 +346,10 @@ def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
         net_usd = r_in.net_amount_usd if (r_in.net_amount_usd and r_in.net_amount_usd > 0) else round(r_in.amount_usd - tot_ret_usd, 2)
 
         amount_bs = r_in.amount_usd * r_in.exchange_rate
+        ctrl_final = (r_in.control_number or "").strip() or compute_next_control_number(db)
         new_r = AccountReceivable(
             invoice_number=inv_number,
+            control_number=ctrl_final,
             client_id=r_in.client_id,
             project_id=r_in.project_id,
             description=r_in.description.strip(),
@@ -233,13 +370,311 @@ def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
             notes=r_in.notes
         )
         db.add(new_r)
+
+        # Si hay override de correlativo activo en CompanyProfile, avanzar puntero automáticamente
+        profile = db.query(CompanyProfile).first()
+        if profile:
+            m_inv = re.findall(r'\d+', inv_number)
+            if m_inv:
+                used_inv = int(m_inv[-1])
+                if profile.next_invoice_number and used_inv >= profile.next_invoice_number:
+                    profile.next_invoice_number = used_inv + 1
+            if ctrl_final:
+                m_ctrl = re.findall(r'\d+', ctrl_final)
+                if m_ctrl:
+                    used_ctrl = int(m_ctrl[-1])
+                    if profile.next_control_number and used_ctrl >= profile.next_control_number:
+                        profile.next_control_number = used_ctrl + 1
+
         db.commit()
         db.refresh(new_r)
-        return {"success": True, "message": "Factura CxC registrada con éxito con retenciones SENIAT.", "id": new_r.id}
+        return {"success": True, "message": "Factura CxC registrada con éxito con retenciones SENIAT.", "id": new_r.id, "invoice_number": new_r.invoice_number, "control_number": new_r.control_number}
     except Exception as e:
         import traceback
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error en create_receivable: {str(e)} -> {traceback.format_exc()}")
+
+class ControlNumberUpdate(BaseModel):
+    control_number: str
+
+class FiscalCorrelativeUpdate(BaseModel):
+    fiscal_invoice_number: Optional[str] = None
+    control_number: Optional[str] = None
+    issue_date: Optional[str] = None
+    reason: Optional[str] = None
+
+@router.put("/cxc/{receivable_id}/control-number")
+def update_receivable_control_number(receivable_id: int, payload: ControlNumberUpdate, db: Session = Depends(get_db)):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura CxC no encontrada.")
+    r.control_number = payload.control_number.strip()
+    db.commit()
+    return {"success": True, "control_number": r.control_number}
+
+@router.put("/cxc/{receivable_id}/fiscal-correlative")
+def update_receivable_fiscal_correlative(
+    receivable_id: int,
+    payload: FiscalCorrelativeUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Cuenta por cobrar no encontrada.")
+
+    changes = []
+    if payload.fiscal_invoice_number and payload.fiscal_invoice_number.strip():
+        new_inv = payload.fiscal_invoice_number.strip()
+        r.fiscal_invoice_number = new_inv
+        changes.append(f"Factura: {new_inv}")
+        nums = re.findall(r'\d+', new_inv)
+        if nums:
+            val = int(nums[-1])
+            profile = db.query(CompanyProfile).first()
+            if profile and (not profile.next_invoice_number or val >= profile.next_invoice_number):
+                profile.next_invoice_number = val + 1
+
+    if payload.control_number and payload.control_number.strip():
+        new_ctrl = payload.control_number.strip()
+        r.control_number = new_ctrl
+        changes.append(f"Control: {new_ctrl}")
+        nums = re.findall(r'\d+', new_ctrl)
+        if nums:
+            val = int(nums[-1])
+            profile = db.query(CompanyProfile).first()
+            if profile and (not profile.next_control_number or val >= profile.next_control_number):
+                profile.next_control_number = val + 1
+
+    if payload.issue_date and payload.issue_date.strip():
+        dt = None
+        d_clean = payload.issue_date.strip()
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+            try:
+                dt = datetime.strptime(d_clean, fmt)
+                break
+            except ValueError:
+                pass
+
+        if dt:
+            r.issue_date = dt
+            changes.append(f"Fecha: {dt.strftime('%d/%m/%Y')}")
+
+            # Buscar si existe tasa BCV histórica auditada para la nueva fecha de emisión
+            d_str = dt.strftime("%Y-%m-%d")
+            row = db.execute(
+                text("SELECT rate FROM bcv_rate_history WHERE rate_date <= :d ORDER BY rate_date DESC LIMIT 1"),
+                {"d": d_str}
+            ).fetchone()
+            if not row:
+                row = db.execute(text("SELECT rate FROM bcv_rate_history ORDER BY rate_date DESC LIMIT 1")).fetchone()
+            if row and row[0] and float(row[0]) > 0:
+                r.exchange_rate = float(row[0])
+                r.amount_bs = round((r.amount_usd or 0.0) * r.exchange_rate, 2)
+
+    audit = AuditLog(
+        user_id=getattr(current_user, "id", None),
+        username=getattr(current_user, "username", "usuario"),
+        module="financial_cxc_fiscal",
+        action="update_fiscal_correlative",
+        details=str({
+            "receivable_id": r.id,
+            "invoice_number": r.invoice_number,
+            "fiscal_invoice_number": r.fiscal_invoice_number,
+            "control_number": r.control_number,
+            "issue_date": r.issue_date.strftime("%Y-%m-%d") if r.issue_date else None,
+            "reason": (payload.reason or "").strip()
+        })
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Ajustes fiscales actualizados con éxito ({', '.join(changes)}).",
+        "fiscal_invoice_number": r.fiscal_invoice_number,
+        "control_number": r.control_number,
+        "issue_date": r.issue_date.strftime("%d/%m/%Y"),
+        "issue_date_iso": r.issue_date.strftime("%Y-%m-%d")
+    }
+
+@router.get("/cxc/{receivable_id}/fiscal-invoice-data")
+def get_fiscal_invoice_data(receivable_id: int, db: Session = Depends(get_db)):
+    r = (
+        db.query(AccountReceivable)
+        .options(
+            joinedload(AccountReceivable.client),
+            joinedload(AccountReceivable.project)
+        )
+        .filter(AccountReceivable.id == receivable_id)
+        .first()
+    )
+    if not r:
+        raise HTTPException(status_code=404, detail="Cuenta por cobrar no encontrada.")
+
+    rate = float(r.exchange_rate or 0.0)
+    if rate <= 0 or (rate == 800.0 and r.issue_date):
+        d_str = r.issue_date.strftime("%Y-%m-%d") if r.issue_date else ""
+        bcv_row = db.execute(
+            text("SELECT rate FROM bcv_rate_history WHERE rate_date <= :d ORDER BY rate_date DESC LIMIT 1"),
+            {"d": d_str}
+        ).fetchone()
+        if not bcv_row:
+            bcv_row = db.execute(text("SELECT rate FROM bcv_rate_history ORDER BY rate_date DESC LIMIT 1")).fetchone()
+        if bcv_row and bcv_row[0] and float(bcv_row[0]) > 0:
+            rate = float(bcv_row[0])
+            r.exchange_rate = rate
+            db.commit()
+    if rate <= 0:
+        rate = 800.0
+
+    total_usd = float(r.amount_usd or 0.0)
+    base_usd = float(r.taxable_base_usd or 0.0)
+    if base_usd <= 0 and total_usd > 0:
+        base_usd = round(total_usd / 1.16, 2)
+    tax_usd = float(r.tax_amount_usd or 0.0)
+    if tax_usd <= 0 and total_usd > 0:
+        tax_usd = round(total_usd - base_usd, 2)
+
+    base_bs = round(base_usd * rate, 2)
+    total_bs = round(total_usd * rate, 2)
+    tax_bs = round(total_bs - base_bs, 2)
+
+    proj = r.project
+    client = r.client
+
+    # Intentar obtener renglones detallados de la cotización asociada si y sólo si
+    # los renglones corresponden fielmente al monto de esta factura (coherencia fiscal)
+    items = []
+    if proj:
+        from app.models.models import Quotation, QuotationItem
+        quote = None
+        if proj.scope_of_work:
+            m_cot = re.search(r'COT-\d{4}-\d+', proj.scope_of_work)
+            if m_cot:
+                quote = db.query(Quotation).filter(Quotation.quote_number == m_cot.group(0)).first()
+        if not quote:
+            quote = db.query(Quotation).filter(Quotation.client_id == proj.client_id, Quotation.project_title == proj.name).first()
+
+        if quote:
+            q_items = db.query(QuotationItem).filter(QuotationItem.quotation_id == quote.id).all()
+            q_sum_usd = sum(float(qi.total_usd or (float(qi.quantity or 1.0) * float(qi.unit_price_usd or 0.0))) for qi in q_items)
+            # Solo usar los renglones si coinciden matemáticamente con la base imponible de la factura
+            if abs(q_sum_usd - base_usd) <= 0.05:
+                for qi in q_items:
+                    qi_qty = float(qi.quantity or 1.0)
+                    qi_p_usd = float(qi.unit_price_usd or 0.0)
+                    qi_tot_usd = float(qi.total_usd or (qi_qty * qi_p_usd))
+                    items.append({
+                        "description": (qi.description or qi.item_code or "Servicio").upper(),
+                        "quantity": qi_qty,
+                        "unit_price_usd": qi_p_usd,
+                        "total_usd": qi_tot_usd,
+                        "unit_price_bs": round(qi_p_usd * rate, 2),
+                        "total_bs": round(qi_tot_usd * rate, 2)
+                    })
+                # Ajustar diferencia de céntimos por redondeo en el último renglón para cuadre exacto con base_bs
+                items_bs_sum = sum(it["total_bs"] for it in items)
+                diff = round(base_bs - items_bs_sum, 2)
+                if abs(diff) > 0 and len(items) > 0:
+                    items[-1]["total_bs"] = round(items[-1]["total_bs"] + diff, 2)
+                    if items[-1]["quantity"] == 1:
+                        items[-1]["unit_price_bs"] = items[-1]["total_bs"]
+
+    # Si no hay renglones de cotización coincidentes, el renglón fiscal es la descripción real de la CxC
+    if not items:
+        raw_desc = (r.description or "").strip()
+        if not raw_desc:
+            raw_desc = proj.name if proj else "SERVICIO METALMECÁNICO Y MANUFACTURA INDUSTRIAL"
+
+        desc_lines = [l.strip() for l in raw_desc.split(";") if l.strip()]
+        if len(desc_lines) > 1:
+            split_base_usd = round(base_usd / len(desc_lines), 2)
+            accum_bs = 0.0
+            for idx, l in enumerate(desc_lines):
+                if idx == len(desc_lines) - 1:
+                    p_usd = round(base_usd - split_base_usd * (len(desc_lines) - 1), 2)
+                    p_bs = round(base_bs - accum_bs, 2)
+                else:
+                    p_usd = split_base_usd
+                    p_bs = round(p_usd * rate, 2)
+                    accum_bs += p_bs
+                items.append({
+                    "description": l.upper(),
+                    "quantity": 1.0,
+                    "unit_price_usd": p_usd,
+                    "total_usd": p_usd,
+                    "unit_price_bs": p_bs,
+                    "total_bs": p_bs
+                })
+        else:
+            items.append({
+                "description": raw_desc.upper(),
+                "quantity": 1.0,
+                "unit_price_usd": base_usd,
+                "total_usd": base_usd,
+                "unit_price_bs": base_bs,
+                "total_bs": base_bs
+            })
+
+    ot_code = proj.code if proj else "MD26012"
+    if ot_code and ot_code.startswith("PRJ-"):
+        m_ot = re.search(r'PRJ-(\d{4})-(\d+)', ot_code)
+        if m_ot:
+            ot_code = f"MD{m_ot.group(1)[2:]}{int(m_ot.group(2)):03d}"
+
+    # Lógica de asignación oficial de número de factura fiscal:
+    # 1. Si la CxC ya tiene fiscal_invoice_number asignado, se usa
+    # 2. Si invoice_number no es un código operativo no fiscal (ej: no empieza por ALQ-, VAL-, NE-, REC-), se usa
+    # 3. Si es un cobro operativo/alquiler, se calcula el siguiente número de factura SENIAT oficial (ej: 0948)
+    raw_inv = (getattr(r, "fiscal_invoice_number", None) or r.invoice_number or "").strip()
+    is_operational = any(raw_inv.upper().startswith(p) for p in ["ALQ-", "VAL-", "NE-", "REC-", "PRJ-", "NDE-", "N/A"])
+    
+    if getattr(r, "fiscal_invoice_number", None) and r.fiscal_invoice_number.strip():
+        inv_display = r.fiscal_invoice_number.strip()
+    elif not is_operational and raw_inv:
+        inv_display = raw_inv.replace("FAC-", "").strip()
+    else:
+        inv_display = compute_next_invoice_code(db, r.issue_date.year, "FAC")
+
+    # Fijar el fiscal_invoice_number en el registro si no estaba establecido
+    if not getattr(r, "fiscal_invoice_number", None) and inv_display:
+        r.fiscal_invoice_number = inv_display
+        db.commit()
+
+    ctrl_display = r.control_number or compute_next_control_number(db)
+    if not r.control_number and ctrl_display:
+        r.control_number = ctrl_display
+        db.commit()
+
+    return {
+        "id": r.id,
+        "invoice_number": inv_display,
+        "operational_code": r.invoice_number or "",
+        "control_number": ctrl_display,
+        "issue_date": r.issue_date.strftime("%d/%m/%Y"),
+        "issue_date_iso": r.issue_date.strftime("%Y-%m-%d"),
+        "city_date_formatted": f"En Guacara {r.issue_date.strftime('%d/%m/%Y')}",
+        "client": {
+            "name": client.name if client else "CLIENTE GENERAL",
+            "rif": client.rif if client else "J-00000000-0",
+            "fiscal_address": getattr(client, "fiscal_address", None) or getattr(client, "address", None) or "ZONA INDUSTRIAL, GUACARA EDO. CARABOBO",
+            "phones": getattr(client, "phone", None) or getattr(client, "contact_phone", None) or "0412-240.70.79"
+        },
+        "payment_conditions": "CONTADO",
+        "delivery_note": r.invoice_number if is_operational else "N/A",
+        "ot_number": ot_code,
+        "service_order": f"{r.id:08d}",
+        "items": items,
+        "exchange_rate": rate,
+        "taxable_base_usd": base_usd,
+        "tax_amount_usd": tax_usd,
+        "total_usd": total_usd,
+        "taxable_base_bs": base_bs,
+        "tax_amount_bs": tax_bs,
+        "total_bs": total_bs,
+        "coletilla_art25": f"A los solos efectos de lo previsto en el Art. 25 de la Ley de Impuesto al Valor Agregado, se expresan los montos de la factura en Bs. calculados a la tasa de cambio establecida por el BCV de 1 US$ por Bs {f'{rate:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')}"
+    }
 
 @router.post("/cxc/{receivable_id}/payment")
 def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = Depends(get_db)):
@@ -269,28 +704,177 @@ def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = De
                 detail=f"Operación duplicada: El cobro con referencia '{ref_clean}' ya fue procesado para esta factura (Pago #{existing_pay.id} por ${existing_pay.amount_usd:.2f})."
             )
 
-    payment = FinancialPayment(
-        payment_type=p_in.payment_type or "cxc_cobro",
-        receivable_id=r.id,
-        amount_usd=p_in.amount_usd,
-        amount_bs=p_in.amount_usd * p_in.exchange_rate,
-        exchange_rate=p_in.exchange_rate,
-        payment_method=p_in.payment_method,
-        voucher_number=p_in.voucher_number or p_in.reference_number,
-        reference_number=p_in.reference_number,
-        notes=p_in.notes
-    )
-    db.add(payment)
+    # Buscar tasa BCV oficial
+    rate = float(p_in.exchange_rate or r.exchange_rate or 0.0)
+    if rate <= 0 or rate == 800.0:
+        d_str = datetime.utcnow().strftime("%Y-%m-%d")
+        bcv_row = db.execute(
+            text("SELECT rate FROM bcv_rate_history WHERE rate_date <= :d ORDER BY rate_date DESC LIMIT 1"),
+            {"d": d_str}
+        ).fetchone()
+        if not bcv_row:
+            bcv_row = db.execute(text("SELECT rate FROM bcv_rate_history ORDER BY rate_date DESC LIMIT 1")).fetchone()
+        if bcv_row and bcv_row[0] and float(bcv_row[0]) > 0:
+            rate = float(bcv_row[0])
+    if rate <= 0:
+        rate = 800.0
 
-    r.paid_amount_usd += p_in.amount_usd
-    r.balance_usd = max(0.0, round(r.balance_usd - p_in.amount_usd, 2))
-    if r.balance_usd <= 0.01:
-        r.status = "cobrado_total"
+    current_year = datetime.utcnow().year
+    emitted_inv_id = r.id
+    emitted_inv_code = r.fiscal_invoice_number or r.invoice_number
+
+    # CASO: El usuario solicita emitir una Factura Fiscal oficial por este cobro específico
+    if p_in.emit_fiscal_invoice:
+        is_partial_split = p_in.amount_usd < (r.amount_usd - 0.05)
+        
+        if is_partial_split:
+            # Facturación fraccionada: Crear un nuevo registro fiscal independiente por el monto exacto cobrado
+            next_inv = compute_next_invoice_code(db, current_year, "FAC")
+            next_ctrl = compute_next_control_number(db)
+            
+            base_usd = round(p_in.amount_usd / 1.16, 2)
+            tax_usd = round(p_in.amount_usd - base_usd, 2)
+            
+            clean_concept = (p_in.custom_concept or "").strip()
+            if not clean_concept:
+                p_code = r.project.code if r.project else "GEN"
+                clean_concept = f"VALUACIÓN / ABONO FACTURADO - [{p_code}] {r.description}"
+
+            child_r = AccountReceivable(
+                invoice_number=next_inv,
+                fiscal_invoice_number=next_inv,
+                control_number=next_ctrl,
+                client_id=r.client_id,
+                project_id=r.project_id,
+                description=clean_concept,
+                issue_date=datetime.utcnow(),
+                due_date=r.due_date or datetime.utcnow(),
+                taxable_base_usd=base_usd,
+                tax_amount_usd=tax_usd,
+                tax_withholding_rate=75.0,
+                tax_withholding_usd=0.0,
+                islr_rate=2.0,
+                islr_withholding_usd=0.0,
+                net_amount_usd=p_in.amount_usd,
+                amount_usd=p_in.amount_usd,
+                amount_bs=round(p_in.amount_usd * rate, 2),
+                exchange_rate=rate,
+                tax_retained_usd=0.0,
+                paid_amount_usd=p_in.amount_usd,
+                balance_usd=0.0,
+                status="cobrado_total",
+                notes=f"Emitida automáticamente desde Cobro por ${p_in.amount_usd:.2f} sobre cuenta origen #{r.id} ({r.invoice_number})"
+            )
+            db.add(child_r)
+            db.flush()
+
+            # Avanzar contadores en CompanyProfile
+            profile = db.query(CompanyProfile).first()
+            if profile:
+                m_inv = re.findall(r'\d+', next_inv)
+                if m_inv and profile.next_invoice_number and int(m_inv[-1]) >= profile.next_invoice_number:
+                    profile.next_invoice_number = int(m_inv[-1]) + 1
+                if next_ctrl:
+                    m_ctrl = re.findall(r'\d+', next_ctrl)
+                    if m_ctrl and profile.next_control_number and int(m_ctrl[-1]) >= profile.next_control_number:
+                        profile.next_control_number = int(m_ctrl[-1]) + 1
+
+            # Registrar el pago contra la nueva factura emitida
+            payment = FinancialPayment(
+                payment_type=p_in.payment_type or "cxc_cobro",
+                receivable_id=child_r.id,
+                amount_usd=p_in.amount_usd,
+                amount_bs=round(p_in.amount_usd * rate, 2),
+                exchange_rate=rate,
+                payment_method=p_in.payment_method,
+                voucher_number=p_in.voucher_number or p_in.reference_number,
+                reference_number=p_in.reference_number,
+                notes=p_in.notes
+            )
+            db.add(payment)
+
+            # Reducir la cuenta origen (padre) para que mantenga el saldo real pendiente
+            r.amount_usd = max(0.0, round(r.amount_usd - p_in.amount_usd, 2))
+            r.balance_usd = max(0.0, round(r.balance_usd - p_in.amount_usd, 2))
+            r.taxable_base_usd = round(r.amount_usd / 1.16, 2)
+            r.tax_amount_usd = round(r.amount_usd - r.taxable_base_usd, 2)
+            r.amount_bs = round(r.amount_usd * rate, 2)
+            if r.balance_usd <= 0.01:
+                r.status = "cobrado_total"
+
+            emitted_inv_id = child_r.id
+            emitted_inv_code = next_inv
+
+        else:
+            # Es el cobro del saldo restante o monto total: asegurar correlativo fiscal oficial
+            if not getattr(r, "fiscal_invoice_number", None) or not r.fiscal_invoice_number.strip():
+                next_inv = compute_next_invoice_code(db, current_year, "FAC")
+                r.fiscal_invoice_number = next_inv
+                r.control_number = r.control_number or compute_next_control_number(db)
+                profile = db.query(CompanyProfile).first()
+                if profile:
+                    m_inv = re.findall(r'\d+', next_inv)
+                    if m_inv and profile.next_invoice_number and int(m_inv[-1]) >= profile.next_invoice_number:
+                        profile.next_invoice_number = int(m_inv[-1]) + 1
+                    if r.control_number:
+                        m_ctrl = re.findall(r'\d+', r.control_number)
+                        if m_ctrl and profile.next_control_number and int(m_ctrl[-1]) >= profile.next_control_number:
+                            profile.next_control_number = int(m_ctrl[-1]) + 1
+
+            payment = FinancialPayment(
+                payment_type=p_in.payment_type or "cxc_cobro",
+                receivable_id=r.id,
+                amount_usd=p_in.amount_usd,
+                amount_bs=round(p_in.amount_usd * rate, 2),
+                exchange_rate=rate,
+                payment_method=p_in.payment_method,
+                voucher_number=p_in.voucher_number or p_in.reference_number,
+                reference_number=p_in.reference_number,
+                notes=p_in.notes
+            )
+            db.add(payment)
+
+            r.paid_amount_usd += p_in.amount_usd
+            r.balance_usd = max(0.0, round(r.balance_usd - p_in.amount_usd, 2))
+            if r.balance_usd <= 0.01:
+                r.status = "cobrado_total"
+            else:
+                r.status = "abono_parcial"
+
+            emitted_inv_id = r.id
+            emitted_inv_code = r.fiscal_invoice_number
+
     else:
-        r.status = "abono_parcial"
+        # Flujo estándar de cobro sin emitir nueva factura fiscal (abono tradicional)
+        payment = FinancialPayment(
+            payment_type=p_in.payment_type or "cxc_cobro",
+            receivable_id=r.id,
+            amount_usd=p_in.amount_usd,
+            amount_bs=round(p_in.amount_usd * rate, 2),
+            exchange_rate=rate,
+            payment_method=p_in.payment_method,
+            voucher_number=p_in.voucher_number or p_in.reference_number,
+            reference_number=p_in.reference_number,
+            notes=p_in.notes
+        )
+        db.add(payment)
+
+        r.paid_amount_usd += p_in.amount_usd
+        r.balance_usd = max(0.0, round(r.balance_usd - p_in.amount_usd, 2))
+        if r.balance_usd <= 0.01:
+            r.status = "cobrado_total"
+        else:
+            r.status = "abono_parcial"
 
     db.commit()
-    return {"success": True, "message": "Cobro / Comprobante aplicado con éxito.", "new_balance_usd": r.balance_usd, "status": r.status}
+    return {
+        "success": True,
+        "message": f"Cobro aplicado exitosamente ({f'Factura Fiscal {emitted_inv_code} emitida' if p_in.emit_fiscal_invoice else 'Saldo restante: $' + str(r.balance_usd)}).",
+        "new_balance_usd": r.balance_usd,
+        "status": r.status,
+        "emitted_invoice_id": emitted_inv_id if p_in.emit_fiscal_invoice else None,
+        "invoice_number": emitted_inv_code
+    }
 
 @router.post("/cxc/{receivable_id}/refund")
 def process_client_refund(receivable_id: int, r_in: ClientRefundCreate, db: Session = Depends(get_db)):

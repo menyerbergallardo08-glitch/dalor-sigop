@@ -834,19 +834,31 @@ function updateTaskWeightsSumIndicator(phaseCardId) {
     const badge = card.querySelector('.phase-tasks-weight-badge');
     if (!badge) return;
 
-    const weightInputs = card.querySelectorAll('.ph-task-weight');
+    const allRows = Array.from(card.querySelectorAll('.phase-task-row'));
+    if (allRows.length === 0) {
+        badge.innerHTML = `Suma Tareas: 0%`;
+        badge.style.background = '#e2e8f0';
+        badge.style.color = '#475569';
+        badge.style.border = 'none';
+        return;
+    }
+
+    const topRows = allRows.filter(r => parseInt(r.dataset.level || '1', 10) === 1);
+    const targetRows = topRows.length > 0 ? topRows : allRows;
+
     let sum = 0;
     let anyExplicit = false;
 
-    weightInputs.forEach(inp => {
-        const v = typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value);
+    targetRows.forEach(r => {
+        const inp = r.querySelector('.ph-task-weight');
+        const v = inp ? (typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(inp.value) : parseFloat(inp.value)) : 0;
         if (!isNaN(v) && v > 0) {
             sum += v;
             anyExplicit = true;
         }
     });
 
-    if (!anyExplicit || weightInputs.length === 0) {
+    if (!anyExplicit) {
         badge.innerHTML = `Suma Tareas: 0% <span style="font-size: 9px; opacity: 0.8;">(Equiponderadas)</span>`;
         badge.style.background = '#e2e8f0';
         badge.style.color = '#475569';
@@ -875,22 +887,112 @@ function distributeTaskWeightsEqually(phaseCardId) {
     const card = document.getElementById(phaseCardId);
     if (!card) return;
 
-    const weightInputs = card.querySelectorAll('.ph-task-weight');
-    const n = weightInputs.length;
-    if (n === 0) return;
+    const allRows = Array.from(card.querySelectorAll('.phase-task-row'));
+    if (allRows.length === 0) return;
 
-    const baseWeight = Math.floor((100 / n) * 100) / 100;
-    let remainder = Math.round((100 - (baseWeight * n)) * 100) / 100;
+    const topRows = allRows.filter(r => parseInt(r.dataset.level || '1', 10) === 1);
+    const targetRows = topRows.length > 0 ? topRows : allRows;
 
-    weightInputs.forEach((inp, idx) => {
-        let w = baseWeight;
-        if (idx === 0) {
-            w = Math.round((baseWeight + remainder) * 100) / 100;
+    const baseWeight = Math.floor((100 / targetRows.length) * 100) / 100;
+    let remainder = Math.round((100 - (baseWeight * targetRows.length)) * 100) / 100;
+
+    targetRows.forEach((r, idx) => {
+        const inp = r.querySelector('.ph-task-weight');
+        if (inp) {
+            let w = baseWeight;
+            if (idx === targetRows.length - 1) {
+                w = Math.round((baseWeight + remainder) * 100) / 100;
+            }
+            inp.value = w;
         }
-        inp.value = w;
+    });
+
+    let currentChildren = [];
+    allRows.forEach(r => {
+        const lvl = parseInt(r.dataset.level || '1', 10);
+        if (lvl === 1) {
+            if (currentChildren.length > 0) {
+                distributeSubGroup(currentChildren);
+                currentChildren = [];
+            }
+        } else {
+            currentChildren.push(r);
+        }
+    });
+    if (currentChildren.length > 0) distributeSubGroup(currentChildren);
+
+    function distributeSubGroup(subRows) {
+        if (!subRows.length) return;
+        const b = Math.floor((100 / subRows.length) * 100) / 100;
+        let rem = Math.round((100 - (b * subRows.length)) * 100) / 100;
+        subRows.forEach((sr, idx) => {
+            const inp = sr.querySelector('.ph-task-weight');
+            if (inp) {
+                let w = b;
+                if (idx === subRows.length - 1) w = Math.round((w + rem) * 100) / 100;
+                inp.value = w;
+            }
+        });
+    }
+
+    updateTaskWeightsSumIndicator(phaseCardId);
+}
+
+function distributeTaskWeightsByHours(phaseCardId) {
+    if (!phaseCardId) return;
+    const card = document.getElementById(phaseCardId);
+    if (!card) return;
+
+    const allRows = Array.from(card.querySelectorAll('.phase-task-row'));
+    if (allRows.length === 0) return;
+
+    const topRows = allRows.filter(r => parseInt(r.dataset.level || '1', 10) === 1);
+    const targetRows = topRows.length > 0 ? topRows : allRows;
+
+    let totalHours = 0;
+    const rowHours = [];
+
+    targetRows.forEach(row => {
+        const hInp = row.querySelector('.ph-task-hours');
+        const h = hInp ? (typeof parseLocalizedNumber === 'function' ? parseLocalizedNumber(hInp.value) : parseFloat(hInp.value)) || 0 : 0;
+        rowHours.push(h);
+        totalHours += h;
+    });
+
+    if (totalHours <= 0) {
+        alert("Por favor ingresa las horas estimadas (HH) en las tareas para ponderar automáticamente según el esfuerzo.");
+        return;
+    }
+
+    let allocated = 0;
+    targetRows.forEach((row, idx) => {
+        const h = rowHours[idx];
+        const wInp = row.querySelector('.ph-task-weight');
+        if (wInp) {
+            let pct = (idx === targetRows.length - 1) ? Math.round((100 - allocated) * 100) / 100 : Math.round((h / totalHours * 100) * 100) / 100;
+            allocated += pct;
+            wInp.value = Math.max(0, pct);
+        }
     });
 
     updateTaskWeightsSumIndicator(phaseCardId);
+}
+
+function calcWeightsFromHours(phaseCardId) {
+    updateTaskWeightsSumIndicator(phaseCardId);
+}
+
+function indentCreationTaskRow(btn, direction) {
+    const row = btn.closest('.phase-task-row');
+    if (!row) return;
+    const currentLvl = parseInt(row.dataset.level || '1', 10);
+    const newLvl = direction === 'indent' ? Math.min(3, currentLvl + 1) : Math.max(1, currentLvl - 1);
+    row.dataset.level = String(newLvl);
+    const indentPx = (newLvl - 1) * 20;
+    row.style.marginLeft = `${indentPx}px`;
+    row.style.paddingLeft = newLvl > 1 ? '6px' : '0px';
+    row.style.borderLeft = newLvl > 1 ? (newLvl === 2 ? '3px solid #0284c7' : '3px solid #9333ea') : 'none';
+    renumberPhasesAndTasks();
 }
 
 function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 0, defUnit = "dias", defWeight = 0) {
@@ -988,7 +1090,10 @@ function addProjectPhaseRow(defName = "", defTasks = [], defDays = 7, defCost = 
                         Suma Tareas: 0%
                     </span>
                 </div>
-                <div style="display: flex; gap: 4px; align-items: center;">
+                <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+                    <button type="button" onclick="distributeTaskWeightsByHours('${phaseId}')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 700;" title="Ponderar proporcionalmente según las Horas de Trabajo (Work / HH)">
+                        ⏱️ Por Horas (HH)
+                    </button>
                     <button type="button" onclick="distributeTaskWeightsEqually('${phaseId}')" class="btn-secondary" style="font-size: 10px; padding: 2px 7px; background: #f0fdf4; color: #166534; border-color: #86efac; font-weight: 700;" title="Repartir 100% de la etapa equitativamente entre las tareas">
                         ⚖️ Repartir 100%
                     </button>
@@ -1028,6 +1133,19 @@ function addProjectPhaseTask(phaseCardId) {
 function addProjectPhaseTaskRow(container, textValue = "", weightValue = "") {
     let cleanText = textValue;
     let taskWeight = weightValue;
+    let taskLevel = 1;
+    let taskHours = "";
+
+    const lvlMatch = cleanText.match(/\[(?:L|LVL|INDENT):\s*([1-9])\s*\]/i);
+    if (lvlMatch) {
+        taskLevel = parseInt(lvlMatch[1], 10);
+        cleanText = cleanText.replace(/\[(?:L|LVL|INDENT):\s*([1-9])\s*\]/i, '').trim();
+    }
+    const hMatch = cleanText.match(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i);
+    if (hMatch) {
+        taskHours = hMatch[1];
+        cleanText = cleanText.replace(/\[(?:H|HH|WORK):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:h|hrs|hh)?\]/i, '').trim();
+    }
     const wMatch = cleanText.match(/\[W:\s*([0-9]+(?:\.[0-9]+)?)\s*%?\]/i);
     if (wMatch) {
         if (!taskWeight) taskWeight = wMatch[1];
@@ -1042,15 +1160,26 @@ function addProjectPhaseTaskRow(container, textValue = "", weightValue = "") {
 
     const taskRow = document.createElement("div");
     taskRow.className = "phase-task-row";
-    taskRow.style.cssText = "display: flex; align-items: center; gap: 6px;";
+    taskRow.dataset.level = String(taskLevel);
+    const indentPx = (taskLevel - 1) * 20;
+    taskRow.style.cssText = `display: flex; align-items: center; gap: 6px; margin-left: ${indentPx}px; padding-left: ${taskLevel > 1 ? '6px' : '0px'}; border-left: ${taskLevel > 1 ? (taskLevel === 2 ? '3px solid #0284c7' : '3px solid #9333ea') : 'none'};`;
 
     taskRow.innerHTML = `
-        <span class="task-number-badge" style="font-size: 10px; font-weight: 800; background: #e2e8f0; color: #334155; padding: 4px 6px; border-radius: 4px; min-width: 34px; text-align: center;">
+        <!-- Botones de Sangría WBS (Nivel 1, 2, 3) -->
+        <div style="display: inline-flex; gap: 2px;">
+            <button type="button" class="btn-task-outdent" onclick="indentCreationTaskRow(this, 'outdent')" style="background: none; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 10px; padding: 2px 4px; color: ${taskLevel > 1 ? '#0284c7' : '#cbd5e1'}; cursor: ${taskLevel > 1 ? 'pointer' : 'default'};" title="⬅️ Subir nivel WBS" ${taskLevel <= 1 ? 'disabled' : ''}>◀</button>
+            <button type="button" class="btn-task-indent" onclick="indentCreationTaskRow(this, 'indent')" style="background: none; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 10px; padding: 2px 4px; color: ${taskLevel < 3 ? '#0284c7' : '#cbd5e1'}; cursor: ${taskLevel < 3 ? 'pointer' : 'default'};" title="➡️ Sangrar como Sub-tarea (Nivel WBS 2 o 3)" ${taskLevel >= 3 ? 'disabled' : ''}>▶</button>
+        </div>
+        <span class="task-number-badge" style="font-size: 10px; font-weight: 800; background: ${taskLevel > 1 ? '#e0f2fe' : '#e2e8f0'}; color: ${taskLevel > 1 ? '#0369a1' : '#334155'}; padding: 4px 6px; border-radius: 4px; min-width: 38px; text-align: center; font-family: monospace;">
             -
         </span>
-        <input type="text" class="form-input ph-task-input" placeholder="Escribe la tarea puntual (ej: Corte con oxicorte, Pases de planta...)" value="${cleanText.replaceAll('"', '&quot;')}" style="font-size: 11px; flex: 1;" required>
+        <input type="text" class="form-input ph-task-input" placeholder="Escribe la tarea puntual (ej: Corte con oxicorte, Pases de planta...)" value="${cleanText.replaceAll('"', '&quot;')}" style="font-size: 11px; flex: 1; font-weight: ${taskLevel === 1 ? '600' : 'normal'};" required>
+        <div style="display: flex; align-items: center; gap: 2px; background: #f0fdf4; padding: 2px 5px; border-radius: 4px; border: 1px solid #bbf7d0;" title="Horas Hombre estimadas de trabajo (Work / HH)">
+            <span style="font-size: 9.5px; font-weight: 700; color: #166534;"><i class="fa-regular fa-clock"></i> HH:</span>
+            <input type="text" inputmode="decimal" class="form-input ph-task-hours" placeholder="HH" value="${taskHours || ''}" oninput="calcWeightsFromHours('${phaseCardId}')" style="width: 44px; font-size: 11px; text-align: center; font-weight: bold; color: #166534; padding: 2px 4px; border: 1px solid #86efac; background: white; border-radius: 4px;">
+        </div>
         <div style="display: flex; align-items: center; gap: 3px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1;" title="Ponderación de la tarea dentro de esta etapa (deben sumar 100%)">
-            <span style="font-size: 9.5px; font-weight: 700; color: #475569; white-space: nowrap;">Peso en Etapa:</span>
+            <span style="font-size: 9.5px; font-weight: 700; color: #475569; white-space: nowrap;">Peso:</span>
             <input type="text" inputmode="decimal" class="form-input ph-task-weight" placeholder="Auto" value="${taskWeight || ''}" oninput="updateTaskWeightsSumIndicator('${phaseCardId}')" style="width: 48px; font-size: 11px; text-align: center; font-weight: bold; color: #0284c7; padding: 2px 4px; border: 1px solid #94a3b8; background: white; border-radius: 4px;">
             <span style="font-weight: 800; font-size: 10px; color: #64748b;">%</span>
         </div>
@@ -1068,35 +1197,46 @@ function removeProjectPhaseRow(phaseId) {
     updatePhaseWeightsSumIndicator();
 }
 
-
-
 function renumberPhasesAndTasks() {
-
     const phaseCards = document.querySelectorAll("#projectPhasesContainer .project-phase-card");
-
     phaseCards.forEach((card, pIdx) => {
-
         const badge = card.querySelector('.phase-number-badge');
-
         if (badge) badge.innerText = `Etapa ${pIdx + 1}`;
 
-
-
         const taskRows = card.querySelectorAll('.phase-task-row');
-
-        taskRows.forEach((tRow, tIdx) => {
-
+        let l1 = 0, l2 = 0, l3 = 0;
+        taskRows.forEach((tRow) => {
+            const lvl = parseInt(tRow.dataset.level || '1', 10);
+            let numStr = '';
+            if (lvl === 1) {
+                l1++;
+                l2 = 0;
+                l3 = 0;
+                numStr = `${pIdx + 1}.${l1}`;
+            } else if (lvl === 2) {
+                l2++;
+                l3 = 0;
+                numStr = `${pIdx + 1}.${l1}.${l2}`;
+            } else {
+                l3++;
+                numStr = `${pIdx + 1}.${l1}.${l2}.${l3}`;
+            }
             const tBadge = tRow.querySelector('.task-number-badge');
+            if (tBadge) tBadge.innerText = numStr;
 
-            if (tBadge) tBadge.innerText = `${pIdx + 1}.${tIdx + 1}`;
-
+            const outdentBtn = tRow.querySelector('.btn-task-outdent');
+            const indentBtn = tRow.querySelector('.btn-task-indent');
+            if (outdentBtn) {
+                outdentBtn.style.color = lvl > 1 ? '#0284c7' : '#cbd5e1';
+                outdentBtn.disabled = lvl <= 1;
+            }
+            if (indentBtn) {
+                indentBtn.style.color = lvl < 3 ? '#0284c7' : '#cbd5e1';
+                indentBtn.disabled = lvl >= 3;
+            }
         });
-
     });
-
 }
-
-
 
 function recalcProjectBudgetPreview() {
 
@@ -1186,12 +1326,15 @@ async function submitCreateProject(event) {
         taskRows.forEach(row => {
             const tName = row.querySelector(".ph-task-input")?.value.trim();
             const tWeight = parseLocalizedNumber(row.querySelector(".ph-task-weight")?.value);
+            const tHours = parseLocalizedNumber(row.querySelector(".ph-task-hours")?.value);
+            const tLvl = parseInt(row.dataset.level || '1', 10);
             if (tName) {
-                if (tWeight && tWeight > 0) {
-                    tasksList.push(`[ ] ${tName} [W:${tWeight}%]`);
-                } else {
-                    tasksList.push(`[ ] ${tName}`);
-                }
+                let parts = [];
+                if (tLvl > 1) parts.push(`[LVL:${tLvl}]`);
+                parts.push(`[ ] ${tName}`);
+                if (tHours && tHours > 0) parts.push(`[H:${tHours}]`);
+                if (tWeight && tWeight > 0) parts.push(`[W:${tWeight}%]`);
+                tasksList.push(parts.join(' '));
             }
         });
         const description = tasksList.length > 0 ? tasksList.join("; ") : name;
@@ -1228,8 +1371,11 @@ async function submitCreateProject(event) {
     for (let i = 0; i < phaseCards.length; i++) {
         const card = phaseCards[i];
         const pName = card.querySelector(".ph-name")?.value.trim() || `Etapa ${i + 1}`;
-        const taskWeights = Array.from(card.querySelectorAll(".ph-task-weight"))
-            .map(wInp => parseLocalizedNumber(wInp.value) || 0)
+        const allRows = Array.from(card.querySelectorAll(".phase-task-row"));
+        const topRows = allRows.filter(r => parseInt(r.dataset.level || '1', 10) === 1);
+        const targetRows = topRows.length > 0 ? topRows : allRows;
+        const taskWeights = targetRows
+            .map(r => parseLocalizedNumber(r.querySelector(".ph-task-weight")?.value) || 0)
             .filter(w => w > 0);
         const taskSum = taskWeights.reduce((a, b) => a + b, 0);
         if (taskSum > 100.05) {
@@ -2205,9 +2351,10 @@ async function viewProjectDetails(projectId) {
                                                 ${item.prog}% Auto
                                             </span>
                                         ` : `
-                                            <div style="display: inline-flex; align-items: center; gap: 2px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;" title="Editar porcentaje de avance de la tarea (0 - 100%)">
-                                                <input type="number" min="0" max="100" value="${item.prog}" onchange="updateProjectTaskProgress(${data.id}, ${ph.id}, ${tIdx}, this.value)" style="width: 44px; font-size: 11px; border: none; text-align: center; font-weight: 800; color: ${isChecked ? '#166534' : (item.prog > 0 ? '#0284c7' : '#64748b')}; outline: none;">
+                                            <div style="display: inline-flex; align-items: center; gap: 3px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;" title="Editar porcentaje de avance de la tarea (0 - 100%)">
+                                                <input type="number" id="task_prog_${ph.id}_${tIdx}" min="0" max="100" value="${item.prog}" onchange="updateProjectTaskProgress(${data.id}, ${ph.id}, ${tIdx}, this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault(); updateProjectTaskProgress(${data.id}, ${ph.id}, ${tIdx}, this.value);}" style="width: 44px; font-size: 11px; border: none; text-align: center; font-weight: 800; color: ${isChecked ? '#166534' : (item.prog > 0 ? '#0284c7' : '#64748b')}; outline: none;">
                                                 <span style="font-size: 10px; font-weight: 800; color: #64748b;">%</span>
+                                                <button type="button" onclick="updateProjectTaskProgress(${data.id}, ${ph.id}, ${tIdx}, document.getElementById('task_prog_${ph.id}_${tIdx}').value)" style="background: none; border: none; color: #059669; font-size: 11px; cursor: pointer; padding: 0 2px;" title="Guardar avance"><i class="fa-solid fa-floppy-disk"></i></button>
                                             </div>
                                         `}
 
@@ -2218,12 +2365,20 @@ async function viewProjectDetails(projectId) {
                         })()}
                     </div>` : '<p style="font-size: 11px; color: #94a3b8; margin: 4px 0 8px 0; font-style: italic;">No hay tareas asignadas en esta etapa.</p>'}
 
-                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="new_task_inp_${ph.id}" placeholder="+ Escribir nueva tarea / actividad para esta etapa..." style="flex: 2; min-width: 180px; font-size: 11px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addProjectTask(${data.id}, ${ph.id});}">
+                    <div id="btn_wrap_add_task_${ph.id}" style="margin-top: 6px;">
+                        <button type="button" onclick="document.getElementById('form_add_task_${ph.id}').style.display='flex'; document.getElementById('btn_wrap_add_task_${ph.id}').style.display='none'; document.getElementById('new_task_inp_${ph.id}').focus();" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; color: #0284c7; border: 1px dashed #7dd3fc; background: #f0f9ff; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-weight: 700;">
+                            <i class="fa-solid fa-plus"></i> + Agregar Tarea a esta Etapa
+                        </button>
+                    </div>
+                    <div id="form_add_task_${ph.id}" style="display: none; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 10px; border-radius: 6px;">
+                        <input type="text" id="new_task_inp_${ph.id}" placeholder="Descripción de la tarea / actividad..." style="flex: 2; min-width: 180px; font-size: 11px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addProjectTask(${data.id}, ${ph.id});}">
                         <input type="number" id="new_task_hours_${ph.id}" placeholder="Horas HH" title="Horas de trabajo estimadas (Work / HH)" style="width: 75px; font-size: 11px; padding: 5px 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; text-align: center; font-weight: bold; color: #059669;">
                         <input type="text" inputmode="decimal" id="new_task_weight_${ph.id}" placeholder="Peso %" title="Ponderación manual (%) opcional" style="width: 65px; font-size: 11px; padding: 5px 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; text-align: center; font-weight: bold; color: #0284c7;">
-                        <button type="button" onclick="addProjectTask(${data.id}, ${ph.id})" class="btn-primary" style="font-size: 11px; padding: 5px 10px; background: #0284c7; font-weight: 700; border-radius: 6px; white-space: nowrap; display: flex; align-items: center; gap: 4px;">
-                            <i class="fa-solid fa-plus"></i> + Tarea
+                        <button type="button" onclick="addProjectTask(${data.id}, ${ph.id})" class="btn-primary" style="font-size: 11px; padding: 5px 10px; background: #059669; font-weight: 700; border-radius: 6px; white-space: nowrap; display: flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar Tarea
+                        </button>
+                        <button type="button" onclick="document.getElementById('form_add_task_${ph.id}').style.display='none'; document.getElementById('btn_wrap_add_task_${ph.id}').style.display='block';" class="btn-secondary" style="font-size: 11px; padding: 5px 8px; border-radius: 6px; color: #64748b;">
+                            Cancelar
                         </button>
                     </div>
                 </div>`;
@@ -2349,9 +2504,14 @@ async function viewProjectDetails(projectId) {
                             <button type="button" onclick="openSubstituteMaterialModal(${r.id}, ${r.material_id || 0}, '${(r.material_name || '').replace(/'/g, "\\'")}', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #0284c7; border-color: #bae6fd; margin-right: 3px;" title="Sustituir por otro insumo del catálogo">
                                 <i class="fa-solid fa-shuffle"></i> Sustituir
                             </button>
-                            <button type="button" onclick="openReturnMaterialModal(${data.id}, ${r.material_id || 0}, '${(r.material_name || '').replace(/'/g, "\\'")}', '${r.material_code || ''}', ${r.quantity_dispatched || 0}, '${r.unit_measure || 'UND'}')" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #16a34a; border-color: #bbf7d0;" title="Devolver sobrante a almacén central">
+                            <button type="button" onclick="openReturnMaterialModal(${data.id}, ${r.material_id || 0}, '${(r.material_name || '').replace(/'/g, "\\'")}', '${r.material_code || ''}', ${r.quantity_dispatched || 0}, '${r.unit_measure || 'UND'}')" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #16a34a; border-color: #bbf7d0; margin-right: 3px;" title="Devolver sobrante a almacén central">
                                 <i class="fa-solid fa-arrow-rotate-left"></i> Devolver
                             </button>
+                            ${(r.status !== 'cancelado' && (r.quantity_pending > 0 || !r.quantity_dispatched)) ? `
+                            <button type="button" onclick="abortProjectRequisition(${r.id}, '${(r.material_name || '').replace(/'/g, "\\'")}', '${data.code || 'OBRA'}')" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #dc2626; border-color: #fca5a5; background: #fef2f2;" title="Anular o cancelar esta petición de insumo">
+                                <i class="fa-solid fa-ban"></i> Anular
+                            </button>
+                            ` : ''}
                         </td>
                     </tr>`;
                 }).join('');
@@ -3007,6 +3167,9 @@ if (typeof window !== 'undefined') {
     window.distributeModalTaskWeightsByHours = distributeModalTaskWeightsByHours;
     window.updateProjectTaskProgress = updateProjectTaskProgress;
     window.submitConfigurePhaseWeights = submitConfigurePhaseWeights;
+    window.indentCreationTaskRow = indentCreationTaskRow;
+    window.distributeTaskWeightsByHours = distributeTaskWeightsByHours;
+    window.calcWeightsFromHours = calcWeightsFromHours;
 }
 
 export { setProjectType };
@@ -3061,3 +3224,6 @@ export { updateModalTaskWeightsSumIndicator };
 export { distributeModalTaskWeightsEqually };
 export { distributeModalTaskWeightsByHours };
 export { submitConfigurePhaseWeights };
+export { indentCreationTaskRow };
+export { distributeTaskWeightsByHours };
+export { calcWeightsFromHours };

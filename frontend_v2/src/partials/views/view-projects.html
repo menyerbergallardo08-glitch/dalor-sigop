@@ -333,7 +333,10 @@
 
                             </div>
 
-                            <p style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Agrega las etapas principales. La suma de pesos de las etapas debe ser exactamente 100% del proyecto (o 0% para equiponderación automática). Cada tarea a su vez suma al 100% de su propia etapa.</p>
+                            <div style="background: #eff6ff; border-left: 4px solid #0284c7; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 11px; color: #1e3a8a; display: flex; flex-direction: column; gap: 4px;">
+                                <div><strong>Estructura WBS / EDT:</strong> Usa las flechas <strong>◀ / ▶</strong> en cada tarea para crear jerarquías de sub-tareas (Niveles 1, 1.1, 1.1.1). Puedes ingresar las horas estimadas (<strong>HH</strong>) y pulsar <strong>⏱️ Por Horas (HH)</strong> para calcular los pesos automáticamente según el esfuerzo.</div>
+                                <div style="color: #475569;"><strong>Importante:</strong> El campo <em>Peso (%)</em> define la ponderación de aporte al hito (deben sumar 100% o 0% para reparto automático). El <em>% de Avance de Ejecución en vivo (ej: 88%, 95%)</em> se registra y actualiza continuamente en <em>Seguimiento de la Obra</em> tras crear el proyecto.</div>
+                            </div>
 
                             <!-- Barra de Control de Ponderación en Vivo -->
                             <div id="project_phases_weight_bar" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">

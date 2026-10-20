@@ -5,7 +5,8 @@ from datetime import datetime
 from app.core.database import get_db
 from app.models.models import (
     AssetRentalLoan, AssetRentalLoanItem, Asset, AuditLog, Material, 
-    MaterialMovement, AccountPayable, AccountReceivable, Client
+    MaterialMovement, AccountPayable, AccountReceivable, Client,
+    ResourceAssignmentHistory
 )
 from app.api.deps import get_current_active_user
 from .rentals_common import RentalReturnIn, RentalPartialReturnIn
@@ -55,6 +56,20 @@ def return_rental_loan(
                         asset_obj.current_location = "Sede Central Guacara"
                         asset_obj.current_custodian_name = "Almacén Central"
                         asset_obj.return_due_date = None
+                        hist = ResourceAssignmentHistory(
+                            project_id=None,
+                            resource_type="asset",
+                            resource_id=asset_obj.id,
+                            resource_code=asset_obj.asset_code,
+                            resource_name=asset_obj.name,
+                            custodian_name="Almacén Central",
+                            origin_location=f"Custodia: {item.external_entity}",
+                            destination_location="Sede Central Guacara",
+                            status="disponible_base",
+                            transfer_code=item.operation_code,
+                            notes=f"Retorno de {item.operation_type.upper()} [{item.operation_code}] de {item.external_entity}"
+                        )
+                        db.add(hist)
 
             sub.returned_quantity = sub.quantity
             sub.status = "devuelto_total"
@@ -70,6 +85,20 @@ def return_rental_loan(
             asset_obj.current_location = "Sede Central Guacara"
             asset_obj.current_custodian_name = "Almacén Central"
             asset_obj.return_due_date = None
+            hist = ResourceAssignmentHistory(
+                project_id=None,
+                resource_type="asset",
+                resource_id=asset_obj.id,
+                resource_code=asset_obj.asset_code,
+                resource_name=asset_obj.name,
+                custodian_name="Almacén Central",
+                origin_location=f"Custodia: {item.external_entity}",
+                destination_location="Sede Central Guacara",
+                status="disponible_base",
+                transfer_code=item.operation_code,
+                notes=f"Retorno de {item.operation_type.upper()} [{item.operation_code}] de {item.external_entity}"
+            )
+            db.add(hist)
 
     if item.material_id and item.direction == "dalor_a_tercero" and not item.items:
         mat_obj = db.query(Material).filter(Material.id == item.material_id).first()

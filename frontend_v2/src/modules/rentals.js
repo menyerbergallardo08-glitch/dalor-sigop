@@ -1022,6 +1022,12 @@ async function submitCreateRental(event) {
             if (rentalCartItems.length === 1) {
                 payload.equipment_name = rentalCartItems[0].name;
                 payload.equipment_code = rentalCartItems[0].code;
+                if (rentalCartItems[0].item_type === "asset") {
+                    payload.asset_id = rentalCartItems[0].asset_id;
+                } else if (rentalCartItems[0].item_type === "material") {
+                    payload.material_id = rentalCartItems[0].material_id;
+                    payload.material_quantity = rentalCartItems[0].quantity;
+                }
             } else {
                 const names = rentalCartItems.map(it => it.name).slice(0, 2);
                 payload.equipment_name = `Lote (${rentalCartItems.length} recursos): ${names.join(", ")}${rentalCartItems.length > 2 ? '...' : ''}`;
@@ -1075,7 +1081,7 @@ async function submitCreateRental(event) {
 
         window.closeModal?.('modalRentalLoan');
         await loadRentalsList();
-        if (typeof window.loadAssets === 'function') await window.loadAssets();
+        refreshAllResourceViews();
         if (typeof window.loadMaterialsList === 'function') await window.loadMaterialsList();
         if (typeof window.loadProjectsList === 'function') await window.loadProjectsList();
         await populateRentalResources();
@@ -1084,6 +1090,13 @@ async function submitCreateRental(event) {
     } catch (e) {
         alert("Error: " + e.message);
     }
+}
+
+function refreshAllResourceViews() {
+    if (typeof window.loadToolsList === 'function') window.loadToolsList();
+    if (typeof window.loadMachineryList === 'function') window.loadMachineryList();
+    if (typeof window.loadFleetList === 'function') window.loadFleetList();
+    if (typeof window.loadResourceDashboard === 'function') window.loadResourceDashboard();
 }
 
 // --- MODAL DE RETORNO (PARCIAL Y COMPLETO CON LIQUIDACIÓN FINANCIERA) ---
@@ -1374,7 +1387,7 @@ async function submitRentalReturnAll(event) {
 
         window.closeModal?.('modalRentalReturn');
         await loadRentalsList();
-        if (typeof window.loadAssets === 'function') await window.loadAssets();
+        refreshAllResourceViews();
         if (typeof window.loadMaterialsList === 'function') await window.loadMaterialsList();
         await populateRentalResources();
         alert(data.message || "Devolución completa del lote registrada exitosamente.");
@@ -1417,7 +1430,7 @@ async function submitRentalReturnPartial(rentalId, subItemId) {
 
         alert(data.message || "Retorno parcial registrado.");
         await loadRentalsList();
-        if (typeof window.loadAssets === 'function') await window.loadAssets();
+        refreshAllResourceViews();
         if (typeof window.loadMaterialsList === 'function') await window.loadMaterialsList();
         await populateRentalResources();
         openReturnRentalModal(rentalId);
@@ -1585,7 +1598,7 @@ async function deleteRentalRecord(rentalId) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Error al eliminar");
         loadRentalsList();
-        if (typeof window.loadAssets === 'function') window.loadAssets();
+        refreshAllResourceViews();
     } catch (e) {
         alert("Error al anular: " + e.message);
     }

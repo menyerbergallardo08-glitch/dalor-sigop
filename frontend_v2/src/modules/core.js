@@ -1166,22 +1166,21 @@ function openModal(modalId) {
 
     if (el) {
         el.classList.remove("hidden");
-        el.style.removeProperty("display");
+        el.style.setProperty("display", "flex", "important");
     }
 
     const floatingBtn = document.getElementById("btnFloatingLogout");
     if (floatingBtn) floatingBtn.style.setProperty("display", "none", "important");
 }
 
-
-
 function closeModal(modalId) {
-
     const el = document.getElementById(modalId);
+    if (el) {
+        el.classList.add("hidden");
+        el.style.setProperty("display", "none", "important");
+    }
 
-    if (el) el.classList.add("hidden");
-
-    const openModals = document.querySelectorAll(".modal-overlay:not(.hidden), .modal:not(.hidden)");
+    const openModals = document.querySelectorAll(".modal-overlay:not(.hidden):not([style*='display: none']), .modal:not(.hidden):not([style*='display: none'])");
     if (openModals.length === 0) {
         const floatingBtn = document.getElementById("btnFloatingLogout");
         if (floatingBtn) floatingBtn.style.removeProperty("display");

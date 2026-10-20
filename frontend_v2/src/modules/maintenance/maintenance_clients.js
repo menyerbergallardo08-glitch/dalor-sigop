@@ -359,9 +359,9 @@ async function submitCreateClient(event) {
             if (form) form.reset();
 
             // Recargar datos maestros en caliente desde la base de datos
-            await loadInitialMasterData();
-            populateSelectDropdowns();
-            populatePlanDropdownSelectors();
+            if (typeof window.loadInitialMasterData === 'function') await window.loadInitialMasterData();
+            if (typeof window.populateSelectDropdowns === 'function') window.populateSelectDropdowns();
+            if (typeof window.populatePlanDropdownSelectors === 'function') window.populatePlanDropdownSelectors();
 
             // Auto-seleccionar el cliente recién creado en el selector activo
             if (document.getElementById("quote_client_id")) {

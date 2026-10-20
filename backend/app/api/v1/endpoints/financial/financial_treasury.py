@@ -37,13 +37,15 @@ class DirectCollectionCreate(BaseModel):
 
 class PartnerWithdrawalCreate(BaseModel):
     partner_name: str
+    concept: Optional[str] = "Retiro a cuenta de utilidades / Gasto personal"
     withdrawal_date: Optional[datetime] = None
     amount_usd: float
     amount_bs: Optional[float] = 0.0
     exchange_rate: Optional[float] = 850.0
     currency: Optional[str] = "USD"
-    bank_account: Optional[str] = "Banesco USD"
+    bank_account: Optional[str] = None
     payment_method: Optional[str] = "transferencia"
+    financial_account_id: Optional[int] = None
     reference_number: Optional[str] = None
     notes: Optional[str] = None
 
@@ -107,6 +109,7 @@ def get_partner_withdrawals(db: Session = Depends(get_db)):
     return db.query(PartnerWithdrawal).order_by(PartnerWithdrawal.withdrawal_date.desc()).all()
 
 @router.post("/withdrawals")
+@router.post("/partners/withdrawals")
 def create_partner_withdrawal(
     w_in: PartnerWithdrawalCreate,
     db: Session = Depends(get_db),
@@ -118,15 +121,24 @@ def create_partner_withdrawal(
     if w_in.amount_usd <= 0 and (w_in.amount_bs or 0) <= 0:
         raise HTTPException(status_code=400, detail="El monto del retiro debe ser mayor a cero.")
 
+    exchange_rate = w_in.exchange_rate or 850.0
+    amount_bs = w_in.amount_bs if (w_in.amount_bs and w_in.amount_bs > 0) else round(w_in.amount_usd * exchange_rate, 2)
+
+    fin_acc_id = w_in.financial_account_id
+    if not fin_acc_id and w_in.bank_account:
+        acc = db.query(FinancialAccount).filter(FinancialAccount.name.ilike(f"%{w_in.bank_account}%")).first()
+        if acc:
+            fin_acc_id = acc.id
+
     withdrawal = PartnerWithdrawal(
         partner_name=w_in.partner_name,
         withdrawal_date=w_in.withdrawal_date or datetime.utcnow(),
+        concept=w_in.concept or "Retiro a cuenta de utilidades / Gasto personal",
         amount_usd=w_in.amount_usd,
-        amount_bs=w_in.amount_bs or 0.0,
-        exchange_rate=w_in.exchange_rate or 850.0,
-        currency=w_in.currency or "USD",
-        bank_account=w_in.bank_account,
-        payment_method=w_in.payment_method,
+        amount_bs=amount_bs,
+        exchange_rate=exchange_rate,
+        payment_method=w_in.payment_method or "transferencia",
+        financial_account_id=fin_acc_id,
         reference_number=w_in.reference_number,
         notes=w_in.notes
     )

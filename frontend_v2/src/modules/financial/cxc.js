@@ -1,4 +1,5 @@
 // Sigop ERP - Submódulo Financiero Modularizado
+import { printOfficialFiscalInvoice } from './fiscal_invoice_print.js';
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) || '/api/v1';
 
 function safeParseFloat(val) {
@@ -108,11 +109,14 @@ function switchFinancialSubtab(subtabName) {
     if (activePane) activePane.classList.remove('hidden');
     if (activeBtn) activeBtn.classList.add('active');
 
-    if (subtabName === 'cxc') loadReceivablesList();
-    if (subtabName === 'cxp') loadPayablesList();
-    if (subtabName === 'summary') loadTreasurySummary();
-    if (subtabName === 'partners') loadPartnersWithdrawalsList();
-    if (subtabName === 'fiscal') loadFiscalBooksView();
+    if (subtabName === 'cxc') {
+        if (typeof loadReceivablesList === 'function') loadReceivablesList();
+        else if (typeof window.loadReceivablesList === 'function') window.loadReceivablesList();
+    }
+    if (subtabName === 'cxp' && typeof window.loadPayablesList === 'function') window.loadPayablesList();
+    if (subtabName === 'summary' && typeof window.loadTreasurySummary === 'function') window.loadTreasurySummary();
+    if (subtabName === 'partners' && typeof window.loadPartnersWithdrawalsList === 'function') window.loadPartnersWithdrawalsList();
+    if (subtabName === 'fiscal' && typeof window.loadFiscalBooksView === 'function') window.loadFiscalBooksView();
 }
 
 
@@ -253,6 +257,7 @@ function renderReceivablesPaginated() {
             : '';
 
         const safeClientName = (r.client_name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const invoiceBtn = `<button type="button" onclick="printOfficialFiscalInvoice(${r.id})" class="btn-primary" style="font-size: 10px; padding: 4px 7px; background: #0284c7; color: white; font-weight: 800; border-radius: 4px;" title="Ver e Imprimir Factura Fiscal Forma Libre SENIAT"><i class="fa-solid fa-file-invoice-dollar"></i> Factura</button>`;
         const bitacoraBtn = `<button type="button" onclick="openCxcHistoryModal(${r.id}, ${r.client_id || 0}, '${invNum}', '${safeClientName}')" class="btn-secondary" style="font-size: 10.5px; padding: 4px 7px; color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; font-weight: 800;" title="Ver Bitácora de Cobranza & Seguimiento"><i class="fa-solid fa-clock-rotate-left"></i> Bitácora</button>`;
 
         let actionsHtml = '';
@@ -267,12 +272,13 @@ function renderReceivablesPaginated() {
         if (hasSurplus) {
             actionsHtml += ` <button onclick="openClientRefundModal(${r.id})" class="btn-secondary" style="font-size: 10.5px; padding: 4px 8px; color: #059669; border-color: #a7f3d0; background: #ecfdf5; font-weight: 800;" title="Emitir Reembolso de Saldo a Favor al Cliente"><i class="fa-solid fa-arrow-rotate-left"></i> Reembolsar</button>`;
         }
-        actionsHtml = bitacoraBtn + ' ' + actionsHtml;
+        actionsHtml = invoiceBtn + ' ' + bitacoraBtn + ' ' + actionsHtml;
 
         return `
         <tr style="border-bottom: 1px solid #f1f5f9;">
             <td style="font-weight: 800; color: var(--dalor-navy);">
-                <div>${invNum}</div>
+                <div style="font-size: 12.5px;">${invNum}</div>
+                ${r.control_number ? `<div style="font-size: 9.5px; color: #059669; font-family: monospace; font-weight: 800; margin-top: 1px;" title="Número de Control Forma Libre SENIAT"><i class="fa-solid fa-shield-halved"></i> Ctrl: ${r.control_number}</div>` : ''}
                 <div style="margin-top: 2px;">${typeBadge}</div>
                 ${surplusBadge}
             </td>
@@ -320,10 +326,12 @@ async function loadReceivablesList() {
         const list = await res.json();
         allReceivablesList = Array.isArray(list) ? list : [];
         renderReceivablesPaginated();
+        checkDirectorCorrelativeAccess();
     } catch (e) {
         if (!hasCached) {
             tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #e11d48; padding: 16px;">Error al cargar cuentas por cobrar.</td></tr>`;
         }
+        checkDirectorCorrelativeAccess();
     }
 }
 
@@ -384,19 +392,10 @@ async function openNewReceivableModal() {
         };
     }
 
-    // Correlativo consecutivo oficial
-    try {
-        const resCode = await authFetch(`${API_BASE}/financial/next-invoice-code?prefix=FAC`);
-        if (resCode.ok) {
-            const dataCode = await resCode.json();
-            const invInp = document.getElementById("cxc_invoice_number");
-            if (invInp && (!invInp.value || invInp.value.startsWith('FAC-'))) {
-                invInp.value = dataCode.next_code;
-            }
-        }
-    } catch(e) {
-        console.warn("Error fetching next invoice code:", e);
-    }
+    // Inicializar selector de tipo de documento
+    const docTypeSel = document.getElementById("cxc_doc_type");
+    if (docTypeSel) docTypeSel.value = "FAC";
+    await onCxcDocTypeChanged();
 
     // Inicializar estado del selector de obras
     onCxcClientChanged();
@@ -408,6 +407,98 @@ async function openNewReceivableModal() {
     if (dueDateInput) dueDateInput.value = d.toISOString().split('T')[0];
 
     openModal("modalReceivable");
+}
+
+async function onCxcDocTypeChanged() {
+    const docTypeSel = document.getElementById("cxc_doc_type");
+    const docType = docTypeSel ? docTypeSel.value : 'FAC';
+    const badgeEl = document.getElementById("cxc_doc_type_badge");
+    const hintEl = document.getElementById("cxc_doc_type_hint");
+    const invInp = document.getElementById("cxc_invoice_number");
+    const ctrlInp = document.getElementById("cxc_control_number");
+    const btnAdjust = document.getElementById("btnEmergencyInvoiceAdjust");
+    const lblInvoice = document.getElementById("lbl_cxc_invoice_number");
+    const lblControl = document.getElementById("lbl_cxc_control_number");
+
+    if (docType === 'FAC') {
+        if (badgeEl) {
+            badgeEl.textContent = 'Factura Fiscal SENIAT';
+            badgeEl.style.background = '#dbeafe';
+            badgeEl.style.color = '#1e40af';
+        }
+        if (hintEl) {
+            hintEl.innerHTML = 'ℹ️ <b>Factura Oficial Forma Libre:</b> Asigna correlativo fiscal numerado e IVA 16%. Entra en el Libro de Ventas SENIAT.';
+        }
+        if (lblInvoice) lblInvoice.textContent = 'Nº Factura *';
+        if (lblControl) lblControl.textContent = 'Nº Control Forma Libre';
+        if (ctrlInp) {
+            ctrlInp.disabled = false;
+            ctrlInp.placeholder = '00-000558';
+        }
+        if (btnAdjust) btnAdjust.style.display = 'inline-block';
+    } else if (docType === 'VAL') {
+        if (badgeEl) {
+            badgeEl.textContent = 'Valuación de Obra (No Fiscal)';
+            badgeEl.style.background = '#fef3c7';
+            badgeEl.style.color = '#92400e';
+        }
+        if (hintEl) {
+            hintEl.innerHTML = '🏗️ <b>Valuación de Avance / Cobro Interno:</b> Registra la cuenta por cobrar y amortiza el contrato de la obra sin generar débito fiscal SENIAT ni requerir papel de forma libre.';
+        }
+        if (lblInvoice) lblInvoice.textContent = 'Nº Valuación *';
+        if (lblControl) lblControl.textContent = 'Nº Control (No Aplica)';
+        if (ctrlInp) {
+            ctrlInp.value = '';
+            ctrlInp.disabled = true;
+            ctrlInp.placeholder = 'N/A (No Fiscal)';
+        }
+        if (btnAdjust) btnAdjust.style.display = 'none';
+    } else if (docType === 'NE') {
+        if (badgeEl) {
+            badgeEl.textContent = 'Nota de Entrega (No Fiscal)';
+            badgeEl.style.background = '#e0e7ff';
+            badgeEl.style.color = '#3730a3';
+        }
+        if (hintEl) {
+            hintEl.innerHTML = '📦 <b>Nota de Entrega / Despacho:</b> Cobro respaldado por guía de entrega/salida de materiales o servicios no fiscalizados.';
+        }
+        if (lblInvoice) lblInvoice.textContent = 'Nº Nota de Entrega *';
+        if (lblControl) lblControl.textContent = 'Nº Control (No Aplica)';
+        if (ctrlInp) {
+            ctrlInp.value = '';
+            ctrlInp.disabled = true;
+            ctrlInp.placeholder = 'N/A (No Fiscal)';
+        }
+        if (btnAdjust) btnAdjust.style.display = 'none';
+    } else if (docType === 'REC') {
+        if (badgeEl) {
+            badgeEl.textContent = 'Recibo Interno (No Fiscal)';
+            badgeEl.style.background = '#f3e8ff';
+            badgeEl.style.color = '#6b21a8';
+        }
+        if (hintEl) {
+            hintEl.innerHTML = '🧾 <b>Recibo de Anticipo / Cobro Interno:</b> Comprobante interno para anticipos o pagos por caja/banco en moneda extranjera.';
+        }
+        if (lblInvoice) lblInvoice.textContent = 'Nº Recibo *';
+        if (lblControl) lblControl.textContent = 'Nº Control (No Aplica)';
+        if (ctrlInp) {
+            ctrlInp.value = '';
+            ctrlInp.disabled = true;
+            ctrlInp.placeholder = 'N/A (No Fiscal)';
+        }
+        if (btnAdjust) btnAdjust.style.display = 'none';
+    }
+
+    try {
+        const resCode = await authFetch(`${API_BASE}/financial/next-invoice-code?prefix=${docType}`);
+        if (resCode.ok) {
+            const dataCode = await resCode.json();
+            if (invInp) invInp.value = dataCode.next_code || '';
+            if (ctrlInp && docType === 'FAC') ctrlInp.value = dataCode.next_control || '';
+        }
+    } catch(e) {
+        console.warn("Error fetching next code for doc type:", e);
+    }
 }
 
 function onCxcClientChanged() {
@@ -450,38 +541,28 @@ function onCxcClientChanged() {
     }
 
     projSel.disabled = false;
+    if (warnEl) warnEl.remove();
 
-    if (clientProjects.length === 0) {
-        projSel.innerHTML = '<option value="" disabled selected>⚠️ Este cliente no posee obras con saldo pendiente por facturar</option>';
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.5';
-            submitBtn.style.cursor = 'not-allowed';
-        }
-        if (!warnEl) {
-            warnEl = document.createElement("div");
-            warnEl.id = warnElId;
-            warnEl.style.cssText = "font-size: 11.5px; color: #dc2626; font-weight: 700; background: #fef2f2; border: 1px solid #fecaca; padding: 6px 10px; border-radius: 6px; margin-top: 4px;";
-            warnEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Este cliente no tiene proyectos con saldo disponible por facturar (contratos 100% facturados o sin obras registradas).';
-            projSel.parentNode.appendChild(warnEl);
-        }
-    } else {
-        if (warnEl) warnEl.remove();
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = '1';
-            submitBtn.style.cursor = 'pointer';
-        }
-        let opts = `<option value="">-- Seleccionar Obra (${clientProjects.length} con saldo por facturar) --</option>`;
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+    }
+
+    let opts = '<option value="" selected>📄 Facturación Libre / Servicio General (Sin Proyecto)</option>';
+    if (clientProjects.length > 0) {
+        opts += `<optgroup label="Obras con Saldo Pendiente por Facturar (${clientProjects.length})">`;
         opts += clientProjects.map(p => {
             const unbilled = Math.max(0, (parseFloat(p.contract_amount_usd) || 0) - (parseFloat(p.total_billed_cxc_usd) || 0));
             return `<option value="${p.id}">[${p.code}] ${p.name} (Por facturar: $${unbilled.toFixed(2)})</option>`;
         }).join('');
-        projSel.innerHTML = opts;
-        if (clientProjects.length === 1) {
-            projSel.value = String(clientProjects[0].id);
-            onCxcProjectChanged();
-        }
+        opts += `</optgroup>`;
+    }
+    projSel.innerHTML = opts;
+
+    if (clientProjects.length === 1) {
+        projSel.value = String(clientProjects[0].id);
+        onCxcProjectChanged();
     }
 }
 
@@ -492,8 +573,7 @@ function onCxcProjectChanged() {
     const pId = projSel?.value;
 
     if (!pId) {
-        if (amtInput) amtInput.value = "";
-        if (descInput) descInput.value = "";
+        // En modo Facturación Libre / Sin Proyecto, preservar lo que el usuario haya escrito
         return;
     }
 
@@ -529,6 +609,7 @@ async function submitCreateReceivable(e) {
         }
 
         const invoiceNum  = (document.getElementById("cxc_invoice_number")?.value || '').trim();
+        const controlNum  = (document.getElementById("cxc_control_number")?.value || '').trim();
         const clientId    = parseInt(document.getElementById("cxc_client_id")?.value || '0');
         const projVal     = document.getElementById("cxc_project_id")?.value || '';
         const projId      = (projVal && projVal !== '' && projVal !== '0') ? parseInt(projVal) : null;
@@ -556,25 +637,29 @@ async function submitCreateReceivable(e) {
             safeDueDateIso = !isNaN(parsedD.getTime()) ? parsedD.toISOString() : new Date().toISOString();
         }
 
-        // Desglose fiscal
-        const baseUsd    = parseFloat((amountVal / 1.16).toFixed(2));
-        const taxUsd     = parseFloat((amountVal - baseUsd).toFixed(2));
-        const retIvaUsd  = taxRetained > 0 ? parseFloat((taxRetained * 0.75).toFixed(2)) : 0.0;
-        const retIslrUsd = taxRetained > 0 ? parseFloat((taxRetained * 0.25).toFixed(2)) : 0.0;
+        const docType = (document.getElementById("cxc_doc_type")?.value || 'FAC').trim();
+        const isFiscal = docType === 'FAC';
+
+        // Desglose fiscal vs no fiscal
+        const baseUsd    = isFiscal ? parseFloat((amountVal / 1.16).toFixed(2)) : amountVal;
+        const taxUsd     = isFiscal ? parseFloat((amountVal - baseUsd).toFixed(2)) : 0.0;
+        const retIvaUsd  = (isFiscal && taxRetained > 0) ? parseFloat((taxRetained * 0.75).toFixed(2)) : 0.0;
+        const retIslrUsd = (isFiscal && taxRetained > 0) ? parseFloat((taxRetained * 0.25).toFixed(2)) : 0.0;
         const netUsd     = parseFloat((amountVal - taxRetained).toFixed(2));
 
         const payload = {
             invoice_number:       invoiceNum,
+            control_number:       isFiscal ? (controlNum || undefined) : undefined,
             client_id:            clientId,
             project_id:           projId,
-            description:          desc || `Valuación / Factura ${invoiceNum}`,
+            description:          desc || `${isFiscal ? 'Factura' : 'Valuación'} ${invoiceNum}`,
             due_date:             safeDueDateIso,
             amount_usd:           amountVal,
             taxable_base_usd:     baseUsd,
             tax_amount_usd:       taxUsd,
-            tax_withholding_rate: 75.0,
+            tax_withholding_rate: isFiscal ? 75.0 : 0.0,
             tax_withholding_usd:  retIvaUsd,
-            islr_rate:            2.0,
+            islr_rate:            isFiscal ? 2.0 : 0.0,
             islr_withholding_usd: retIslrUsd,
             net_amount_usd:       netUsd,
             tax_retained_usd:     taxRetained > 0 ? taxRetained : (retIvaUsd + retIslrUsd),
@@ -1496,16 +1581,10 @@ async function openCreateCxCForProject(projId) {
             }
         }
 
-        try {
-            const resCode = await authFetch(`${API_BASE}/financial/next-invoice-code?prefix=FAC`);
-            if (resCode.ok) {
-                const dataCode = await resCode.json();
-                const invInput = document.getElementById("cxc_invoice_number");
-                if (invInput) invInput.value = dataCode.next_code;
-            }
-        } catch(e) {
-            const invInput = document.getElementById("cxc_invoice_number");
-            if (invInput) invInput.value = `FAC-2026-001`;
+        const docTypeSel = document.getElementById("cxc_doc_type");
+        if (docTypeSel) {
+            docTypeSel.value = "VAL"; // Sugerir por defecto Valuación de Obra
+            await onCxcDocTypeChanged();
         }
 
         const toastMsg = (billedAmt > 0)
@@ -1861,6 +1940,105 @@ if (typeof window !== 'undefined') {
     window.exportCxcExcel = exportCxcExcel;
     window.printClientAccountStatement = printClientAccountStatement;
     window.openClientStatementSelectorModal = openClientStatementSelectorModal;
+    window.printOfficialFiscalInvoice = printOfficialFiscalInvoice;
+    window.onCxcDocTypeChanged = onCxcDocTypeChanged;
+    window.checkDirectorCorrelativeAccess = checkDirectorCorrelativeAccess;
+    window.openEmergencyInvoiceOverrideModal = openEmergencyInvoiceOverrideModal;
+    window.submitEmergencyInvoiceOverride = submitEmergencyInvoiceOverride;
+}
+
+function checkDirectorCorrelativeAccess() {
+    try {
+        const u = window.currentUser || (window.State && window.State.currentUser) || JSON.parse(localStorage.getItem('dalor_user') || 'null');
+        if (!u) return false;
+        const uname = (u.username || '').toLowerCase();
+        const role = (u.role_name || u.role || '').toLowerCase();
+        const isDirector = uname === 'director' || role.includes('director') || role.includes('gerencia') || role.includes('admin') || Boolean(u.is_superuser);
+        const btn = document.getElementById('btnEmergencyInvoiceOverride');
+        if (btn) {
+            btn.style.display = isDirector ? 'inline-flex' : 'none';
+        }
+        return isDirector;
+    } catch(e) {
+        return false;
+    }
+}
+
+async function openEmergencyInvoiceOverrideModal() {
+    if (!checkDirectorCorrelativeAccess()) {
+        alert("Acceso exclusivo para directores y administradores generales.");
+        return;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/financial/next-invoice-code?prefix=FAC`);
+        if (res.ok) {
+            const data = await res.json();
+            const invInput = document.getElementById('override_next_invoice_code');
+            const ctrlInput = document.getElementById('override_next_control_number');
+            if (invInput) invInput.value = data.next_code || '';
+            if (ctrlInput) ctrlInput.value = data.next_control || '';
+        }
+    } catch(e) {
+        console.warn("Error consultando correlativo actual:", e);
+    }
+
+    const reasonEl = document.getElementById('override_correlative_reason');
+    if (reasonEl) reasonEl.value = '';
+
+    openModal('modalEmergencyInvoiceCorrelative');
+}
+
+async function submitEmergencyInvoiceOverride(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    const nextInv = (document.getElementById('override_next_invoice_code')?.value || '').trim();
+    const nextCtrl = (document.getElementById('override_next_control_number')?.value || '').trim();
+    const reason = (document.getElementById('override_correlative_reason')?.value || '').trim();
+
+    if (!nextInv) {
+        alert("Debe indicar el próximo número de factura.");
+        return;
+    }
+    if (!reason || reason.length < 5) {
+        alert("Debe indicar un motivo justificativo detallado (mínimo 5 caracteres).");
+        return;
+    }
+
+    if (!confirm(`⚠️ ¿Está seguro de ajustar el correlativo fiscal a FACTURA [${nextInv}] y CONTROL [${nextCtrl || 'Sin cambio'}]?\n\nEsta acción modificará la secuencia del Libro Fiscal de Ventas.`)) {
+        return;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/financial/override-correlative`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                next_invoice_code: nextInv,
+                next_control_number: nextCtrl || null,
+                reason: reason
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Error al actualizar correlativo fiscal");
+
+        closeModal('modalEmergencyInvoiceCorrelative');
+
+        // Actualizar formulario de facturación si está abierto
+        const cxcInv = document.getElementById('cxc_invoice_number');
+        if (cxcInv && data.next_code) cxcInv.value = data.next_code;
+        const cxcCtrl = document.getElementById('cxc_control_number');
+        if (cxcCtrl && data.next_control) cxcCtrl.value = data.next_control;
+
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(`✅ Correlativo actualizado: Próxima Factura [${data.next_code}] & Control [${data.next_control}]`, 'success');
+        } else {
+            alert(`✅ Correlativo fiscal actualizado exitosamente por Dirección.\nPróxima Factura: ${data.next_code}\nPróximo Control: ${data.next_control}`);
+        }
+    } catch(e) {
+        alert("Error: " + e.message);
+    }
 }
 
 export { openFinancialSubtab };
@@ -1896,4 +2074,9 @@ export { submitBadDebtWriteOff };
 export { exportCxcExcel };
 export { printClientAccountStatement };
 export { openClientStatementSelectorModal };
+export { printOfficialFiscalInvoice };
+export { checkDirectorCorrelativeAccess };
+export { openEmergencyInvoiceOverrideModal };
+export { submitEmergencyInvoiceOverride };
+export { onCxcDocTypeChanged };
 

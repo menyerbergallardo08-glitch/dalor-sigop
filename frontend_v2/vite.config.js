@@ -17,10 +17,7 @@ export default defineConfig({
       },
       output: {
         manualChunks(id) {
-          if (id.includes('modules/financial/cxc')) return 'financial-cxc';
-          if (id.includes('modules/financial/cxp')) return 'financial-cxp';
-          if (id.includes('modules/financial/treasury')) return 'financial-treasury';
-          if (id.includes('modules/financial')) return 'financial-core';
+          if (id.includes('modules/financial')) return 'financial';
           if (id.includes('modules/projects/projects_tracking')) return 'projects-tracking';
           if (id.includes('modules/projects/projects_requisitions')) return 'projects-requisitions';
           if (id.includes('modules/projects')) return 'projects-core';

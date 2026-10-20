@@ -15,6 +15,7 @@ backups/daily/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite
 *.log
 node_modules/
 # dist/ is intentionally tracked so Render can serve the compiled frontend

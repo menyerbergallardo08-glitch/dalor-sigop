@@ -166,7 +166,8 @@ def get_tools_summary(db: Session = Depends(get_db)):
             }
         g = groups[key]
         g["total"] += 1
-        is_avail = (status == "disponible_base" or not proj_id)
+        st_clean = (status or "").lower().strip()
+        is_avail = (st_clean in ["disponible_base", "disponible"] or not st_clean) and not proj_id
         if is_avail:
             g["available"] += 1
         else:

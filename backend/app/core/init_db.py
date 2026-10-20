@@ -114,6 +114,8 @@ def init_db():
         f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_withholding_usd FLOAT DEFAULT 0.0;",
         f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_voucher_number VARCHAR(50);",
         f"ALTER TABLE accounts_payable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}municipal_voucher_date TIMESTAMP;",
+        f"ALTER TABLE accounts_receivable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}control_number VARCHAR(50);",
+        f"ALTER TABLE accounts_receivable ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}fiscal_invoice_number VARCHAR(50);",
         f"ALTER TABLE quotations ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}coletilla_divisas BOOLEAN DEFAULT TRUE;",
         f"ALTER TABLE quotations ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}coletilla_bolivares BOOLEAN DEFAULT FALSE;",
         f"ALTER TABLE quotations ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}coletilla_modalidad BOOLEAN DEFAULT TRUE;",
@@ -747,7 +749,8 @@ def init_db():
                     UPDATE assets 
                     SET current_project_id = NULL, status = 'disponible_base', current_location = 'Sede Central Dalor (Guacara)'
                     WHERE current_project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
-                    
+                """))
+                isolated_conn.execute(text(f"""
                     UPDATE personnel 
                     SET current_project_id = NULL, status = 'disponible_base', current_location = 'Sede Central Dalor (Guacara)'
                     WHERE current_project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
@@ -861,9 +864,25 @@ def init_db():
                             std_code = f"CLI-{n_val:03d}"
                         c.code = std_code
                 db.commit()
-                print(f"--> [INIT_DB] {len(alq_clients)} clientes con prefijo ALQ normalizados a formato uniforme CLI-xxx.")
-        except Exception as e_alq:
-            print(f"--> [INFO] Normalización preventiva de clientes: {e_alq}")
+        # 15. Reconciliación quirúrgica e idempotente de activos en alquiler activo
+        try:
+            with engine.begin() as isolated_conn:
+                isolated_conn.execute(text("""
+                    UPDATE assets 
+                    SET status = 'en_alquiler', 
+                        current_location = 'En Cliente (Alquiler Activo)'
+                    WHERE id IN (
+                        SELECT DISTINCT ri.asset_id 
+                        FROM rental_items ri 
+                        JOIN rentals r ON r.id = ri.rental_id 
+                        WHERE r.status IN ('activo', 'en_curso', 'vigente')
+                          AND ri.asset_id IS NOT NULL
+                    ) 
+                    AND status = 'disponible_base';
+                """))
+                print("--> [INIT_DB] Reconciliación quirúrgica de activos en alquiler completada.")
+        except Exception as e_rec:
+            print(f"--> [INFO] Reconciliación de activos: {e_rec}")
 
         print("--> Dalor SIGO-P Database successfully verified & synced!")
     except Exception as e:

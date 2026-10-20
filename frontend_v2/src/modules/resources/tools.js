@@ -96,8 +96,9 @@ async function loadToolsList() {
                 };
             }
             groups[key].items.push(t);
-            groups[key].total++;
-            const inBase = (t.status === 'disponible_base' || t.status === 'disponible' || !t.status) && !t.current_project_id && t.status !== 'en_transito' && t.status !== 'en_obra';
+            const st = (t.status || '').toLowerCase().trim();
+            const notInBase = st.includes('alquil') || st.includes('presta') || st.includes('mantenimiento') || st.includes('mtto') || st === 'en_obra' || st === 'asignado' || st === 'en_transito' || st === 'desincorporado' || st === 'inactivo' || Boolean(t.current_project_id);
+            const inBase = !notInBase && (st === 'disponible_base' || st === 'disponible' || !st);
             if (inBase) {
                 groups[key].available++;
             } else {
@@ -197,7 +198,37 @@ function renderGroupedToolsPaginated() {
 
         // Renderizar tabla interna de unidades individuales
         const unitsRows = g.items.map(it => {
-            const isAvail = it.status === 'disponible_base' || !it.current_project_id;
+            const st = (it.status || '').toLowerCase().trim();
+            const isRented = st.includes('alquil');
+            const isLoaned = st.includes('presta') || st.includes('comodato');
+            const isMaint = st.includes('mantenimiento') || st.includes('mtto') || st.includes('taller');
+            const isObra = Boolean(it.current_project_id) || st === 'en_obra';
+            const isAsignado = st === 'asignado' || st === 'en_operacion' || st === 'en_uso';
+            const isTransito = st === 'en_transito' || st === 'despachado';
+            const isBaja = st === 'desincorporado' || st === 'baja' || st === 'inactivo';
+            const isAvail = !isRented && !isLoaned && !isMaint && !isObra && !isAsignado && !isTransito && !isBaja && (st === 'disponible_base' || st === 'disponible' || !st);
+
+            let statusBadge = '';
+            if (isAvail) {
+                statusBadge = '<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #dcfce7; color: #166534;"><i class="fa-solid fa-circle-check"></i> DISPONIBLE</span>';
+            } else if (isRented) {
+                statusBadge = '<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;" title="Activo alquilado a tercero"><i class="fa-solid fa-handshake"></i> ALQUILADO</span>';
+            } else if (isLoaned) {
+                statusBadge = '<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;" title="Activo en préstamo / alianza"><i class="fa-solid fa-handshake-angle"></i> EN PRÉSTAMO</span>';
+            } else if (isMaint) {
+                statusBadge = '<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #fed7aa; color: #c2410c;"><i class="fa-solid fa-wrench"></i> EN MTTO</span>';
+            } else if (isObra) {
+                statusBadge = '<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #fee2e2; color: #991b1b;"><i class="fa-solid fa-helmet-safety"></i> EN OBRA</span>';
+            } else if (isTransito) {
+                statusBadge = '<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #fef9c3; color: #854d0e; border: 1px solid #fef08a;"><i class="fa-solid fa-truck-fast"></i> EN TRÁNSITO</span>';
+            } else if (isAsignado) {
+                statusBadge = '<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;"><i class="fa-solid fa-user-check"></i> ASIGNADO</span>';
+            } else if (isBaja) {
+                statusBadge = '<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #f3f4f6; color: #6b7280;"><i class="fa-solid fa-ban"></i> DE BAJA</span>';
+            } else {
+                statusBadge = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #f1f5f9; color: #475569;">${(st || 'OCUPADO').toUpperCase()}</span>`;
+            }
+
             return `
                 <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
                     <td style="padding: 5px 8px; font-weight: 800; color: var(--dalor-navy); font-family: monospace;">${it.asset_code}</td>
@@ -206,9 +237,7 @@ function renderGroupedToolsPaginated() {
                     <td style="padding: 5px 8px; font-size: 11px; color: #334155;">${it.current_location || 'Sede Central'}</td>
                     <td style="padding: 5px 8px; font-size: 11px; color: #2563eb; font-weight: 600;">${it.current_custodian_name || 'En Pañol Base'}</td>
                     <td style="padding: 5px 8px; text-align: center;">
-                        <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; ${isAvail ? 'background: #dcfce7; color: #166534;' : 'background: #fee2e2; color: #991b1b;'}">
-                            ${isAvail ? 'DISPONIBLE' : 'EN OBRA'}
-                        </span>
+                        ${statusBadge}
                     </td>
                     <td style="padding: 5px 8px; text-align: center; white-space: nowrap;">
                         <button onclick="openEditAssetModal(${it.id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #0284c7; border-color: #bae6fd; margin-right: 3px;" title="Editar Ficha de esta Herramienta">
@@ -292,7 +321,7 @@ function renderGroupedToolsPaginated() {
             <td colspan="7" style="padding: 12px 16px; border-left: 3px solid #0284c7;">
                 <div style="font-size: 11px; font-weight: 800; color: #002B49; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                     <span><i class="fa-solid fa-boxes-stacked" style="color: #0284c7;"></i> Desglose Unitario de [${g.name}] &bull; ${g.total} unidad(es) física(s) con serial y custodio:</span>
-                    <span style="color: #64748b; font-weight: 600;">Disponibles: <b style="color: #166534;">${g.available}</b> | En Obra: <b style="color: #991b1b;">${g.in_use}</b></span>
+                    <span style="color: #64748b; font-weight: 600;">Disponibles: <b style="color: #166534;">${g.available}</b> | En Uso / Préstamo: <b style="color: #991b1b;">${g.in_use}</b></span>
                 </div>
                 <div style="border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; background: white;">
                     <table style="width: 100%; font-size: 11px; margin: 0;">
@@ -390,9 +419,13 @@ function filterToolsList() {
 
 function assignAvailableToolFromGroup(encodedName) {
     const name = decodeURIComponent(encodedName);
-    const unit = rawToolsList.find(t => t.name.trim().toUpperCase() === name.trim().toUpperCase() && (t.status === 'disponible_base' || !t.current_project_id));
+    const unit = rawToolsList.find(t => {
+        const st = (t.status || '').toLowerCase().trim();
+        const isAvail = !['alquilado_a_tercero', 'prestado_a_cliente', 'alquilado', 'en_prestamo', 'en_mantenimiento', 'en_obra'].includes(st) && !t.current_project_id && (st === 'disponible_base' || st === 'disponible' || !st);
+        return t.name.trim().toUpperCase() === name.trim().toUpperCase() && isAvail;
+    });
     if (!unit) {
-        alert("No hay unidades disponibles de esta herramienta en Base.");
+        alert("No hay unidades disponibles de esta herramienta en Base (están en obra, alquiler o préstamo).");
         return;
     }
     openAssignModal('asset', unit.id, unit.name, 'assign');

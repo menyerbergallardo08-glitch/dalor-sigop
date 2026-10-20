@@ -808,25 +808,21 @@ def init_db():
                         SELECT id FROM dispatch_guides 
                         WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter})
                     );
+                """))
+                isolated_conn.execute(text(f"""
                     DELETE FROM dispatch_guides 
                     WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
                 """))
 
                 # 9. Eliminar gastos, movimientos de inventario, fases y bitácora de asignación
-                isolated_conn.execute(text(f"""
-                    DELETE FROM expenses WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
-                    DELETE FROM material_movements WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
-                    DELETE FROM project_phases WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
-                    DELETE FROM resource_assignment_history WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});
-                """))
+                isolated_conn.execute(text(f"DELETE FROM expenses WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});"))
+                isolated_conn.execute(text(f"DELETE FROM material_movements WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});"))
+                isolated_conn.execute(text(f"DELETE FROM project_phases WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});"))
+                isolated_conn.execute(text(f"DELETE FROM resource_assignment_history WHERE project_id IN (SELECT id FROM projects WHERE {test_prj_filter});"))
 
                 # 10. Eliminar cotización de prueba COT-2026-0001 y sus renglones
-                isolated_conn.execute(text("""
-                    DELETE FROM quotation_items 
-                    WHERE quotation_id IN (SELECT id FROM quotations WHERE quote_number = 'COT-2026-0001');
-                    DELETE FROM quotations 
-                    WHERE quote_number = 'COT-2026-0001';
-                """))
+                isolated_conn.execute(text("DELETE FROM quotation_items WHERE quotation_id IN (SELECT id FROM quotations WHERE quote_number = 'COT-2026-0001');"))
+                isolated_conn.execute(text("DELETE FROM quotations WHERE quote_number = 'COT-2026-0001';"))
 
                 # 11. Eliminar el proyecto padre PRJ-2026-001
                 isolated_conn.execute(text(f"""
@@ -864,6 +860,10 @@ def init_db():
                             std_code = f"CLI-{n_val:03d}"
                         c.code = std_code
                 db.commit()
+                print(f"--> [INIT_DB] {len(alq_clients)} clientes con prefijo ALQ normalizados a formato uniforme CLI-xxx.")
+        except Exception as e_alq:
+            print(f"--> [INFO] Normalización preventiva de clientes: {e_alq}")
+
         # 15. Reconciliación quirúrgica e idempotente de activos en alquiler activo o fuera de base
         try:
             with engine.begin() as isolated_conn:
@@ -874,7 +874,7 @@ def init_db():
                     WHERE id IN (
                         SELECT DISTINCT ri.asset_id 
                         FROM asset_rental_loan_items ri 
-                        JOIN asset_rentals_loans r ON r.id = ri.rental_loan_id 
+                        JOIN asset_rentals_loans r ON r.id = ri.rental_id 
                         WHERE LOWER(r.status) IN ('activo', 'en_curso', 'vigente')
                           AND ri.asset_id IS NOT NULL
                     ) 

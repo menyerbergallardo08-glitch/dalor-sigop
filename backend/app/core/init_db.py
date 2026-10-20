@@ -864,23 +864,37 @@ def init_db():
                             std_code = f"CLI-{n_val:03d}"
                         c.code = std_code
                 db.commit()
-        # 15. Reconciliación quirúrgica e idempotente de activos en alquiler activo
+        # 15. Reconciliación quirúrgica e idempotente de activos en alquiler activo o fuera de base
         try:
             with engine.begin() as isolated_conn:
+                # 15.1. Activos en contratos de alquiler o préstamo activos
                 isolated_conn.execute(text("""
                     UPDATE assets 
-                    SET status = 'en_alquiler', 
-                        current_location = 'En Cliente (Alquiler Activo)'
+                    SET status = 'en_alquiler'
                     WHERE id IN (
                         SELECT DISTINCT ri.asset_id 
-                        FROM rental_items ri 
-                        JOIN rentals r ON r.id = ri.rental_id 
-                        WHERE r.status IN ('activo', 'en_curso', 'vigente')
+                        FROM asset_rental_loan_items ri 
+                        JOIN asset_rentals_loans r ON r.id = ri.rental_loan_id 
+                        WHERE LOWER(r.status) IN ('activo', 'en_curso', 'vigente')
                           AND ri.asset_id IS NOT NULL
                     ) 
-                    AND status = 'disponible_base';
+                    AND (status = 'disponible_base' OR status = 'disponible' OR status IS NULL);
                 """))
-                print("--> [INIT_DB] Reconciliación quirúrgica de activos en alquiler completada.")
+
+                # 15.2. Activos con ubicación externa a Sede Central (como MANGAIRE o frentes de obra) que siguen figurando como disponible_base
+                isolated_conn.execute(text("""
+                    UPDATE assets 
+                    SET status = 'en_obra'
+                    WHERE (status = 'disponible_base' OR status = 'disponible' OR status IS NULL)
+                      AND current_location IS NOT NULL
+                      AND TRIM(current_location) != ''
+                      AND LOWER(current_location) NOT LIKE '%sede%'
+                      AND LOWER(current_location) NOT LIKE '%base%'
+                      AND LOWER(current_location) NOT LIKE '%guacara%'
+                      AND LOWER(current_location) NOT LIKE '%pañol%'
+                      AND LOWER(current_location) NOT LIKE '%panol%';
+                """))
+                print("--> [INIT_DB] Reconciliación quirúrgica de activos completada exitosamente.")
         except Exception as e_rec:
             print(f"--> [INFO] Reconciliación de activos: {e_rec}")
 

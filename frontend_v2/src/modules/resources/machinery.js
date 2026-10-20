@@ -110,12 +110,14 @@ function renderMachineryTablePaginated() {
         const hasProject = Boolean(m.current_project_id);
         const hasCustodian = Boolean(m.current_custodian_name && !m.current_custodian_name.toLowerCase().includes('disponible') && !m.current_custodian_name.toLowerCase().includes('base') && m.current_custodian_name !== '-');
         const st = (m.status || '').toLowerCase().trim();
+        const loc = (m.current_location || '').toLowerCase().trim();
+        const isBaseLoc = !loc || loc.includes('sede') || loc.includes('base') || loc.includes('guacara') || loc.includes('pañol') || loc.includes('panol');
         const isAlquilado = st === 'alquilado_a_tercero' || st === 'alquilado';
         const isPrestado = st === 'prestado_a_cliente' || st === 'en_prestamo' || st === 'prestamo';
-        const isEnObra = m.status === 'en_obra' || hasProject;
         const isEnTransito = m.status === 'en_transito' || (m.current_location && m.current_location.toLowerCase().includes('en ruta'));
-        const isEnOperacion = m.status === 'en_operacion' || (!hasProject && hasCustodian && !isAlquilado && !isPrestado);
-        const inBase = !isEnObra && !isEnTransito && !isEnOperacion && !isAlquilado && !isPrestado && (st === 'disponible_base' || st === 'disponible' || !st);
+        const isEnObra = m.status === 'en_obra' || hasProject || (!isBaseLoc && !isAlquilado && !isPrestado && !isEnTransito);
+        const isEnOperacion = m.status === 'en_operacion' || (!hasProject && hasCustodian && !isAlquilado && !isPrestado && isBaseLoc);
+        const inBase = isBaseLoc && !isEnObra && !isEnTransito && !isEnOperacion && !isAlquilado && !isPrestado && (st === 'disponible_base' || st === 'disponible' || !st);
 
         const isMaint = m.maintenance_status === 'en_mantenimiento';
 

@@ -166,8 +166,15 @@ def get_tools_summary(db: Session = Depends(get_db)):
             }
         g = groups[key]
         g["total"] += 1
+        loc_clean = (loc or "").lower().strip()
+        is_base_loc = not loc_clean or ("sede" in loc_clean) or ("base" in loc_clean) or ("guacara" in loc_clean) or ("pañol" in loc_clean) or ("panol" in loc_clean)
         st_clean = (status or "").lower().strip()
-        is_avail = (st_clean in ["disponible_base", "disponible"] or not st_clean) and not proj_id
+        not_in_base = (
+            not is_base_loc or
+            any(k in st_clean for k in ["alquil", "presta", "comodato", "mtto", "mantenimiento", "en_obra", "asignado", "en_transito", "desincorporado", "baja", "inactivo"]) or
+            bool(proj_id)
+        )
+        is_avail = is_base_loc and not not_in_base and (st_clean in ["disponible_base", "disponible"] or not st_clean)
         if is_avail:
             g["available"] += 1
         else:
@@ -175,6 +182,10 @@ def get_tools_summary(db: Session = Depends(get_db)):
         if loc:
             g["locations"].add(loc)
         
+        effective_status = status
+        if not is_base_loc and (st_clean in ["disponible_base", "disponible"] or not st_clean):
+            effective_status = "en_obra"
+
         g["items"].append({
             "id": t_id,
             "asset_code": code,
@@ -183,9 +194,9 @@ def get_tools_summary(db: Session = Depends(get_db)):
             "model": model or "",
             "serial_number": serial or "",
             "category": cat or 'General',
-            "status": status,
+            "status": effective_status,
             "current_location": loc or "Sede Central",
-            "current_custodian_name": cust or "Disponible en Base",
+            "current_custodian_name": cust or ("Disponible en Base" if is_base_loc else (loc or "En Obra")),
             "current_project_id": proj_id
         })
 

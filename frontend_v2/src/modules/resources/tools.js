@@ -97,8 +97,10 @@ async function loadToolsList() {
             }
             groups[key].items.push(t);
             const st = (t.status || '').toLowerCase().trim();
-            const notInBase = st.includes('alquil') || st.includes('presta') || st.includes('mantenimiento') || st.includes('mtto') || st === 'en_obra' || st === 'asignado' || st === 'en_transito' || st === 'desincorporado' || st === 'inactivo' || Boolean(t.current_project_id);
-            const inBase = !notInBase && (st === 'disponible_base' || st === 'disponible' || !st);
+            const loc = (t.current_location || '').toLowerCase().trim();
+            const isBaseLoc = !loc || loc.includes('sede') || loc.includes('base') || loc.includes('guacara') || loc.includes('pañol') || loc.includes('panol');
+            const notInBase = !isBaseLoc || st.includes('alquil') || st.includes('presta') || st.includes('mantenimiento') || st.includes('mtto') || st === 'en_obra' || st === 'asignado' || st === 'en_transito' || st === 'desincorporado' || st === 'inactivo' || Boolean(t.current_project_id);
+            const inBase = isBaseLoc && !notInBase && (st === 'disponible_base' || st === 'disponible' || !st);
             if (inBase) {
                 groups[key].available++;
             } else {
@@ -199,14 +201,16 @@ function renderGroupedToolsPaginated() {
         // Renderizar tabla interna de unidades individuales
         const unitsRows = g.items.map(it => {
             const st = (it.status || '').toLowerCase().trim();
+            const loc = (it.current_location || '').toLowerCase().trim();
+            const isBaseLoc = !loc || loc.includes('sede') || loc.includes('base') || loc.includes('guacara') || loc.includes('pañol') || loc.includes('panol');
             const isRented = st.includes('alquil');
             const isLoaned = st.includes('presta') || st.includes('comodato');
             const isMaint = st.includes('mantenimiento') || st.includes('mtto') || st.includes('taller');
-            const isObra = Boolean(it.current_project_id) || st === 'en_obra';
+            const isObra = !isBaseLoc || Boolean(it.current_project_id) || st === 'en_obra';
             const isAsignado = st === 'asignado' || st === 'en_operacion' || st === 'en_uso';
             const isTransito = st === 'en_transito' || st === 'despachado';
             const isBaja = st === 'desincorporado' || st === 'baja' || st === 'inactivo';
-            const isAvail = !isRented && !isLoaned && !isMaint && !isObra && !isAsignado && !isTransito && !isBaja && (st === 'disponible_base' || st === 'disponible' || !st);
+            const isAvail = isBaseLoc && !isRented && !isLoaned && !isMaint && !isObra && !isAsignado && !isTransito && !isBaja && (st === 'disponible_base' || st === 'disponible' || !st);
 
             let statusBadge = '';
             if (isAvail) {

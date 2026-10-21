@@ -244,6 +244,19 @@ function renderGroupedToolsPaginated() {
                         ${statusBadge}
                     </td>
                     <td style="padding: 5px 8px; text-align: center; white-space: nowrap;">
+                        ${isAvail ? `
+                            <button onclick="openAssignSingleToolUnitModal(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 2px 7px; font-size: 10px; margin-right: 3px; background: #0284c7; border: none; color: white;" title="Asignar esta unidad física individual a una obra específica">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i> Asignar
+                            </button>
+                        ` : ''}
+                        ${(isObra || isAsignado) ? `
+                            <button onclick="openTransferSingleToolUnitModal(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #d97706; border-color: #fde68a; background: #fefce8; margin-right: 3px;" title="Transferir esta unidad directamente a otra obra">
+                                <i class="fa-solid fa-arrow-right-arrow-left"></i> Transferir
+                            </button>
+                            <button onclick="confirmReturnSingleToolToBase(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #16a34a; border-color: #bbf7d0; background: #f0fdf4; margin-right: 3px;" title="Retornar esta unidad a la Base Central">
+                                <i class="fa-solid fa-house-chimney"></i> A Base
+                            </button>
+                        ` : ''}
                         <button onclick="openEditAssetModal(${it.id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #0284c7; border-color: #bae6fd; margin-right: 3px;" title="Editar Ficha de esta Herramienta">
                             <i class="fa-solid fa-pen"></i> Editar
                         </button>
@@ -788,6 +801,63 @@ async function confirmRemoveSingleToolUnit(assetId, assetCode, toolName) {
     }
 }
 
+function openAssignSingleToolUnitModal(assetId, assetCode, assetName) {
+    const displayName = `${assetName} [${assetCode}]`;
+    const openFn = (typeof openAssignModal === 'function') ? openAssignModal : window.openAssignModal;
+    if (openFn) {
+        openFn('asset', assetId, displayName, 'assign');
+        const qtyContainer = document.getElementById("modal_quantity_container");
+        const qtyInput = document.getElementById("modal_res_quantity");
+        if (qtyContainer) qtyContainer.style.display = 'none';
+        if (qtyInput) qtyInput.value = "1";
+    } else {
+        alert("El modal de asignación no está disponible.");
+    }
+}
+
+function openTransferSingleToolUnitModal(assetId, assetCode, assetName) {
+    const displayName = `${assetName} [${assetCode}]`;
+    const openFn = (typeof openAssignModal === 'function') ? openAssignModal : window.openAssignModal;
+    if (openFn) {
+        openFn('asset', assetId, displayName, 'transfer');
+    } else {
+        alert("El modal de transferencia no está disponible.");
+    }
+}
+
+async function confirmReturnSingleToolToBase(assetId, assetCode, assetName) {
+    if (!confirm(`¿Confirmas el retorno a la Base Central (Guacara) de la unidad:\n[${assetCode}] ${assetName}?`)) {
+        return;
+    }
+    const retFn = (typeof returnResourceToBase === 'function') ? returnResourceToBase : window.returnResourceToBase;
+    if (retFn) {
+        await retFn('asset', assetId);
+        loadToolsList();
+    } else {
+        try {
+            const res = await authFetch(`${API_BASE}/resources/return-to-base`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    resource_type: "asset",
+                    resource_id: assetId,
+                    return_location: "Sede Central Dalor (Guacara)"
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                alert("✅ " + (data.message || "Unidad retornada a Base con éxito."));
+                loadToolsList();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert("❌ Error al retornar unidad: " + (err.detail || err.message || "Error desconocido"));
+            }
+        } catch(e) {
+            alert("❌ Error de comunicación: " + e.message);
+        }
+    }
+}
+
 async function downloadAssetsExcelTemplate() {
     try {
         const token = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
@@ -901,6 +971,9 @@ if (typeof window !== 'undefined') {
     window.openRemoveToolUnitsModal = openRemoveToolUnitsModal;
     window.submitRemoveToolUnits = submitRemoveToolUnits;
     window.confirmRemoveSingleToolUnit = confirmRemoveSingleToolUnit;
+    window.openAssignSingleToolUnitModal = openAssignSingleToolUnitModal;
+    window.openTransferSingleToolUnitModal = openTransferSingleToolUnitModal;
+    window.confirmReturnSingleToolToBase = confirmReturnSingleToolToBase;
     window.downloadAssetsExcelTemplate = downloadAssetsExcelTemplate;
     window.submitImportAssetsExcel = submitImportAssetsExcel;
 }

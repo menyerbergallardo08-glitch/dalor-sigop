@@ -666,6 +666,63 @@ async def import_excel_project(file: UploadFile = File(...), db: Session = Depen
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al procesar el archivo Excel: {str(e)}")
 
+def auto_release_project_resources(proj: Project, db: Session, reason_note: str = "") -> tuple:
+    """
+    Libera automáticamente todos los activos (herramientas, maquinaria, vehículos) y personal
+    asignados al proyecto, retornándolos a 'disponible_base' en la Base Central (Guacara)
+    y asentando el registro correspondiente en la bitácora histórica.
+    """
+    released_assets_count = 0
+    released_personnel_count = 0
+    note_text = reason_note or f"Liberación automática por culminación y cierre de obra {proj.code}"
+
+    # Auto-liberar activos asignados a la obra
+    assigned_assets = db.query(Asset).filter(Asset.current_project_id == proj.id).all()
+    for a in assigned_assets:
+        a.status = "disponible_base"
+        a.current_project_id = None
+        a.current_custodian_name = "Disponible en Base"
+        a.current_location = "Sede Central Dalor (Guacara)"
+        released_assets_count += 1
+        
+        history_asset = ResourceAssignmentHistory(
+            project_id=proj.id,
+            resource_type="asset",
+            resource_id=a.id,
+            resource_code=a.asset_code,
+            resource_name=a.name,
+            custodian_name="Custodio Base",
+            origin_location=proj.location or "Planta / Obra",
+            destination_location="Sede Central Dalor (Guacara)",
+            status="disponible_base",
+            notes=note_text
+        )
+        db.add(history_asset)
+
+    # Auto-liberar personal asignado a la obra
+    assigned_personnel = db.query(Personnel).filter(Personnel.current_project_id == proj.id).all()
+    for p in assigned_personnel:
+        p.status = "disponible_base"
+        p.current_project_id = None
+        p.current_location = "Sede Central Dalor (Guacara)"
+        released_personnel_count += 1
+        
+        history_pers = ResourceAssignmentHistory(
+            project_id=proj.id,
+            resource_type="personnel",
+            resource_id=p.id,
+            resource_code=p.code,
+            resource_name=p.full_name,
+            custodian_name="Base Central",
+            origin_location=proj.location or "Planta / Obra",
+            destination_location="Sede Central Dalor (Guacara)",
+            status="disponible_base",
+            notes=note_text
+        )
+        db.add(history_pers)
+
+    return released_assets_count, released_personnel_count
+
 @router.put("/{project_id}")
 @router.patch("/{project_id}")
 def update_project(project_id: int, project_in: ProjectUpdate, db: Session = Depends(get_db)):
@@ -866,6 +923,10 @@ def update_project(project_id: int, project_in: ProjectUpdate, db: Session = Dep
                     )
                     db.add(req_rec)
 
+        # Si el estatus pasa a culminado / cerrado / inactivo en re-edición, auto-liberar recursos a base
+        if proj.status and proj.status.lower() in ["culminado", "completado", "cerrado", "inactivo"]:
+            auto_release_project_resources(proj, db, f"Liberación automática por culminación/cierre en edición de obra {proj.code}")
+
         db.commit()
         db.refresh(proj)
         return {
@@ -905,51 +966,9 @@ def update_project_status(project_id: int, status_in: ProjectStatusUpdate, db: S
     released_personnel_count = 0
 
     if status_in.status.lower() in ["culminado", "completado", "cerrado"]:
-        # Auto-liberar activos asignados a la obra retornándolos a base central
-        assigned_assets = db.query(Asset).filter(Asset.current_project_id == proj.id).all()
-        for a in assigned_assets:
-            a.status = "disponible_base"
-            a.current_project_id = None
-            a.current_custodian_name = "Disponible en Base"
-            a.current_location = "Sede Central Dalor (Guacara)"
-            released_assets_count += 1
-            
-            # Registrar bitácora de retorno
-            history_asset = ResourceAssignmentHistory(
-                project_id=proj.id,
-                resource_type="asset",
-                resource_id=a.id,
-                resource_code=a.asset_code,
-                resource_name=a.name,
-                custodian_name="Custodio Base",
-                origin_location=proj.location or "Planta / Obra",
-                destination_location="Sede Central Dalor (Guacara)",
-                status="disponible_base",
-                notes=f"Liberación automática por culminación y cierre de obra {proj.code}"
-            )
-            db.add(history_asset)
-
-        # Auto-liberar personal asignado a la obra retornándolos a base central
-        assigned_personnel = db.query(Personnel).filter(Personnel.current_project_id == proj.id).all()
-        for p in assigned_personnel:
-            p.status = "disponible_base"
-            p.current_project_id = None
-            p.current_location = "Sede Central Dalor (Guacara)"
-            released_personnel_count += 1
-            
-            history_pers = ResourceAssignmentHistory(
-                project_id=proj.id,
-                resource_type="personnel",
-                resource_id=p.id,
-                resource_code=p.code,
-                resource_name=p.full_name,
-                custodian_name="Base Central",
-                origin_location=proj.location or "Planta / Obra",
-                destination_location="Sede Central Dalor (Guacara)",
-                status="disponible_base",
-                notes=f"Liberación automática por culminación y cierre de obra {proj.code}"
-            )
-            db.add(history_pers)
+        released_assets_count, released_personnel_count = auto_release_project_resources(
+            proj, db, f"Liberación automática por culminación y cierre de obra {proj.code}"
+        )
 
     db.commit()
     msg = f"Estatus del proyecto {proj.code} actualizado a '{proj.status}'."
@@ -995,44 +1014,8 @@ def delete_project(project_id: int, req: Optional[AdminAuthProjectDelete] = None
     proj.is_active = False
     proj.status = "inactivo"
 
-    # Auto-liberar activos asignados retornándolos a base central
-    assigned_assets = db.query(Asset).filter(Asset.current_project_id == proj.id).all()
-    for a in assigned_assets:
-        a.status = "disponible_base"
-        a.current_project_id = None
-        a.current_location = "Sede Central Dalor (Guacara)"
-        a.current_custodian_name = "Disponible en Base"
-        db.add(ResourceAssignmentHistory(
-            project_id=proj.id,
-            resource_type="asset",
-            resource_id=a.id,
-            resource_code=a.asset_code,
-            resource_name=a.name,
-            custodian_name="Base Central",
-            origin_location=proj.location or "Planta / Obra",
-            destination_location="Sede Central Dalor (Guacara)",
-            status="disponible_base",
-            notes=f"Liberación automática por inactivación de obra {proj.code}"
-        ))
-
-    # Auto-liberar personal asignado retornándolos a base central
-    assigned_personnel = db.query(Personnel).filter(Personnel.current_project_id == proj.id).all()
-    for p in assigned_personnel:
-        p.status = "disponible_base"
-        p.current_project_id = None
-        p.current_location = "Sede Central Dalor (Guacara)"
-        db.add(ResourceAssignmentHistory(
-            project_id=proj.id,
-            resource_type="personnel",
-            resource_id=p.id,
-            resource_code=p.code,
-            resource_name=p.full_name,
-            custodian_name="Base Central",
-            origin_location=proj.location or "Planta / Obra",
-            destination_location="Sede Central Dalor (Guacara)",
-            status="disponible_base",
-            notes=f"Liberación automática por inactivación de obra {proj.code}"
-        ))
+    # Auto-liberar activos y personal retornándolos a base central
+    auto_release_project_resources(proj, db, f"Liberación automática por inactivación de obra {proj.code}")
 
     spent_now = round(sum(e.amount_usd for e in proj.expenses if e.status == 'aprobado'), 2) if proj.expenses else 0.0
     audit = AuditLog(

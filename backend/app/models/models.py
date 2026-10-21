@@ -464,7 +464,7 @@ class AccountReceivable(Base):
     
     description = Column(String(255), nullable=False)
     issue_date = Column(DateTime, default=datetime.utcnow)
-    due_date = Column(DateTime, nullable=False)
+    due_date = Column(DateTime, nullable=True)
     
     # Desglose Fiscal y Retenciones SENIAT
     taxable_base_usd = Column(Float, default=0.0)
@@ -531,7 +531,7 @@ class AccountPayable(Base):
     
     description = Column(String(255), nullable=False)
     issue_date = Column(DateTime, default=datetime.utcnow)
-    due_date = Column(DateTime, nullable=False)
+    due_date = Column(DateTime, nullable=True)
     
     # Datos Fiscales Oficiales (Providencia SNAT/2015/0049)
     supplier_rif = Column(String(50), nullable=True) # ej: "J-500819048"

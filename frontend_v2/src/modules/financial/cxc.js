@@ -621,20 +621,23 @@ async function submitCreateReceivable(e) {
         // Validaciones — usando throw para que el finally restaure el botón siempre
         if (!invoiceNum)              throw new Error("Debes ingresar el N° de Factura / Valuación.");
         if (!clientId || clientId <= 0) throw new Error("Debes seleccionar un Cliente.");
-        if (!dueDateVal)              throw new Error("Debes ingresar la Fecha de Vencimiento.");
         if (amountVal <= 0)           throw new Error("El Monto USD debe ser mayor a cero.");
 
-        // Parseo seguro de fecha (input type=date entrega YYYY-MM-DD)
-        let safeDueDateIso;
-        if (dueDateVal.includes('/')) {
-            const parts = dueDateVal.split('/');
-            if (parts.length === 3) {
-                safeDueDateIso = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), 12, 0, 0).toISOString();
+        // Parseo seguro de fecha (input type=date entrega YYYY-MM-DD) - Opcional
+        let safeDueDateIso = null;
+        if (dueDateVal) {
+            if (dueDateVal.includes('/')) {
+                const parts = dueDateVal.split('/');
+                if (parts.length === 3) {
+                    safeDueDateIso = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), 12, 0, 0).toISOString();
+                }
             }
-        }
-        if (!safeDueDateIso) {
-            const parsedD = new Date(dueDateVal + 'T12:00:00');
-            safeDueDateIso = !isNaN(parsedD.getTime()) ? parsedD.toISOString() : new Date().toISOString();
+            if (!safeDueDateIso) {
+                const parsedD = new Date(dueDateVal.includes('T') ? dueDateVal : dueDateVal + 'T12:00:00');
+                if (!isNaN(parsedD.getTime())) {
+                    safeDueDateIso = parsedD.toISOString();
+                }
+            }
         }
 
         const docType = (document.getElementById("cxc_doc_type")?.value || 'FAC').trim();

@@ -413,7 +413,8 @@ function addPlanResource(type) {
                     (a.name || '').trim().toUpperCase() === (targetAsset.name || '').trim().toUpperCase() &&
                     (a.status === 'disponible_base' || !a.current_project_id)
                 );
-                const candidates = sameModelAssets.slice(0, qty);
+                const otherCandidates = sameModelAssets.filter(a => a.id !== targetAsset.id);
+                const candidates = [targetAsset, ...otherCandidates].slice(0, qty);
                 candidates.forEach(c => {
                     if (!selectedToolIds.includes(c.id)) selectedToolIds.push(c.id);
                 });
@@ -1480,6 +1481,10 @@ async function submitCreateProject(event) {
             loadProjectsList();
 
             loadQuotations();
+
+            if (typeof window.loadProjectRequisitionsBadge === 'function') {
+                window.loadProjectRequisitionsBadge();
+            }
 
         } else {
 

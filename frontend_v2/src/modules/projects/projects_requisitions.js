@@ -712,6 +712,9 @@ async function submitRequestProjectResources(event) {
         await loadInitialMasterData();
         if (typeof loadProjectsList === 'function') await loadProjectsList();
         if (typeof loadDispatchGuidesList === 'function') loadDispatchGuidesList();
+        if (typeof window.loadProjectRequisitionsBadge === 'function') {
+            window.loadProjectRequisitionsBadge();
+        }
 
         const guideCode = data.guide_number;
         const guideId = data.guide_id;

@@ -132,7 +132,9 @@ def init_db():
             "ALTER TABLE dispatch_guides ALTER COLUMN destination_address DROP NOT NULL;",
             "ALTER TABLE dispatch_guides ALTER COLUMN driver_name DROP NOT NULL;",
             "ALTER TABLE dispatch_guides ALTER COLUMN driver_id_doc DROP NOT NULL;",
-            "ALTER TABLE dispatch_guides ALTER COLUMN vehicle_plate DROP NOT NULL;"
+            "ALTER TABLE dispatch_guides ALTER COLUMN vehicle_plate DROP NOT NULL;",
+            "ALTER TABLE accounts_receivable ALTER COLUMN due_date DROP NOT NULL;",
+            "ALTER TABLE accounts_payable ALTER COLUMN due_date DROP NOT NULL;"
         ])
     else:
         # En SQLite no existe ALTER COLUMN DROP NOT NULL. Se verifica y migra la estructura si es necesario.
@@ -195,6 +197,54 @@ def init_db():
                     cur.execute("CREATE INDEX IF NOT EXISTS idx_dispatch_asset_id ON dispatch_guides (asset_id)")
                     raw_c.commit()
                     cur.execute("PRAGMA foreign_keys=ON")
+
+                # Migración de accounts_receivable para due_date opcional
+                cur.execute("PRAGMA table_info(accounts_receivable)")
+                ar_cols = cur.fetchall()
+                ar_due = next((c for c in ar_cols if c[1] == 'due_date'), None)
+                if ar_due and ar_due[3] == 1:
+                    cur.execute("PRAGMA foreign_keys=OFF")
+                    cur.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='accounts_receivable'")
+                    create_sql = cur.fetchone()[0]
+                    new_sql = create_sql.replace("accounts_receivable", "accounts_receivable_new", 1)
+                    new_sql = new_sql.replace("due_date DATETIME NOT NULL", "due_date DATETIME")
+                    cur.execute(new_sql)
+                    cur.execute("PRAGMA table_info(accounts_receivable_new)")
+                    new_cols = [c[1] for c in cur.fetchall()]
+                    old_names = [c[1] for c in ar_cols]
+                    shared_cols = [c for c in new_cols if c in old_names]
+                    cols_str = ', '.join(f'"{c}"' for c in shared_cols)
+                    cur.execute(f"INSERT INTO accounts_receivable_new ({cols_str}) SELECT {cols_str} FROM accounts_receivable")
+                    cur.execute("DROP TABLE accounts_receivable")
+                    cur.execute("ALTER TABLE accounts_receivable_new RENAME TO accounts_receivable")
+                    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_accounts_receivable_invoice_number ON accounts_receivable (invoice_number)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS ix_accounts_receivable_id ON accounts_receivable (id)")
+                    raw_c.commit()
+                    cur.execute("PRAGMA foreign_keys=ON")
+
+                # Migración de accounts_payable para due_date opcional
+                cur.execute("PRAGMA table_info(accounts_payable)")
+                ap_cols = cur.fetchall()
+                ap_due = next((c for c in ap_cols if c[1] == 'due_date'), None)
+                if ap_due and ap_due[3] == 1:
+                    cur.execute("PRAGMA foreign_keys=OFF")
+                    cur.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='accounts_payable'")
+                    create_sql = cur.fetchone()[0]
+                    new_sql = create_sql.replace("accounts_payable", "accounts_payable_new", 1)
+                    new_sql = new_sql.replace("due_date DATETIME NOT NULL", "due_date DATETIME")
+                    cur.execute(new_sql)
+                    cur.execute("PRAGMA table_info(accounts_payable_new)")
+                    new_cols = [c[1] for c in cur.fetchall()]
+                    old_names = [c[1] for c in ap_cols]
+                    shared_cols = [c for c in new_cols if c in old_names]
+                    cols_str = ', '.join(f'"{c}"' for c in shared_cols)
+                    cur.execute(f"INSERT INTO accounts_payable_new ({cols_str}) SELECT {cols_str} FROM accounts_payable")
+                    cur.execute("DROP TABLE accounts_payable")
+                    cur.execute("ALTER TABLE accounts_payable_new RENAME TO accounts_payable")
+                    cur.execute("CREATE INDEX IF NOT EXISTS ix_accounts_payable_id ON accounts_payable (id)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS ix_accounts_payable_invoice_number ON accounts_payable (invoice_number)")
+                    raw_c.commit()
+                    cur.execute("PRAGMA foreign_keys=ON")
         except Exception:
             pass
 
@@ -210,6 +260,20 @@ def init_db():
         with engine.begin() as conn:
             conn.execute(text("UPDATE clients SET code = 'CLI-001' WHERE code = 'MDCLI-001'"))
             conn.execute(text("UPDATE clients SET code = 'CLI-002' WHERE code = 'MDCLI-002'"))
+    except Exception:
+        pass
+
+    # Separación y normalización automática de Cargador (HERR-014) y Batería (HERR-013)
+    try:
+        with engine.begin() as conn:
+            # 1. Normalizar sufijo de 3 dígitos de la batería si existía como 010
+            conn.execute(text("UPDATE assets SET asset_code = 'HERR-013-10' WHERE asset_code = 'HERR-013-010' AND UPPER(name) LIKE '%BATERIA%'"))
+            # 2. Asignar código independiente HERR-014 al Cargador
+            conn.execute(text("UPDATE assets SET asset_code = 'HERR-014-01' WHERE asset_code = 'HERR-013-10' AND UPPER(name) LIKE '%CARGADOR%'"))
+            conn.execute(text("UPDATE assets SET asset_code = 'HERR-014-02' WHERE asset_code = 'HERR-013-11' AND UPPER(name) LIKE '%CARGADOR%'"))
+            # 3. Actualizar la bitácora histórica de movimientos para trazabilidad íntegra
+            conn.execute(text("UPDATE resource_assignment_history SET resource_code = 'HERR-014-01' WHERE resource_code = 'HERR-013-10' AND UPPER(resource_name) LIKE '%CARGADOR%'"))
+            conn.execute(text("UPDATE resource_assignment_history SET resource_code = 'HERR-014-02' WHERE resource_code = 'HERR-013-11' AND UPPER(resource_name) LIKE '%CARGADOR%'"))
     except Exception:
         pass
 

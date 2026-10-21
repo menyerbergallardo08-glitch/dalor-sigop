@@ -44,29 +44,45 @@ def get_next_asset_code_value(db: Session, asset_type: str = "herramienta", cate
         return candidate
 
     elif asset_type_clean in ("maquinaria", "planta", "generador", "compresor"):
-        maqs = db.query(Asset.asset_code).filter(Asset.asset_code.like("MAQ-%")).all()
+        maqs = db.query(Asset.asset_code).filter(Asset.asset_code.ilike("MAQ-%")).all()
         max_num = 0
         for m in maqs:
             if m[0]:
-                nums = re.findall(r'\d+', m[0])
-                if nums:
-                    max_num = max(max_num, int(nums[-1]))
+                match = re.match(r"^MAQ[-_](\d+)", m[0].strip().upper())
+                if match:
+                    try:
+                        max_num = max(max_num, int(match.group(1)))
+                    except ValueError:
+                        pass
         candidate = f"MAQ-{max_num + 1:03d}"
-        while db.query(Asset).filter(Asset.asset_code == candidate).first():
+        while db.query(Asset).filter(
+            or_(
+                func.upper(Asset.asset_code) == candidate.upper(),
+                func.upper(Asset.asset_code).like(f"{candidate.upper()}-%")
+            )
+        ).first():
             max_num += 1
             candidate = f"MAQ-{max_num + 1:03d}"
         return candidate
 
     elif asset_type_clean in ("equipo_medicion", "medicion") or "medicion" in cat_clean.lower():
-        meds = db.query(Asset.asset_code).filter(Asset.asset_code.like("MED-%")).all()
+        meds = db.query(Asset.asset_code).filter(Asset.asset_code.ilike("MED-%")).all()
         max_num = 0
         for m in meds:
             if m[0]:
-                nums = re.findall(r'\d+', m[0])
-                if nums:
-                    max_num = max(max_num, int(nums[-1]))
+                match = re.match(r"^MED[-_](\d+)", m[0].strip().upper())
+                if match:
+                    try:
+                        max_num = max(max_num, int(match.group(1)))
+                    except ValueError:
+                        pass
         candidate = f"MED-{max_num + 1:03d}"
-        while db.query(Asset).filter(Asset.asset_code == candidate).first():
+        while db.query(Asset).filter(
+            or_(
+                func.upper(Asset.asset_code) == candidate.upper(),
+                func.upper(Asset.asset_code).like(f"{candidate.upper()}-%")
+            )
+        ).first():
             max_num += 1
             candidate = f"MED-{max_num + 1:03d}"
         return candidate
@@ -81,19 +97,29 @@ def get_next_asset_code_value(db: Session, asset_type: str = "herramienta", cate
             if words:
                 prefix = f"HERR-{words[0][:3]}" if len(words[0]) >= 3 else f"HERR-{words[0]}"
         
-        candidates = db.query(Asset.asset_code).filter(Asset.asset_code.like(f"{prefix}-%")).all()
+        candidates = db.query(Asset.asset_code).filter(
+            Asset.asset_code.ilike(f"{prefix}-%")
+        ).all()
         max_num = 0
         for h in candidates:
             if h[0]:
-                nums = re.findall(r'\d+', h[0])
-                if nums:
+                raw_code = h[0].strip().upper()
+                # Extraer el número de modelo base directamente posterior al prefijo (ej. HERR-013 o HERR-013-09 -> modelo 13)
+                pattern = r"^" + re.escape(prefix.upper()) + r"[-_](\d+)"
+                m = re.match(pattern, raw_code)
+                if m:
                     try:
-                        max_num = max(max_num, int(nums[-1]))
+                        max_num = max(max_num, int(m.group(1)))
                     except ValueError:
                         pass
         num = max_num + 1
         candidate = f"{prefix}-{num:03d}"
-        while db.query(Asset).filter(Asset.asset_code == candidate).first():
+        while db.query(Asset).filter(
+            or_(
+                func.upper(Asset.asset_code) == candidate.upper(),
+                func.upper(Asset.asset_code).like(f"{candidate.upper()}-%")
+            )
+        ).first():
             num += 1
             candidate = f"{prefix}-{num:03d}"
         return candidate
@@ -247,18 +273,29 @@ def get_assets(
 @router.post("/")
 def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
     qty = getattr(asset_in, 'quantity', 1) or 1
-    code_val = (asset_in.asset_code or "").strip()
+    code_val = (asset_in.asset_code or "").strip().upper()
 
-    # Si el código no viene, es un placeholder o ya colisiona en la base de datos, auto-asignar el siguiente libre
-    if not code_val or code_val in ("Cargando...", "Generando...", "Auto", "S/C") or db.query(Asset).filter(Asset.asset_code == code_val).first():
-        code_val = get_next_asset_code_value(db, asset_in.asset_type)
+    # Si el código no viene, es un placeholder o ya colisiona en la base de datos (exacto o como modelo con unidades), auto-asignar el siguiente libre
+    is_colliding = False
+    if code_val:
+        collision = db.query(Asset).filter(
+            or_(
+                func.upper(Asset.asset_code) == code_val,
+                func.upper(Asset.asset_code).like(f"{code_val}-%")
+            )
+        ).first()
+        if collision:
+            is_colliding = True
+
+    if not code_val or code_val in ("CARGANDO...", "GENERANDO...", "AUTO", "S/C") or is_colliding:
+        code_val = get_next_asset_code_value(db, asset_in.asset_type, asset_in.category)
     
     asset_in.asset_code = code_val
     
     if qty > 1:
         base_code = code_val
         existing_codes = set(
-            c[0] for c in db.query(Asset.asset_code).filter(Asset.asset_code.like(f"{base_code}%")).all()
+            c[0].strip().upper() for c in db.query(Asset.asset_code).filter(func.upper(Asset.asset_code).like(f"{base_code}%")).all() if c[0]
         )
         created_assets = []
         counter = 1
@@ -345,28 +382,44 @@ def add_tool_units(req: ToolAddUnitsRequest, db: Session = Depends(get_db)):
     a_type = req.asset_type if req.asset_type is not None else (sample.asset_type if sample else "herramienta")
     loc = req.current_location or (sample.current_location if sample else "Sede Central Dalor (Guacara)")
     
-    # Determinar prefijo de código
+    # Determinar prefijo de modelo
     import re
     prefix = (req.prefix_code or "").strip().upper()
     if not prefix and sample and sample.asset_code:
-        code = sample.asset_code.strip()
-        match = re.match(r"^(.*?)([-_]?\d+)$", code)
-        if match:
-            prefix = match.group(1).rstrip("-_")
+        code = sample.asset_code.strip().upper()
+        # Si tiene formato con sufijo de unidad (ej. HERR-013-09 o HERR-013-10):
+        m_unit = re.match(r"^(.*?)[-_](\d{2,3})$", code)
+        parts = [p for p in re.split(r'[-_]', code) if p]
+        num_parts = [p for p in parts if p.isdigit()]
+        if len(num_parts) >= 2 and m_unit:
+            prefix = m_unit.group(1).rstrip("-_")
         else:
             prefix = code
     if not prefix:
-        prefix = "HER"
+        prefix = "HERR-001"
         
-    existing_codes = set(
-        c[0] for c in db.query(Asset.asset_code).filter(Asset.asset_code.like(f"{prefix}%")).all()
-    )
-    
+    existing_records = db.query(Asset.asset_code).filter(
+        func.upper(Asset.asset_code).like(f"{prefix.upper()}%")
+    ).all()
+    existing_codes = set(c[0].strip().upper() for c in existing_records if c[0])
+    existing_codes.add(prefix.upper())
+
+    # Determinar el sufijo numérico máximo existente para este modelo
+    max_suffix = 0
+    pattern_suffix = r"^" + re.escape(prefix.upper()) + r"[-_](\d+)$"
+    for c in existing_codes:
+        m_suf = re.match(pattern_suffix, c)
+        if m_suf:
+            try:
+                max_suffix = max(max_suffix, int(m_suf.group(1)))
+            except ValueError:
+                pass
+
     created_assets = []
-    counter = len(existing_tools) + 1 if existing_tools else 1
+    counter = max_suffix + 1 if max_suffix > 0 else 1
     
     while len(created_assets) < req.quantity:
-        candidate_code = f"{prefix}-{counter:03d}" if counter < 1000 else f"{prefix}-{counter}"
+        candidate_code = f"{prefix}-{counter:02d}" if counter < 100 else f"{prefix}-{counter}"
         if candidate_code not in existing_codes:
             existing_codes.add(candidate_code)
             new_a = Asset(

@@ -256,7 +256,8 @@ function addEditProjectResource(type) {
                     (a.name || '').trim().toUpperCase() === (targetAsset.name || '').trim().toUpperCase() &&
                     (a.status === 'disponible_base' || !a.current_project_id)
                 );
-                const candidates = sameModelAssets.slice(0, qty);
+                const otherCandidates = sameModelAssets.filter(a => a.id !== targetAsset.id);
+                const candidates = [targetAsset, ...otherCandidates].slice(0, qty);
                 candidates.forEach(c => {
                     if (!editSelectedToolIds.includes(c.id)) editSelectedToolIds.push(c.id);
                 });
@@ -644,6 +645,10 @@ async function submitEditProject(event) {
             await loadProjectsList();
         } else if (typeof window.loadProjectsList === 'function') {
             await window.loadProjectsList();
+        }
+
+        if (typeof window.loadProjectRequisitionsBadge === 'function') {
+            window.loadProjectRequisitionsBadge();
         }
     } catch (err) {
         console.error("Error guardando edición de proyecto:", err);

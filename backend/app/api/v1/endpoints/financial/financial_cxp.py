@@ -41,7 +41,7 @@ class PayableCreate(BaseModel):
     category_id: Optional[int] = None
     payable_type: str = "costo_material_obra" # costo_material_obra, stock_almacen, servicios_honorarios, gastos_sede, alquiler_maquinaria_ext
     description: str
-    due_date: datetime
+    due_date: Optional[datetime] = None
     amount_usd: float # Total Factura
     taxable_base_usd: Optional[float] = 0.0
     tax_amount_usd: Optional[float] = 0.0

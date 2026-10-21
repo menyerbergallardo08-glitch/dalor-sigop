@@ -37,7 +37,7 @@ class ReceivableCreate(BaseModel):
     client_id: int
     project_id: Optional[int] = None
     description: str
-    due_date: datetime
+    due_date: Optional[datetime] = None
     amount_usd: float # Total Factura
     taxable_base_usd: Optional[float] = 0.0
     tax_amount_usd: Optional[float] = 0.0

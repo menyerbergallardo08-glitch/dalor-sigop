@@ -67,13 +67,17 @@ async function loadProjectRequisitionsBadge() {
         const alarmBtn = document.getElementById("btnHeaderRequisitionsAlarm");
         if (alarmBtn) {
             if (pendingCount > 0) {
-                alarmBtn.style.color = "#dc2626";
+                alarmBtn.style.color = "#fca5a5";
+                alarmBtn.style.borderColor = "#ef4444";
+                alarmBtn.style.backgroundColor = "rgba(239, 68, 68, 0.2)";
                 alarmBtn.style.fontWeight = "800";
                 alarmBtn.title = `🚨 ¡Atención Almacén! Hay ${pendingCount} obra(s) con solicitudes pendientes de despacho`;
             } else {
-                alarmBtn.style.color = "";
+                alarmBtn.style.color = "#94a3b8";
+                alarmBtn.style.borderColor = "#334155";
+                alarmBtn.style.backgroundColor = "#1e293b";
                 alarmBtn.style.fontWeight = "";
-                alarmBtn.title = "Requisiciones de Materiales";
+                alarmBtn.title = "Requerimientos de Obra pendientes (Almacén)";
             }
         }
     } catch (e) {

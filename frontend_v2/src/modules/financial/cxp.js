@@ -853,7 +853,7 @@ async function submitCreatePayable(e) {
         material_items: materialItems,
         project_id: document.getElementById("cxp_project_id")?.value ? parseInt(document.getElementById("cxp_project_id").value) : null,
         description: document.getElementById("cxp_description")?.value?.trim() || '',
-        due_date: new Date(document.getElementById("cxp_due_date").value).toISOString(),
+        due_date: (document.getElementById("cxp_due_date")?.value) ? new Date(document.getElementById("cxp_due_date").value).toISOString() : null,
         amount_usd: amountUsd,
         taxable_base_usd: baseUsd,
         tax_amount_usd: taxUsd,
@@ -1014,7 +1014,7 @@ async function submitEditPayable(e) {
         control_number: document.getElementById("edit_cxp_control_number")?.value?.trim() || null,
         amount_usd: parseFloat(document.getElementById("edit_cxp_amount_usd")?.value) || 0,
         tax_withholding_rate: parseFloat(document.getElementById("edit_cxp_tax_withholding_rate")?.value) || 0,
-        due_date: new Date(document.getElementById("edit_cxp_due_date").value).toISOString(),
+        due_date: (document.getElementById("edit_cxp_due_date")?.value) ? new Date(document.getElementById("edit_cxp_due_date").value).toISOString() : null,
         description: document.getElementById("edit_cxp_description")?.value?.trim()
     };
 

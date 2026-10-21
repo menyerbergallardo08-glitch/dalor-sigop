@@ -136,16 +136,16 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-n3gqq0-P.js"></script>
+  <script type="module" crossorigin src="/assets/main-B0arAaFG.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-D_vdad7H.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-Dkguaqn3.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-Br8kf0Nz.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-requisitions-CzeNVT0E.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-core-CtHb54Iz.js">
-  <link rel="modulepreload" crossorigin href="/assets/resources-Cca3oZK1.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-requisitions-DjtdkW8k.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-core-CI5NWlao.js">
+  <link rel="modulepreload" crossorigin href="/assets/resources-D-Y3ytCr.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-Fx7EiKgK.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-lVbTwRz9.js">
-  <link rel="modulepreload" crossorigin href="/assets/materials-CVLLI96J.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-gY4xKQG4.js">
+  <link rel="modulepreload" crossorigin href="/assets/materials-BQIsdbud.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-eAb7411B.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-Dq91xv5n.js">
 </head>
@@ -326,6 +326,13 @@
 
                     <i class="fa-solid fa-bolt"></i> 3 Toques
 
+                </button>
+
+                <!-- 🔔 Alerta Visual de Requerimientos de Obra (Almacén Guacara) -->
+                <button id="btnHeaderRequisitionsAlarm" onclick="openProjectRequisitionsInboxModal()" class="btn-secondary" title="Requerimientos de Obra pendientes" style="background: #1e293b; border: 1px solid #334155; color: #94a3b8; font-weight: 700; font-size: 11px; padding: 6px 11px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: all 0.2s;">
+                    <i class="fa-solid fa-bell" style="font-size: 13px;"></i>
+                    <span class="hide-on-mobile">Almacén</span>
+                    <span id="badgePendingRequisitionsHeader" style="background: #ef4444; color: #ffffff; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 900; display: none; box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);">0</span>
                 </button>
 
                 <div class="tasa-editor-box" id="bcvTasaBadge" title="Tasa Oficial del Banco Central de Venezuela sincronizada automáticamente">

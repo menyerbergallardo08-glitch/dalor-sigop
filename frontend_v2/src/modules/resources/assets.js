@@ -51,7 +51,7 @@ async function deleteAssetItem(assetId) {
 let rawPersonnelList = [];
 
 
-function openAssignModal(type, id, name, action) {
+function openAssignModal(type, id, name, action, forceSingleUnit = false) {
 
     document.getElementById("modal_res_type").value = type;
 
@@ -62,10 +62,11 @@ function openAssignModal(type, id, name, action) {
     
 
     const isAsset = type === 'asset';
+    const isSingleSpecific = forceSingleUnit || (typeof name === 'string' && name.includes('['));
     const qtyContainer = document.getElementById("modal_quantity_container");
     const qtyInput = document.getElementById("modal_res_quantity");
     if (qtyContainer) {
-        qtyContainer.style.display = (isAsset && action === 'assign') ? 'block' : 'none';
+        qtyContainer.style.display = (isAsset && action === 'assign' && !isSingleSpecific) ? 'block' : 'none';
     }
     if (qtyInput) {
         qtyInput.value = "1";

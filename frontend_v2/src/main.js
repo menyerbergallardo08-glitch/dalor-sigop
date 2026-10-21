@@ -428,6 +428,18 @@ async function initApp() {
         if (typeof window.initSearchDebounceBindings === 'function') {
             setTimeout(window.initSearchDebounceBindings, 300);
         }
+
+        // 🔔 Cargar alertas de requisiciones de almacén y activar sondeo periódico
+        if (typeof window.loadProjectRequisitionsBadge === 'function') {
+            setTimeout(window.loadProjectRequisitionsBadge, 500);
+        }
+        if (!window._requisitionBadgeTimer) {
+            window._requisitionBadgeTimer = setInterval(() => {
+                if (typeof window.loadProjectRequisitionsBadge === 'function') {
+                    window.loadProjectRequisitionsBadge();
+                }
+            }, 60000);
+        }
     } else {
         document.body.classList.remove('authenticated');
         document.documentElement.classList.remove('is-auth');

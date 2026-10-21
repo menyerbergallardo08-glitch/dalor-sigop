@@ -122,8 +122,8 @@ def get_receivables(
         "project_name": r.project.name if r.project else "Sede Central",
         "project_code": r.project.code if r.project else "GEN",
         "description": r.description,
-        "issue_date": r.issue_date.strftime("%Y-%m-%d"),
-        "due_date": r.due_date.strftime("%Y-%m-%d"),
+        "issue_date": r.issue_date.strftime("%Y-%m-%d") if r.issue_date else "",
+        "due_date": r.due_date.strftime("%Y-%m-%d") if r.due_date else "",
         "amount_usd": r.amount_usd,
         "taxable_base_usd": r.taxable_base_usd,
         "tax_amount_usd": r.tax_amount_usd,
@@ -142,7 +142,7 @@ def get_receivables(
             "payment_method": p.payment_method,
             "amount_usd": p.amount_usd,
             "voucher_number": p.voucher_number or p.reference_number,
-            "payment_date": p.payment_date.strftime("%d/%m/%Y"),
+            "payment_date": p.payment_date.strftime("%d/%m/%Y") if p.payment_date else "",
             "notes": p.notes
         } for p in r.payments]
     } for r in rows]
@@ -494,8 +494,8 @@ def update_receivable_fiscal_correlative(
         "message": f"Ajustes fiscales actualizados con éxito ({', '.join(changes)}).",
         "fiscal_invoice_number": r.fiscal_invoice_number,
         "control_number": r.control_number,
-        "issue_date": r.issue_date.strftime("%d/%m/%Y"),
-        "issue_date_iso": r.issue_date.strftime("%Y-%m-%d")
+        "issue_date": r.issue_date.strftime("%d/%m/%Y") if r.issue_date else "",
+        "issue_date_iso": r.issue_date.strftime("%Y-%m-%d") if r.issue_date else ""
     }
 
 @router.get("/cxc/{receivable_id}/fiscal-invoice-data")
@@ -652,9 +652,9 @@ def get_fiscal_invoice_data(receivable_id: int, db: Session = Depends(get_db)):
         "invoice_number": inv_display,
         "operational_code": r.invoice_number or "",
         "control_number": ctrl_display,
-        "issue_date": r.issue_date.strftime("%d/%m/%Y"),
-        "issue_date_iso": r.issue_date.strftime("%Y-%m-%d"),
-        "city_date_formatted": f"En Guacara {r.issue_date.strftime('%d/%m/%Y')}",
+        "issue_date": r.issue_date.strftime("%d/%m/%Y") if r.issue_date else "",
+        "issue_date_iso": r.issue_date.strftime("%Y-%m-%d") if r.issue_date else "",
+        "city_date_formatted": f"En Guacara {r.issue_date.strftime('%d/%m/%Y')}" if r.issue_date else "En Guacara",
         "client": {
             "name": client.name if client else "CLIENTE GENERAL",
             "rif": client.rif if client else "J-00000000-0",

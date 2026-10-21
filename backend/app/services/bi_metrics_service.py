@@ -2,10 +2,11 @@
 Servicio especializado para cálculo y agregación de Business Intelligence y métricas ejecutivas.
 Consolida datos reales de proyectos, contratos, cobranzas, compras, inventario y P&L.
 """
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
+import math
 
 from app.models.models import (
     Client,
@@ -21,22 +22,114 @@ from app.models.models import (
 class BIMetricsService:
 
     @staticmethod
-    def classify_venezuela_region(location_str: str, client_address: str = None) -> str:
-        raw = f"{location_str or ''} {client_address or ''}".lower()
-        if any(k in raw for k in ["carabobo", "valencia", "guacara", "san joaquin", "san joaquín", "puerto cabello", "naguanagua", "mariara", "los guayos"]):
-            return "carabobo"
-        if any(k in raw for k in ["aragua", "maracay", "cagua", "turmero", "la victoria"]):
-            return "aragua"
-        if any(k in raw for k in ["miranda", "caracas", "guarenas", "guatire", "distrito", "chacao", "baruta", "los teques"]):
-            return "miranda"
-        if any(k in raw for k in ["anzoategui", "anzoátegui", "barcelona", "puerto la cruz", "lecheria", "el tigre", "monagas", "maturin"]):
-            return "oriente"
-        if any(k in raw for k in ["zulia", "maracaibo", "cabimas", "san francisco", "falcon", "punto fijo"]):
+    def geocode_venezuela_project(location_str: str, client_address: str = None, project_id: int = 0) -> Tuple[float, float, str, bool]:
+        """
+        Georreferenciación precisa para obras de DALOR SIGO-P en Venezuela.
+        Retorna (latitud, longitud, ciudad/zona_detectada, es_sede_central).
+        Aplica un micro-desplazamiento pseudo-aleatorio determinista para proyectos
+        en la misma localidad para que sus pines no queden superpuestos en el mapa.
+        """
+        loc_clean = (location_str or "").lower()
+        cli_clean = (client_address or "").lower()
+        
+        # Es Sede Central / Taller Dalor Guacara
+        if any(k in loc_clean for k in ["sede central", "planta dalor", "galpon 10", "galpón 10", "taller central", "guacara galpon", "base central"]):
+            return (10.2280, -67.8770, "Guacara (Sede Central DALOR)", True)
+            
+        # Zonas y Ciudades
+        coords_map = [
+            # Carabobo
+            (["oxicar guacara", "planta oxicar guacara", "tratamiento / guacara"], (10.2315, -67.8820, "Guacara (Zona Industrial)")),
+            (["puerto cabello", "el palito", "moron", "morón"], (10.4810, -68.1210, "Puerto Cabello / El Palito")),
+            (["san joaquin", "san joaquín", "cerveceria", "cervecería", "mariara"], (10.2600, -67.7900, "San Joaquín")),
+            (["planta co2 oxicar", "oxicar, valencia", "valencia, planta excel", "planta excel"], (10.1650, -67.9750, "Valencia (Zona Ind. Sur)")),
+            (["valencia", "naguanagua", "los guayos", "san diego"], (10.1800, -67.9900, "Valencia")),
+            (["guacara", "yagua"], (10.2280, -67.8770, "Guacara")),
+            
+            # Aragua
+            (["cagua", "turmero"], (10.1900, -67.4580, "Cagua")),
+            (["maracay", "la victoria", "tejerias", "tejerías", "aragua"], (10.2469, -67.5958, "Maracay")),
+            
+            # Miranda / Caracas
+            (["guarenas", "guatire"], (10.4630, -66.6120, "Guarenas / Guatire")),
+            (["caracas", "chacao", "baruta", "distrito capital", "los teques"], (10.4880, -66.8790, "Caracas")),
+            
+            # Falcón
+            (["coro", "planta 3 coro", "planta coro", "punto fijo", "falcon", "falcón"], (11.4045, -69.6734, "Coro (Falcón)")),
+            
+            # Bolívar
+            (["ciudad bolivar", "ciudad bolívar", "puerto ordaz", "san felix", "san félix", "matanzas", "bolivar", "bolívar", "guayana"], (8.1287, -63.5408, "Ciudad Bolívar")),
+            
+            # Zulia
+            (["maracaibo", "cabimas", "san francisco", "zulia"], (10.6427, -71.6125, "Maracaibo")),
+            
+            # Lara / Centro Occidente
+            (["barquisimeto", "cabudare", "lara", "yaracuy", "san felipe"], (10.0647, -69.3570, "Barquisimeto")),
+            
+            # Oriente
+            (["barcelona", "puerto la cruz", "lecheria", "lechería", "anzoategui", "anzoátegui", "maturin", "maturín", "monagas", "el tigre"], (10.1980, -64.6930, "Oriente (Anzoátegui)"))
+        ]
+        
+        matched = False
+        base_lat, base_lng, zone_name = (10.2280, -67.8770, "Guacara (Base Central)")
+        
+        # Prioridad 1: Ubicación específica de la obra
+        for keywords, (c_lat, c_lng, z_name) in coords_map:
+            if any(k in loc_clean for k in keywords):
+                base_lat, base_lng, zone_name = c_lat, c_lng, z_name
+                matched = True
+                break
+
+        # Prioridad 2: Dirección fiscal o sede del cliente si la obra no tiene localidad explícita
+        if not matched and cli_clean:
+            for keywords, (c_lat, c_lng, z_name) in coords_map:
+                if any(k in cli_clean for k in keywords):
+                    base_lat, base_lng, zone_name = c_lat, c_lng, z_name
+                    matched = True
+                    break
+                
+        # Jitter determinista por ID del proyecto para evitar que múltiples pines en la misma ciudad se solapen
+        if project_id:
+            angle = (project_id * 137.5) * (math.pi / 180.0)
+            radius = 0.004 + (project_id % 5) * 0.002
+            lat = round(base_lat + radius * math.cos(angle), 5)
+            lng = round(base_lng + radius * math.sin(angle), 5)
+        else:
+            lat, lng = base_lat, base_lng
+            
+        return (lat, lng, zone_name, False)
+
+    @classmethod
+    def _match_region_str(cls, text: str) -> Optional[str]:
+        if not text:
+            return None
+        t = text.lower()
+        if any(k in t for k in ["falcon", "falcón", "coro", "punto fijo", "zulia", "maracaibo", "cabimas", "san francisco"]):
             return "zulia_falcon"
-        if any(k in raw for k in ["bolivar", "bolívar", "puerto ordaz", "guayana", "san felix", "ciudad bolivar"]):
+        if any(k in t for k in ["bolivar", "bolívar", "puerto ordaz", "guayana", "san felix", "san félix", "ciudad bolivar", "ciudad bolívar", "matanzas"]):
             return "bolivar"
-        if any(k in raw for k in ["lara", "barquisimeto", "cabudare", "yaracuy"]):
+        if any(k in t for k in ["anzoategui", "anzoátegui", "barcelona", "puerto la cruz", "lecheria", "lechería", "el tigre", "monagas", "maturin", "maturín"]):
+            return "oriente"
+        if any(k in t for k in ["lara", "barquisimeto", "cabudare", "yaracuy", "san felipe"]):
             return "centro_occidente"
+        if any(k in t for k in ["miranda", "caracas", "guarenas", "guatire", "distrito capital", "chacao", "baruta", "los teques"]):
+            return "miranda"
+        if any(k in t for k in ["aragua", "maracay", "cagua", "turmero", "la victoria", "tejerias", "tejerías"]):
+            return "aragua"
+        if any(k in t for k in ["carabobo", "valencia", "guacara", "san joaquin", "san joaquín", "puerto cabello", "el palito", "naguanagua", "mariara", "los guayos", "yagua"]):
+            return "carabobo"
+        return None
+
+    @classmethod
+    def classify_venezuela_region(cls, location_str: str, client_address: str = None) -> str:
+        # Prioridad 1: Ubicación en obra
+        reg = cls._match_region_str(location_str)
+        if reg:
+            return reg
+        # Prioridad 2: Dirección del cliente
+        reg = cls._match_region_str(client_address)
+        if reg:
+            return reg
         return "carabobo"
 
     @classmethod
@@ -160,21 +253,44 @@ class BIMetricsService:
     
         # Mapeo por proyecto global
         raw_all_projects = db.query(Project).all()
+        projects_geo = []
         for p in raw_all_projects:
             cli = all_clients.get(p.client_id)
             reg_key = cls.classify_venezuela_region(p.location, cli.address if cli else None)
+            p_rec = [r for r in all_rec if r.project_id == p.id]
+            p_inv = sum(r.amount_usd for r in p_rec)
+            p_col = sum(r.paid_amount_usd for r in p_rec)
+            is_act = (p.status or '').lower() in ['activo', 'en_ejecucion']
+
             if reg_key in regional_metrics:
-                p_rec = [r for r in all_rec if r.project_id == p.id]
-                p_inv = sum(r.amount_usd for r in p_rec)
-                p_col = sum(r.paid_amount_usd for r in p_rec)
-                is_act = (p.status or '').lower() in ['activo', 'en_ejecucion']
-    
                 regional_metrics[reg_key]["projects_count"] += 1
                 if is_act:
                     regional_metrics[reg_key]["active_projects_count"] += 1
-                    regional_metrics[reg_key]["has_active_projects"] += True
+                    regional_metrics[reg_key]["has_active_projects"] = True
                 regional_metrics[reg_key]["invoiced_usd"] += round(p_inv, 2)
                 regional_metrics[reg_key]["collected_usd"] += round(p_col, 2)
+
+            if getattr(p, "is_active", True) is not False:
+                lat, lng, zone_name, is_base = cls.geocode_venezuela_project(p.location, cli.address if cli else None, p.id)
+                projects_geo.append({
+                    "id": p.id,
+                    "code": p.code,
+                    "name": p.name,
+                    "client_id": p.client_id,
+                    "client_name": cli.name if cli else (p.client_name or "Cliente Directo"),
+                    "location": p.location or "En Sitio",
+                    "zone_name": zone_name,
+                    "region": reg_key,
+                    "lat": lat,
+                    "lng": lng,
+                    "is_base": is_base,
+                    "status": (p.status or "activo").lower(),
+                    "contract_amount_usd": round(p.contract_amount_usd or 0.0, 2),
+                    "invoiced_usd": round(p_inv, 2),
+                    "collected_usd": round(p_col, 2),
+                    "balance_usd": round(max(0.0, (p.contract_amount_usd or p_inv) - p_col), 2),
+                    "progress_pct": round(getattr(p, "progress_pct", 0.0) or 0.0, 1)
+                })
     
         # 4. Evolución Mensual Real
         months_map = {}
@@ -366,5 +482,6 @@ class BIMetricsService:
             "project_statuses": status_counts,
             "payment_methods": payment_methods_list,
             "service_lines": service_lines_list,
-            "projects_pnl": projects_pnl
+            "projects_pnl": projects_pnl,
+            "projects_geo": projects_geo
         }

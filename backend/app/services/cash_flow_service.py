@@ -218,20 +218,20 @@ class CashFlowService:
         alerts = []
         now = datetime.utcnow()
         for r in r_query:
-            if r.status != "cobrado_total" and r.due_date < now and r.balance_usd > 0:
+            if r.status != "cobrado_total" and r.due_date and r.due_date < now and r.balance_usd > 0:
                 alerts.append({
                     "type": "cxc_overdue",
                     "title": f"Factura {r.invoice_number} en Mora",
-                    "message": f"Cliente {r.client.name if r.client else 'General'} adeuda ${r.balance_usd:,.2f} vencida el {r.due_date.strftime('%d/%m/%Y')}.",
+                    "message": f"Cliente {r.client.name if r.client else 'General'} adeuda ${r.balance_usd:,.2f} vencida el {r.due_date.strftime('%d/%m/%Y') if r.due_date else 'S/F'}.",
                     "level": "danger"
                 })
 
         for p in p_query:
-            if p.status != "pagado_total" and p.due_date < now and p.balance_usd > 0:
+            if p.status != "pagado_total" and p.due_date and p.due_date < now and p.balance_usd > 0:
                 alerts.append({
                     "type": "cxp_overdue",
                     "title": f"Factura Proveedor {p.invoice_number} Vencida",
-                    "message": f"Deuda con {p.supplier_name} por ${p.balance_usd:,.2f} venció el {p.due_date.strftime('%d/%m/%Y')}.",
+                    "message": f"Deuda con {p.supplier_name} por ${p.balance_usd:,.2f} venció el {p.due_date.strftime('%d/%m/%Y') if p.due_date else 'S/F'}.",
                     "level": "warning"
                 })
 

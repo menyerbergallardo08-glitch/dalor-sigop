@@ -30,6 +30,28 @@ let chartBiStatus = null;
 let chartBiMethods = null;
 let biCurrentFilter = { region: 'all', year: '2026', client: 'all' };
 
+// --- Leaflet GIS Map Variables & Config ---
+let executiveMap = null;
+let executiveMapMarkersLayer = null;
+let executiveMapBaseLayers = {};
+let currentMapLayerName = 'streets';
+
+const VENEZUELA_BOUNDS = [
+    [0.7, -73.4], // Suroeste (Amazonas / Apure / Táchira / Zulia)
+    [12.4, -59.8]  // Noreste (Falcón / Nueva Esparta / Sucre / Delta Amacuro)
+];
+
+const REGION_COORDINATES = {
+    all: null,
+    carabobo: { center: [10.2280, -67.8770], zoom: 10 },
+    miranda: { center: [10.4700, -66.7500], zoom: 10 },
+    aragua: { center: [10.2200, -67.5000], zoom: 10 },
+    oriente: { center: [10.1300, -64.6800], zoom: 8 },
+    zulia_falcon: { center: [11.0000, -70.5000], zoom: 8 },
+    bolivar: { center: [8.1287, -63.5408], zoom: 8 },
+    centro_occidente: { center: [10.0647, -69.3570], zoom: 9 }
+};
+
 async function loadExecutiveDashboard() {
     const pnlTbody = document.getElementById("executivePnlTableBody");
     if (pnlTbody) pnlTbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #64748b; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Consolidando analítica ejecutiva y mapa georreferenciado...</td></tr>`;
@@ -78,12 +100,236 @@ function populateBIClientSlicer(clientsList) {
     if (cur) cliSelect.value = cur;
 }
 
+function initOrUpdateExecutiveMap(projectsGeo = []) {
+    const mapEl = document.getElementById('leafletVenezuelaMap');
+    if (!mapEl) return;
+    if (typeof L === 'undefined') {
+        console.warn('Leaflet GIS library (L) is not loaded yet.');
+        return;
+    }
+
+    if (!executiveMap) {
+        executiveMap = L.map('leafletVenezuelaMap', {
+            center: [7.5, -66.0],
+            zoom: 5,
+            minZoom: 4,
+            maxZoom: 18,
+            zoomControl: true,
+            scrollWheelZoom: true
+        });
+
+        // Capa Vial (OpenStreetMap Oficial - 100% Gratuito y sin marcas de agua de API key)
+        const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+            subdomains: ['a', 'b', 'c'],
+            maxZoom: 19
+        });
+
+        // Capa Satélite (Esri World Imagery - Satélite real de alta resolución libre)
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Maxar, Earthstar Geographics',
+            maxZoom: 18
+        });
+
+        executiveMapBaseLayers = {
+            streets: streetsLayer,
+            satellite: satelliteLayer
+        };
+
+        // Capa activa por defecto
+        streetsLayer.addTo(executiveMap);
+
+        // Capa de marcadores
+        executiveMapMarkersLayer = L.layerGroup().addTo(executiveMap);
+    }
+
+    // Invalidar tamaño y ajustar a todo el país automáticamente
+    setTimeout(() => {
+        if (executiveMap) {
+            executiveMap.invalidateSize();
+            if (!biCurrentFilter.region || biCurrentFilter.region === 'all') {
+                executiveMap.fitBounds(VENEZUELA_BOUNDS, { padding: [12, 12], maxZoom: 6 });
+            }
+        }
+    }, 200);
+
+    // Limpiar marcadores previos
+    if (executiveMapMarkersLayer) {
+        executiveMapMarkersLayer.clearLayers();
+    }
+
+    // 1. Marcador Sede Central Dalor (Guacara, Carabobo)
+    const baseIcon = L.divIcon({
+        className: 'custom-dalor-base-pin',
+        html: `
+            <div style="position: relative; width: 34px; height: 34px;">
+                <div style="position: absolute; inset: -4px; border-radius: 50%; background: rgba(37, 99, 235, 0.35); animation: pulse 2s infinite;"></div>
+                <div style="position: relative; width: 34px; height: 34px; background: #1d4ed8; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; box-shadow: 0 3px 8px rgba(0,0,0,0.35); font-size: 14px;">
+                    <i class="fa-solid fa-industry"></i>
+                </div>
+            </div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+        popupAnchor: [0, -17]
+    });
+
+    const baseMarker = L.marker([10.2280, -67.8770], { icon: baseIcon, zIndexOffset: 1000 });
+    baseMarker.bindPopup(`
+        <div style="font-family: inherit; font-size: 12px; min-width: 220px; color: #0f172a; line-height: 1.4;">
+            <div style="display: flex; align-items: center; gap: 6px; border-bottom: 2px solid #2563eb; padding-bottom: 4px; margin-bottom: 6px;">
+                <i class="fa-solid fa-industry" style="color: #2563eb; font-size: 14px;"></i>
+                <span style="font-weight: 800; color: #1e3a8a; font-size: 12.5px;">DALOR, C.A. - SEDE CENTRAL</span>
+            </div>
+            <p style="margin: 0 0 4px 0; color: #475569; font-size: 11px;">
+                <strong>Ubicación:</strong> Guacara, Edo. Carabobo.<br>
+                Centro de Operaciones Metalmecánicas y Logística Principal.
+            </p>
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 4px 8px; font-size: 10.5px; color: #1d4ed8; font-weight: 700;">
+                <i class="fa-solid fa-circle-check"></i> Base Operativa Principal
+            </div>
+        </div>
+    `);
+    executiveMapMarkersLayer.addLayer(baseMarker);
+
+    // 2. Renderizar marcadores de proyectos georreferenciados
+    const emptyOverlay = document.getElementById('biEmptyMapOverlay');
+    let hasProjects = false;
+
+    projectsGeo.forEach(p => {
+        if (!p.lat || !p.lng) return;
+        hasProjects = true;
+
+        const isCulminated = (p.status || '').toLowerCase().includes('culminad') ||
+                             (p.status || '').toLowerCase().includes('completad') ||
+                             p.progress_pct >= 100;
+        const pendingCobro = (p.invoiced_usd - p.collected_usd) > 0.01;
+
+        let pinBg = '#16a34a'; // Verde activo
+        let pinIcon = 'fa-solid fa-helmet-safety';
+        let statusBadge = '<span style="background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-weight: 800;">Activo</span>';
+
+        if (isCulminated) {
+            pinBg = '#64748b'; // Slate culminado
+            pinIcon = 'fa-solid fa-flag-checkered';
+            statusBadge = '<span style="background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-weight: 800;">Culminado</span>';
+        } else if (pendingCobro) {
+            pinBg = '#d97706'; // Ambar por cobrar
+            pinIcon = 'fa-solid fa-clock';
+            statusBadge = '<span style="background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px; font-weight: 800;">Por Cobrar</span>';
+        }
+
+        const projectIcon = L.divIcon({
+            className: 'custom-dalor-project-pin',
+            html: `
+                <div style="width: 28px; height: 28px; background: ${pinBg}; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.35); font-size: 11px; cursor: pointer; transition: transform 0.15s ease;">
+                    <i class="${pinIcon}"></i>
+                </div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+            popupAnchor: [0, -14]
+        });
+
+        const marker = L.marker([p.lat, p.lng], { icon: projectIcon });
+
+        const safeName = (p.name || 'Proyecto').replace(/"/g, '&quot;');
+        const safeClient = (p.client_name || 'General').replace(/"/g, '&quot;');
+        const safeLoc = (p.location || p.hub_name || 'Venezuela').replace(/"/g, '&quot;');
+        const invFormatted = Number(p.invoiced_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const colFormatted = Number(p.collected_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const contrFormatted = Number(p.contract_amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        marker.bindPopup(`
+            <div style="font-family: inherit; font-size: 12px; min-width: 220px; color: #0f172a; line-height: 1.4;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 6px;">
+                    <span style="font-weight: 800; color: #0284c7; font-size: 12px;">${p.code || 'OBRA'}</span>
+                    <span style="font-size: 10px;">${statusBadge}</span>
+                </div>
+                <div style="font-weight: 800; font-size: 12.5px; color: #0f172a; margin-bottom: 4px;">
+                    ${safeName}
+                </div>
+                <div style="font-size: 11px; color: #475569; margin-bottom: 2px;">
+                    <i class="fa-solid fa-building" style="color: #64748b; width: 14px;"></i> <strong>Cliente:</strong> ${safeClient}
+                </div>
+                <div style="font-size: 11px; color: #475569; margin-bottom: 6px;">
+                    <i class="fa-solid fa-location-dot" style="color: #ef4444; width: 14px;"></i> <strong>Sede:</strong> ${safeLoc}
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                    <div><span style="color: #64748b; font-size: 10px;">Contrato:</span><br><strong>$${contrFormatted}</strong></div>
+                    <div><span style="color: #64748b; font-size: 10px;">Avance:</span><br><strong style="color: #0284c7;">${Number(p.progress_pct || 0).toFixed(0)}%</strong></div>
+                    <div><span style="color: #64748b; font-size: 10px;">Facturado:</span><br><strong style="color: #2563eb;">$${invFormatted}</strong></div>
+                    <div><span style="color: #64748b; font-size: 10px;">Cobrado:</span><br><strong style="color: #059669;">$${colFormatted}</strong></div>
+                </div>
+                <button type="button" onclick="if(window.viewProjectDetails) window.viewProjectDetails(${p.id});" style="width: 100%; background: #0284c7; color: #ffffff; border: none; padding: 7px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                    <i class="fa-solid fa-folder-open"></i> Abrir Ficha Técnica
+                </button>
+            </div>
+        `);
+
+        executiveMapMarkersLayer.addLayer(marker);
+    });
+
+    if (emptyOverlay) {
+        emptyOverlay.style.display = (hasProjects || projectsGeo.length > 0) ? 'none' : 'flex';
+    }
+}
+
+function setExecutiveMapLayer(type) {
+    if (!executiveMap || !executiveMapBaseLayers[type]) return;
+    currentMapLayerName = type;
+
+    Object.values(executiveMapBaseLayers).forEach(layer => {
+        if (executiveMap.hasLayer(layer)) {
+            executiveMap.removeLayer(layer);
+        }
+    });
+
+    executiveMapBaseLayers[type].addTo(executiveMap);
+
+    const btnVial = document.getElementById('btnMapLayerStreets');
+    const btnSat = document.getElementById('btnMapLayerSatellite');
+    if (btnVial && btnSat) {
+        if (type === 'streets') {
+            btnVial.style.background = '#ffffff';
+            btnVial.style.color = '#0f172a';
+            btnVial.style.boxShadow = '0 1px 2px rgba(0,0,0,0.08)';
+            btnSat.style.background = 'transparent';
+            btnSat.style.color = '#64748b';
+            btnSat.style.boxShadow = 'none';
+        } else {
+            btnSat.style.background = '#ffffff';
+            btnSat.style.color = '#0f172a';
+            btnSat.style.boxShadow = '0 1px 2px rgba(0,0,0,0.08)';
+            btnVial.style.background = 'transparent';
+            btnVial.style.color = '#64748b';
+            btnVial.style.boxShadow = 'none';
+        }
+    }
+}
+
+function resetExecutiveMapView() {
+    if (!executiveMap) return;
+    executiveMap.fitBounds(VENEZUELA_BOUNDS, { padding: [12, 12], maxZoom: 6 });
+}
+
+function focusExecutiveMapRegion(regionKey) {
+    if (!executiveMap) return;
+    if (!regionKey || regionKey === 'all') {
+        executiveMap.fitBounds(VENEZUELA_BOUNDS, { padding: [12, 12], maxZoom: 6 });
+    } else {
+        const target = REGION_COORDINATES[regionKey];
+        if (target && target.center) {
+            executiveMap.flyTo(target.center, target.zoom, { duration: 1.0 });
+        }
+    }
+}
+
 function filterBIExtended(type, val, btnEl) {
     if (type === 'region') {
         biCurrentFilter.region = val;
         const buttons = document.querySelectorAll('#biRegionSlicers .bi-filter-pill-light');
         buttons.forEach(b => b.classList.remove('active'));
         if (btnEl) btnEl.classList.add('active');
+        focusExecutiveMapRegion(val);
     } else if (type === 'year') {
         biCurrentFilter.year = val;
     } else if (type === 'client') {
@@ -119,40 +365,8 @@ function renderExecutiveDashboardContent(data) {
         badgeEl.textContent = names[biCurrentFilter.region] || 'Todo el Territorio';
     }
 
-    // 2. Nodos Georreferenciados del Mapa de Venezuela (100% REALES)
-    const nodeMap = {
-        carabobo: { node: 'mapNodeCarabobo', text: 'mapCaraboboAmount' },
-        miranda: { node: 'mapNodeMiranda', text: 'mapMirandaAmount' },
-        aragua: { node: 'mapNodeAragua', text: 'mapAraguaAmount' },
-        oriente: { node: 'mapNodeOriente', text: 'mapOrienteAmount' },
-        zulia_falcon: { node: 'mapNodeZulia', text: 'mapOccidenteAmount' },
-        bolivar: { node: 'mapNodeBolivar', text: 'mapBolivarAmount' },
-        centro_occidente: { node: 'mapNodeCentroOccidente', text: 'mapCentroOccAmount' }
-    };
-
-    let anyActiveRegion = false;
-    regions.forEach(r => {
-        const cfg = nodeMap[r.key];
-        if (!cfg) return;
-        const nodeEl = document.getElementById(cfg.node);
-        const textEl = document.getElementById(cfg.text);
-
-        if (r.has_active_projects || r.projects_count > 0) {
-            anyActiveRegion = true;
-            if (nodeEl) nodeEl.style.display = 'block';
-            if (textEl) {
-                const amt = r.collected_usd > 0 ? r.collected_usd : r.invoiced_usd;
-                textEl.textContent = `$${(amt >= 1000 ? (amt / 1000).toFixed(1) + 'k' : amt.toFixed(0))}`;
-            }
-        } else {
-            if (nodeEl) nodeEl.style.display = 'none';
-        }
-    });
-
-    const emptyOverlay = document.getElementById('biEmptyMapOverlay');
-    if (emptyOverlay) {
-        emptyOverlay.style.display = anyActiveRegion ? 'none' : 'flex';
-    }
+    // 2. Mapa Satelital y GIS Interactivo de Venezuela con Leaflet (100% REAL)
+    initOrUpdateExecutiveMap(data.projects_geo || []);
 
     // 3. Totales de Cabecera (Tarjetas de KPIs)
     const hTotal = document.getElementById('biTotalIngresosHeader');
@@ -560,4 +774,8 @@ if (typeof window !== 'undefined') {
     window.populateBISlicers = populateBISlicers;
     window.renderBIAnalyticsCharts = renderBIAnalyticsCharts;
     window.renderCleanRadialCharts = renderCleanRadialCharts;
+    window.initOrUpdateExecutiveMap = initOrUpdateExecutiveMap;
+    window.setExecutiveMapLayer = setExecutiveMapLayer;
+    window.resetExecutiveMapView = resetExecutiveMapView;
+    window.focusExecutiveMapRegion = focusExecutiveMapRegion;
 }

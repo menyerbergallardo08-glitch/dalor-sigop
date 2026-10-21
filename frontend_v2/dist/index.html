@@ -136,12 +136,12 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-B0arAaFG.js"></script>
+  <script type="module" crossorigin src="/assets/main-DsUHSWE_.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-D_vdad7H.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-Dkguaqn3.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-Br8kf0Nz.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-requisitions-DjtdkW8k.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-core-CI5NWlao.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-core-C6fTbUVh.js">
   <link rel="modulepreload" crossorigin href="/assets/resources-D-Y3ytCr.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-Fx7EiKgK.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-gY4xKQG4.js">
@@ -3474,14 +3474,31 @@
                                     <div style="font-size: 10px; color: #64748b; margin-top: 2px;">No requiere asignación de flota ni vehículos.</div>
                                 </div>
                                 <div style="min-width: 0; overflow: hidden;">
-                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Maquinaria, Generadores & Equipos</label>
-                                    <input type="text" placeholder="🔍 Buscar maquinaria (ej: montacargas)..." oninput="filterPlanSelect('plan_select_tools', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; font-size: 10.5px; margin-bottom: 4px; box-sizing: border-box;">
-                                    <div style="display: flex; gap: 6px;">
-                                        <select id="plan_select_tools" style="flex: 1; min-width: 0; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; background: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                                            <option value="">-- Seleccionar Equipo Mayor --</option>
+                                    <label style="font-size: 11px; font-weight: 700; color: #475569;">Maquinaria, Generadores & Herramientas</label>
+                                    <input type="text" placeholder="🔍 Buscar modelo / equipo..." oninput="filterPlanSelect('plan_select_tools', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; font-size: 10.5px; margin-bottom: 4px; box-sizing: border-box;">
+                                    
+                                    <!-- Paso 1: Selector de Modelo / Equipo -->
+                                    <div style="display: flex; gap: 6px; margin-bottom: 4px;">
+                                        <select id="plan_select_tools" onchange="onPlanToolModelSelected()" style="flex: 1; min-width: 0; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; background: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                            <option value="">-- 1. Seleccionar Modelo / Equipo --</option>
                                         </select>
-                                        <input type="number" id="plan_tool_quantity" value="1" min="1" placeholder="Cant." style="width: 55px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 11px; text-align: center; font-weight: 700;" title="Cantidad a asignar">
-                                        <button type="button" onclick="addPlanResource('tools')" class="btn-secondary" style="padding: 6px 10px; font-size: 11px; font-weight: 700;" title="Agregar a la obra"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+
+                                    <!-- Paso 2: Sub-desplegable de Pieza Física / Serial y Cantidad -->
+                                    <div id="plan_tool_unit_wrapper" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px;">
+                                        <div style="font-size: 10.5px; font-weight: 800; color: #166534; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                                            <span><i class="fa-solid fa-screwdriver-wrench"></i> <span id="plan_tool_selected_model_label">Modelo</span></span>
+                                            <span id="plan_tool_available_badge" style="background: #dcfce7; color: #15803d; padding: 1px 6px; border-radius: 4px; font-weight: 800;">0 disp.</span>
+                                        </div>
+                                        <div style="display: flex; gap: 6px; align-items: center;">
+                                            <select id="plan_select_tool_unit" onchange="onPlanToolUnitSelected()" style="flex: 1; min-width: 0; border: 1px solid #86efac; border-radius: 4px; padding: 5px 6px; font-size: 11px; background: #fff;">
+                                                <option value="">⚡ Cualquier unidad disponible en base</option>
+                                            </select>
+                                            <input type="number" id="plan_tool_quantity" value="1" min="1" max="1" placeholder="Cant." style="width: 50px; border: 1px solid #86efac; border-radius: 4px; padding: 5px 4px; font-size: 11px; text-align: center; font-weight: 700; background: #fff;" title="Cantidad a asignar">
+                                            <button type="button" onclick="addPlanResource('tools')" class="btn-primary" style="padding: 5px 10px; font-size: 11px; font-weight: 700; background: #16a34a; border: none; color: white; white-space: nowrap;" title="Agregar a la obra">
+                                                <i class="fa-solid fa-plus"></i> Asignar
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div id="plan_tags_tools" class="assigned-tags-container" style="margin-top: 6px;"></div>
@@ -12775,13 +12792,30 @@
                                 <span><i class="fa-solid fa-toolbox"></i> Herramientas & Equipos</span>
                                 <span id="edit_tools_counter" style="font-size: 10px; color: #64748b;">0 asignados</span>
                             </label>
-                            <input type="text" placeholder="🔍 Buscar maquinaria/herramienta..." oninput="filterPlanSelect('edit_select_tools', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 6px; font-size: 10px; margin-top: 4px; margin-bottom: 4px;">
-                            <div style="display: flex; gap: 4px;">
-                                <select id="edit_select_tools" class="form-select" style="font-size: 11px; padding: 5px; flex: 1;">
-                                    <option value="">-- Seleccionar Herramienta --</option>
+                            <input type="text" placeholder="🔍 Buscar modelo / equipo..." oninput="filterPlanSelect('edit_select_tools', this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 6px; font-size: 10px; margin-top: 4px; margin-bottom: 4px;">
+                            
+                            <!-- Paso 1: Selector de Modelo / Equipo -->
+                            <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                                <select id="edit_select_tools" onchange="onEditToolModelSelected()" class="form-select" style="font-size: 11px; padding: 5px; flex: 1;">
+                                    <option value="">-- 1. Seleccionar Modelo / Equipo --</option>
                                 </select>
-                                <input type="number" id="edit_tool_quantity" value="1" min="1" placeholder="Cant." style="width: 50px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px; font-size: 11px; text-align: center; font-weight: 700;" title="Cantidad a asignar">
-                                <button type="button" onclick="addEditProjectResource('tools')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800; color: #92400e;">+ Asignar</button>
+                            </div>
+
+                            <!-- Paso 2: Sub-desplegable de Pieza Física / Serial y Cantidad -->
+                            <div id="edit_tool_unit_wrapper" style="display: none; background: #fefce8; border: 1.5px solid #fde047; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px;">
+                                <div style="font-size: 10.5px; font-weight: 800; color: #854d0e; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span><i class="fa-solid fa-screwdriver-wrench"></i> <span id="edit_tool_selected_model_label">Modelo</span></span>
+                                    <span id="edit_tool_available_badge" style="background: #fef9c3; color: #854d0e; padding: 1px 6px; border-radius: 4px; font-weight: 800;">0 disp.</span>
+                                </div>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <select id="edit_select_tool_unit" onchange="onEditToolUnitSelected()" style="flex: 1; min-width: 0; border: 1px solid #fde047; border-radius: 4px; padding: 5px 6px; font-size: 11px; background: #fff;">
+                                        <option value="">⚡ Cualquier unidad disponible en base</option>
+                                    </select>
+                                    <input type="number" id="edit_tool_quantity" value="1" min="1" max="1" placeholder="Cant." style="width: 50px; border: 1px solid #fde047; border-radius: 4px; padding: 5px 4px; font-size: 11px; text-align: center; font-weight: 700; background: #fff;" title="Cantidad a asignar">
+                                    <button type="button" onclick="addEditProjectResource('tools')" class="btn-primary" style="padding: 5px 10px; font-size: 11px; font-weight: 800; background: #d97706; border: none; color: white; white-space: nowrap;">
+                                        + Asignar
+                                    </button>
+                                </div>
                             </div>
 
                             <div id="edit_tags_tools" style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>

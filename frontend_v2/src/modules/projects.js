@@ -14,6 +14,8 @@ export const onEditProjectLocationInput = (...args) => (typeof window !== 'undef
 export const switchProjectSubtab = (...args) => (typeof window !== 'undefined' && window.switchProjectSubtab ? window.switchProjectSubtab(...args) : undefined);
 export const initProjectPlanningView = (...args) => (typeof window !== 'undefined' && window.initProjectPlanningView ? window.initProjectPlanningView(...args) : undefined);
 export const populatePlanDropdownSelectors = (...args) => (typeof window !== 'undefined' && window.populatePlanDropdownSelectors ? window.populatePlanDropdownSelectors(...args) : undefined);
+export const onPlanToolModelSelected = (...args) => (typeof window !== 'undefined' && window.onPlanToolModelSelected ? window.onPlanToolModelSelected(...args) : undefined);
+export const onPlanToolUnitSelected = (...args) => (typeof window !== 'undefined' && window.onPlanToolUnitSelected ? window.onPlanToolUnitSelected(...args) : undefined);
 export const filterPlanSelect = (...args) => (typeof window !== 'undefined' && window.filterPlanSelect ? window.filterPlanSelect(...args) : undefined);
 export const onPlanMaterialSelected = (...args) => (typeof window !== 'undefined' && window.onPlanMaterialSelected ? window.onPlanMaterialSelected(...args) : undefined);
 export const updatePlanMaterialsCostTotal = (...args) => (typeof window !== 'undefined' && window.updatePlanMaterialsCostTotal ? window.updatePlanMaterialsCostTotal(...args) : undefined);
@@ -103,6 +105,8 @@ export const renderEditAssignedTags = (...args) => (typeof window !== 'undefined
 export const updateEditProjectMaterialsCost = (...args) => (typeof window !== 'undefined' && window.updateEditProjectMaterialsCost ? window.updateEditProjectMaterialsCost(...args) : undefined);
 export const addEditProjectResource = (...args) => (typeof window !== 'undefined' && window.addEditProjectResource ? window.addEditProjectResource(...args) : undefined);
 export const removeEditProjectResource = (...args) => (typeof window !== 'undefined' && window.removeEditProjectResource ? window.removeEditProjectResource(...args) : undefined);
+export const onEditToolModelSelected = (...args) => (typeof window !== 'undefined' && window.onEditToolModelSelected ? window.onEditToolModelSelected(...args) : undefined);
+export const onEditToolUnitSelected = (...args) => (typeof window !== 'undefined' && window.onEditToolUnitSelected ? window.onEditToolUnitSelected(...args) : undefined);
 export const populateEditProjectDropdowns = (...args) => (typeof window !== 'undefined' && window.populateEditProjectDropdowns ? window.populateEditProjectDropdowns(...args) : undefined);
 export const openEditProjectModal = (...args) => (typeof window !== 'undefined' && window.openEditProjectModal ? window.openEditProjectModal(...args) : undefined);
 export const submitEditProject = (...args) => (typeof window !== 'undefined' && window.submitEditProject ? window.submitEditProject(...args) : undefined);

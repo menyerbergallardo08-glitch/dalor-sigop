@@ -297,27 +297,49 @@ async function populatePlanDropdownSelectors() {
         };
     }
 
-    // 3. Desplegable de Herramientas & Equipos (Solo disponibles en base)
+    // 3. Desplegable de Herramientas & Equipos (Solo disponibles en base, agrupadas jerárquicamente por modelo)
     const toolSel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
-    const tools = availableAssets.filter(a => a.asset_type !== 'vehiculo' && a.asset_type !== 'camioneta');
-    if (toolSel) {
-        const machinery = tools.filter(t => (t.asset_type === 'maquinaria' || (t.category || '').toLowerCase().includes('maquinaria') || (t.name || '').toLowerCase().includes('montacarga')));
-        const standardTools = tools.filter(t => !machinery.includes(t));
+    const planToolWrapper = document.getElementById("plan_tool_unit_wrapper");
+    if (planToolWrapper) planToolWrapper.style.display = 'none';
 
-        let toolsHtml = `<option value="">-- Seleccionar Equipo o Herramienta (${tools.length} disp. en base) --</option>`;
-        if (machinery.length > 0) {
-            toolsHtml += `<optgroup label="🚜 Maquinaria Pesada & Equipos Especiales (${machinery.length})">` +
-                machinery.map(t => `<option value="${t.id}">🚜 [${t.asset_code}] ${t.name} (S/N: ${t.serial_number || 'S/N'} - ${t.current_location || 'Base'})</option>`).join('') +
+    if (toolSel) {
+        const tools = availableAssets.filter(a => {
+            const isVeh = ['vehiculo', 'camioneta'].includes((a.asset_type || '').toLowerCase()) ||
+                (a.category && a.category.toLowerCase().includes('veh'));
+            return !isVeh && (!selectedToolIds || !selectedToolIds.includes(a.id));
+        });
+
+        const modelMap = {};
+        tools.forEach(t => {
+            const mName = (t.name || 'Sin Nombre').trim();
+            if (!modelMap[mName]) {
+                modelMap[mName] = {
+                    name: mName,
+                    isMachinery: t.asset_type === 'maquinaria' || (t.category || '').toLowerCase().includes('maquinaria') || (t.name || '').toLowerCase().includes('montacarga'),
+                    units: []
+                };
+            }
+            modelMap[mName].units.push(t);
+        });
+
+        const models = Object.values(modelMap);
+        const machineryModels = models.filter(m => m.isMachinery);
+        const standardModels = models.filter(m => !m.isMachinery);
+
+        let toolsHtml = `<option value="">-- 1. Seleccionar Modelo / Equipo (${models.length} modelos disp.) --</option>`;
+        if (machineryModels.length > 0) {
+            toolsHtml += `<optgroup label="🚜 Maquinaria Pesada & Equipos Especiales (${machineryModels.length})">` +
+                machineryModels.map(m => `<option value="${encodeURIComponent(m.name)}">🚜 ${m.name} (${m.units.length} disp. en base)</option>`).join('') +
                 `</optgroup>`;
         }
-        if (standardTools.length > 0) {
-            toolsHtml += `<optgroup label="🔧 Herramientas & Equipos de Taller (${standardTools.length})">` +
-                standardTools.map(t => `<option value="${t.id}">🔧 [${t.asset_code}] ${t.name} (S/N: ${t.serial_number || 'S/N'})</option>`).join('') +
+        if (standardModels.length > 0) {
+            toolsHtml += `<optgroup label="🔧 Herramientas & Equipos de Taller (${standardModels.length})">` +
+                standardModels.map(m => `<option value="${encodeURIComponent(m.name)}">🔧 ${m.name} (${m.units.length} disp. en base)</option>`).join('') +
                 `</optgroup>`;
         }
         toolSel.innerHTML = toolsHtml;
         toolSel.onchange = function() {
-            if (this.value) addPlanResource('tools');
+            onPlanToolModelSelected();
         };
     }
 
@@ -331,6 +353,90 @@ async function populatePlanDropdownSelectors() {
         matSel.onchange = function() {
             onPlanMaterialSelected();
         };
+    }
+}
+
+function onPlanToolModelSelected() {
+    const sel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
+    const wrapper = document.getElementById("plan_tool_unit_wrapper");
+    const unitSel = document.getElementById("plan_select_tool_unit");
+    const qtyInp = document.getElementById("plan_tool_quantity");
+    const labelEl = document.getElementById("plan_tool_selected_model_label");
+    const badgeEl = document.getElementById("plan_tool_available_badge");
+
+    if (!sel || !sel.value) {
+        if (wrapper) wrapper.style.display = 'none';
+        return;
+    }
+
+    const modelName = decodeURIComponent(sel.value);
+    const allAss = (window.allAssets && window.allAssets.length > 0) ? window.allAssets : (allAssets || []);
+    const availableUnits = allAss.filter(a => {
+        const isVeh = ['vehiculo', 'camioneta'].includes((a.asset_type || '').toLowerCase()) ||
+            (a.category && a.category.toLowerCase().includes('veh'));
+        if (isVeh) return false;
+        if ((a.name || '').trim().toUpperCase() !== modelName.toUpperCase()) return false;
+        if (selectedToolIds && selectedToolIds.includes(a.id)) return false;
+        if (a.status === 'en_obra' || a.status === 'alquilado_a_tercero' || a.status === 'en_mantenimiento' || a.status === 'inactivo') return false;
+        return (!a.current_project_id || a.status === 'disponible_base' || a.status === 'disponible' || !a.status);
+    });
+
+    if (availableUnits.length === 0) {
+        alert("⚠️ No quedan más unidades disponibles en base para este modelo.");
+        sel.value = "";
+        if (wrapper) wrapper.style.display = 'none';
+        return;
+    }
+
+    if (labelEl) labelEl.textContent = modelName;
+    if (badgeEl) badgeEl.textContent = `${availableUnits.length} disp.`;
+
+    if (unitSel) {
+        let unitOpts = `<option value="">⚡ Cualquier unidad disponible en base (${availableUnits.length} disp.)</option>`;
+        availableUnits.forEach(u => {
+            const snText = u.serial_number ? ` | S/N: ${u.serial_number}` : '';
+            const locText = u.current_location && u.current_location !== 'Base' ? ` [${u.current_location}]` : '';
+            unitOpts += `<option value="${u.id}">🔧 [${u.asset_code || 'HERR'}]${snText}${locText}</option>`;
+        });
+        unitSel.innerHTML = unitOpts;
+        unitSel.value = "";
+    }
+
+    if (qtyInp) {
+        qtyInp.value = "1";
+        qtyInp.min = "1";
+        qtyInp.max = availableUnits.length.toString();
+        qtyInp.disabled = false;
+    }
+
+    if (wrapper) wrapper.style.display = 'block';
+}
+
+function onPlanToolUnitSelected() {
+    const unitSel = document.getElementById("plan_select_tool_unit");
+    const qtyInp = document.getElementById("plan_tool_quantity");
+    if (!unitSel || !qtyInp) return;
+
+    if (unitSel.value) {
+        qtyInp.value = "1";
+        qtyInp.max = "1";
+        qtyInp.disabled = true;
+    } else {
+        const sel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
+        const modelName = sel ? decodeURIComponent(sel.value) : '';
+        const allAss = (window.allAssets && window.allAssets.length > 0) ? window.allAssets : (allAssets || []);
+        const count = allAss.filter(a => {
+            const isVeh = ['vehiculo', 'camioneta'].includes((a.asset_type || '').toLowerCase()) ||
+                (a.category && a.category.toLowerCase().includes('veh'));
+            if (isVeh) return false;
+            if ((a.name || '').trim().toUpperCase() !== modelName.toUpperCase()) return false;
+            if (selectedToolIds && selectedToolIds.includes(a.id)) return false;
+            if (a.status === 'en_obra' || a.status === 'alquilado_a_tercero' || a.status === 'en_mantenimiento' || a.status === 'inactivo') return false;
+            return (!a.current_project_id || a.status === 'disponible_base' || a.status === 'disponible' || !a.status);
+        }).length;
+
+        qtyInp.max = (count || 1).toString();
+        qtyInp.disabled = false;
     }
 }
 
@@ -402,31 +508,59 @@ function addPlanResource(type) {
         }
         if (sel) sel.value = "";
     } else if (type === 'tools' || type === 'tool') {
-        const sel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
-        const val = parseInt(sel?.value);
+        const modelSel = document.getElementById("plan_select_tools") || document.getElementById("plan_tool_select");
+        const unitSel = document.getElementById("plan_select_tool_unit");
         const qtyInp = document.getElementById("plan_tool_quantity");
-        const qty = parseInt(qtyInp?.value || "1", 10) || 1;
-        if (val) {
-            const targetAsset = (allAssets || []).find(a => a.id === val);
-            if (targetAsset && qty > 1) {
-                const sameModelAssets = (allAssets || []).filter(a => 
-                    (a.name || '').trim().toUpperCase() === (targetAsset.name || '').trim().toUpperCase() &&
-                    (a.status === 'disponible_base' || !a.current_project_id)
-                );
-                const otherCandidates = sameModelAssets.filter(a => a.id !== targetAsset.id);
-                const candidates = [targetAsset, ...otherCandidates].slice(0, qty);
-                candidates.forEach(c => {
-                    if (!selectedToolIds.includes(c.id)) selectedToolIds.push(c.id);
-                });
-            } else {
-                if (!selectedToolIds.includes(val)) {
-                    selectedToolIds.push(val);
-                }
-            }
-            renderAssignedTags();
+        const wrapper = document.getElementById("plan_tool_unit_wrapper");
+
+        const modelVal = modelSel?.value;
+        if (!modelVal) {
+            alert("⚠️ Por favor selecciona un modelo o equipo primero.");
+            return;
         }
-        if (sel) sel.value = "";
-        if (qtyInp) qtyInp.value = "1";
+
+        const specificUnitId = parseInt(unitSel?.value);
+        const qty = parseInt(qtyInp?.value || "1", 10) || 1;
+        const allAss = (window.allAssets && window.allAssets.length > 0) ? window.allAssets : (allAssets || []);
+
+        if (specificUnitId && !isNaN(specificUnitId)) {
+            if (!selectedToolIds.includes(specificUnitId)) {
+                selectedToolIds.push(specificUnitId);
+            }
+        } else {
+            const modelName = decodeURIComponent(modelVal).trim().toUpperCase();
+            const candidates = allAss.filter(a => {
+                const isVeh = ['vehiculo', 'camioneta'].includes((a.asset_type || '').toLowerCase()) ||
+                    (a.category && a.category.toLowerCase().includes('veh'));
+                if (isVeh) return false;
+                if ((a.name || '').trim().toUpperCase() !== modelName) return false;
+                if (selectedToolIds.includes(a.id)) return false;
+                if (a.status === 'en_obra' || a.status === 'alquilado_a_tercero' || a.status === 'en_mantenimiento' || a.status === 'inactivo') return false;
+                return (!a.current_project_id || a.status === 'disponible_base' || a.status === 'disponible' || !a.status);
+            });
+
+            if (candidates.length === 0) {
+                alert("⚠️ No hay unidades disponibles para este modelo.");
+                return;
+            }
+
+            const toAdd = candidates.slice(0, qty);
+            toAdd.forEach(c => {
+                if (!selectedToolIds.includes(c.id)) selectedToolIds.push(c.id);
+            });
+        }
+
+        renderAssignedTags();
+
+        if (modelSel) modelSel.value = "";
+        if (unitSel) unitSel.innerHTML = '<option value="">⚡ Cualquier unidad disponible en base</option>';
+        if (qtyInp) {
+            qtyInp.value = "1";
+            qtyInp.disabled = false;
+        }
+        if (wrapper) wrapper.style.display = "none";
+
+        populatePlanDropdownSelectors();
     } else if (type === 'material' || type === 'materials') {
 
         const sel = document.getElementById("plan_select_materials") || document.getElementById("plan_mat_select");
@@ -479,6 +613,7 @@ function removePlanResource(type, id) {
         selectedVehicleIds = selectedVehicleIds.filter(i => i !== id);
     } else if (type === 'tools' || type === 'tool') {
         selectedToolIds = selectedToolIds.filter(i => i !== id);
+        populatePlanDropdownSelectors();
     } else if (type === 'material' || type === 'materials') {
         selectedMaterialIds = selectedMaterialIds.filter(i => i !== id);
         window.selectedMaterialItems = (window.selectedMaterialItems || []).filter(it => it.material_id !== id);
@@ -580,11 +715,9 @@ function assignToolTag() {
 
 
 function removeToolTag(id) {
-
     selectedToolIds = selectedToolIds.filter(i => i !== id);
-
     renderAssignedTags();
-
+    populatePlanDropdownSelectors();
 }
 
 
@@ -3127,6 +3260,8 @@ if (typeof window !== 'undefined') {
     window.switchProjectSubtab = switchProjectSubtab;
     window.initProjectPlanningView = initProjectPlanningView;
     window.populatePlanDropdownSelectors = populatePlanDropdownSelectors;
+    window.onPlanToolModelSelected = onPlanToolModelSelected;
+    window.onPlanToolUnitSelected = onPlanToolUnitSelected;
     window.filterPlanSelect = filterPlanSelect;
     window.onPlanMaterialSelected = onPlanMaterialSelected;
     window.updatePlanMaterialsCostTotal = updatePlanMaterialsCostTotal;
@@ -3184,6 +3319,8 @@ export { onEditProjectLocationInput };
 export { switchProjectSubtab };
 export { initProjectPlanningView };
 export { populatePlanDropdownSelectors };
+export { onPlanToolModelSelected };
+export { onPlanToolUnitSelected };
 export { filterPlanSelect };
 export { onPlanMaterialSelected };
 export { updatePlanMaterialsCostTotal };

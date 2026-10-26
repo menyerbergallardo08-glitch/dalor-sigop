@@ -100,18 +100,7 @@ function authFetch(url, options = {}) {
     }
     return window.fetch(url, Object.assign({}, options, { headers: _h }));
 }
-
-let lastDropdownToggleTime = 0;
-
-const handleOutsideClick = (e) => {
-    if (Date.now() - lastDropdownToggleTime < 350) return;
-    if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu") && !e.target.closest(".mobile-submenu-card")) {
-        closeAllDropdowns();
-        closeMobileSubmenu();
-    }
-};
-document.addEventListener("click", handleOutsideClick);
-document.addEventListener("touchend", handleOutsideClick);
+window.authFetch = authFetch;
 
 function renderPaginationControls({
     containerId,
@@ -243,6 +232,17 @@ function closeModal(modalId) {
         const floatingBtn = document.getElementById("btnFloatingLogout");
         if (floatingBtn) floatingBtn.style.removeProperty("display");
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    window.roundNumber = roundNumber;
+    window.parseLocalizedNumber = parseLocalizedNumber;
+    window.populateSelect = populateSelect;
+    window.sortCategoriesNumerically = sortCategoriesNumerically;
+    window.authFetch = authFetch;
+    window.renderPaginationControls = renderPaginationControls;
 }
 
 export {

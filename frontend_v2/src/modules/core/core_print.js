@@ -215,4 +215,8 @@ function printElementHtml(elementOrHtml, docTitle = 'Documento DALOR', options =
     }, 250);
 }
 
+if (typeof window !== 'undefined') {
+    window.printElementHtml = printElementHtml;
+}
+
 export { printElementHtml };

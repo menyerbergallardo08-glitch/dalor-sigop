@@ -4,6 +4,15 @@
  * Carga de datos maestros (clientes, proyectos, servicios, personal, etc.)
  */
 
+var API_BASE = window.API_BASE || (window.location.origin + "/api/v1");
+const authFetch = window.authFetch || function(url, options = {}) {
+    const t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    const h = Object.assign({}, options.headers || {});
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    if (options.body && !(options.body instanceof FormData) && !h['Content-Type']) h['Content-Type'] = 'application/json';
+    return window.fetch(url, Object.assign({}, options, { headers: h }));
+};
+
 let EXCHANGE_RATE = parseFloat(localStorage.getItem('dalor_exchange_rate')) || 850.0;
 
 var allClients = window.allClients = window.allClients || [];
@@ -261,6 +270,11 @@ function populateSelectDropdowns() {
     if (typeof window.populateServiceCategoriesAndUnits === 'function') {
         window.populateServiceCategoriesAndUnits();
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.loadInitialMasterData = loadInitialMasterData;
+    window.populateSelectDropdowns = populateSelectDropdowns;
 }
 
 export { loadInitialMasterData, populateSelectDropdowns };

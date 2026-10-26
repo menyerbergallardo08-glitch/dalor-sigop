@@ -5,15 +5,15 @@
  */
 
 // --- BLOQUE L1120-L1609 ---
+let lastDropdownToggleTime = 0;
+
 function isMobileViewport() {
     return window.innerWidth <= 768;
-
 }
 
 function toggleDropdown(event, dropdownId) {
     if (event) {
         if (event.stopPropagation) event.stopPropagation();
-
     }
 
     lastDropdownToggleTime = Date.now();
@@ -217,11 +217,21 @@ function switchView(viewName, moduleCategory, targetSubtab = null) {
 
 window.switchView = switchView;
 window.appSwitchView = switchView;
+window.isMobileViewport = isMobileViewport;
+window.toggleDropdown = toggleDropdown;
+window.openMobileSubmenu = openMobileSubmenu;
+window.closeMobileSubmenu = closeMobileSubmenu;
+window.closeAllDropdowns = closeAllDropdowns;
 
-/**
- * Motor Universal de Paginación DALOR SIGO-P
- * Renderiza una barra estándar de paginación con controles numéricos, elipsis, límites y selector de densidad.
- */
+const handleOutsideClick = (e) => {
+    if (Date.now() - lastDropdownToggleTime < 350) return;
+    if (!e.target.closest(".nav-dropdown") && !e.target.closest(".dropdown-menu") && !e.target.closest(".mobile-submenu-card")) {
+        closeAllDropdowns();
+        closeMobileSubmenu();
+    }
+};
+document.addEventListener("click", handleOutsideClick);
+document.addEventListener("touchend", handleOutsideClick);
 
 export {
     isMobileViewport,

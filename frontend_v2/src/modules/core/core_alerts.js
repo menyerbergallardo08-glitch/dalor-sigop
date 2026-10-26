@@ -8,6 +8,15 @@
 // ==============================================================================
 // 🔔 SISTEMA DE ALERTAS EN TIEMPO REAL: SONIDO (CHIME), TOAST & AUTO-REFRESH
 // ==============================================================================
+var API_BASE = window.API_BASE || (window.location.origin + "/api/v1");
+const authFetch = window.authFetch || function(url, options = {}) {
+    const t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
+    const h = Object.assign({}, options.headers || {});
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    if (options.body && !(options.body instanceof FormData) && !h['Content-Type']) h['Content-Type'] = 'application/json';
+    return window.fetch(url, Object.assign({}, options, { headers: h }));
+};
+
 let isSoundAlertsEnabled = localStorage.getItem('dalor_sound_alerts') !== 'false'; // Activo por defecto
 
 let lastKnownPendingIds = new Set();
@@ -346,44 +355,13 @@ setInterval(() => {
 
 }, 300000); // Cada 5 minutos
 
-// --- PUENTE DE COMPATIBILIDAD CON WINDOW & HTML INLINE ---
+// --- PUENTE DE COMPATIBILIDAD CON WINDOW ---
 if (typeof window !== 'undefined') {
-    window.allClients = allClients;
-    window.allServices = allServices;
-    window.allProjects = allProjects;
-    window.allCategories = allCategories;
-    window.allAssets = allAssets;
-    window.allPersonnel = allPersonnel;
-    window.allMaterials = allMaterials;
-    window.selectedPersonnelIds = selectedPersonnelIds;
-    window.selectedVehicleIds = selectedVehicleIds;
-    window.selectedToolIds = selectedToolIds;
-    window.selectedMaterialIds = selectedMaterialIds;
-    window.EXCHANGE_RATE = EXCHANGE_RATE;
-    window.currentUser = window.currentUser || currentUser;
-    window.authToken = window.authToken || authToken;
-
-    window.closeAllDropdowns = closeAllDropdowns;
-    window.closeMobileSubmenu = closeMobileSubmenu;
-    window.closeModal = closeModal;
-    window.isMobileViewport = isMobileViewport;
-    window.loadInitialMasterData = loadInitialMasterData;
-    window.openMobileSubmenu = openMobileSubmenu;
-    window.openModal = openModal;
-    window.parseLocalizedNumber = parseLocalizedNumber;
-    window.playNotificationChime = playNotificationChime;
-    window.populateSelect = populateSelect;
-    window.populateSelectDropdowns = populateSelectDropdowns;
-    window.roundNumber = roundNumber;
-    window.showInboxToastNotification = showInboxToastNotification;
-    window.renderPaginationControls = renderPaginationControls;
-    window.sortCategoriesNumerically = sortCategoriesNumerically;
-    window.switchView = switchView;
-    window.toggleDropdown = toggleDropdown;
     window.toggleSoundAlerts = toggleSoundAlerts;
-    window.printElementHtml = printElementHtml;
-    window.updatePendingInboxBadge = updatePendingInboxBadge;
     window.updateSoundToggleUI = updateSoundToggleUI;
+    window.playNotificationChime = playNotificationChime;
+    window.showInboxToastNotification = showInboxToastNotification;
+    window.updatePendingInboxBadge = updatePendingInboxBadge;
 }
 
 export {

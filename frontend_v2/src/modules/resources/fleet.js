@@ -282,7 +282,7 @@ function renderFleetTablePaginated() {
                 <button onclick="openEditAssetModal(${vId})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; color: #0284c7; border-color: #bae6fd;" title="Editar Activo / Vehículo">
                     <i class="fa-solid fa-pen"></i>
                 </button>
-                ${(v?.is_active === false || v?.status === 'desincorporado') ? `
+                ${(v?.is_active === false || v?.status === 'desincorporado' || v?.status === 'inactivo' || v?.status === 'baja') ? `
                     <button onclick="reactivateAssetItem(${vId})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-left: 4px; background: #059669; font-weight: 800;" title="Reactivar e Incorporar a Operaciones">
                         <i class="fa-solid fa-bolt"></i> Reactivar
                     </button>

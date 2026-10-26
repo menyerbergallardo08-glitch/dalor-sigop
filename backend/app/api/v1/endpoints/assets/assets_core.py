@@ -634,24 +634,30 @@ def get_fleet_summary(include_inactive: bool = False, db: Session = Depends(get_
         elif remaining_km <= 500:
             traffic_light = "AMARILLO_PROXIMO"
             
-        is_in_project = bool(a.current_project_id and a.current_project_id in projects_map)
-        if is_in_project:
-            p = projects_map[a.current_project_id]
-            status_val = "en_obra"
-            loc_val = f"[{p.code}] {p.name}" + (f" ({p.location})" if p.location else "")
-            cust_val = a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else f"Equipo de Obra ({p.code})"
-        elif a.status == "en_obra" or (a.current_location and "en ruta" in a.current_location.lower()):
-            status_val = "en_obra"
-            loc_val = a.current_location or "En Operación de Obra / Ruta"
-            cust_val = a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else "Equipo de Despacho / Obra"
-        elif a.status in ["en_operacion", "asignado"] or (a.current_custodian_name and "base" not in a.current_custodian_name.lower() and "disponible" not in a.current_custodian_name.lower()):
-            status_val = "en_operacion"
-            loc_val = a.current_location or "Sede Central Dalor (Uso Administrativo / Logística)"
-            cust_val = a.current_custodian_name or "Asignado a Custodio"
+        # Check if asset is inactive/desincorporado
+        if not a.is_active or a.status in ["inactivo", "desincorporado", "baja"]:
+            status_val = a.status if a.status in ["inactivo", "desincorporado", "baja"] else "inactivo"
+            loc_val = a.current_location or "Sede Central Dalor (Inactivo / Baja)"
+            cust_val = "Desincorporado / Inactivo"
         else:
-            status_val = "disponible_base"
-            loc_val = a.current_location or "Sede Central Dalor (Guacara)"
-            cust_val = a.current_custodian_name or "Disponible en Base"
+            is_in_project = bool(a.current_project_id and a.current_project_id in projects_map)
+            if is_in_project:
+                p = projects_map[a.current_project_id]
+                status_val = "en_obra"
+                loc_val = f"[{p.code}] {p.name}" + (f" ({p.location})" if p.location else "")
+                cust_val = a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else f"Equipo de Obra ({p.code})"
+            elif a.status == "en_obra" or (a.current_location and "en ruta" in a.current_location.lower()):
+                status_val = "en_obra"
+                loc_val = a.current_location or "En Operación de Obra / Ruta"
+                cust_val = a.current_custodian_name if (a.current_custodian_name and "base" not in a.current_custodian_name.lower()) else "Equipo de Despacho / Obra"
+            elif a.status in ["en_operacion", "asignado"] or (a.current_custodian_name and "base" not in a.current_custodian_name.lower() and "disponible" not in a.current_custodian_name.lower()):
+                status_val = "en_operacion"
+                loc_val = a.current_location or "Sede Central Dalor (Uso Administrativo / Logística)"
+                cust_val = a.current_custodian_name or "Asignado a Custodio"
+            else:
+                status_val = "disponible_base"
+                loc_val = a.current_location or "Sede Central Dalor (Guacara)"
+                cust_val = a.current_custodian_name or "Disponible en Base"
             
         result.append({
             "id": a.id,
@@ -665,6 +671,7 @@ def get_fleet_summary(include_inactive: bool = False, db: Session = Depends(get_
             "license_plate": a.license_plate,
             "current_project_id": a.current_project_id,
             "status": status_val,
+            "is_active": a.is_active,
             "current_location": loc_val,
             "current_odometer": a.current_odometer or 0.0,
             "remaining_km_to_service": round(remaining_km, 1),

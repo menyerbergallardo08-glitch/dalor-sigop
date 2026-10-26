@@ -21,13 +21,31 @@ function authFetch(url, options = {}) {
 async function deleteAssetItem(assetId) {
     if (!confirm("¿Deseas inactivar este elemento? (Se conservará la traza histórica)")) return;
     try {
-        await authFetch(`${API_BASE}/assets/${assetId}`, { method: "DELETE" });
-        await loadInitialMasterData(true);
-        if (typeof loadToolsList === 'function') loadToolsList();
-        if (typeof loadFleetList === 'function') loadFleetList();
-        if (typeof loadMachineryList === 'function') loadMachineryList();
+        const res = await authFetch(`${API_BASE}/assets/${assetId}`, { method: "DELETE" });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.detail || "Error al inactivar el recurso.");
+            return;
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast("Recurso inactivado correctamente (en bitácora histórica).", "info");
+        } else {
+            alert("Recurso inactivado exitosamente.");
+        }
+        if (typeof window.loadInitialMasterData === 'function') await window.loadInitialMasterData(true);
+        else if (typeof loadInitialMasterData === 'function') await loadInitialMasterData(true);
+
+        if (typeof window.loadFleetList === 'function') window.loadFleetList();
+        else if (typeof loadFleetList === 'function') loadFleetList();
+
+        if (typeof window.loadToolsList === 'function') window.loadToolsList();
+        else if (typeof loadToolsList === 'function') loadToolsList();
+
+        if (typeof window.loadMachineryList === 'function') window.loadMachineryList();
+        else if (typeof loadMachineryList === 'function') loadMachineryList();
     } catch (e) {
-        alert("Error al inactivar.");
+        console.error("[DELETE ASSET ERROR]", e);
+        alert("Error al inactivar recurso.");
     }
 }
 
@@ -40,12 +58,24 @@ async function reactivateAssetItem(assetId) {
             alert(err.detail || "Error al reactivar recurso.");
             return;
         }
-        alert("¡Recurso reactivado exitosamente!");
-        await loadInitialMasterData(true);
-        if (typeof loadToolsList === 'function') loadToolsList();
-        if (typeof loadFleetList === 'function') loadFleetList();
-        if (typeof loadMachineryList === 'function') loadMachineryList();
+        if (typeof window.showToast === 'function') {
+            window.showToast("¡Recurso reactivado exitosamente e incorporado a base!", "success");
+        } else {
+            alert("¡Recurso reactivado exitosamente!");
+        }
+        if (typeof window.loadInitialMasterData === 'function') await window.loadInitialMasterData(true);
+        else if (typeof loadInitialMasterData === 'function') await loadInitialMasterData(true);
+
+        if (typeof window.loadFleetList === 'function') window.loadFleetList();
+        else if (typeof loadFleetList === 'function') loadFleetList();
+
+        if (typeof window.loadToolsList === 'function') window.loadToolsList();
+        else if (typeof loadToolsList === 'function') loadToolsList();
+
+        if (typeof window.loadMachineryList === 'function') window.loadMachineryList();
+        else if (typeof loadMachineryList === 'function') loadMachineryList();
     } catch (e) {
+        console.error("[REACTIVATE ASSET ERROR]", e);
         alert("Error de conexión al reactivar recurso.");
     }
 }

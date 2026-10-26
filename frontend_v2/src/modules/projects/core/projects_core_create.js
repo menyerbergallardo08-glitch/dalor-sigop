@@ -121,6 +121,7 @@ export function onEditProjectLocationInput(val) {
 
 export async function switchProjectSubtab(subtabName) {
     currentProjectSubtab = subtabName || 'list';
+    if (typeof window !== 'undefined') window.currentProjectSubtab = currentProjectSubtab;
     try {
         sessionStorage.setItem('dalor_active_subtab_projects', currentProjectSubtab);
         localStorage.setItem('dalor_active_subtab_projects', currentProjectSubtab);

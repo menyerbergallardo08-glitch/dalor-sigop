@@ -17,6 +17,7 @@ var projectCurrentPage = 1;
 var projectPageSize = 6;
 var lastFilteredProjects = [];
 let currentProjectCxcFilter = 'all';
+var allProjects = window.allProjects = window.allProjects || [];
 
 export async function loadProjectsList() {
     const container = document.getElementById("projectsCardsContainer");
@@ -94,7 +95,8 @@ export function renderProjectsWithPagination(resetPage = false) {
 
     if (resetPage) projectCurrentPage = 1;
 
-    const isCompletedView = (currentProjectSubtab === 'completed');
+    const subtab = (typeof currentProjectSubtab !== 'undefined' ? currentProjectSubtab : (window.currentProjectSubtab || sessionStorage.getItem('dalor_active_subtab_projects') || 'list'));
+    const isCompletedView = (subtab === 'completed');
     const q = (document.getElementById("project_search_input")?.value || '').toLowerCase().trim();
     const selClient = (document.getElementById("project_client_filter")?.value || '').toLowerCase().trim();
 

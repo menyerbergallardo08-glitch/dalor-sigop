@@ -1,0 +1,332 @@
+{
+  "last_commit": {
+    "hash": "ead25d12c16a85abde0f659073923c1e2c147c76",
+    "author": "Dalor Dev",
+    "date": "Wed Oct 21 14:56:53 2026 -0400",
+    "subject": "feat(executive-bi & financial): mapa satelital y GIS interactivo Leaflet de Venezuela, encuadre nacional y blindaje de fechas nulas en CxC"
+  },
+  "architecture_standard": {
+    "target_max_lines_per_unit": 400,
+    "total_registered_files": 58,
+    "compliant_units": 24,
+    "pending_units_over_400": 34
+  },
+  "legacy_files_pending_deep_clean": [
+    {
+      "module": "core.js",
+      "file": "core_alerts.js",
+      "lines": 409
+    },
+    {
+      "module": "core.js",
+      "file": "core_print.js",
+      "lines": 412
+    },
+    {
+      "module": "dispatch.js",
+      "file": "dispatch_form_setup.js",
+      "lines": 487
+    },
+    {
+      "module": "dispatch.js",
+      "file": "dispatch_picker.js",
+      "lines": 557
+    },
+    {
+      "module": "financial.js",
+      "file": "bank_accounts.js",
+      "lines": 503
+    },
+    {
+      "module": "financial.js",
+      "file": "cxp.js",
+      "lines": 1283
+    },
+    {
+      "module": "financial.js",
+      "file": "fiscal_invoice_print.js",
+      "lines": 789
+    },
+    {
+      "module": "financial.js",
+      "file": "fiscal_withholdings.js",
+      "lines": 502
+    },
+    {
+      "module": "financial.js",
+      "file": "quick_flow_partners.js",
+      "lines": 613
+    },
+    {
+      "module": "maintenance.js",
+      "file": "maintenance_bi.js",
+      "lines": 781
+    },
+    {
+      "module": "maintenance.js",
+      "file": "maintenance_categories.js",
+      "lines": 531
+    },
+    {
+      "module": "maintenance.js",
+      "file": "maintenance_clients.js",
+      "lines": 438
+    },
+    {
+      "module": "maintenance.js",
+      "file": "maintenance_users.js",
+      "lines": 627
+    },
+    {
+      "module": "materials.js",
+      "file": "materials_catalog.js",
+      "lines": 584
+    },
+    {
+      "module": "materials.js",
+      "file": "materials_delivery.js",
+      "lines": 507
+    },
+    {
+      "module": "materials.js",
+      "file": "materials_movements.js",
+      "lines": 624
+    },
+    {
+      "module": "materials.js",
+      "file": "materials_requisitions.js",
+      "lines": 883
+    },
+    {
+      "module": "materials.js",
+      "file": "materials_transfer.js",
+      "lines": 717
+    },
+    {
+      "module": "projects.js",
+      "file": "projects_core.js",
+      "lines": 3371
+    },
+    {
+      "module": "projects.js",
+      "file": "projects_edit.js",
+      "lines": 843
+    },
+    {
+      "module": "projects.js",
+      "file": "projects_requisitions.js",
+      "lines": 1115
+    },
+    {
+      "module": "projects.js",
+      "file": "projects_tracking_wbs.js",
+      "lines": 1226
+    },
+    {
+      "module": "quotations.js",
+      "file": "quotations_apu.js",
+      "lines": 855
+    },
+    {
+      "module": "quotations.js",
+      "file": "quotations_form.js",
+      "lines": 910
+    },
+    {
+      "module": "quotations.js",
+      "file": "quotations_print.js",
+      "lines": 525
+    },
+    {
+      "module": "rentals.js",
+      "file": "rentals_form.js",
+      "lines": 470
+    },
+    {
+      "module": "rentals.js",
+      "file": "rentals_picker.js",
+      "lines": 573
+    },
+    {
+      "module": "resources.js",
+      "file": "assets.js",
+      "lines": 804
+    },
+    {
+      "module": "resources.js",
+      "file": "fleet.js",
+      "lines": 770
+    },
+    {
+      "module": "resources.js",
+      "file": "personnel.js",
+      "lines": 455
+    },
+    {
+      "module": "resources.js",
+      "file": "services.js",
+      "lines": 609
+    },
+    {
+      "module": "resources.js",
+      "file": "tools.js",
+      "lines": 980
+    }
+  ],
+  "modules": {
+    "bcv.js": {
+      "orchestrator_lines": 235,
+      "is_modularized": false,
+      "submodules": {}
+    },
+    "core.js": {
+      "orchestrator_lines": 111,
+      "is_modularized": true,
+      "submodules": {
+        "core_alerts.js": 409,
+        "core_data.js": 359,
+        "core_print.js": 412,
+        "core_tax.js": 122,
+        "core_ui.js": 398,
+        "core_utils.js": 363
+      }
+    },
+    "dispatch.js": {
+      "orchestrator_lines": 168,
+      "is_modularized": true,
+      "submodules": {
+        "dispatch_form.js": 9,
+        "dispatch_form_items.js": 321,
+        "dispatch_form_setup.js": 487,
+        "dispatch_list.js": 377,
+        "dispatch_picker.js": 557,
+        "dispatch_print.js": 235
+      }
+    },
+    "expenses.js": {
+      "orchestrator_lines": 133,
+      "is_modularized": true,
+      "submodules": {
+        "expenses_approval.js": 302,
+        "expenses_form.js": 327,
+        "expenses_list.js": 326,
+        "expenses_ocr.js": 265,
+        "expenses_receipts.js": 240
+      }
+    },
+    "financial.js": {
+      "orchestrator_lines": 158,
+      "is_modularized": true,
+      "submodules": {
+        "bank_accounts.js": 503,
+        "cxc.js": 162,
+        "cxp.js": 1283,
+        "fiscal_invoice_assets.js": 4,
+        "fiscal_invoice_print.js": 789,
+        "fiscal_withholdings.js": 502,
+        "quick_flow_partners.js": 613,
+        "treasury.js": 166,
+        "cxc/": {
+          "cxc_form.js": 463,
+          "cxc_history.js": 427,
+          "cxc_list.js": 396,
+          "cxc_nav.js": 232,
+          "cxc_operations.js": 451,
+          "cxc_payments.js": 297,
+          "cxc_statements.js": 739,
+          "cxc_timeline.js": 631
+        },
+        "treasury/": {
+          "treasury_cashflow.js": 335,
+          "treasury_dashboard.js": 518,
+          "treasury_exchange.js": 319,
+          "treasury_trace.js": 412,
+          "treasury_transactions.js": 470
+        }
+      }
+    },
+    "maintenance.js": {
+      "orchestrator_lines": 135,
+      "is_modularized": true,
+      "submodules": {
+        "maintenance_audit.js": 193,
+        "maintenance_backups.js": 230,
+        "maintenance_bi.js": 781,
+        "maintenance_categories.js": 531,
+        "maintenance_clients.js": 438,
+        "maintenance_roles.js": 284,
+        "maintenance_users.js": 627
+      }
+    },
+    "materials.js": {
+      "orchestrator_lines": 72,
+      "is_modularized": true,
+      "submodules": {
+        "materials_catalog.js": 584,
+        "materials_delivery.js": 507,
+        "materials_movements.js": 624,
+        "materials_requisitions.js": 883,
+        "materials_transfer.js": 717
+      }
+    },
+    "projects.js": {
+      "orchestrator_lines": 122,
+      "is_modularized": true,
+      "submodules": {
+        "projects_core.js": 3371,
+        "projects_edit.js": 843,
+        "projects_requisitions.js": 1115,
+        "projects_tracking_wbs.js": 1226
+      }
+    },
+    "quotations.js": {
+      "orchestrator_lines": 64,
+      "is_modularized": true,
+      "submodules": {
+        "quotations_apu.js": 855,
+        "quotations_form.js": 910,
+        "quotations_list.js": 309,
+        "quotations_print.js": 525
+      }
+    },
+    "rentals.js": {
+      "orchestrator_lines": 163,
+      "is_modularized": true,
+      "submodules": {
+        "rentals_form.js": 470,
+        "rentals_list.js": 308,
+        "rentals_picker.js": 573,
+        "rentals_print.js": 166,
+        "rentals_return.js": 372
+      }
+    },
+    "resources.js": {
+      "orchestrator_lines": 103,
+      "is_modularized": true,
+      "submodules": {
+        "assets.js": 804,
+        "dashboard.js": 279,
+        "fleet.js": 770,
+        "machinery.js": 258,
+        "personnel.js": 455,
+        "services.js": 609,
+        "tools.js": 980
+      }
+    },
+    "projects": {
+      "projects_core": {
+        "orchestrator": 205,
+        "status": "MODULARIZADO",
+        "submodules": {
+          "projects_core_actions.js": 115,
+          "projects_core_create.js": 606,
+          "projects_core_details.js": 726,
+          "projects_core_list.js": 510,
+          "projects_core_phases_wbs.js": 521,
+          "projects_core_planning_resources.js": 512,
+          "projects_core_weights.js": 302
+        }
+      }
+    }
+  }
+}

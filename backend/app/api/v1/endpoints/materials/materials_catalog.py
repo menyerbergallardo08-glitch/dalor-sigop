@@ -216,12 +216,40 @@ def create_material(m_in: MaterialCreate, db: Session = Depends(get_db)):
 
 @router.put("/{material_id}")
 def update_material_item(material_id: int, req: MaterialUpdate, db: Session = Depends(get_db)):
-    """
-    Edita la ficha técnica del material/insumo (nombre, categoría, unidad, costo, stock mínimo, ubicación).
-    """
     mat = db.query(Material).filter(Material.id == material_id).first()
     if not mat:
         raise HTTPException(status_code=404, detail="Material no encontrado.")
+
+    from app.core.security import verify_password
+    from app.models.models import User, AuditLog
+
+    # Si se modifica el costo unitario o el stock de forma directa, validar autorización del Director
+    is_sensitive_change = (
+        (req.unit_cost_usd is not None and abs(float(req.unit_cost_usd) - float(mat.unit_cost_usd or 0.0)) > 1e-4) or
+        (req.stock_quantity is not None and abs(float(req.stock_quantity) - float(mat.stock_quantity or 0.0)) > 1e-4)
+    )
+
+    if is_sensitive_change:
+        if not req.director_password:
+            raise HTTPException(
+                status_code=403, 
+                detail="Para modificar el precio unitario o ajustar el stock en Kárdex se requiere la contraseña del Director General."
+            )
+        authorized = False
+        admin_users = db.query(User).filter(
+            (User.is_superuser == True) | 
+            (User.role_name.in_(["director", "director_general", "admin_finanzas", "administrador", "admin"])) |
+            (User.username.in_(["admin", "director"]))
+        ).all()
+        for u in admin_users:
+            if u.hashed_password and verify_password(req.director_password, u.hashed_password):
+                authorized = True
+                break
+        if not authorized:
+            raise HTTPException(status_code=403, detail="Contraseña del Director General incorrecta para autorizar el cambio en Kárdex.")
+
+    old_cost = mat.unit_cost_usd or 0.0
+    old_stock = mat.stock_quantity or 0.0
 
     if req.name is not None and req.name.strip():
         mat.name = req.name.strip()
@@ -231,7 +259,6 @@ def update_material_item(material_id: int, req: MaterialUpdate, db: Session = De
         mat.unit_measure = req.unit_measure.strip().upper()
     if req.stock_quantity is not None:
         new_stock = max(0.0, float(req.stock_quantity))
-        old_stock = float(mat.stock_quantity or 0.0)
         if abs(new_stock - old_stock) > 1e-4:
             diff = new_stock - old_stock
             mov = MaterialMovement(
@@ -242,7 +269,7 @@ def update_material_item(material_id: int, req: MaterialUpdate, db: Session = De
                 total_cost_usd=round(abs(diff) * (mat.unit_cost_usd or 0.0), 2),
                 destination="Ajuste manual de ficha técnica",
                 notes=req.adjustment_notes or f"Ajuste directo de stock: {old_stock:.2f} -> {new_stock:.2f} ({'+' if diff > 0 else ''}{diff:.2f})",
-                performed_by="Custodio de Almacén"
+                performed_by="Dirección General (Autorizado)"
             )
             db.add(mov)
             mat.stock_quantity = new_stock
@@ -258,8 +285,17 @@ def update_material_item(material_id: int, req: MaterialUpdate, db: Session = De
     if req.is_active is not None:
         mat.is_active = req.is_active
 
+    if is_sensitive_change:
+        db.add(AuditLog(
+            username="director_general",
+            module="almacen",
+            action="rectificar_kardex_precio",
+            details=f"Modificación autorizada en [{mat.code}] {mat.name}: Costo ${old_cost} -> ${mat.unit_cost_usd}, Stock {old_stock} -> {mat.stock_quantity}"
+        ))
+
     db.commit()
     db.refresh(mat)
+
 
     return {
         "success": True,

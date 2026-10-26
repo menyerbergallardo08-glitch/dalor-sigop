@@ -79,4 +79,6 @@ class MaterialUpdate(BaseModel):
     unit_cost_usd: Optional[float] = None
     location: Optional[str] = None
     is_active: Optional[bool] = None
+    director_password: Optional[str] = None
+
 

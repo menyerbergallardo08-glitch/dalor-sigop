@@ -441,6 +441,22 @@ async function submitEditMaterial(event) {
         return;
     }
 
+    // Si se modifica el costo unitario o el stock de forma sensible, solicitar clave de Director
+    const origMat = (window.allMaterials || []).find(m => m && (m.id == matId || String(m.id) === String(matId)));
+    const origCost = origMat ? parseFloat(origMat.unit_cost_usd || 0) : 0;
+    const origStock = origMat ? parseFloat(origMat.stock_quantity || 0) : 0;
+    const isSensitive = (payload.unit_cost_usd !== null && Math.abs(payload.unit_cost_usd - origCost) > 1e-4) ||
+                        (payload.stock_quantity !== null && Math.abs(payload.stock_quantity - origStock) > 1e-4);
+
+    if (isSensitive) {
+        const pwd = prompt("🔒 Seguridad Kárdex: Para modificar el precio unitario o ajustar el stock físico se requiere la clave del Director General:");
+        if (!pwd) {
+            alert("Operación cancelada: Se requiere la clave del Director General para rectificaciones de Kárdex.");
+            return;
+        }
+        payload.director_password = pwd;
+    }
+
     const btn = document.getElementById("btnSubmitEditMaterial");
     if (btn) {
         btn.disabled = true;
@@ -459,7 +475,7 @@ async function submitEditMaterial(event) {
         }
         closeModal("modalEditMaterial");
         if (typeof showToastNotification === 'function') {
-            showToastNotification("✅ Ficha de material actualizada correctamente.", "success");
+            showToastNotification("✅ Ficha de material actualizada correctamente con validación de Director.", "success");
         } else {
             alert("✅ Material actualizado con éxito.");
         }

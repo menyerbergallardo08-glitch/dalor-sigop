@@ -201,9 +201,10 @@
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <select id="fleetStatusFilter" onchange="filterFleetList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
-                                <option value="all">Todos los Estados</option>
-                                <option value="en_obra">En Obra / Operación</option>
-                                <option value="disponible_base">Disponibles en Base</option>
+                                <option value="all">Estado: Todos (Activos + Inactivos)</option>
+                                <option value="disponible_base">Activos - Disponibles en Base</option>
+                                <option value="en_obra">Activos - En Obra / Operación</option>
+                                <option value="inactivo">🛑 Inactivos / De Baja / Desincorporados</option>
                             </select>
                             <select id="fleetMaintFilter" onchange="filterFleetList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
                                 <option value="all">Semáforo Servicio (Todos)</option>

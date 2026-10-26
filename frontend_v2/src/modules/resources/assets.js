@@ -19,26 +19,39 @@ function authFetch(url, options = {}) {
 }
 
 async function deleteAssetItem(assetId) {
-
     if (!confirm("¿Deseas inactivar este elemento? (Se conservará la traza histórica)")) return;
-
     try {
-
         await authFetch(`${API_BASE}/assets/${assetId}`, { method: "DELETE" });
-
-        await loadInitialMasterData();
-
-        loadToolsList();
-
-        loadFleetList();
-
+        await loadInitialMasterData(true);
+        if (typeof loadToolsList === 'function') loadToolsList();
+        if (typeof loadFleetList === 'function') loadFleetList();
+        if (typeof loadMachineryList === 'function') loadMachineryList();
     } catch (e) {
-
         alert("Error al inactivar.");
-
     }
-
 }
+
+async function reactivateAssetItem(assetId) {
+    if (!confirm("¿Deseas reactivar e incorporar nuevamente este recurso a las operaciones activas?")) return;
+    try {
+        const res = await authFetch(`${API_BASE}/assets/${assetId}/reactivate`, { method: "POST" });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.detail || "Error al reactivar recurso.");
+            return;
+        }
+        alert("¡Recurso reactivado exitosamente!");
+        await loadInitialMasterData(true);
+        if (typeof loadToolsList === 'function') loadToolsList();
+        if (typeof loadFleetList === 'function') loadFleetList();
+        if (typeof loadMachineryList === 'function') loadMachineryList();
+    } catch (e) {
+        alert("Error de conexión al reactivar recurso.");
+    }
+}
+
+window.deleteAssetItem = deleteAssetItem;
+window.reactivateAssetItem = reactivateAssetItem;
 
 
 

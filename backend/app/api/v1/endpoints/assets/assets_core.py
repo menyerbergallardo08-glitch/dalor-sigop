@@ -149,35 +149,35 @@ def get_tools_categories(db: Session = Depends(get_db)):
 
 
 @router.get("/tools-summary")
-def get_tools_summary(db: Session = Depends(get_db)):
+def get_tools_summary(include_inactive: bool = False, db: Session = Depends(get_db)):
     """
     Optimized endpoint for tool inventory grouping.
     Returns tools grouped by name with compact representation,
     reducing payload from 465 KB to ~15 KB.
     """
     non_tools = ['vehiculo', 'camioneta', 'camion', 'remolque', 'maquinaria', 'planta', 'generador', 'compresor']
-    tools = (
-        db.query(
-            Asset.id,
-            Asset.asset_code,
-            Asset.name,
-            Asset.asset_type,
-            Asset.brand,
-            Asset.model,
-            Asset.serial_number,
-            Asset.status,
-            Asset.current_location,
-            Asset.current_custodian_name,
-            Asset.current_project_id,
-            Asset.category
-        )
-        .filter(Asset.is_active == True, ~Asset.asset_type.in_(non_tools))
-        .all()
+    tools_query = db.query(
+        Asset.id,
+        Asset.asset_code,
+        Asset.name,
+        Asset.asset_type,
+        Asset.brand,
+        Asset.model,
+        Asset.serial_number,
+        Asset.status,
+        Asset.current_location,
+        Asset.current_custodian_name,
+        Asset.current_project_id,
+        Asset.category,
+        Asset.is_active
     )
+    if not include_inactive:
+        tools_query = tools_query.filter(Asset.is_active == True)
+    tools = tools_query.filter(~Asset.asset_type.in_(non_tools)).all()
 
     groups = {}
     for t in tools:
-        t_id, code, name, a_type, brand, model, serial, status, loc, cust, proj_id, cat = t
+        t_id, code, name, a_type, brand, model, serial, status, loc, cust, proj_id, cat, is_act = t
         key = (name or 'HERRAMIENTA GENERAL').strip().upper()
         if key not in groups:
             groups[key] = {
@@ -223,7 +223,8 @@ def get_tools_summary(db: Session = Depends(get_db)):
             "status": effective_status,
             "current_location": loc or "Sede Central",
             "current_custodian_name": cust or ("Disponible en Base" if is_base_loc else (loc or "En Obra")),
-            "current_project_id": proj_id
+            "current_project_id": proj_id,
+            "is_active": is_act
         })
 
     result = []
@@ -591,10 +592,12 @@ def get_asset_types(db: Session = Depends(get_db)):
     return sorted(cleaned)
 
 @router.get("/fleet-summary")
-def get_fleet_summary(db: Session = Depends(get_db)):
+def get_fleet_summary(include_inactive: bool = False, db: Session = Depends(get_db)):
     # Filter only assets that represent fleet vehicles
-    fleet_query = db.query(Asset).filter(
-        Asset.is_active == True,
+    fleet_query = db.query(Asset)
+    if not include_inactive:
+        fleet_query = fleet_query.filter(Asset.is_active == True)
+    fleet_query = fleet_query.filter(
         or_(
             Asset.asset_type.in_(["vehiculo", "camioneta", "camion", "moto", "vehículo", "transporte"]),
             Asset.asset_code.like("%-V-%"),
@@ -698,13 +701,40 @@ def toggle_asset_active(asset_id: int, db: Session = Depends(get_db)):
     if not asset:
         raise HTTPException(status_code=404, detail="Activo no encontrado.")
     asset.is_active = not asset.is_active
+    action_str = "reactivar_activo" if asset.is_active else "inactivar_activo"
+    details_str = f"Recurso '{asset.name}' ({asset.asset_code}) {'reactivado y puesto disponible en base' if asset.is_active else 'inactivado / dado de baja'}."
+    if asset.is_active and not asset.status:
+        asset.status = "disponible_base"
+    db.add(AuditLog(
+        username="director_general",
+        module="recursos",
+        action=action_str,
+        details=details_str
+    ))
     db.commit()
     return {
         "success": True,
         "id": asset.id,
         "is_active": asset.is_active,
-        "status_label": "Activo" if asset.is_active else "Inactivo / Devuelto"
+        "status_label": "Activo" if asset.is_active else "Inactivo / Devuelto",
+        "message": details_str
     }
+
+@router.post("/{asset_id}/reactivate")
+def reactivate_asset(asset_id: int, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Activo no encontrado.")
+    asset.is_active = True
+    asset.status = "disponible_base"
+    db.add(AuditLog(
+        username="director_general",
+        module="recursos",
+        action="reactivar_activo",
+        details=f"Recurso '{asset.name}' ({asset.asset_code}) reactivado y puesto en base."
+    ))
+    db.commit()
+    return {"success": True, "message": f"Recurso '{asset.name}' reactivado exitosamente."}
 
 @router.delete("/{asset_id}")
 def delete_asset(asset_id: int, db: Session = Depends(get_db)):
@@ -712,6 +742,14 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     if not asset:
         raise HTTPException(status_code=404, detail="Activo no encontrado.")
     asset.is_active = False
+    asset.status = "inactivo"
+    db.add(AuditLog(
+        username="director_general",
+        module="recursos",
+        action="inactivar_activo",
+        details=f"Baja de recurso '{asset.name}' ({asset.asset_code}) registrada en bitácora."
+    ))
     db.commit()
     return {"message": "Activo/Herramienta inactivado exitosamente (traza histórica preservada)."}
+
 

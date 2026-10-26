@@ -181,6 +181,21 @@ function resetMaintenanceAuditFilters() {
 
 
 
+function filterDeactivationsPreset() {
+    auditCurrentPage = 1;
+    const queryInput = document.getElementById('auditFilterQuery');
+    if (queryInput) queryInput.value = 'inactivacion';
+    let filtered = allAuditLogsCache.filter(l => {
+        const action = (l.action || '').toLowerCase();
+        const details = (l.details || '').toLowerCase();
+        const module = (l.module || '').toLowerCase();
+        return action.includes('inactiv') || action.includes('reactiv') || action.includes('baja') || 
+               details.includes('inactiv') || details.includes('reactiv') || details.includes('desincorporad') ||
+               details.includes('kardex') || module.includes('recursos') || module.includes('materiales');
+    });
+    renderMaintenanceAuditLogs(filtered);
+}
+
 // Exponer al objeto global window para eventos inline y compatibilidad
 if (typeof window !== 'undefined') {
     window.loadMaintenanceAuditLogs = loadMaintenanceAuditLogs;
@@ -190,4 +205,13 @@ if (typeof window !== 'undefined') {
     window.changeAuditPageSize = changeAuditPageSize;
     window.filterMaintenanceAuditLogs = filterMaintenanceAuditLogs;
     window.resetMaintenanceAuditFilters = resetMaintenanceAuditFilters;
+    window.filterDeactivationsPreset = filterDeactivationsPreset;
 }
+
+export {
+    loadMaintenanceAuditLogs,
+    renderMaintenanceAuditLogs,
+    filterMaintenanceAuditLogs,
+    resetMaintenanceAuditFilters,
+    filterDeactivationsPreset
+};

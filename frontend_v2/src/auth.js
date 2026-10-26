@@ -453,6 +453,35 @@ export function handleLogout() {
     window.location.reload();
 }
 
+// ----------------------------------------------------
+// AUTO-LOGOUT POR INACTIVIDAD (30 MINUTOS)
+// ----------------------------------------------------
+let _inactivityTimer = null;
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
+
+export function resetInactivityTimer() {
+    if (_inactivityTimer) clearTimeout(_inactivityTimer);
+    // Solo activar si hay un usuario autenticado
+    if (!State.authToken && !localStorage.getItem('dalor_token')) return;
+    
+    _inactivityTimer = setTimeout(() => {
+        console.warn("[SECURITY] Sesión cerrada automáticamente por inactividad prolongada (30 min).");
+        alert("🔒 Su sesión ha caducado por inactividad (30 minutos). Por favor inicie sesión nuevamente.");
+        handleLogout();
+    }, INACTIVITY_TIMEOUT_MS);
+}
+
+export function setupInactivityListener() {
+    if (typeof window === 'undefined') return;
+    ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {
+        window.addEventListener(evt, resetInactivityTimer, { passive: true });
+    });
+    resetInactivityTimer();
+}
+
+// Inicializar listener al cargar el script
+setupInactivityListener();
+
 if (typeof window !== 'undefined') {
     window.performLogin = performLogin;
     window.executePortalLogin = performLogin;
@@ -461,4 +490,5 @@ if (typeof window !== 'undefined') {
     window.redirectUserByRole = redirectUserByRole;
     window.renderUserBadge = renderUserBadge;
     window.applyPermissionMap = applyPermissionMap;
+    window.resetInactivityTimer = resetInactivityTimer;
 }

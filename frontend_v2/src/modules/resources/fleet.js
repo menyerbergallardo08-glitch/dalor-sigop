@@ -33,7 +33,7 @@ async function loadFleetList() {
     try {
         const token = window.authToken || localStorage.getItem('dalor_token');
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const res = await authFetch(`${API_BASE}/assets/fleet-summary`, { headers });
+        const res = await authFetch(`${API_BASE}/assets/fleet-summary?include_inactive=true`, { headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const fleet = await res.json();
         
@@ -98,9 +98,13 @@ function filterFleetList() {
         const isAlquilado = st === 'alquilado_a_tercero' || st === 'alquilado';
         const isPrestado = st === 'prestado_a_cliente' || st === 'en_prestamo' || st === 'prestamo';
         const inBase = !isAlquilado && !isPrestado && (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
+        const isInactive = v?.is_active === false || st === 'desincorporado' || st === 'inactivo' || st === 'baja';
         let matchStatus = true;
-        if (status === 'en_obra') matchStatus = !inBase;
-        if (status === 'disponible_base') matchStatus = inBase;
+        if (status === 'en_obra') matchStatus = !inBase && !isInactive;
+        else if (status === 'disponible_base') matchStatus = inBase && !isInactive;
+        else if (status === 'inactivo') matchStatus = isInactive;
+        else if (status === 'all') matchStatus = true; // todos
+        else if (!status) matchStatus = !isInactive;
 
         let matchMaint = true;
         if (maint !== 'all') matchMaint = String(v?.traffic_light || '') === maint;
@@ -278,9 +282,15 @@ function renderFleetTablePaginated() {
                 <button onclick="openEditAssetModal(${vId})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; color: #0284c7; border-color: #bae6fd;" title="Editar Activo / Vehículo">
                     <i class="fa-solid fa-pen"></i>
                 </button>
-                <button onclick="deleteAssetItem(${vId})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Vehículo">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
+                ${(v?.is_active === false || v?.status === 'desincorporado') ? `
+                    <button onclick="reactivateAssetItem(${vId})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-left: 4px; background: #059669; font-weight: 800;" title="Reactivar e Incorporar a Operaciones">
+                        <i class="fa-solid fa-bolt"></i> Reactivar
+                    </button>
+                ` : `
+                    <button onclick="deleteAssetItem(${vId})" class="btn-secondary" style="padding: 3px 6px; color: #ef4444; margin-left: 4px;" title="Inactivar Vehículo">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                `}
             </td>
         </tr>`;
     }).join('');

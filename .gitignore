@@ -35,3 +35,5 @@ backups/
 backend/migrate_dispatch_guides.py
 public_url.txt
 backend/public_url.txt
+.coverage
+htmlcov/

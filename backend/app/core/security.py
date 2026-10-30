@@ -8,7 +8,25 @@ except ImportError:
 from datetime import datetime, timezone, timedelta
 
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "DALOR_SIGOP_SUPER_SECRET_KEY_2026")
+_configured_key = os.getenv("JWT_SECRET_KEY")
+_is_prod = (
+    os.getenv("ENVIRONMENT", "").lower() in ("production", "prod")
+    or bool(os.getenv("RENDER"))
+    or "postgres" in os.getenv("DATABASE_URL", "").lower()
+)
+
+if _is_prod:
+    if not _configured_key:
+        render_seed = os.getenv("RENDER_SERVICE_ID") or os.getenv("DATABASE_URL")
+        if render_seed:
+            SECRET_KEY = hashlib.sha256(f"DALOR_PROD_JWT_SALT_{render_seed}".encode()).hexdigest()
+        else:
+            raise RuntimeError("CRITICAL DEVSECOPS AUDIT ERROR: 'JWT_SECRET_KEY' must be configured in production.")
+    else:
+        SECRET_KEY = _configured_key
+else:
+    SECRET_KEY = _configured_key or "DALOR_DEV_LAB_SECRET_KEY_LOCAL_ONLY"
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 días
 

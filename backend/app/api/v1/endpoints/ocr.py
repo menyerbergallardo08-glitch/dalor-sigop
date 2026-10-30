@@ -11,6 +11,7 @@ from app.schemas.schemas import OCRExtractResult
 from app.services.storage import R2StorageService
 from app.models.models import User
 from app.api.deps import get_current_user
+from app.core.file_security import read_and_validate_file
 
 router = APIRouter()
 
@@ -47,8 +48,8 @@ async def scan_ticket(
     # Programar limpieza del archivo temporal tras responder al cliente
     background_tasks.add_task(cleanup_temp_file, file_path)
 
-    # Guardar archivo temporalmente en disco
-    contents = await file.read()
+    # Guardar archivo temporalmente en disco tras validar MIME y tamaño máx 10 MB
+    contents = await read_and_validate_file(file)
     with open(file_path, "wb") as f:
         f.write(contents)
 
@@ -111,7 +112,8 @@ async def scan_odometer(
     # Programar limpieza del archivo temporal tras responder al cliente
     background_tasks.add_task(cleanup_temp_file, file_path)
 
-    contents = await file.read()
+    # Guardar archivo temporalmente en disco tras validar MIME y tamaño máx 10 MB
+    contents = await read_and_validate_file(file)
     with open(file_path, "wb") as f:
         f.write(contents)
 

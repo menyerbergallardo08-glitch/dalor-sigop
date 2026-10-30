@@ -21,6 +21,7 @@ from app.models.models import (
     CompanyProfile
 )
 from app.api.deps import require_roles, get_current_user
+from app.core.file_security import read_and_validate_file
 from app.schemas.schemas import (
     ReceivableFollowUpLogCreate,
     ReceivableFollowUpLogOut
@@ -228,7 +229,7 @@ def get_next_invoice_code(prefix: str = "FAC", db: Session = Depends(get_db)):
     control = compute_next_control_number(db) if clean_p == "FAC" else ""
     return {"next_code": code, "next_control": control, "year": current_year, "prefix": clean_p}
 
-@router.post("/override-correlative")
+@router.post("/override-correlative", dependencies=[Depends(require_roles(["director_general", "director", "administrador_financiero"]))])
 def override_fiscal_correlative(
     req: CorrelativeOverrideRequest,
     db: Session = Depends(get_db),
@@ -412,7 +413,7 @@ def update_receivable_control_number(receivable_id: int, payload: ControlNumberU
     db.commit()
     return {"success": True, "control_number": r.control_number}
 
-@router.put("/cxc/{receivable_id}/fiscal-correlative")
+@router.put("/cxc/{receivable_id}/fiscal-correlative", dependencies=[Depends(require_roles(["director_general", "director", "administrador_financiero"]))])
 def update_receivable_fiscal_correlative(
     receivable_id: int,
     payload: FiscalCorrelativeUpdate,
@@ -935,7 +936,7 @@ def process_client_refund(receivable_id: int, r_in: ClientRefundCreate, db: Sess
         "remaining_surplus": max(0.0, round(surplus - r_in.amount_usd, 2))
     }
 
-@router.post("/cxc/{receivable_id}/declare-bad-debt")
+@router.post("/cxc/{receivable_id}/declare-bad-debt", dependencies=[Depends(require_roles(["director_general", "director", "administrador_financiero"]))])
 def declare_cxc_bad_debt(receivable_id: int, req: BadDebtRequest, db: Session = Depends(get_db)):
     r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
     if not r:
@@ -1195,7 +1196,7 @@ async def upload_cxc_evidence(
     directamente al almacenamiento Cloudflare R2 para la bitácora de cobranza.
     """
     try:
-        contents = await file.read()
+        contents = await read_and_validate_file(file)
         ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "jpg"
         unique_name = f"cxc_evidence_{uuid.uuid4().hex[:10]}.{ext}"
         
@@ -1298,7 +1299,7 @@ def delete_receivable(cxc_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"success": True, "message": f"Cuenta por cobrar [{rec.invoice_number}] eliminada con éxito."}
 
-@router.post("/cxc/{receivable_id}/write-off")
+@router.post("/cxc/{receivable_id}/write-off", dependencies=[Depends(require_roles(["director_general", "director", "administrador_financiero"]))])
 def write_off_bad_debt(receivable_id: int, w_in: BadDebtWriteOff, db: Session = Depends(get_db)):
     try:
         rec = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()

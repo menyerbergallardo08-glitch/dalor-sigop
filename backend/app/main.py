@@ -23,23 +23,17 @@ is_production = (
     or bool(os.getenv("RENDER_EXTERNAL_HOSTNAME"))
 )
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=None if is_production else f"{settings.API_V1_STR}/openapi.json",
-    docs_url=None if is_production else "/docs",
-    redoc_url=None if is_production else "/redoc",
-    description="Sistema Integral de Gestión Operativa, Activos, Job Costing y Captura OCR para METALMECÁNICA DALOR C.A.."
-)
-
+from contextlib import asynccontextmanager
 import asyncio
 import threading
 import requests
 
-@app.on_event("startup")
-def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. Inicialización y sincronización de Base de Datos
     init_db()
 
-    # Worker Anti-Suspensión 24/7 (Keep-Alive Heartbeat)
+    # 2. Worker Anti-Suspensión 24/7 (Keep-Alive Heartbeat)
     def keep_alive_heartbeat():
         import time
         # Esperar 2 minutos iniciales para arranque suave
@@ -58,7 +52,7 @@ def on_startup():
     t = threading.Thread(target=keep_alive_heartbeat, daemon=True)
     t.start()
 
-    # Worker de Respaldo Automático Diario (Política FIFO: Últimos 7 Días)
+    # 3. Worker de Respaldo Automático Diario (Política FIFO: Últimos 7 Días)
     def daily_backup_worker():
         import time
         from app.core.database import SessionLocal
@@ -90,6 +84,17 @@ def on_startup():
 
     t_bk = threading.Thread(target=daily_backup_worker, daemon=True)
     t_bk.start()
+
+    yield
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    lifespan=lifespan,
+    openapi_url=None if is_production else f"{settings.API_V1_STR}/openapi.json",
+    docs_url=None if is_production else "/docs",
+    redoc_url=None if is_production else "/redoc",
+    description="Sistema Integral de Gestión Operativa, Activos, Job Costing y Captura OCR para METALMECÁNICA DALOR C.A.."
+)
 
 from fastapi.middleware.gzip import GZipMiddleware
 

@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.models.models import Asset, Personnel
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/matrix-status")
 def get_resource_matrix_status(db: Session = Depends(get_db)):

@@ -18,10 +18,10 @@ from app.models.models import (
     AuditLog,
     User as UserModel
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_current_active_user, get_current_user
 from app.services.cash_flow_service import CashFlowService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # ------------------------------------------------------------------------------
 # SCHEMAS

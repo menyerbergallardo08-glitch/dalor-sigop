@@ -156,3 +156,13 @@ def check_ocr_rate_limit(request: Request) -> None:
             expired_keys = [k for k, v in _ocr_requests.items() if not v or (now - v[-1] >= OCR_WINDOW_SECONDS)]
             for k in expired_keys:
                 _ocr_requests.pop(k, None)
+
+
+def reset_rate_limits():
+    """Limpia contadores en memoria de rate limiting para pruebas y tests."""
+    with _login_lock:
+        _login_failures.clear()
+        _user_failures.clear()
+    with _ocr_lock:
+        _ocr_requests.clear()
+

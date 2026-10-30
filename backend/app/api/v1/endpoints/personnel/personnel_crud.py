@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.models import Personnel
 from .personnel_schemas import PersonnelCreate, PersonnelUpdate
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 
 @router.get("/")

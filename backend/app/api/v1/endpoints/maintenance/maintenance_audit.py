@@ -5,8 +5,9 @@ from typing import Optional
 
 from app.core.database import get_db
 from app.models.models import AuditLog
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/audit-logs")
 def get_audit_logs(

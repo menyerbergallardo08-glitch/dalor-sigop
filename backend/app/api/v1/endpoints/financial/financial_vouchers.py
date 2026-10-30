@@ -5,8 +5,9 @@ from datetime import datetime
 from app.core.database import get_db
 from app.models.models import AccountPayable
 from app.services.company_profile_service import CompanyProfileService
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # ------------------------------------------------------------------------------
 # 1. COMPROBANTE OFICIAL DE RETENCIÓN DE IVA (SENIAT SNAT/2015/0049)

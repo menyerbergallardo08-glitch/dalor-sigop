@@ -6,8 +6,9 @@ from app.core.database import get_db
 from app.core.security import get_password_hash
 from app.models.models import User, Role
 from .auth_common import UserCreate, resolve_user_permissions
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/users")
 def get_users(db: Session = Depends(get_db)):

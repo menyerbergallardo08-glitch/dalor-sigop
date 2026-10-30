@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.models import Expense
 from app.services.storage import R2StorageService
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/{expense_id}/receipt")
 def get_expense_receipt(expense_id: int, db: Session = Depends(get_db)):

@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.models import ResourceAssignmentHistory
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/history")
 def get_resource_history(name: str = None, query: str = None, resource_id: int = None, db: Session = Depends(get_db)):

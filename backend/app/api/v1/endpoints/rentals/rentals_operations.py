@@ -14,7 +14,7 @@ from .rentals_common import (
     RentalItemIn, AssetRentalLoanCreate, AssetRentalLoanUpdate
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/")
 def list_rentals(

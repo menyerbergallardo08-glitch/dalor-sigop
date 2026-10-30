@@ -20,14 +20,14 @@ from app.models.models import (
     User as UserModel,
     CompanyProfile
 )
-from app.api.deps import require_roles, get_current_user
+from app.api.deps import get_current_active_user, require_roles, get_current_user
 from app.core.file_security import read_and_validate_file
 from app.schemas.schemas import (
     ReceivableFollowUpLogCreate,
     ReceivableFollowUpLogOut
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # ------------------------------------------------------------------------------
 # SCHEMAS DE CUENTAS POR COBRAR (CxC)

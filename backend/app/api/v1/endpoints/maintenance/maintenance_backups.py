@@ -5,11 +5,11 @@ from typing import Optional
 
 from app.core.database import get_db
 from app.models.models import User
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import get_current_active_user, get_current_user, require_roles
 from app.core.security import decode_access_token
 from app.services.backup_service import BackupService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/backups", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "gerencia"]))])
 def list_backups():

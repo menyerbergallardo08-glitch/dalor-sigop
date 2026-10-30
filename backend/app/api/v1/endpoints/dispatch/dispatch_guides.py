@@ -4,8 +4,9 @@ from typing import Optional
 
 from app.core.database import get_db
 from app.models.models import DispatchGuide
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/")
 def list_dispatch_guides(

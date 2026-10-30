@@ -15,9 +15,10 @@ from app.schemas.schemas import ProjectCreate, ProjectUpdate, ProjectOut, Projec
 from app.services.excel_service import ExcelProjectService
 from .projects_common import *
 
-router = APIRouter()
-
+from app.api.deps import get_current_active_user
 import secrets
+
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/{project_id}/phases")
 def add_project_phase(project_id: int, phase_in: ProjectPhaseAdd, db: Session = Depends(get_db)):

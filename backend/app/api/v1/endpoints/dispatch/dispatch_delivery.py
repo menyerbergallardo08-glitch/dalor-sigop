@@ -5,8 +5,9 @@ from datetime import datetime
 from app.core.database import get_db
 from app.models.models import DispatchGuide
 from .dispatch_common import DeliveryConfirmIn
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.put("/{guide_id}/confirm-delivery")
 @router.post("/{guide_id}/confirm-delivery")

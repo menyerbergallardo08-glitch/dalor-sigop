@@ -6,8 +6,9 @@ from app.core.database import get_db
 from app.models.models import ServiceItem, QuotationItem
 from app.schemas.schemas import ServiceItemCreate, ServiceItemOut
 from .services_common import OFFICIAL_APU_CATEGORIES, get_next_service_code_value
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 
 @router.get("/", response_model=List[ServiceItemOut])

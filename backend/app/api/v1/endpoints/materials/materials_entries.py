@@ -12,8 +12,9 @@ from app.models.models import (
 )
 from app.services.bcv_scraper import BCVScraperService
 from .materials_common import MaterialEntryCreate, MaterialEntryItem
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # 3. ENTRADA DE MATERIAL (COMPRA / INGRESO A ALMACEN - SOPORTE MULTI-RENGLÓN)
 # ------------------------------------------------------------------------------

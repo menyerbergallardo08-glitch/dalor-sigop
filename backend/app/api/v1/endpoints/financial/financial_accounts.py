@@ -13,12 +13,12 @@ from app.models.models import (
     PartnerWithdrawal,
     User as UserModel
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_current_active_user, get_current_user
 from app.schemas.schemas import (
     FinancialAccountCreate, FinancialAccountUpdate, FinancialAccountOut
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # ------------------------------------------------------------------------------
 # 1. COTIZACIÓN OFICIAL BCV (SCRAPING AUTOMATIZADO CON FAIL-SAFE EN 4 CAPAS)

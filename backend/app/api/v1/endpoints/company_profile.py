@@ -10,10 +10,10 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.models.models import User as UserModel
-from app.api.deps import require_roles, get_current_user
+from app.api.deps import get_current_active_user, require_roles, get_current_user
 from app.services.company_profile_service import CompanyProfileService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 class CompanyProfileUpdate(BaseModel):
     legal_name: Optional[str] = None

@@ -12,11 +12,11 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.models.models import ExpenseCategory, User as UserModel
-from app.api.deps import get_current_user
+from app.api.deps import get_current_active_user, get_current_user
 from app.services.bi_metrics_service import BIMetricsService
 from app.services.financial_excel_service import FinancialExcelService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # ------------------------------------------------------------------------------
 # 1. BUSINESS INTELLIGENCE & ANALYTICS EJECUTIVO

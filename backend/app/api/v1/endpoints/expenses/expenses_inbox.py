@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.models import Expense, ExpenseCategory, PartnerWithdrawal, AuditLog
 from .expenses_common import ExpenseValidationInput
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/inbox/pending")
 def get_pending_inbox(db: Session = Depends(get_db)):

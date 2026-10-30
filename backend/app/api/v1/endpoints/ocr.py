@@ -10,10 +10,10 @@ from app.services.ocr_parser import OCRReceiptParser
 from app.schemas.schemas import OCRExtractResult
 from app.services.storage import R2StorageService
 from app.models.models import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_active_user, get_current_user
 from app.core.file_security import read_and_validate_file
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 def cleanup_temp_file(path: str):
     """Elimina de forma segura el archivo temporal en disco tras enviar la respuesta."""

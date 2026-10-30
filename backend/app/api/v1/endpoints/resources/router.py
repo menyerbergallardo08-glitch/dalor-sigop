@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import Depends, APIRouter
 from .resources_matrix import router as matrix_router
 from .resources_movements import router as movements_router
 from .resources_history import router as history_router
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # 1. Matriz de disponibilidad general
 router.include_router(matrix_router, tags=["Matriz de Recursos - Estado"])

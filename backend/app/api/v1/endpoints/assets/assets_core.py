@@ -14,8 +14,9 @@ from app.models.models import (
 from app.core.security import verify_password
 from app.services.inventory_excel_service import InventoryExcelService
 from .assets_common import *
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 
 def get_next_asset_code_value(db: Session, asset_type: str = "herramienta", category: Optional[str] = None) -> str:

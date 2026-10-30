@@ -28,10 +28,10 @@ from app.models.models import (
     ResourceAssignmentHistory
 )
 from app.core.security import verify_password, get_password_hash
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import get_current_active_user, get_current_user, require_roles
 from .maintenance_common import ResetCleanSlateInput
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/reset-to-clean-slate")
 def reset_to_clean_slate(input_data: ResetCleanSlateInput, db: Session = Depends(get_db)):

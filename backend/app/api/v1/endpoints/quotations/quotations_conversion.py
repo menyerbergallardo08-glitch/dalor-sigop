@@ -1,12 +1,13 @@
 """
 Conversion & approval logic: Quotation -> Active Project and Material Requisitions.
 """
+from app.api.deps import get_current_active_user
 from .quotations_common import (
     APIRouter, Depends, HTTPException, Session, datetime, re, Optional,
     get_db, Quotation, Project, Material, ProjectMaterialRequisition
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/{quotation_id}/convert-to-project")
 @router.post("/{quotation_id}/approve")

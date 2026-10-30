@@ -9,10 +9,11 @@ Integra modularmente los 6 sub-routers especializados:
 6. financial_reports: Métricas BI, libros de ventas y compras (datos y Excel), conceptos de gastos
 """
 
-from fastapi import APIRouter
+from fastapi import Depends, APIRouter
+from app.api.deps import get_current_active_user
 
 # 1. Router maestro
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # ── 1. SUB-ROUTER: CUENTAS BANCARIAS, SALDOS & BCV ──
 from app.api.v1.endpoints.financial import financial_accounts
@@ -103,4 +104,4 @@ from app.api.v1.endpoints.financial.financial_reports import (
     import_libros_excel,
     get_expense_concepts,
     create_expense_concept
-)
+)

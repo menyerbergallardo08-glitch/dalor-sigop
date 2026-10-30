@@ -18,9 +18,9 @@ from app.models.models import (
     AuditLog,
     User as UserModel
 )
-from app.api.deps import require_roles, get_current_user
+from app.api.deps import get_current_active_user, require_roles, get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # ------------------------------------------------------------------------------
 # SCHEMAS DE CUENTAS POR PAGAR (CxP)

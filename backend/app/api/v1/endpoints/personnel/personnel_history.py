@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.models import Personnel, ResourceAssignmentHistory, DispatchGuide, Project
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 
 @router.get("/{personnel_id}/history")

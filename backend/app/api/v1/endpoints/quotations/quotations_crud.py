@@ -1,13 +1,14 @@
 """
 CRUD operations for Quotations (Presupuestos & APU).
 """
+from app.api.deps import get_current_active_user
 from .quotations_common import (
     APIRouter, Depends, HTTPException, Session, List, datetime, re,
     get_db, Quotation, QuotationItem, Client,
     QuotationCreate, QuotationUpdate, QuotationOut
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 def compute_next_quotation_number(db: Session, current_year: int = None) -> str:
     """

@@ -5,8 +5,9 @@ from sqlalchemy import text
 
 from app.core.database import get_db
 from app.models.models import ExpenseCategory, AuditLog
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/categories")
 def get_expense_categories(db: Session = Depends(get_db)):

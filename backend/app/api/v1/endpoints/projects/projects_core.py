@@ -14,8 +14,9 @@ from app.models.models import (
 from app.schemas.schemas import ProjectCreate, ProjectUpdate, ProjectOut, ProjectAddendumCreate, ProjectAddendumOut
 from app.services.excel_service import ExcelProjectService
 from .projects_common import *
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 
 @router.get("/")

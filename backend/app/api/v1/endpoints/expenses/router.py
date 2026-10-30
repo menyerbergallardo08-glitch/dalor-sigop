@@ -1,10 +1,11 @@
-from fastapi import APIRouter
+from fastapi import Depends, APIRouter
 from .expenses_categories import router as categories_router
 from .expenses_inbox import router as inbox_router
 from .expenses_receipts import router as receipts_router
 from .expenses_operations import router as operations_router
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # Prioridad estricta de rutas:
 # 1. Rutas específicas prefijadas (/categories, /inbox)

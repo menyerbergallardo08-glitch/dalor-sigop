@@ -12,8 +12,9 @@ from app.models.models import (
 )
 from app.core.security import verify_password
 from .assets_common import *
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/{asset_id}/record-odometer")
 def record_asset_odometer(asset_id: int, req: OdometerUpdate, db: Session = Depends(get_db)):

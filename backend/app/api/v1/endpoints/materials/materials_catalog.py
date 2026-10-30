@@ -11,6 +11,7 @@ from .materials_common import MaterialCreate, MaterialUpdate
 
 import re
 import unicodedata
+from app.api.deps import get_current_active_user
 
 def generate_category_prefix(cat_name: str) -> str:
     if not cat_name or not cat_name.strip():
@@ -70,7 +71,7 @@ def generate_category_prefix(cat_name: str) -> str:
     return first_word
 
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/categories")
 def get_material_categories(db: Session = Depends(get_db)):

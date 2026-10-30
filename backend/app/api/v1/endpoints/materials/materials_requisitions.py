@@ -19,8 +19,9 @@ from app.models.models import (
 )
 from app.services.bcv_scraper import BCVScraperService
 from .materials_common import RequisitionDispatchCreate
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # 5. BANDEJA DE ALMACÉN: REQUISICIONES DE MATERIALES DE PROYECTOS (PREPARACIÓN & PICKING)
 # ------------------------------------------------------------------------------

@@ -11,7 +11,7 @@ from app.models.models import (
 from app.api.deps import get_current_active_user
 from .rentals_common import RentalReturnIn, RentalPartialReturnIn
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/{item_id}/return")
 def return_rental_loan(

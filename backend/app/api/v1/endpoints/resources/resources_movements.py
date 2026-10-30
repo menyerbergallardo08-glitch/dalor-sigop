@@ -6,8 +6,9 @@ from app.core.database import get_db
 from app.models.models import Asset, Personnel, Project, ResourceAssignmentHistory
 from app.schemas.schemas import ResourceAssignRequest, ResourceTransferRequest, ResourceReturnRequest
 from .resources_common import ResourceSubstituteRequest
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/assign")
 def assign_resource(req: ResourceAssignRequest, db: Session = Depends(get_db)):

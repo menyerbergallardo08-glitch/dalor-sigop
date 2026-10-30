@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.models import Role, User, AuditLog
-from app.api.deps import require_roles
+from app.api.deps import get_current_active_user, require_roles
 from .maintenance_common import RoleCreate, RoleUpdate
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/roles", dependencies=[Depends(require_roles(["director_general", "administrador_financiero"]))])
 def list_roles(db: Session = Depends(get_db)):

@@ -9,8 +9,9 @@ from app.models.models import (
     Material, MaterialMovement, ResourceAssignmentHistory
 )
 from .dispatch_common import DispatchGuideCreate
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/")
 def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_db)):

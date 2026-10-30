@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.models import Client
 from app.schemas.schemas import ClientCreate, ClientOut
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 
 def get_next_client_code_value(db: Session) -> str:

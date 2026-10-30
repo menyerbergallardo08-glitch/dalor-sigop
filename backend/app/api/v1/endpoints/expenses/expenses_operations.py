@@ -8,8 +8,9 @@ from app.core.database import get_db
 from app.models.models import Expense, ExpenseCategory, Project, Asset, Personnel, AuditLog
 from app.schemas.schemas import ExpenseCreate, ExpenseOut
 from .expenses_common import BatchExpenseRow, ManualExpenseCreate
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/", response_model=List[ExpenseOut])
 def get_expenses(

@@ -5,8 +5,9 @@ from typing import Optional
 from app.core.database import get_db
 from app.models.models import Material, MaterialMovement
 from .materials_common import MaterialCalibrationRequest
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # 6. HISTORIAL DE MOVIMIENTOS (KARDEX)
 # ------------------------------------------------------------------------------

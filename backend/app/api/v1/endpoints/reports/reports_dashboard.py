@@ -4,8 +4,9 @@ from sqlalchemy import func
 
 from app.core.database import get_db
 from app.models.models import Project, Expense, ExpenseCategory
+from app.api.deps import get_current_active_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 
 @router.get("/comparison-dashboard")

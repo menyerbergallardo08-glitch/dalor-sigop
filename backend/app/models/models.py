@@ -1,11 +1,14 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, Enum, Numeric
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 from app.core.database import Base
 
 # Tipo numérico de alta precisión para importes financieros y cantidades ERP
 Money = Numeric(18, 4, asdecimal=False)
+
+def utc_now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 class ProjectStatus(str, enum.Enum):
     COTIZACION = "cotizacion"
@@ -37,7 +40,7 @@ class Role(Base):
     description = Column(String(255), nullable=True)
     permissions_json = Column(Text, nullable=False)
     is_system = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class User(Base):
     __tablename__ = "users"
@@ -52,7 +55,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     last_login = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -63,7 +66,7 @@ class AuditLog(Base):
     module = Column(String(50), nullable=False, index=True)
     action = Column(String(100), nullable=False)
     details = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utc_now, index=True)
 
 # ==============================================================================
 # 👤 RETIROS DE SOCIOS & GASTOS FIJOS DE SEDE (BLINDAJE FINANCIERO)
@@ -73,7 +76,7 @@ class PartnerWithdrawal(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     partner_name = Column(String(150), nullable=False) # e.g. "Ing. David Dalor (Socio Principal)", "Socio B"
-    withdrawal_date = Column(DateTime, default=datetime.utcnow)
+    withdrawal_date = Column(DateTime, default=utc_now)
     concept = Column(String(255), nullable=False) # e.g. "Retiro a cuenta de utilidades / Gasto personal"
     amount_usd = Column(Money, nullable=False)
     amount_bs = Column(Money, default=0.0)
@@ -82,7 +85,7 @@ class PartnerWithdrawal(Base):
     financial_account_id = Column(Integer, ForeignKey("financial_accounts.id"), nullable=True)
     reference_number = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class FixedExpenseSetting(Base):
     __tablename__ = "fixed_expense_settings"
@@ -110,7 +113,7 @@ class Client(Base):
     address = Column(String(255), nullable=True)
     industry = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     projects = relationship("Project", back_populates="client")
     quotations = relationship("Quotation", back_populates="client")
@@ -129,7 +132,7 @@ class ServiceItem(Base):
     base_cost_usd = Column(Money, default=0.0)
     unit_price_usd = Column(Money, default=0.0)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class Quotation(Base):
     __tablename__ = "quotations"
@@ -152,7 +155,7 @@ class Quotation(Base):
     coletilla_bolivares = Column(Boolean, default=False)
     coletilla_modalidad = Column(Boolean, default=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     client = relationship("Client", back_populates="quotations")
     items = relationship("QuotationItem", back_populates="quotation", cascade="all, delete-orphan")
@@ -184,7 +187,7 @@ class Project(Base):
     location = Column(String(200), default="Sede Central")
     status = Column(String(50), default="activo")
     scope_of_work = Column(Text, nullable=True)
-    start_date = Column(DateTime, default=datetime.utcnow)
+    start_date = Column(DateTime, default=utc_now)
     end_date = Column(DateTime, nullable=True)
     duration_days = Column(Integer, default=30)
     execution_time = Column(String(100), default="15 días hábiles")
@@ -200,7 +203,7 @@ class Project(Base):
     budget_limit_usd = Column(Money, default=0.0)
     
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     client = relationship("Client", back_populates="projects")
     phases = relationship("ProjectPhase", back_populates="project", cascade="all, delete-orphan", order_by="ProjectPhase.phase_number")
@@ -256,8 +259,8 @@ class ProjectAddendum(Base):
     additional_labor_usd = Column(Money, default=0.0)
     additional_services_usd = Column(Money, default=0.0)
     authorized_by = Column(String(100), default="Dirección General")
-    approval_date = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    approval_date = Column(DateTime, default=utc_now)
+    created_at = Column(DateTime, default=utc_now)
 
     project = relationship("Project", back_populates="addendums")
 
@@ -308,7 +311,7 @@ class AssetService(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True)
-    service_date = Column(DateTime, default=datetime.utcnow)
+    service_date = Column(DateTime, default=utc_now)
     service_type = Column(String(100), nullable=False)
     service_odometer = Column(Float, nullable=False, default=0.0)
     technician_workshop = Column(String(150), nullable=True)
@@ -316,7 +319,7 @@ class AssetService(Base):
     cost_bs = Column(Money, default=0.0)
     notes = Column(Text, nullable=True)
     performed_by = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     hours_operated = Column(Float, nullable=True, default=0.0)
     created_expense = Column(Boolean, default=False)
@@ -366,7 +369,7 @@ class ResourceAssignmentHistory(Base):
     fuel_cost_usd = Column(Money, default=0.0)
     status = Column(String(50), default="en_obra")
     notes = Column(String(255), nullable=True)
-    assigned_at = Column(DateTime, default=datetime.utcnow)
+    assigned_at = Column(DateTime, default=utc_now)
 
     project = relationship("Project", back_populates="resource_history")
 
@@ -399,7 +402,7 @@ class Expense(Base):
     expense_type = Column(String(50), default="costo_obra") # costo_obra, gasto_sede, retiro_socio
     partner_name = Column(Text, nullable=True) # Para retiros de socios o autor que reporta
     
-    expense_date = Column(DateTime, default=datetime.utcnow, index=True)
+    expense_date = Column(DateTime, default=utc_now, index=True)
     description = Column(Text, nullable=False)
     supplier_vendor = Column(Text, nullable=False)
     amount_bs = Column(Money, nullable=False)
@@ -466,7 +469,7 @@ class AccountReceivable(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     
     description = Column(String(255), nullable=False)
-    issue_date = Column(DateTime, default=datetime.utcnow)
+    issue_date = Column(DateTime, default=utc_now)
     due_date = Column(DateTime, nullable=True)
     
     # Desglose Fiscal y Retenciones SENIAT
@@ -493,7 +496,7 @@ class AccountReceivable(Base):
     bad_debt_date = Column(DateTime, nullable=True)
     
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     client = relationship("Client", back_populates="receivables")
     project = relationship("Project", back_populates="receivables")
@@ -515,7 +518,7 @@ class ReceivableFollowUpLog(Base):
     notes = Column(Text, nullable=False)
     evidence_image_path = Column(Text, nullable=True) # Soporte, captura WhatsApp, foto o comprobante alojado en R2
     recorded_by = Column(String(100), default="Administración")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     receivable = relationship("AccountReceivable", back_populates="follow_up_logs")
     client = relationship("Client", back_populates="cxc_logs")
@@ -533,7 +536,7 @@ class AccountPayable(Base):
     payable_type = Column(String(50), default="costo_material_obra") # costo_material_obra, gasto_fijo_sede, stock_almacen
     
     description = Column(String(255), nullable=False)
-    issue_date = Column(DateTime, default=datetime.utcnow)
+    issue_date = Column(DateTime, default=utc_now)
     due_date = Column(DateTime, nullable=True)
     
     # Datos Fiscales Oficiales (Providencia SNAT/2015/0049)
@@ -569,7 +572,7 @@ class AccountPayable(Base):
     balance_usd = Column(Money, default=0.0)
     status = Column(String(50), default="pendiente")
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     # Vinculación con Entrada Física de Almacén (3-Way Matching)
     warehouse_movement_id = Column(Integer, ForeignKey("material_movements.id"), nullable=True)
@@ -594,7 +597,7 @@ class FinancialAccount(Base):
     is_active = Column(Boolean, default=True)
     is_default = Column(Boolean, default=False)
     sort_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     notes = Column(String(255), nullable=True)
 
 class FinancialPayment(Base):
@@ -608,7 +611,7 @@ class FinancialPayment(Base):
     bank_account = Column(String(50), nullable=True) # banesco_usd, banesco_bs, binance_usdt, efectivo_usd, caja_chica
     financial_account_id = Column(Integer, ForeignKey("financial_accounts.id"), nullable=True)
     
-    payment_date = Column(DateTime, default=datetime.utcnow)
+    payment_date = Column(DateTime, default=utc_now)
     payment_method = Column(String(50), default="transferencia")
     reference_number = Column(String(100), nullable=True)
     amount_usd = Column(Money, nullable=False)
@@ -637,7 +640,7 @@ class Material(Base):
     total_cost_usd = Column(Money, default=0.0)
     location = Column(String(150), default="Almacén Central Dalor")
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     movements = relationship("MaterialMovement", back_populates="material", cascade="all, delete-orphan")
 
@@ -656,7 +659,7 @@ class MaterialMovement(Base):
     reference_doc = Column(String(100), nullable=True) # Factura, Vale interno, Guía
     notes = Column(Text, nullable=True)
     performed_by = Column(String(150), default="Custodio de Almacén")
-    movement_date = Column(DateTime, default=datetime.utcnow)
+    movement_date = Column(DateTime, default=utc_now)
 
     material = relationship("Material", back_populates="movements")
     project = relationship("Project")
@@ -678,7 +681,7 @@ class ProjectMaterialRequisition(Base):
     estimated_cost_usd = Column(Money, default=0.0)
     status = Column(String(50), default="pendiente") # pendiente, en_preparacion, despachado_parcial, despachado_total
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     project = relationship("Project", backref="material_requisitions")
     material = relationship("Material")
@@ -700,7 +703,7 @@ class DispatchGuide(Base):
     delivered_by_staff = Column(String(150), nullable=True) # Entregado por Almacén / Responsable
     received_by_staff = Column(String(150), nullable=True) # Recibido por Taller / Responsable
 
-    dispatch_date = Column(DateTime, default=datetime.utcnow)
+    dispatch_date = Column(DateTime, default=utc_now)
     destination_address = Column(String(255), nullable=True)
     destination_plant = Column(String(150), nullable=True)
     
@@ -729,7 +732,7 @@ class DispatchGuide(Base):
     reception_date = Column(DateTime, nullable=True)
     
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     client = relationship("Client")
     project = relationship("Project")
@@ -774,7 +777,7 @@ class AssetRentalLoan(Base):
     destination_reference = Column(String(200), nullable=True) # Destino / Obra de referencia libre (ej: Parada de Planta)
     imputation_mode = Column(String(50), default="total_estimado") # total_estimado, por_factura
     
-    start_date = Column(DateTime, default=datetime.utcnow) # Fecha de entrega o recepción
+    start_date = Column(DateTime, default=utc_now) # Fecha de entrega o recepción
     expected_return_date = Column(DateTime, nullable=True) # Fecha límite prevista de retorno
     actual_return_date = Column(DateTime, nullable=True) # Fecha real de devolución
     
@@ -788,7 +791,7 @@ class AssetRentalLoan(Base):
     status = Column(String(50), default="activo") # activo, retorno_parcial, devuelto_conforme, devuelto_con_novedad, vencido
     return_notes = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     asset = relationship("Asset")
     material = relationship("Material")
@@ -812,7 +815,7 @@ class AssetRentalLoanItem(Base):
     return_date = Column(DateTime, nullable=True)
     return_condition = Column(String(100), nullable=True)
     return_notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     rental = relationship("AssetRentalLoan", back_populates="items")
     asset = relationship("Asset")
@@ -837,8 +840,8 @@ class CompanyProfile(Base):
     is_default = Column(Boolean, default=True)
     next_invoice_number = Column(Integer, nullable=True) # Override correlativo factura (ej: 948)
     next_control_number = Column(Integer, nullable=True) # Override número de control (ej: 558)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 
 

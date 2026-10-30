@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -21,8 +21,7 @@ class ClientOut(ClientBase):
     is_active: bool
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- SERVICIOS (PARTIDAS APU) ---
 class ServiceItemBase(BaseModel):
@@ -42,8 +41,7 @@ class ServiceItemOut(ServiceItemBase):
     is_active: bool
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- COTIZACIONES (APU STYLE) ---
 class QuotationItemBase(BaseModel):
@@ -62,8 +60,7 @@ class QuotationItemOut(QuotationItemBase):
     id: int
     quotation_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuotationCreate(BaseModel):
     quote_number: Optional[str] = None
@@ -122,8 +119,7 @@ class QuotationOut(BaseModel):
     client: Optional[ClientOut] = None
     items: List[QuotationItemOut] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- ETAPAS / FASES DE PROYECTO ---
 class ProjectPhaseCreate(BaseModel):
@@ -151,8 +147,7 @@ class ProjectPhaseOut(BaseModel):
     responsible_person: Optional[str]
     weight_percent: Optional[float] = 0.0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ProjectAddendumCreate(BaseModel):
     title: str
@@ -179,8 +174,7 @@ class ProjectAddendumOut(BaseModel):
     approval_date: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- PROYECTOS & PLANIFICACIÓN INTEGRAL ---
 class ProjectCreate(BaseModel):
@@ -255,8 +249,7 @@ class ProjectOut(BaseModel):
     created_at: datetime
     phases: List[ProjectPhaseOut] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- RECURSOS & MATRIZ ---
 class ResourceAssignRequest(BaseModel):
@@ -370,8 +363,7 @@ class ExpenseOut(BaseModel):
     reported_by_name: Optional[str] = None
     expense_type: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- REPORTES Y CATEGORÍAS ---
 class CategoryTreeOut(BaseModel):
@@ -493,8 +485,7 @@ class FinancialAccountOut(FinancialAccountBase):
     initial_balance_bs: Optional[float] = 0.0
     initial_balance_date: Optional[str] = None
     current_balance: Optional[float] = 0.0
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # ─── Bitácora y Seguimiento de Cobranza (CxC) ──────────────────────────────────
 class ReceivableFollowUpLogCreate(BaseModel):
@@ -520,6 +511,5 @@ class ReceivableFollowUpLogOut(BaseModel):
     recorded_by: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 

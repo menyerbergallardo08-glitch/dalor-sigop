@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -74,7 +74,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     # Éxito: limpiar contador de reintentos para la IP y para la Cuenta
     record_login_success(request, user.username)
 
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
 
     # Resolve accurate permissions taking into account granular matrix

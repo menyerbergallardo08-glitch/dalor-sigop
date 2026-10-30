@@ -4,7 +4,7 @@ Maneja consolidación de saldos de cuentas, conciliación de cobros/pagos,
 arbitraje cambiario multi-divisa y proyección de la matriz de liquidez a 12 meses.
 """
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func, text
 from fastapi import HTTPException
@@ -248,7 +248,7 @@ class CashFlowService:
 
         # 9. Alertas Financieras
         alerts = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         for r in r_query:
             if r.status != "cobrado_total" and r.due_date and r.due_date < now and r.balance_usd > 0:
                 alerts.append({
@@ -332,7 +332,7 @@ class CashFlowService:
     
         rate = p_in.exchange_rate or 800.0
         amount_bs = round(p_in.amount_usd * rate, 2)
-        ref_num = p_in.reference_number or f"COB-{int(datetime.utcnow().timestamp())}"
+        ref_num = p_in.reference_number or f"COB-{int(datetime.now(timezone.utc).replace(tzinfo=None).timestamp())}"
     
         acc_obj = db.query(FinancialAccount).filter(FinancialAccount.id == p_in.financial_account_id).first() if p_in.financial_account_id else None
         bank_acc_str = acc_obj.name if acc_obj else (p_in.payment_method or "banesco_usd")
@@ -422,11 +422,11 @@ class CashFlowService:
             try:
                 op_dt = datetime.strptime(req.operation_date[:10], "%Y-%m-%d")
             except Exception:
-                op_dt = datetime.utcnow()
+                op_dt = datetime.now(timezone.utc).replace(tzinfo=None)
         else:
-            op_dt = datetime.utcnow()
+            op_dt = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        ref_clean = (req.reference_number or f"EXCH-{int(datetime.utcnow().timestamp())}").strip()
+        ref_clean = (req.reference_number or f"EXCH-{int(datetime.now(timezone.utc).replace(tzinfo=None).timestamp())}").strip()
         notes_clean = (req.notes or "").strip()
 
         if req.operation_type == "bs_a_usd":
@@ -651,14 +651,14 @@ class CashFlowService:
             }
 
         # Flujo mensual / anual / YTD
-        target_year = year or datetime.utcnow().year
+        target_year = year or datetime.now(timezone.utc).replace(tzinfo=None).year
         if month is not None and month > 0:
             s_month = max(1, min(12, int(month)))
             e_month = s_month
         elif is_ytd:
             s_month = 1
-            cur_year = datetime.utcnow().year
-            e_month = datetime.utcnow().month if target_year == cur_year else 12
+            cur_year = datetime.now(timezone.utc).replace(tzinfo=None).year
+            e_month = datetime.now(timezone.utc).replace(tzinfo=None).month if target_year == cur_year else 12
         else:
             s_month = max(1, min(12, start_month or 1))
             e_month = max(1, min(12, end_month or 12))

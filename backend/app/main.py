@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from app.core.config import settings
 from app.core.database import engine, Base
@@ -193,7 +193,7 @@ def healthcheck():
         "version": "2026.09.16.v94.2-modular-fix",
         "commit": "v94.2-v3-certified",
         "is_production": is_production,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 # 🔒 Desactivar explícitamente Swagger/OpenAPI en Producción (V3-02)

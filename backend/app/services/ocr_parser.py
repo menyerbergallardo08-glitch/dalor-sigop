@@ -33,8 +33,9 @@ except ImportError:
 
 class OCRReceiptParser:
     """
-    Motor de extracción inteligente con Gemini 1.5 Flash Vision e Inteligencia Artificial Multimodal,
-    con respaldo automático en Tesseract OCR (Linux) y Windows OCR (Windows).
+    Motor de extracción inteligente con Gemini Flash Vision Multimodal de última generación,
+    programado con arquitectura en cascada (Free Tier -> Paid Commercial Tier) y respaldo
+    automático offline en Tesseract OCR (Linux) y Windows OCR (Windows).
     """
 
     @staticmethod
@@ -197,9 +198,11 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
 
             # Modelos ordenados por disponibilidad activa (con cuota verificada y respuesta instantánea)
             candidate_models = [
+                "models/gemini-flash-latest",
+                "models/gemini-2.0-flash",
+                "models/gemini-2.5-flash",
                 "models/gemini-3.5-flash-lite",
                 "models/gemini-3.5-flash",
-                "models/gemini-flash-latest",
                 "models/gemini-3.7-flash",
                 "models/gemini-3.8-flash"
             ]
@@ -671,9 +674,11 @@ Responde ÚNICAMENTE con este JSON válido:
             }
 
             candidate_models = [
+                "models/gemini-flash-latest",
+                "models/gemini-2.0-flash",
+                "models/gemini-2.5-flash",
                 "models/gemini-3.5-flash-lite",
                 "models/gemini-3.5-flash",
-                "models/gemini-flash-latest",
                 "models/gemini-3.7-flash",
                 "models/gemini-3.8-flash"
             ]

@@ -11,7 +11,7 @@ from app.models.models import (
 )
 
 def init_db():
-    from sqlalchemy import Integer, Float, Boolean, DateTime, Text, String, Enum as SaEnum
+    from sqlalchemy import Integer, Float, Boolean, DateTime, Text, String, Enum as SaEnum, Numeric
     
     # 1. Crear todas las tablas que no existan aun
     Base.metadata.create_all(bind=engine)
@@ -29,6 +29,8 @@ def init_db():
             
             if isinstance(col_type, Integer):
                 sql_type = "INTEGER"
+            elif isinstance(col_type, Numeric):
+                sql_type = "NUMERIC(18, 4)"
             elif isinstance(col_type, Float):
                 sql_type = "FLOAT" if is_sqlite else "DOUBLE PRECISION"
             elif isinstance(col_type, Boolean):
@@ -64,6 +66,15 @@ def init_db():
                     isolated_conn.execute(text(stmt))
             except Exception:
                 pass  # Columna ya existe o base de datos no lo requiere
+
+            # Si es PostgreSQL y la columna es Numeric, migrar tipo in-place de DOUBLE PRECISION a NUMERIC(18, 4)
+            if not is_sqlite and isinstance(col_type, Numeric):
+                try:
+                    alter_numeric_stmt = f'ALTER TABLE "{table_name}" ALTER COLUMN "{col_name}" TYPE NUMERIC(18, 4) USING "{col_name}"::numeric(18, 4)'
+                    with engine.begin() as isolated_conn:
+                        isolated_conn.execute(text(alter_numeric_stmt))
+                except Exception:
+                    pass
 
     # Expansiones de texto e indices criticos
     extra_stmts = [

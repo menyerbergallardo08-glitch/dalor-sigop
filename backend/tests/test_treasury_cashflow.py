@@ -57,3 +57,14 @@ def test_10_financial_net_cash_formula(db_session):
     summary = CashFlowService.calculate_financial_summary(db=db_session)
     assert isinstance(summary, dict)
     assert summary["net_operating_cash_usd"] is not None
+
+def test_10b_numeric_exact_precision_four_decimals(db_session):
+    # Validar que los campos monetarios admitan y preserven hasta 4 decimales exactos
+    from app.models.models import AccountReceivable
+    from sqlalchemy import Numeric
+    col_type = AccountReceivable.amount_usd.type
+    assert isinstance(col_type, Numeric)
+    assert col_type.precision == 18
+    assert col_type.scale == 4
+    assert col_type.asdecimal is False
+

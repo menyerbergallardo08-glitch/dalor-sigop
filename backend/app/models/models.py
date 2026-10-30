@@ -1,8 +1,11 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, Enum
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, Enum, Numeric
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 from app.core.database import Base
+
+# Tipo numérico de alta precisión para importes financieros y cantidades ERP
+Money = Numeric(18, 4, asdecimal=False)
 
 class ProjectStatus(str, enum.Enum):
     COTIZACION = "cotizacion"
@@ -72,9 +75,9 @@ class PartnerWithdrawal(Base):
     partner_name = Column(String(150), nullable=False) # e.g. "Ing. David Dalor (Socio Principal)", "Socio B"
     withdrawal_date = Column(DateTime, default=datetime.utcnow)
     concept = Column(String(255), nullable=False) # e.g. "Retiro a cuenta de utilidades / Gasto personal"
-    amount_usd = Column(Float, nullable=False)
-    amount_bs = Column(Float, default=0.0)
-    exchange_rate = Column(Float, default=800.0)
+    amount_usd = Column(Money, nullable=False)
+    amount_bs = Column(Money, default=0.0)
+    exchange_rate = Column(Money, default=800.0)
     payment_method = Column(String(50), default="transferencia") # transferencia, efectivo_divisa, zelle, pago_movil
     financial_account_id = Column(Integer, ForeignKey("financial_accounts.id"), nullable=True)
     reference_number = Column(String(100), nullable=True)
@@ -87,7 +90,7 @@ class FixedExpenseSetting(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False) # e.g. "Nómina Fija Taller", "Alquiler Galpón", "Servicios & Electricidad"
     category_type = Column(String(50), default="nomina_fija") # nomina_fija, alquiler, servicios, internet, varios
-    monthly_amount_usd = Column(Float, default=0.0)
+    monthly_amount_usd = Column(Money, default=0.0)
     is_active = Column(Boolean, default=True)
 
 # ==============================================================================
@@ -123,8 +126,8 @@ class ServiceItem(Base):
     description = Column(Text, nullable=True)
     unit_measure = Column(String(50), default="Global")
     category = Column(String(100), default="Electricidad")
-    base_cost_usd = Column(Float, default=0.0)
-    unit_price_usd = Column(Float, default=0.0)
+    base_cost_usd = Column(Money, default=0.0)
+    unit_price_usd = Column(Money, default=0.0)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -139,11 +142,11 @@ class Quotation(Base):
     execution_time = Column(String(100), default="15 días hábiles")
     currency = Column(String(10), default="USD")
     validity_days = Column(Integer, default=15)
-    exchange_rate = Column(Float, default=800.0)
-    subtotal_usd = Column(Float, default=0.0)
-    tax_percent = Column(Float, default=16.0)
-    tax_usd = Column(Float, default=0.0)
-    total_usd = Column(Float, default=0.0)
+    exchange_rate = Column(Money, default=800.0)
+    subtotal_usd = Column(Money, default=0.0)
+    tax_percent = Column(Money, default=16.0)
+    tax_usd = Column(Money, default=0.0)
+    total_usd = Column(Money, default=0.0)
     status = Column(String(50), default="borrador")
     coletilla_divisas = Column(Boolean, default=True)
     coletilla_bolivares = Column(Boolean, default=False)
@@ -163,9 +166,9 @@ class QuotationItem(Base):
     item_code = Column(String(50), nullable=True)
     description = Column(Text, nullable=False)
     unit_measure = Column(String(50), default="Global")
-    quantity = Column(Float, default=1.0)
-    unit_price_usd = Column(Float, default=0.0)
-    total_usd = Column(Float, default=0.0)
+    quantity = Column(Money, default=1.0)
+    unit_price_usd = Column(Money, default=0.0)
+    total_usd = Column(Money, default=0.0)
 
     quotation = relationship("Quotation", back_populates="items")
     service = relationship("ServiceItem")
@@ -188,13 +191,13 @@ class Project(Base):
     tracking_token = Column(String(64), unique=True, index=True, nullable=True)
     
     # Valores Financieros / Bolsas de Costo Estimado
-    contract_amount_usd = Column(Float, default=0.0)
-    estimated_labor_usd = Column(Float, default=0.0)
-    estimated_fuel_usd = Column(Float, default=0.0)
-    estimated_materials_usd = Column(Float, default=0.0)
-    estimated_tools_usd = Column(Float, default=0.0)
-    estimated_services_usd = Column(Float, default=0.0)
-    budget_limit_usd = Column(Float, default=0.0)
+    contract_amount_usd = Column(Money, default=0.0)
+    estimated_labor_usd = Column(Money, default=0.0)
+    estimated_fuel_usd = Column(Money, default=0.0)
+    estimated_materials_usd = Column(Money, default=0.0)
+    estimated_tools_usd = Column(Money, default=0.0)
+    estimated_services_usd = Column(Money, default=0.0)
+    budget_limit_usd = Column(Money, default=0.0)
     
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -233,10 +236,10 @@ class ProjectPhase(Base):
     duration_days = Column(Integer, default=7)
     duration_unit = Column(String(20), default="dias") # dias, horas
     estimated_duration = Column(Float, default=7.0)
-    estimated_cost_usd = Column(Float, default=0.0)
+    estimated_cost_usd = Column(Money, default=0.0)
     status = Column(String(50), default="pendiente")
     responsible_person = Column(String(150), nullable=True)
-    weight_percent = Column(Float, default=0.0)
+    weight_percent = Column(Money, default=0.0)
 
     project = relationship("Project", back_populates="phases")
 
@@ -248,10 +251,10 @@ class ProjectAddendum(Base):
     addendum_number = Column(Integer, default=1)
     title = Column(Text, nullable=False)
     scope_description = Column(Text, nullable=True)
-    additional_contract_usd = Column(Float, nullable=False, default=0.0)
-    additional_materials_usd = Column(Float, default=0.0)
-    additional_labor_usd = Column(Float, default=0.0)
-    additional_services_usd = Column(Float, default=0.0)
+    additional_contract_usd = Column(Money, nullable=False, default=0.0)
+    additional_materials_usd = Column(Money, default=0.0)
+    additional_labor_usd = Column(Money, default=0.0)
+    additional_services_usd = Column(Money, default=0.0)
     authorized_by = Column(String(100), default="Dirección General")
     approval_date = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -287,7 +290,7 @@ class Asset(Base):
     # Condición de propiedad & Alquiler
     ownership_type = Column(String(50), default="propio") # propio, alquilado_a_tercero, prestado_de_tercero, alquilado_a_cliente, prestado_a_cliente
     external_entity_name = Column(String(150), nullable=True)
-    rental_rate_usd = Column(Float, default=0.0)
+    rental_rate_usd = Column(Money, default=0.0)
     return_due_date = Column(DateTime, nullable=True)
 
     status = Column(String(50), default="disponible_base")
@@ -309,8 +312,8 @@ class AssetService(Base):
     service_type = Column(String(100), nullable=False)
     service_odometer = Column(Float, nullable=False, default=0.0)
     technician_workshop = Column(String(150), nullable=True)
-    cost_usd = Column(Float, default=0.0)
-    cost_bs = Column(Float, default=0.0)
+    cost_usd = Column(Money, default=0.0)
+    cost_bs = Column(Money, default=0.0)
     notes = Column(Text, nullable=True)
     performed_by = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -337,8 +340,8 @@ class Personnel(Base):
     current_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     roster_type = Column(String(50), default="guacara_fijo")
     payroll_type = Column(String(50), default="semanal") # semanal, quincenal, mensual, honorarios
-    monthly_salary_usd = Column(Float, default=0.0)
-    daily_rate_usd = Column(Float, default=0.0)
+    monthly_salary_usd = Column(Money, default=0.0)
+    daily_rate_usd = Column(Money, default=0.0)
     is_approver = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
@@ -359,8 +362,8 @@ class ResourceAssignmentHistory(Base):
     start_odometer = Column(Float, nullable=True)
     origin_location = Column(String(150), default="Sede Central")
     destination_location = Column(String(150), nullable=False)
-    freight_cost_usd = Column(Float, default=0.0)
-    fuel_cost_usd = Column(Float, default=0.0)
+    freight_cost_usd = Column(Money, default=0.0)
+    fuel_cost_usd = Column(Money, default=0.0)
     status = Column(String(50), default="en_obra")
     notes = Column(String(255), nullable=True)
     assigned_at = Column(DateTime, default=datetime.utcnow)
@@ -375,7 +378,7 @@ class ExpenseCategory(Base):
     name = Column(String(100), nullable=False)
     parent_id = Column(Integer, ForeignKey("expense_categories.id"), nullable=True)
     group_type = Column(String(50), default="operativo") # costo_directo, gasto_fijo_sede, retiro_socio
-    monthly_budget_usd = Column(Float, default=0.0)
+    monthly_budget_usd = Column(Money, default=0.0)
     business_rule = Column(String(50), default="costo_material_obra", nullable=True) # costo_material_obra, stock_almacen, servicios_honorarios, alquiler_maquinaria_ext, gastos_sede
 
     parent = relationship("ExpenseCategory", remote_side=[id], back_populates="subcategories")
@@ -399,15 +402,15 @@ class Expense(Base):
     expense_date = Column(DateTime, default=datetime.utcnow, index=True)
     description = Column(Text, nullable=False)
     supplier_vendor = Column(Text, nullable=False)
-    amount_bs = Column(Float, nullable=False)
-    exchange_rate = Column(Float, nullable=False)
-    amount_usd = Column(Float, nullable=False)
-    base_amount_usd = Column(Float, default=0.0)
-    tax_amount_usd = Column(Float, default=0.0)
+    amount_bs = Column(Money, nullable=False)
+    exchange_rate = Column(Money, nullable=False)
+    amount_usd = Column(Money, nullable=False)
+    base_amount_usd = Column(Money, default=0.0)
+    tax_amount_usd = Column(Money, default=0.0)
     is_tax_exempt = Column(Boolean, default=False)
     
-    fuel_liters = Column(Float, nullable=True)
-    price_per_liter_usd = Column(Float, nullable=True)
+    fuel_liters = Column(Money, nullable=True)
+    price_per_liter_usd = Column(Money, nullable=True)
     odometer_at_fueling = Column(Float, nullable=True)
     
     payment_method = Column(String(50), default="caja_chica")
@@ -467,25 +470,25 @@ class AccountReceivable(Base):
     due_date = Column(DateTime, nullable=True)
     
     # Desglose Fiscal y Retenciones SENIAT
-    taxable_base_usd = Column(Float, default=0.0)
-    tax_amount_usd = Column(Float, default=0.0)
-    tax_withholding_rate = Column(Float, default=75.0) # 0%, 75%, 100%
-    tax_withholding_usd = Column(Float, default=0.0)
-    islr_rate = Column(Float, default=2.0) # 0%, 1%, 2%, 3%, 5%
-    islr_withholding_usd = Column(Float, default=0.0)
-    net_amount_usd = Column(Float, default=0.0)
+    taxable_base_usd = Column(Money, default=0.0)
+    tax_amount_usd = Column(Money, default=0.0)
+    tax_withholding_rate = Column(Money, default=75.0)
+    tax_withholding_usd = Column(Money, default=0.0)
+    islr_rate = Column(Money, default=2.0)
+    islr_withholding_usd = Column(Money, default=0.0)
+    net_amount_usd = Column(Money, default=0.0)
     
-    amount_usd = Column(Float, default=0.0) # Total bruto factura
-    amount_bs = Column(Float, default=0.0)
-    exchange_rate = Column(Float, default=800.0)
-    tax_retained_usd = Column(Float, default=0.0)
+    amount_usd = Column(Money, default=0.0)
+    amount_bs = Column(Money, default=0.0)
+    exchange_rate = Column(Money, default=800.0)
+    tax_retained_usd = Column(Money, default=0.0)
     
-    paid_amount_usd = Column(Float, default=0.0)
-    balance_usd = Column(Float, default=0.0)
+    paid_amount_usd = Column(Money, default=0.0)
+    balance_usd = Column(Money, default=0.0)
     status = Column(String(50), default="pendiente")
     # Castigo de Cartera e Incobrabilidad
     is_bad_debt = Column(Boolean, default=False)
-    bad_debt_amount_usd = Column(Float, default=0.0)
+    bad_debt_amount_usd = Column(Money, default=0.0)
     bad_debt_reason = Column(String(255), nullable=True)
     bad_debt_date = Column(DateTime, nullable=True)
     
@@ -507,7 +510,7 @@ class ReceivableFollowUpLog(Base):
     contact_channel = Column(String(50), default="Llamada Telefónica") # Llamada Telefónica, WhatsApp, Correo Electrónico, Reunión Presencial, Compromiso de Pago, Nota Interna
     contact_person = Column(String(150), nullable=True)
     promised_payment_date = Column(DateTime, nullable=True)
-    promised_amount_usd = Column(Float, nullable=True, default=0.0)
+    promised_amount_usd = Column(Money, nullable=True, default=0.0)
     
     notes = Column(Text, nullable=False)
     evidence_image_path = Column(Text, nullable=True) # Soporte, captura WhatsApp, foto o comprobante alojado en R2
@@ -540,30 +543,30 @@ class AccountPayable(Base):
     withholding_voucher_number = Column(String(50), nullable=True) # ej: "20260900001014"
     withholding_voucher_date = Column(DateTime, nullable=True)
     is_withholding_applied = Column(Boolean, default=True)
-    withholding_exempt_usd = Column(Float, default=0.0) # Compras sin derecho a crédito fiscal
+    withholding_exempt_usd = Column(Money, default=0.0)
     
     # Desglose Fiscal y Retenciones SENIAT
-    taxable_base_usd = Column(Float, default=0.0)
-    tax_amount_usd = Column(Float, default=0.0)
-    tax_withholding_rate = Column(Float, default=75.0) # 0%, 75%, 100%
-    tax_withholding_usd = Column(Float, default=0.0)
-    islr_rate = Column(Float, default=2.0) # 0%, 1%, 2%, 3%, 5%
-    islr_withholding_usd = Column(Float, default=0.0)
+    taxable_base_usd = Column(Money, default=0.0)
+    tax_amount_usd = Column(Money, default=0.0)
+    tax_withholding_rate = Column(Money, default=75.0)
+    tax_withholding_usd = Column(Money, default=0.0)
+    islr_rate = Column(Money, default=2.0)
+    islr_withholding_usd = Column(Money, default=0.0)
     
     # Retención Municipal (Impuesto sobre Actividades Económicas - Alcaldía)
-    municipal_rate = Column(Float, default=0.0) # 0%, 1.5%, 2.0%, 3.0%
-    municipal_withholding_usd = Column(Float, default=0.0)
+    municipal_rate = Column(Money, default=0.0)
+    municipal_withholding_usd = Column(Money, default=0.0)
     municipal_voucher_number = Column(String(50), nullable=True) # ej: "00000110"
     municipal_voucher_date = Column(DateTime, nullable=True)
     
-    net_amount_usd = Column(Float, default=0.0)
+    net_amount_usd = Column(Money, default=0.0)
     
-    amount_usd = Column(Float, default=0.0)
-    amount_bs = Column(Float, default=0.0)
-    exchange_rate = Column(Float, default=800.0)
+    amount_usd = Column(Money, default=0.0)
+    amount_bs = Column(Money, default=0.0)
+    exchange_rate = Column(Money, default=800.0)
     
-    paid_amount_usd = Column(Float, default=0.0)
-    balance_usd = Column(Float, default=0.0)
+    paid_amount_usd = Column(Money, default=0.0)
+    balance_usd = Column(Money, default=0.0)
     status = Column(String(50), default="pendiente")
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -608,9 +611,9 @@ class FinancialPayment(Base):
     payment_date = Column(DateTime, default=datetime.utcnow)
     payment_method = Column(String(50), default="transferencia")
     reference_number = Column(String(100), nullable=True)
-    amount_usd = Column(Float, nullable=False)
-    amount_bs = Column(Float, nullable=False)
-    exchange_rate = Column(Float, default=800.0)
+    amount_usd = Column(Money, nullable=False)
+    amount_bs = Column(Money, nullable=False)
+    exchange_rate = Column(Money, default=800.0)
     notes = Column(String(255), nullable=True)
 
     receivable = relationship("AccountReceivable", back_populates="payments")
@@ -628,10 +631,10 @@ class Material(Base):
     name = Column(String(200), nullable=False)
     category = Column(String(100), default="Acero Estructural") # Acero Estructural, Planchas, Tuberías, Soldadura, Abrasivos, Tornillería, Pinturas
     unit_measure = Column(String(50), default="UND") # UND, KG, MTR, PLG, GAL, ROLLO, CAJA
-    stock_quantity = Column(Float, default=0.0)
-    min_stock_alert = Column(Float, default=5.0)
-    unit_cost_usd = Column(Float, default=0.0)
-    total_cost_usd = Column(Float, default=0.0)
+    stock_quantity = Column(Money, default=0.0)
+    min_stock_alert = Column(Money, default=5.0)
+    unit_cost_usd = Column(Money, default=0.0)
+    total_cost_usd = Column(Money, default=0.0)
     location = Column(String(150), default="Almacén Central Dalor")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -644,9 +647,9 @@ class MaterialMovement(Base):
     id = Column(Integer, primary_key=True, index=True)
     material_id = Column(Integer, ForeignKey("materials.id"), nullable=False, index=True)
     movement_type = Column(String(50), nullable=False) # entrada_compra, despacho_obra, ajuste_inventario, devolucion_obra
-    quantity = Column(Float, nullable=False)
-    unit_cost_usd = Column(Float, default=0.0)
-    total_cost_usd = Column(Float, default=0.0)
+    quantity = Column(Money, nullable=False)
+    unit_cost_usd = Column(Money, default=0.0)
+    total_cost_usd = Column(Money, default=0.0)
     
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     destination = Column(String(150), default="Sede Central")
@@ -670,9 +673,9 @@ class ProjectMaterialRequisition(Base):
     material_code = Column(String(50), nullable=True)
     material_name = Column(String(200), nullable=False)
     unit_measure = Column(String(50), default="UND")
-    quantity_required = Column(Float, nullable=False, default=1.0)
-    quantity_dispatched = Column(Float, default=0.0)
-    estimated_cost_usd = Column(Float, default=0.0)
+    quantity_required = Column(Money, nullable=False, default=1.0)
+    quantity_dispatched = Column(Money, default=0.0)
+    estimated_cost_usd = Column(Money, default=0.0)
     status = Column(String(50), default="pendiente") # pendiente, en_preparacion, despachado_parcial, despachado_total
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -712,8 +715,8 @@ class DispatchGuide(Base):
     vehicle_plate = Column(String(50), nullable=True)
     
     # Aspectos Financieros del Flete/Servicio Tercerizado
-    freight_cost_usd = Column(Float, default=0.0) # Costo del transportista (CxP)
-    freight_price_charged_usd = Column(Float, default=0.0) # Cobrado al cliente (CxC)
+    freight_cost_usd = Column(Money, default=0.0) # Costo del transportista (CxP)
+    freight_price_charged_usd = Column(Money, default=0.0) # Cobrado al cliente (CxC)
     payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
     receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
     
@@ -741,10 +744,10 @@ class DispatchGuideItem(Base):
     dispatch_guide_id = Column(Integer, ForeignKey("dispatch_guides.id"), nullable=False, index=True)
     item_number = Column(Integer, default=1)
     description = Column(String(255), nullable=False)
-    quantity = Column(Float, default=1.0)
+    quantity = Column(Money, default=1.0)
     unit = Column(String(50), default="Pzas") # Pzas, Ejes, Tramos, Kg, Tn, Conjuntos
     condition_status = Column(String(100), default="Reparado / Listo para Montaje")
-    approx_weight_kg = Column(Float, default=0.0)
+    approx_weight_kg = Column(Money, default=0.0)
 
     dispatch_guide = relationship("DispatchGuide", back_populates="items")
 
@@ -759,7 +762,7 @@ class AssetRentalLoan(Base):
     
     asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True) # Si es activo propio de DALOR
     material_id = Column(Integer, ForeignKey("materials.id"), nullable=True) # Si es material de almacén
-    material_quantity = Column(Float, default=0.0) # Cantidad prestada o alquilada
+    material_quantity = Column(Money, default=0.0)
     equipment_name = Column(String(150), nullable=False) # Nombre del equipo/herramienta
     equipment_code = Column(String(50), nullable=True) # Código interno o serial
     
@@ -775,9 +778,9 @@ class AssetRentalLoan(Base):
     expected_return_date = Column(DateTime, nullable=True) # Fecha límite prevista de retorno
     actual_return_date = Column(DateTime, nullable=True) # Fecha real de devolución
     
-    rate_usd = Column(Float, default=0.0) # Tarifa de alquiler (0 si es préstamo)
+    rate_usd = Column(Money, default=0.0) # Tarifa de alquiler (0 si es préstamo)
     rate_period = Column(String(50), default="dia") # dia, semana, mes, global
-    total_amount_usd = Column(Float, default=0.0)
+    total_amount_usd = Column(Money, default=0.0)
     
     receivable_id = Column(Integer, ForeignKey("accounts_receivable.id"), nullable=True)
     payable_id = Column(Integer, ForeignKey("accounts_payable.id"), nullable=True)
@@ -803,8 +806,8 @@ class AssetRentalLoanItem(Base):
     material_id = Column(Integer, ForeignKey("materials.id"), nullable=True)
     name = Column(String(200), nullable=False)
     code = Column(String(50), nullable=True)
-    quantity = Column(Float, default=1.0)
-    returned_quantity = Column(Float, default=0.0)
+    quantity = Column(Money, default=1.0)
+    returned_quantity = Column(Money, default=0.0)
     status = Column(String(50), default="prestado") # prestado, devuelto_parcial, devuelto_total
     return_date = Column(DateTime, nullable=True)
     return_condition = Column(String(100), nullable=True)

@@ -6,12 +6,13 @@ from fastapi import Request, HTTPException
 # Lock to guarantee thread safety in multi-threaded Uvicorn workers
 _login_lock = threading.Lock()
 _login_failures: Dict[str, List[float]] = {}
+_user_failures: Dict[str, List[float]] = {}
 
 _ocr_lock = threading.Lock()
 _ocr_requests: Dict[str, List[float]] = {}
 
-# Security settings
-LOGIN_WINDOW_SECONDS = 60
+# Security settings: Bloqueo tras 5 intentos fallidos consecutivos durante 15 minutos (900s)
+LOGIN_WINDOW_SECONDS = 900
 MAX_LOGIN_FAILURES = 5
 
 OCR_WINDOW_SECONDS = 60
@@ -49,54 +50,83 @@ def get_client_ip(request: Request) -> str:
     return "127.0.0.1"
 
 
-def check_login_rate_limit(request: Request) -> None:
+def check_login_rate_limit(request: Request, username: str = None) -> None:
     """
-    Checks if client IP has exceeded failed login attempts within the sliding window.
-    Raises HTTPException(429) if exceeded.
+    Checks if client IP or username has exceeded failed login attempts (5 attempts).
+    Locks out for 15 minutes if exceeded (HTTP 429).
     """
     ip = get_client_ip(request)
     now = time.time()
+    clean_user = username.strip().lower() if username else None
 
     with _login_lock:
-        timestamps = _login_failures.get(ip, [])
-        # Keep only attempts within the window
-        valid_timestamps = [t for t in timestamps if now - t < LOGIN_WINDOW_SECONDS]
-        _login_failures[ip] = valid_timestamps
+        # 1. Validación por IP
+        ip_timestamps = _login_failures.get(ip, [])
+        valid_ip = [t for t in ip_timestamps if now - t < LOGIN_WINDOW_SECONDS]
+        _login_failures[ip] = valid_ip
 
-        if len(valid_timestamps) >= MAX_LOGIN_FAILURES:
-            wait_time = int(LOGIN_WINDOW_SECONDS - (now - valid_timestamps[0])) + 1
+        if len(valid_ip) >= MAX_LOGIN_FAILURES:
+            wait_time = int(LOGIN_WINDOW_SECONDS - (now - valid_ip[0])) + 1
+            mins = max(1, wait_time // 60)
             raise HTTPException(
                 status_code=429,
-                detail=f"Demasiados intentos fallidos. Por seguridad, espere {max(1, wait_time)} segundos antes de intentar nuevamente."
+                detail=f"Cuenta bloqueada temporalmente por seguridad. Se detectaron 5 intentos fallidos consecutivos. Por favor espere {mins} minuto(s) antes de volver a intentar."
             )
 
+        # 2. Validación por Usuario (evita ataques distribuidos por múltiples IPs contra la misma cuenta)
+        if clean_user:
+            user_timestamps = _user_failures.get(clean_user, [])
+            valid_user = [t for t in user_timestamps if now - t < LOGIN_WINDOW_SECONDS]
+            _user_failures[clean_user] = valid_user
 
-def record_login_failure(request: Request) -> None:
+            if len(valid_user) >= MAX_LOGIN_FAILURES:
+                wait_time = int(LOGIN_WINDOW_SECONDS - (now - valid_user[0])) + 1
+                mins = max(1, wait_time // 60)
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Cuenta bloqueada temporalmente por seguridad. Demasiados intentos fallidos para el usuario '{username}'. Espere {mins} minuto(s)."
+                )
+
+
+def record_login_failure(request: Request, username: str = None) -> None:
     """
-    Records a failed login attempt for the client IP.
+    Records a failed login attempt for the client IP and the attempted username.
     """
     ip = get_client_ip(request)
     now = time.time()
+    clean_user = username.strip().lower() if username else None
 
     with _login_lock:
         if ip not in _login_failures:
             _login_failures[ip] = []
         _login_failures[ip].append(now)
 
-        # Cleanup if table grows excessively
+        if clean_user:
+            if clean_user not in _user_failures:
+                _user_failures[clean_user] = []
+            _user_failures[clean_user].append(now)
+
+        # Cleanup if tables grow excessively
         if len(_login_failures) > 10000:
             expired_keys = [k for k, v in _login_failures.items() if not v or (now - v[-1] >= LOGIN_WINDOW_SECONDS)]
             for k in expired_keys:
                 _login_failures.pop(k, None)
+        if len(_user_failures) > 10000:
+            expired_u = [k for k, v in _user_failures.items() if not v or (now - v[-1] >= LOGIN_WINDOW_SECONDS)]
+            for k in expired_u:
+                _user_failures.pop(k, None)
 
 
-def record_login_success(request: Request) -> None:
+def record_login_success(request: Request, username: str = None) -> None:
     """
     Resets the failed login counter upon successful authentication.
     """
     ip = get_client_ip(request)
+    clean_user = username.strip().lower() if username else None
     with _login_lock:
         _login_failures.pop(ip, None)
+        if clean_user:
+            _user_failures.pop(clean_user, None)
 
 
 def check_ocr_rate_limit(request: Request) -> None:

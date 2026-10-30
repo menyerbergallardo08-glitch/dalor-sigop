@@ -140,7 +140,7 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-CMZ793lm.js"></script>
+  <script type="module" crossorigin src="/assets/main-BjiRQnme.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-Cb3d9XHj.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-CYs-hkKB.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-Br8kf0Nz.js">
@@ -245,28 +245,6 @@
                     style="width: 100%; background: #002b49; color: #ffffff; padding: 13px; font-size: 14px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 43, 73, 0.35);">
                     <i class="fa-solid fa-right-to-bracket" style="color: #f5b800;"></i> Iniciar Sesión
                 </button>
-
-                <!-- Acceso Rápido Móvil / Pruebas -->
-                <div style="margin-top: 10px; border-top: 1px dashed #cbd5e1; padding-top: 10px; text-align: center;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px;">
-                        Acceso Rápido 1-Tap (Celular)
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <button type="button" onclick="quickFillAndLogin('campo', 'admin123')"
-                            style="background: #e0f2fe; border: 1px solid #7dd3fc; color: #0369a1; padding: 10px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px;">
-                            <i class="fa-solid fa-mobile-screen-button" style="font-size: 15px;"></i>
-                            <span>📱 Campo (OCR)</span>
-                        </button>
-                        <button type="button" onclick="quickFillAndLogin('admin', 'admin123')"
-                            style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #1e293b; padding: 10px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px;">
-                            <i class="fa-solid fa-shield-halved" style="font-size: 15px; color: #f5b800;"></i>
-                            <span>🛡️ Director General</span>
-                        </button>
-                    </div>
-                    <div style="margin-top: 8px; font-size: 10px; color: #94a3b8;">
-                        Credenciales: <b>admin</b> o <b>campo</b> / Clave: <b>admin123</b>
-                    </div>
-                </div>
 
                 <!-- Botón Visible de Instalación PWA -->
                 <div style="margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center;">
@@ -408,6 +386,11 @@
                 </button>
 
 
+
+                                <!-- Botón Visible de Cambiar Contraseña -->
+                <button onclick="openChangePasswordModal()" class="header-change-pass-btn" title="Cambiar mi Contraseña Personal" style="background: #1e293b; color: #f59e0b; border: 1px solid #475569; padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
+                    <i class="fa-solid fa-key"></i> <span class="hide-on-small-mobile">Cambiar Clave</span>
+                </button>
 
                 <!-- Botón Directo y Visible de Cerrar Sesión Móvil / Desktop -->
 
@@ -6312,6 +6295,71 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal Corporativo: Cambiar Mi Contraseña -->
+    <div id="modalChangePassword" class="modal-overlay hidden" style="background: rgba(15, 23, 42, 0.75); z-index: 9999;">
+        <div class="modal-content" style="max-width: 420px; width: 92%; padding: 0; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid #cbd5e1;">
+            <div style="background: #002b49; color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f5b800;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="background: #f5b800; color: #002b49; padding: 6px 10px; border-radius: 8px; font-weight: 900; font-size: 14px;">
+                        <i class="fa-solid fa-key"></i>
+                    </span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: white;">Cambiar Mi Contraseña</h3>
+                        <p style="margin: 0; font-size: 11px; color: #94a3b8;">Seguridad y privacidad de tu cuenta DALOR</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal('modalChangePassword')" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="formChangePassword" onsubmit="submitChangeMyPassword(event)" style="padding: 20px; background: white;">
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px;">Contraseña Actual</label>
+                    <div style="position: relative;">
+                        <input type="password" id="cp_current_password" required placeholder="Ingresa tu clave actual (ej. Dalor2026*)"
+                            style="width: 100%; padding: 10px 40px 10px 12px; font-size: 13px; border: 1.5px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                        <button type="button" onclick="togglePasswordVisibility('cp_current_password', this)"
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer;">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px;">Nueva Contraseña</label>
+                    <div style="position: relative;">
+                        <input type="password" id="cp_new_password" required minlength="6" placeholder="Mínimo 6 caracteres"
+                            style="width: 100%; padding: 10px 40px 10px 12px; font-size: 13px; border: 1.5px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                        <button type="button" onclick="togglePasswordVisibility('cp_new_password', this)"
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer;">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px;">Confirmar Nueva Contraseña</label>
+                    <div style="position: relative;">
+                        <input type="password" id="cp_confirm_password" required minlength="6" placeholder="Repite la nueva contraseña"
+                            style="width: 100%; padding: 10px 40px 10px 12px; font-size: 13px; border: 1.5px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                        <button type="button" onclick="togglePasswordVisibility('cp_confirm_password', this)"
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer;">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" onclick="closeModal('modalChangePassword')" class="btn-secondary" style="padding: 9px 16px; border-radius: 8px; font-weight: 700; font-size: 12px;">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btnSubmitChangePass" class="btn-primary" style="background: #002b49; color: white; padding: 9px 18px; border-radius: 8px; font-weight: 800; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-check"></i> Actualizar Contraseña
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
             <div id="modalReceivable" class="modal-overlay hidden">
 
         <div class="modal-content">

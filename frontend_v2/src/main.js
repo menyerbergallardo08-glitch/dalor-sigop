@@ -456,3 +456,75 @@ if (document.readyState === 'loading') {
 } else {
     initApp();
 }
+
+// Controlador Global: Cambiar Contraseña Personal
+window.openChangePasswordModal = function() {
+    const f = document.getElementById('formChangePassword');
+    if (f) f.reset();
+    if (typeof window.openModal === 'function') {
+        window.openModal('modalChangePassword');
+    } else {
+        const m = document.getElementById('modalChangePassword');
+        if (m) m.classList.remove('hidden');
+    }
+};
+
+window.submitChangeMyPassword = async function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const curr = document.getElementById('cp_current_password')?.value?.trim();
+    const npass = document.getElementById('cp_new_password')?.value?.trim();
+    const cpass = document.getElementById('cp_confirm_password')?.value?.trim();
+
+    if (!curr || !npass) {
+        alert("Por favor completa los campos.");
+        return;
+    }
+    if (npass !== cpass) {
+        alert("La nueva contraseña y su confirmación no coinciden.");
+        return;
+    }
+    if (npass.length < 6) {
+        alert("La nueva contraseña debe tener al menos 6 caracteres.");
+        return;
+    }
+
+    const btn = document.getElementById('btnSubmitChangePass');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+    }
+
+    try {
+        const apiBase = window.API_BASE || (window.location.origin + '/api/v1');
+        const token = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken;
+        const res = await fetch(`${apiBase}/auth/change-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ current_password: curr, new_password: npass })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.detail || "Error al actualizar la contraseña.");
+            return;
+        }
+        alert("¡Tu contraseña ha sido actualizada con éxito!");
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('modalChangePassword');
+        } else {
+            const m = document.getElementById('modalChangePassword');
+            if (m) m.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error("submitChangeMyPassword error:", err);
+        alert("Error de conexión al actualizar la contraseña.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Actualizar Contraseña';
+        }
+    }
+};
+

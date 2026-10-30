@@ -477,6 +477,28 @@ def init_db():
             db.add(almacen_usr)
             db.commit()
 
+        # Asegurar directores oficiales (Henser Rodriguez, Eleonora Galetti, Menyerber Gallardo)
+        official_directors = [
+            ("henser rodriguez", "Henser Rodríguez", "henser@dalor.com.ve"),
+            ("eleonora galetti", "Eleonora Galetti", "eleonora@dalor.com.ve"),
+            ("menyerber gallardo", "Menyerber Gallardo", "menyerber@dalor.com.ve"),
+        ]
+        for uname, fname, mail in official_directors:
+            d_usr = db.query(User).filter(func.lower(User.username) == uname.lower()).first()
+            if not d_usr:
+                d_usr = User(
+                    username=uname,
+                    full_name=fname,
+                    email=mail,
+                    hashed_password=get_password_hash("Dalor2026*"),
+                    role_name="director_general",
+                    is_active=True,
+                    is_superuser=True
+                )
+                db.add(d_usr)
+                db.commit()
+                print(f"--> Director oficial sincronizado en BD: {uname}")
+
                 # 2. Clean Personnel Roster (15 Official Operational DALOR Members)
         if db.query(func.count(Personnel.id)).scalar() < 15:
             print("--> Synchronizing complete 15-member operational personnel roster...")

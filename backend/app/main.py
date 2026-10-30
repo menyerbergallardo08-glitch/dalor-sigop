@@ -122,6 +122,14 @@ async def add_strict_no_cache_headers(request, call_next):
     process_time = time.perf_counter() - start_time
     response.headers["X-Process-Time"] = f"{process_time:.4f}s"
 
+    # Cabeceras de Seguridad OWASP (Anti-Clickjacking, Anti-Sniffing, XSS, HSTS)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if is_production:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
     # Permitir caché inmutable para bundles de Vite con hash único (/assets/*)
     if request.url.path.startswith("/assets/"):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
@@ -146,7 +154,16 @@ async def custom_http_exception_handler(request, exc):
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     import traceback
+    import logging
+    logger = logging.getLogger("dalor_sigop.error")
+    logger.error(f"Excepción no controlada en {request.method} {request.url.path}: {str(exc)}", exc_info=True)
     traceback.print_exc()
+    
+    if is_production:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Ha ocurrido un error interno en el servidor. El incidente ha sido registrado en la bitácora.", "error_type": "InternalServerError"}
+        )
     return JSONResponse(
         status_code=500,
         content={"detail": f"Error del servidor: {str(exc)}", "error_type": type(exc).__name__}

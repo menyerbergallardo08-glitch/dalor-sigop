@@ -54,57 +54,89 @@ class CashFlowService:
         if dt:
             r_q = r_q.filter(AccountReceivable.issue_date <= dt)
         r_query = r_q.all()
-        total_invoiced_cxc = sum(r.amount_usd for r in r_query)
+
+        # Agregación nativa delegada al motor SQL para máxima velocidad y ahorro de RAM
+        r_sum_q = db.query(func.coalesce(func.sum(AccountReceivable.amount_usd), 0.0))
+        r_bal_q = db.query(func.coalesce(func.sum(AccountReceivable.balance_usd), 0.0))
+        r_paid_q = db.query(func.coalesce(func.sum(AccountReceivable.paid_amount_usd), 0.0))
+        if df:
+            r_sum_q = r_sum_q.filter(AccountReceivable.issue_date >= df)
+            r_bal_q = r_bal_q.filter(AccountReceivable.issue_date >= df)
+            r_paid_q = r_paid_q.filter(AccountReceivable.issue_date >= df)
+        if dt:
+            r_sum_q = r_sum_q.filter(AccountReceivable.issue_date <= dt)
+            r_bal_q = r_bal_q.filter(AccountReceivable.issue_date <= dt)
+            r_paid_q = r_paid_q.filter(AccountReceivable.issue_date <= dt)
+
+        total_invoiced_cxc = float(r_sum_q.scalar() or 0.0)
+        pending_cxc = float(r_bal_q.scalar() or 0.0)
 
         acc_filter_obj = db.query(FinancialAccount).filter(FinancialAccount.id == account_id).first() if account_id else None
         acc_name_tag = acc_filter_obj.name if acc_filter_obj else None
 
-        pay_cxc_q = db.query(FinancialPayment).filter(FinancialPayment.receivable_id.isnot(None))
+        pay_cxc_sum = db.query(func.coalesce(func.sum(FinancialPayment.amount_usd), 0.0)).filter(FinancialPayment.receivable_id.isnot(None))
         if df:
-            pay_cxc_q = pay_cxc_q.filter(FinancialPayment.payment_date >= df)
+            pay_cxc_sum = pay_cxc_sum.filter(FinancialPayment.payment_date >= df)
         if dt:
-            pay_cxc_q = pay_cxc_q.filter(FinancialPayment.payment_date <= dt)
+            pay_cxc_sum = pay_cxc_sum.filter(FinancialPayment.payment_date <= dt)
         if account_id:
             if acc_name_tag:
-                pay_cxc_q = pay_cxc_q.filter((FinancialPayment.financial_account_id == account_id) | (FinancialPayment.bank_account.ilike(f"%{acc_name_tag}%")))
+                pay_cxc_sum = pay_cxc_sum.filter((FinancialPayment.financial_account_id == account_id) | (FinancialPayment.bank_account.ilike(f"%{acc_name_tag}%")))
             else:
-                pay_cxc_q = pay_cxc_q.filter(FinancialPayment.financial_account_id == account_id)
-        cxc_payments = pay_cxc_q.all()
+                pay_cxc_sum = pay_cxc_sum.filter(FinancialPayment.financial_account_id == account_id)
 
         if df or dt or account_id:
-            total_collected_cxc = sum(p.amount_usd for p in cxc_payments)
+            total_collected_cxc = float(pay_cxc_sum.scalar() or 0.0)
         else:
-            total_collected_cxc = sum(r.paid_amount_usd for r in r_query)
-        pending_cxc = sum(r.balance_usd for r in r_query)
+            total_collected_cxc = float(r_paid_q.scalar() or 0.0)
 
-        # 2. Cuentas por Pagar (CxP Proveedores)
+        # 2. Cuentas por Pagar (CxP Proveedores) - Agregación nativa SQL
         p_q = db.query(AccountPayable)
         if df:
             p_q = p_q.filter(AccountPayable.issue_date >= df)
         if dt:
             p_q = p_q.filter(AccountPayable.issue_date <= dt)
         p_query = p_q.all()
-        total_invoiced_cxp = sum(p.amount_usd for p in p_query)
 
-        pay_cxp_q = db.query(FinancialPayment).filter(
+        p_sum_q = db.query(func.coalesce(func.sum(AccountPayable.amount_usd), 0.0))
+        p_bal_q = db.query(func.coalesce(func.sum(AccountPayable.balance_usd), 0.0))
+        if df:
+            p_sum_q = p_sum_q.filter(AccountPayable.issue_date >= df)
+            p_bal_q = p_bal_q.filter(AccountPayable.issue_date >= df)
+        if dt:
+            p_sum_q = p_sum_q.filter(AccountPayable.issue_date <= dt)
+            p_bal_q = p_bal_q.filter(AccountPayable.issue_date <= dt)
+
+        total_invoiced_cxp = float(p_sum_q.scalar() or 0.0)
+        pending_cxp = float(p_bal_q.scalar() or 0.0)
+
+        pay_cxp_sum = db.query(func.coalesce(func.sum(FinancialPayment.amount_usd), 0.0)).filter(
             FinancialPayment.payable_id.isnot(None),
             FinancialPayment.payment_method.notin_(["retencion_iva", "retencion_islr"])
         )
         if df:
-            pay_cxp_q = pay_cxp_q.filter(FinancialPayment.payment_date >= df)
+            pay_cxp_sum = pay_cxp_sum.filter(FinancialPayment.payment_date >= df)
         if dt:
-            pay_cxp_q = pay_cxp_q.filter(FinancialPayment.payment_date <= dt)
+            pay_cxp_sum = pay_cxp_sum.filter(FinancialPayment.payment_date <= dt)
         if account_id:
             if acc_name_tag:
-                pay_cxp_q = pay_cxp_q.filter((FinancialPayment.financial_account_id == account_id) | (FinancialPayment.bank_account.ilike(f"%{acc_name_tag}%")))
+                pay_cxp_sum = pay_cxp_sum.filter((FinancialPayment.financial_account_id == account_id) | (FinancialPayment.bank_account.ilike(f"%{acc_name_tag}%")))
             else:
-                pay_cxp_q = pay_cxp_q.filter(FinancialPayment.financial_account_id == account_id)
-        cxp_bank_outflows = sum(p.amount_usd for p in pay_cxp_q.all())
+                pay_cxp_sum = pay_cxp_sum.filter(FinancialPayment.financial_account_id == account_id)
 
+        cxp_bank_outflows = float(pay_cxp_sum.scalar() or 0.0)
         total_paid_cxp = cxp_bank_outflows
-        pending_cxp = sum(p.balance_usd for p in p_query)
 
         # 3. Gastos Directos y de Oficina
+        exp_sum_q = db.query(func.coalesce(func.sum(Expense.amount_usd), 0.0)).filter(Expense.status == "aprobado")
+        if df:
+            exp_sum_q = exp_sum_q.filter(Expense.expense_date >= df)
+        if dt:
+            exp_sum_q = exp_sum_q.filter(Expense.expense_date <= dt)
+        if account_id:
+            exp_sum_q = exp_sum_q.filter(Expense.financial_account_id == account_id)
+        total_direct_expenses = float(exp_sum_q.scalar() or 0.0)
+
         exp_q = db.query(Expense).filter(Expense.status == "aprobado")
         if df:
             exp_q = exp_q.filter(Expense.expense_date >= df)

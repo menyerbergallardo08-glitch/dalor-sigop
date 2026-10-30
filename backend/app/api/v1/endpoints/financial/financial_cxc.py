@@ -309,7 +309,7 @@ def override_fiscal_correlative(
         "next_control": fresh_control
     }
 
-@router.post("/cxc")
+@router.post("/cxc", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "administrador_financiero", "facturacion"]))])
 def create_receivable(r_in: ReceivableCreate, db: Session = Depends(get_db)):
     try:
         current_year = datetime.utcnow().year
@@ -403,7 +403,7 @@ class FiscalCorrelativeUpdate(BaseModel):
     issue_date: Optional[str] = None
     reason: Optional[str] = None
 
-@router.put("/cxc/{receivable_id}/control-number")
+@router.put("/cxc/{receivable_id}/control-number", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "administrador_financiero"]))])
 def update_receivable_control_number(receivable_id: int, payload: ControlNumberUpdate, db: Session = Depends(get_db)):
     r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
     if not r:
@@ -676,7 +676,7 @@ def get_fiscal_invoice_data(receivable_id: int, db: Session = Depends(get_db)):
         "coletilla_art25": f"A los solos efectos de lo previsto en el Art. 25 de la Ley de Impuesto al Valor Agregado, se expresan los montos de la factura en Bs. calculados a la tasa de cambio establecida por el BCV de 1 US$ por Bs {f'{rate:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')}"
     }
 
-@router.post("/cxc/{receivable_id}/payment")
+@router.post("/cxc/{receivable_id}/payment", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "administrador_financiero", "tesoreria"]))])
 def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = Depends(get_db)):
     r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).with_for_update().first()
     if not r:
@@ -876,7 +876,7 @@ def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = De
         "invoice_number": emitted_inv_code
     }
 
-@router.post("/cxc/{receivable_id}/refund")
+@router.post("/cxc/{receivable_id}/refund", dependencies=[Depends(require_roles(["director_general", "director", "administrador_financiero"]))])
 def process_client_refund(receivable_id: int, r_in: ClientRefundCreate, db: Session = Depends(get_db)):
     r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
     if not r:
@@ -1283,7 +1283,7 @@ def create_client_cxc_follow_up_log(
     return {"success": True, "message": "Gestión registrada en la bitácora del cliente.", "log_id": entry.id}
 
 
-@router.delete("/cxc/{cxc_id}")
+@router.delete("/cxc/{cxc_id}", dependencies=[Depends(require_roles(["director_general", "director"]))])
 def delete_receivable(cxc_id: int, db: Session = Depends(get_db)):
     rec = db.query(AccountReceivable).filter(AccountReceivable.id == cxc_id).first()
     if not rec:

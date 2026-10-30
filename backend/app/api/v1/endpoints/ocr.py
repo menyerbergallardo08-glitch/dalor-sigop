@@ -9,6 +9,8 @@ from app.core.rate_limiter import check_ocr_rate_limit
 from app.services.ocr_parser import OCRReceiptParser
 from app.schemas.schemas import OCRExtractResult
 from app.services.storage import R2StorageService
+from app.models.models import User
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -26,7 +28,8 @@ async def scan_ticket(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     simulated_ocr_text: str = Form(None),
-    exchange_rate: float = Form(800.0)
+    exchange_rate: float = Form(800.0),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Recibe la foto del ticket capturada desde la PWA móvil o PC,
@@ -89,7 +92,8 @@ async def scan_odometer(
     request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    asset_id: int = Form(None)
+    asset_id: int = Form(None),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Recibe la foto del tablero/odómetro capturada en campo por el chofer o supervisor,

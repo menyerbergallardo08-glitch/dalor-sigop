@@ -108,7 +108,8 @@ def require_roles(allowed_roles: List[str], required_permission: Optional[str] =
             return current_user
 
         # Verificar rol permitido
-        if any(r.lower() in role for r in allowed_roles):
+        allowed_set = {r.strip().lower() for r in allowed_roles}
+        if role in allowed_set:
             return current_user
 
         perm_msg = f" o el permiso '{required_permission}'" if required_permission else ""
@@ -130,8 +131,9 @@ def require_permission(permission_key: str, fallback_roles: Optional[List[str]] 
             return current_user
 
         if fallback_roles:
-            role = (current_user.role_name or "").lower()
-            if any(r.lower() in role for r in fallback_roles):
+            role = (current_user.role_name or "").lower().strip()
+            fallback_set = {r.strip().lower() for r in fallback_roles}
+            if role in fallback_set:
                 return current_user
 
         raise HTTPException(

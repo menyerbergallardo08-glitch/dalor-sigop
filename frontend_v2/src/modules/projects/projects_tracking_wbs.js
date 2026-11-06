@@ -602,6 +602,15 @@ async function submitDirectResourceAssign(event) {
 
 async function releaseProjectResource(resourceType, resourceId, resourceName, targetProjId) {
     const pId = targetProjId || window.currentViewingProjectId;
+    if (!resourceName) {
+        if (resourceType === 'personnel') {
+            const p = (window.allPersonnel || []).find(x => x.id === resourceId);
+            if (p) resourceName = p.full_name || p.name;
+        } else {
+            const a = (window.rawToolsList || window.allAssets || []).find(x => x.id === resourceId);
+            if (a) resourceName = `[${a.asset_code || resourceId}] ${a.name}`;
+        }
+    }
     if (!confirm(`¿Confirma retornar ${resourceName || 'el recurso'} a Base Central (Sede Dalor Guacara)?`)) return;
 
     try {
@@ -675,6 +684,15 @@ async function openSubstituteResourceModal(resourceType, oldId, oldName, project
     if (typeInp) typeInp.value = resourceType;
     if (oldIdInp) oldIdInp.value = oldId;
     if (projIdInp) projIdInp.value = pId || '';
+    if (!oldName) {
+        if (resourceType === 'personnel') {
+            const p = (window.allPersonnel || []).find(x => x.id === oldId);
+            if (p) oldName = p.full_name || p.name;
+        } else {
+            const a = (window.rawToolsList || window.allAssets || []).find(x => x.id === oldId);
+            if (a) oldName = `[${a.asset_code || oldId}] ${a.name}`;
+        }
+    }
     if (oldDisplay) oldDisplay.innerHTML = `<strong>${oldName || 'Recurso'}</strong> (ID: ${oldId}) &bull; Será desincorporado de la obra y devuelto a Base`;
 
     // Validar y mostrar la Obra / Proyecto asociado

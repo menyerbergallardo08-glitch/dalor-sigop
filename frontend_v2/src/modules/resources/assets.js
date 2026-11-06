@@ -779,7 +779,7 @@ async function openAssetHistoryModal(assetId, assetCode = null, assetName = null
     const statusEl = document.getElementById("assetHistStatusBadge");
     const tbody = document.getElementById("assetHistoryTableBody");
 
-    const matched = (allAssets || []).find(a => a.id === assetId) || {};
+    const matched = (allAssets || []).find(a => a.id === assetId) || (window.rawToolsList || []).find(a => a.id === assetId) || {};
     const code = assetCode || matched.asset_code || matched.code || `ACT-${assetId}`;
     const name = assetName || matched.name || 'Activo / Maquinaria';
 

@@ -468,8 +468,8 @@ export async function viewProjectDetails(projectId) {
                 <li style="color: #334155; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; border-bottom: 1px solid #f1f5f9;">
                     <span><b>[${v.code}]</b> ${v.name} <span style="color: #64748b;">(${v.license_plate || 'Sin Placa'})</span></span>
                     <div style="display: flex; gap: 4px; align-items: center;">
-                        <button type="button" onclick="openSubstituteResourceModal('asset', ${v.id}, '${(v.name || '').replace(/'/g, "\\'")}', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #2563eb; border-color: #bfdbfe;" title="Sustituir por otra unidad disponible"><i class="fa-solid fa-arrows-rotate"></i> Sustituir</button>
-                        <button type="button" onclick="releaseProjectResource('asset', ${v.id}, '${(v.name || '').replace(/'/g, "\\'")}', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #dc2626; border-color: #fecdd3;" title="Liberar y retornar a Base Central"><i class="fa-solid fa-arrow-right-from-bracket"></i> Liberar</button>
+                        <button type="button" onclick="openSubstituteResourceModal('asset', ${v.id}, '', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #2563eb; border-color: #bfdbfe;" title="Sustituir por otra unidad disponible"><i class="fa-solid fa-arrows-rotate"></i> Sustituir</button>
+                        <button type="button" onclick="releaseProjectResource('asset', ${v.id}, '', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #dc2626; border-color: #fecdd3;" title="Liberar y retornar a Base Central"><i class="fa-solid fa-arrow-right-from-bracket"></i> Liberar</button>
                     </div>
                 </li>
             `).join('') || '<li style="color: #94a3b8;">Sin vehículos asignados</li>';
@@ -482,8 +482,8 @@ export async function viewProjectDetails(projectId) {
                 <li style="color: #334155; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; border-bottom: 1px solid #f1f5f9;">
                     <span><b>[${t.code}]</b> ${t.name} <span style="color: #64748b;">(${t.brand || ''})</span></span>
                     <div style="display: flex; gap: 4px; align-items: center;">
-                        <button type="button" onclick="openSubstituteResourceModal('asset', ${t.id}, '${(t.name || '').replace(/'/g, "\\'")}', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #2563eb; border-color: #bfdbfe;" title="Sustituir por otra herramienta disponible"><i class="fa-solid fa-arrows-rotate"></i> Sustituir</button>
-                        <button type="button" onclick="releaseProjectResource('asset', ${t.id}, '${(t.name || '').replace(/'/g, "\\'")}', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #dc2626; border-color: #fecdd3;" title="Liberar y retornar a Base Central"><i class="fa-solid fa-arrow-right-from-bracket"></i> Liberar</button>
+                        <button type="button" onclick="openSubstituteResourceModal('asset', ${t.id}, '', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #2563eb; border-color: #bfdbfe;" title="Sustituir por otra herramienta disponible"><i class="fa-solid fa-arrows-rotate"></i> Sustituir</button>
+                        <button type="button" onclick="releaseProjectResource('asset', ${t.id}, '', ${data.id})" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: #dc2626; border-color: #fecdd3;" title="Liberar y retornar a Base Central"><i class="fa-solid fa-arrow-right-from-bracket"></i> Liberar</button>
                     </div>
                 </li>
             `).join('') || '<li style="color: #94a3b8;">Sin herramientas asignadas</li>';

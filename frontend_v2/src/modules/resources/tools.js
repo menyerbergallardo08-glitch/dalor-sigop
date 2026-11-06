@@ -245,15 +245,15 @@ function renderGroupedToolsPaginated() {
                     </td>
                     <td style="padding: 5px 8px; text-align: center; white-space: nowrap;">
                         ${isAvail ? `
-                            <button onclick="openAssignSingleToolUnitModal(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 2px 7px; font-size: 10px; margin-right: 3px; background: #0284c7; border: none; color: white;" title="Asignar esta unidad física individual a una obra específica">
+                            <button onclick="openAssignSingleToolUnitModal(${it.id})" class="btn-primary" style="padding: 2px 7px; font-size: 10px; margin-right: 3px; background: #0284c7; border: none; color: white;" title="Asignar esta unidad física individual a una obra específica">
                                 <i class="fa-solid fa-arrow-right-from-bracket"></i> Asignar
                             </button>
                         ` : ''}
                         ${(isObra || isAsignado) ? `
-                            <button onclick="openTransferSingleToolUnitModal(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #d97706; border-color: #fde68a; background: #fefce8; margin-right: 3px;" title="Transferir esta unidad directamente a otra obra">
+                            <button onclick="openTransferSingleToolUnitModal(${it.id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #d97706; border-color: #fde68a; background: #fefce8; margin-right: 3px;" title="Transferir esta unidad directamente a otra obra">
                                 <i class="fa-solid fa-arrow-right-arrow-left"></i> Transferir
                             </button>
-                            <button onclick="confirmReturnSingleToolToBase(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #16a34a; border-color: #bbf7d0; background: #f0fdf4; margin-right: 3px;" title="Retornar esta unidad a la Base Central">
+                            <button onclick="confirmReturnSingleToolToBase(${it.id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #16a34a; border-color: #bbf7d0; background: #f0fdf4; margin-right: 3px;" title="Retornar esta unidad a la Base Central">
                                 <i class="fa-solid fa-house-chimney"></i> A Base
                             </button>
                         ` : ''}
@@ -261,16 +261,16 @@ function renderGroupedToolsPaginated() {
                             <i class="fa-solid fa-pen"></i> Editar
                         </button>
                         ${isAvail ? `
-                            <button onclick="confirmRemoveSingleToolUnit(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #dc2626; border-color: #fecaca; margin-right: 3px;" title="Dar de baja / restar esta unidad física del inventario">
+                            <button onclick="confirmRemoveSingleToolUnit(${it.id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #dc2626; border-color: #fecaca; margin-right: 3px;" title="Dar de baja / restar esta unidad física del inventario">
                                 <i class="fa-solid fa-trash-can"></i> Restar
                             </button>
                         ` : ''}
                         ${!isAvail ? `
-                            <button onclick="openSubstituteResourceModal('asset', ${it.id}, '${(it.name || '').replace(/'/g, "\\'")}', ${it.current_project_id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #2563eb; border-color: #bfdbfe; margin-right: 3px;" title="Sustituir en Obra por otra herramienta disponible">
+                            <button onclick="openSubstituteResourceModal('asset', ${it.id}, '', ${it.current_project_id || 0})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #2563eb; border-color: #bfdbfe; margin-right: 3px;" title="Sustituir en Obra por otra herramienta disponible">
                                 <i class="fa-solid fa-arrows-rotate"></i> Sustituir
                             </button>
                         ` : ''}
-                        <button onclick="openAssetHistoryModal(${it.id}, '${it.asset_code}', '${(it.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #2563eb; border-color: #bfdbfe;" title="Ver Bitácora de esta unidad física">
+                        <button onclick="openAssetHistoryModal(${it.id})" class="btn-secondary" style="padding: 2px 6px; font-size: 10px; color: #2563eb; border-color: #bfdbfe;" title="Ver Bitácora de esta unidad física">
                             <i class="fa-solid fa-clock-rotate-left"></i> Traza
                         </button>
                     </td>
@@ -766,10 +766,17 @@ async function submitRemoveToolUnits(event) {
 }
 
 async function confirmRemoveSingleToolUnit(assetId, assetCode, toolName) {
-    const reason = prompt(`Indica el motivo para dar de baja la unidad [${assetCode}] de '${toolName}':`, "Ajuste de inventario / Desgaste / Daño");
+    if (!assetCode || !toolName) {
+        const item = (window.rawToolsList || []).find(x => x.id === assetId) || (window.allAssets || []).find(x => x.id === assetId);
+        if (item) {
+            assetCode = assetCode || item.asset_code;
+            toolName = toolName || item.name;
+        }
+    }
+    const reason = prompt(`Indica el motivo para dar de baja la unidad [${assetCode || assetId}] de '${toolName || 'Herramienta'}':`, "Ajuste de inventario / Desgaste / Daño");
     if (reason === null) return;
 
-    if (!confirm(`¿Confirmas dar de baja la unidad física [${assetCode}] de '${toolName}'?`)) {
+    if (!confirm(`¿Confirmas dar de baja la unidad física [${assetCode || assetId}] de '${toolName || 'Herramienta'}'?`)) {
         return;
     }
 
@@ -802,7 +809,14 @@ async function confirmRemoveSingleToolUnit(assetId, assetCode, toolName) {
 }
 
 function openAssignSingleToolUnitModal(assetId, assetCode, assetName) {
-    const displayName = `${assetName} [${assetCode}]`;
+    if (!assetCode || !assetName) {
+        const item = (window.rawToolsList || []).find(x => x.id === assetId) || (window.allAssets || []).find(x => x.id === assetId);
+        if (item) {
+            assetCode = assetCode || item.asset_code;
+            assetName = assetName || item.name;
+        }
+    }
+    const displayName = `${assetName || 'Herramienta'} [${assetCode || assetId}]`;
     const openFn = (typeof openAssignModal === 'function') ? openAssignModal : window.openAssignModal;
     if (openFn) {
         openFn('asset', assetId, displayName, 'assign');
@@ -816,7 +830,14 @@ function openAssignSingleToolUnitModal(assetId, assetCode, assetName) {
 }
 
 function openTransferSingleToolUnitModal(assetId, assetCode, assetName) {
-    const displayName = `${assetName} [${assetCode}]`;
+    if (!assetCode || !assetName) {
+        const item = (window.rawToolsList || []).find(x => x.id === assetId) || (window.allAssets || []).find(x => x.id === assetId);
+        if (item) {
+            assetCode = assetCode || item.asset_code;
+            assetName = assetName || item.name;
+        }
+    }
+    const displayName = `${assetName || 'Herramienta'} [${assetCode || assetId}]`;
     const openFn = (typeof openAssignModal === 'function') ? openAssignModal : window.openAssignModal;
     if (openFn) {
         openFn('asset', assetId, displayName, 'transfer');
@@ -826,7 +847,14 @@ function openTransferSingleToolUnitModal(assetId, assetCode, assetName) {
 }
 
 async function confirmReturnSingleToolToBase(assetId, assetCode, assetName) {
-    if (!confirm(`¿Confirmas el retorno a la Base Central (Guacara) de la unidad:\n[${assetCode}] ${assetName}?`)) {
+    if (!assetCode || !assetName) {
+        const item = (window.rawToolsList || []).find(x => x.id === assetId) || (window.allAssets || []).find(x => x.id === assetId);
+        if (item) {
+            assetCode = assetCode || item.asset_code;
+            assetName = assetName || item.name;
+        }
+    }
+    if (!confirm(`¿Confirmas el retorno a la Base Central (Guacara) de la unidad:\n[${assetCode || assetId}] ${assetName || 'Herramienta'}?`)) {
         return;
     }
     const retFn = (typeof returnResourceToBase === 'function') ? returnResourceToBase : window.returnResourceToBase;

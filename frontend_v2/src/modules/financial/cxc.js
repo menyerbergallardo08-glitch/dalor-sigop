@@ -54,7 +54,23 @@ import {
     openReceiveClientPaymentModal,
     onRcpClientChanged,
     calcClientPaymentBs,
-    submitDirectClientPayment
+    submitDirectClientPayment,
+    openSplitPaymentModal,
+    onSplitToggleRetIva,
+    onSplitToggleRetIslr,
+    onSplitVesInput,
+    onSplitVesUsdInput,
+    autoFillRemainingToUsd,
+    recalcSplitPayment,
+    submitSplitPayment,
+    openRevertCxcPaymentModal,
+    confirmRevertPayment,
+    openEditReceivableModal,
+    onEditCxcBaseChange,
+    onEditCxcTaxChange,
+    submitEditReceivable,
+    openCancelReceivableModal,
+    submitCancelReceivable
 } from './cxc/cxc_payments.js';
 
 import {
@@ -111,6 +127,23 @@ if (typeof window !== 'undefined') {
     window.calcClientPaymentBs = calcClientPaymentBs;
     window.submitDirectClientPayment = submitDirectClientPayment;
 
+    window.openSplitPaymentModal = openSplitPaymentModal;
+    window.onSplitToggleRetIva = onSplitToggleRetIva;
+    window.onSplitToggleRetIslr = onSplitToggleRetIslr;
+    window.onSplitVesInput = onSplitVesInput;
+    window.onSplitVesUsdInput = onSplitVesUsdInput;
+    window.autoFillRemainingToUsd = autoFillRemainingToUsd;
+    window.recalcSplitPayment = recalcSplitPayment;
+    window.submitSplitPayment = submitSplitPayment;
+    window.openRevertCxcPaymentModal = openRevertCxcPaymentModal;
+    window.confirmRevertPayment = confirmRevertPayment;
+    window.openEditReceivableModal = openEditReceivableModal;
+    window.onEditCxcBaseChange = onEditCxcBaseChange;
+    window.onEditCxcTaxChange = onEditCxcTaxChange;
+    window.submitEditReceivable = submitEditReceivable;
+    window.openCancelReceivableModal = openCancelReceivableModal;
+    window.submitCancelReceivable = submitCancelReceivable;
+
     window.openBadDebtModal = openBadDebtModal;
     window.submitBadDebtWriteOff = submitBadDebtWriteOff;
     window.exportCxcExcel = exportCxcExcel;
@@ -156,6 +189,22 @@ export {
     onRcpClientChanged,
     calcClientPaymentBs,
     submitDirectClientPayment,
+    openSplitPaymentModal,
+    onSplitToggleRetIva,
+    onSplitToggleRetIslr,
+    onSplitVesInput,
+    onSplitVesUsdInput,
+    autoFillRemainingToUsd,
+    recalcSplitPayment,
+    submitSplitPayment,
+    openRevertCxcPaymentModal,
+    confirmRevertPayment,
+    openEditReceivableModal,
+    onEditCxcBaseChange,
+    onEditCxcTaxChange,
+    submitEditReceivable,
+    openCancelReceivableModal,
+    submitCancelReceivable,
     openBadDebtModal,
     submitBadDebtWriteOff,
     exportCxcExcel,

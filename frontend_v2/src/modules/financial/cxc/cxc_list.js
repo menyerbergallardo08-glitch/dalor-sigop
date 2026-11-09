@@ -175,92 +175,71 @@ function renderReceivablesPaginated() {
 
     tbody.innerHTML = pageItems.map(r => {
 
+        const isCancelled = r.status === 'anulada';
         const isIncobrable = r.status === 'incobrable' || r.is_bad_debt;
-
-        const isPaid = r.status === 'cobrado' || r.status === 'cobrado_total' || (r.balance_usd <= 0.05 && !isIncobrable);
-
-        const isOverdue = !isPaid && !isIncobrable && r.due_date && new Date(r.due_date) < new Date();
+        const isPaid = !isCancelled && (r.status === 'cobrado' || r.status === 'cobrado_total' || (r.balance_usd <= 0.05 && !isIncobrable));
+        const isOverdue = !isCancelled && !isPaid && !isIncobrable && r.due_date && new Date(r.due_date) < new Date();
 
         let badgeBg = '#fef3c7', badgeColor = '#92400e', statusLabel = 'Pendiente';
-
-        if (isPaid) { badgeBg = '#d1fae5'; badgeColor = '#065f46'; statusLabel = 'Cobrado Total'; }
-
+        if (isCancelled) { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '🚫 Anulada'; }
+        else if (isPaid) { badgeBg = '#d1fae5'; badgeColor = '#065f46'; statusLabel = 'Cobrado Total'; }
         else if (isIncobrable) { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '🛑 Incobrable / Castigado'; }
-
         else if (isOverdue) { badgeBg = '#fee2e2'; badgeColor = '#dc2626'; statusLabel = '⚠️ En Mora / Vencido'; }
-
         else if (r.status === 'parcial' || r.status === 'abono_parcial') { badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; statusLabel = 'Abono Parcial'; }
-
         if (r.status === 'vencido') { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; statusLabel = '⚠️ Vencida'; }
 
         const invNum = r.invoice_number || 'S/F';
-
         const isAdenda = (invNum && invNum.startsWith('ADENDA-')) || (r.description || '').toLowerCase().includes('adenda');
-
         const isRentalExt = invNum.startsWith('ALQ-') && invNum.endsWith('-EXT');
-
         const isRental = invNum.startsWith('ALQ-') || (r.description || '').toLowerCase().includes('alquiler');
 
         let typeBadge = '';
-
         if (isAdenda) {
-
             typeBadge = `<span style="background: #faf5ff; color: #9333ea; font-size: 9.5px; padding: 2px 6px; border-radius: 4px; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; border: 1px solid #d8b4fe;"><i class="fa-solid fa-file-circle-plus"></i> Adenda Obra</span>`;
-
         } else if (isRentalExt) {
-
             typeBadge = `<span style="background: #fef3c7; color: #92400e; font-size: 9.5px; padding: 2px 6px; border-radius: 4px; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; border: 1px solid #fde68a;"><i class="fa-solid fa-clock"></i> Prórroga Alquiler</span>`;
-
         } else if (isRental) {
-
             typeBadge = `<span style="background: #e0f2fe; color: #0369a1; font-size: 9.5px; padding: 2px 6px; border-radius: 4px; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; border: 1px solid #bae6fd;"><i class="fa-solid fa-tractor"></i> Alquiler DALOR</span>`;
-
         } else if (r.project_code && r.project_code !== 'GEN') {
-
             typeBadge = `<span style="background: #ecfdf5; color: #047857; font-size: 9.5px; padding: 2px 6px; border-radius: 4px; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-building"></i> Obra: ${r.project_code}</span>`;
-
         } else {
-
             typeBadge = `<span style="background: #f1f5f9; color: #475569; font-size: 9.5px; padding: 2px 6px; border-radius: 4px; font-weight: 800; display: inline-flex; align-items: center; gap: 3px;"><i class="fa-solid fa-file-invoice"></i> Comercial</span>`;
-
         }
 
         const surplus = Math.max(0, roundFinancial((r.paid_amount_usd || 0) - (r.amount_usd || 0)));
-
         const hasSurplus = surplus > 0.01;
-
         const surplusBadge = hasSurplus
-
             ? `<div style="margin-top: 3px;"><span style="background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid #86efac; display: inline-flex; align-items: center; gap: 3px;"><i class="fa-solid fa-gift"></i> Saldo a favor: +$${surplus.toFixed(2)}</span></div>`
-
             : '';
 
         const safeClientName = (r.client_name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-
         const invoiceBtn = `<button type="button" onclick="printOfficialFiscalInvoice(${r.id})" class="btn-primary" style="font-size: 10px; padding: 4px 7px; background: #0284c7; color: white; font-weight: 800; border-radius: 4px;" title="Ver e Imprimir Factura Fiscal Forma Libre SENIAT"><i class="fa-solid fa-file-invoice-dollar"></i> Factura</button>`;
-
         const bitacoraBtn = `<button type="button" onclick="openCxcHistoryModal(${r.id}, ${r.client_id || 0}, '${invNum}', '${safeClientName}')" class="btn-secondary" style="font-size: 10.5px; padding: 4px 7px; color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; font-weight: 800;" title="Ver Bitácora de Cobranza & Seguimiento"><i class="fa-solid fa-clock-rotate-left"></i> Bitácora</button>`;
 
         let actionsHtml = '';
-
-        if (r.balance_usd > 0.01 && !isIncobrable) {
-
-            actionsHtml = `<button onclick="openRecordPaymentModal('cobro_cxc', ${r.id}, ${r.balance_usd})" class="btn-primary" style="font-size: 11px; padding: 4px 8px; background: #059669;" title="Registrar Cobro"><i class="fa-solid fa-hand-holding-dollar"></i> Cobrar</button> <button onclick="openDeclareBadDebtModal(${r.id})" class="btn-secondary" style="font-size: 10px; padding: 4px 7px; background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; font-weight: 700;" title="Castigar Cartera / Declarar Incobrable"><i class="fa-solid fa-ban"></i> Incobrable</button>`;
-
+        if (isCancelled) {
+            actionsHtml = `<span style="color: #dc2626; font-weight: 800; font-size: 11px;"><i class="fa-solid fa-ban"></i> Anulada</span>`;
+        } else if (r.balance_usd > 0.01 && !isIncobrable) {
+            actionsHtml = `<button type="button" onclick="openSplitPaymentModal(${r.id})" class="btn-primary" style="font-size: 10.5px; padding: 4px 8px; background: #059669; font-weight: 800; border-radius: 4px;" title="Cobro Mixto Unificado (Retenciones IVA/ISLR + Bs BCV + Divisas en un solo registro)"><i class="fa-solid fa-bolt"></i> Cobro Mixto</button> <button type="button" onclick="openRecordPaymentModal('cobro_cxc', ${r.id}, ${r.balance_usd})" class="btn-secondary" style="font-size: 10px; padding: 4px 7px; font-weight: 700; border-radius: 4px;" title="Cobro Rápido Simple"><i class="fa-solid fa-hand-holding-dollar"></i> Cobro</button> <button type="button" onclick="openDeclareBadDebtModal(${r.id})" class="btn-secondary" style="font-size: 10px; padding: 4px 7px; background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; font-weight: 700;" title="Castigar Cartera / Declarar Incobrable"><i class="fa-solid fa-ban"></i></button>`;
         } else if (isIncobrable) {
-
             actionsHtml = `<span style="color: #dc2626; font-weight: 800; font-size: 11px;"><i class="fa-solid fa-ban"></i> Castigada</span>`;
-
         } else {
-
             actionsHtml = `<span style="color: #059669; font-weight: 800; font-size: 11px;"><i class="fa-solid fa-check-double"></i> Al Día</span>`;
-
         }
 
-        if (hasSurplus) {
+        // Si tiene cobros aplicados (> 0.01$) y no está anulada, permitir reversar
+        if ((r.paid_amount_usd || 0) > 0.01 && !isCancelled) {
+            actionsHtml += ` <button type="button" onclick="openRevertCxcPaymentModal(${r.id}, '${invNum}')" class="btn-secondary" style="font-size: 10px; padding: 4px 7px; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; font-weight: 800; border-radius: 4px;" title="Reversar Cobros y Reabrir Factura"><i class="fa-solid fa-rotate-left"></i> Reversar</button>`;
+        }
 
+        // Si no está anulada, permitir editar y anular
+        if (!isCancelled) {
+            actionsHtml += ` <button type="button" onclick="openEditReceivableModal(${r.id})" class="btn-secondary" style="font-size: 10px; padding: 4px 7px; color: #0284c7; background: #f0f9ff; border: 1px solid #bae6fd; font-weight: 700; border-radius: 4px;" title="Editar Factura / Valuación / Control SENIAT"><i class="fa-solid fa-pen-to-square"></i></button>`;
+            actionsHtml += ` <button type="button" onclick="openCancelReceivableModal(${r.id}, '${invNum}')" class="btn-secondary" style="font-size: 10px; padding: 4px 7px; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; font-weight: 700; border-radius: 4px;" title="Anular Factura Definitivamente"><i class="fa-solid fa-ban"></i></button>`;
+        }
+
+        if (hasSurplus && !isCancelled) {
             actionsHtml += ` <button onclick="openClientRefundModal(${r.id})" class="btn-secondary" style="font-size: 10.5px; padding: 4px 8px; color: #059669; border-color: #a7f3d0; background: #ecfdf5; font-weight: 800;" title="Emitir Reembolso de Saldo a Favor al Cliente"><i class="fa-solid fa-arrow-rotate-left"></i> Reembolsar</button>`;
-
         }
 
         actionsHtml = invoiceBtn + ' ' + bitacoraBtn + ' ' + actionsHtml;

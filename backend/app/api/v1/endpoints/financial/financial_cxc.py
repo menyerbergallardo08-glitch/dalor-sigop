@@ -90,6 +90,43 @@ class CorrelativeOverrideRequest(BaseModel):
     reason: str
 
 
+class SplitPaymentItem(BaseModel):
+    payment_type: str  # 'retencion_iva', 'retencion_islr', 'bolivares', 'divisas_usd'
+    amount_usd: float
+    amount_bs: Optional[float] = 0.0
+    exchange_rate: Optional[float] = 800.0
+    payment_method: str = "transferencia"  # 'transferencia', 'pago_movil', 'efectivo_usd', 'zelle', 'comprobante_seniat'
+    bank_account: Optional[str] = None
+    financial_account_id: Optional[int] = None
+    reference_number: Optional[str] = None
+    voucher_number: Optional[str] = None
+    voucher_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class SplitPaymentRequest(BaseModel):
+    items: List[SplitPaymentItem]
+    payment_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class ReceivableUpdate(BaseModel):
+    invoice_number: Optional[str] = None
+    fiscal_invoice_number: Optional[str] = None
+    control_number: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    issue_date: Optional[datetime] = None
+    amount_usd: Optional[float] = None
+    taxable_base_usd: Optional[float] = None
+    tax_amount_usd: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class ReceivableCancelIn(BaseModel):
+    cancellation_reason: str
+
+
 # ------------------------------------------------------------------------------
 # 3. ENDPOINTS DE CUENTAS POR COBRAR (CxC)
 # ------------------------------------------------------------------------------
@@ -1339,4 +1376,308 @@ def write_off_bad_debt(receivable_id: int, w_in: BadDebtWriteOff, db: Session = 
         import traceback
         db.rollback()
         return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+# ==============================================================================
+# COBRO MIXTO UNIFICADO (SINGLE-ENTRY MULTI-SPLIT)
+# ==============================================================================
+@router.post("/cxc/{receivable_id}/split-payment", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "administrador_financiero", "tesoreria"]))])
+def record_cxc_split_payment(
+    receivable_id: int,
+    req: SplitPaymentRequest,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).with_for_update().first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura no encontrada.")
+
+    if r.balance_usd <= 0.001:
+        raise HTTPException(status_code=400, detail="Esta factura ya se encuentra totalmente cobrada (saldo $0.00).")
+
+    if not req.items or len(req.items) == 0:
+        raise HTTPException(status_code=400, detail="Debe incluir al menos un instrumento de cobro.")
+
+    total_usd = sum(float(item.amount_usd or 0.0) for item in req.items)
+    if total_usd <= 0.001:
+        raise HTTPException(status_code=400, detail="El monto total a cobrar debe ser mayor a cero.")
+
+    if total_usd > (float(r.balance_usd) + 0.05):
+        raise HTTPException(status_code=400, detail=f"El cobro total (${total_usd:.2f}) supera el saldo pendiente (${float(r.balance_usd):.2f}).")
+
+    pay_date = req.payment_date or datetime.utcnow()
+    created_payments = []
+
+    for item in req.items:
+        m_usd = float(item.amount_usd or 0.0)
+        if m_usd <= 0:
+            continue
+        rate = float(item.exchange_rate or r.exchange_rate or 800.0)
+        m_bs = float(item.amount_bs) if item.amount_bs and item.amount_bs > 0 else round(m_usd * rate, 2)
+
+        ptype = "cxc_cobro"
+        if item.payment_type == "retencion_iva":
+            ptype = "retencion_iva"
+            r.tax_withholding_usd = round(float(r.tax_withholding_usd or 0.0) + m_usd, 2)
+            if item.voucher_number:
+                r.notes = (r.notes or "") + f" [Comp.IVA: {item.voucher_number}]"
+        elif item.payment_type == "retencion_islr":
+            ptype = "retencion_islr"
+            r.islr_withholding_usd = round(float(r.islr_withholding_usd or 0.0) + m_usd, 2)
+            if item.voucher_number:
+                r.notes = (r.notes or "") + f" [Comp.ISLR: {item.voucher_number}]"
+
+        p = FinancialPayment(
+            payment_type=ptype,
+            receivable_id=r.id,
+            amount_usd=m_usd,
+            amount_bs=m_bs,
+            exchange_rate=rate,
+            payment_date=pay_date,
+            payment_method=item.payment_method or "transferencia",
+            bank_account=item.bank_account or "banesco_usd",
+            financial_account_id=item.financial_account_id,
+            reference_number=item.reference_number or item.voucher_number or f"SPLIT-{int(datetime.utcnow().timestamp())}",
+            voucher_number=item.voucher_number,
+            notes=item.notes or f"Cobro Mixto en {item.payment_type.upper()}"
+        )
+        db.add(p)
+        created_payments.append(p)
+
+    r.paid_amount_usd = round(float(r.paid_amount_usd or 0.0) + total_usd, 2)
+    r.balance_usd = max(0.0, round(float(r.amount_usd) - float(r.paid_amount_usd), 2))
+    
+    if r.balance_usd <= 0.01:
+        r.status = "al_dia"
+    else:
+        r.status = "abono_parcial"
+
+    audit = AuditLog(
+        username=current_user.username,
+        module="finanzas_cxc",
+        action="cobro_mixto_unificado",
+        details=f"Cobro mixto por ${total_usd:.2f} aplicado en {len(created_payments)} partes a Factura [{r.invoice_number}]. Nuevo saldo: ${r.balance_usd:.2f}"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(r)
+
+    return {
+        "success": True,
+        "message": f"Cobro mixto de ${total_usd:.2f} registrado exitosamente.",
+        "invoice_number": r.invoice_number,
+        "paid_amount_usd": r.paid_amount_usd,
+        "balance_usd": r.balance_usd,
+        "tax_withholding_usd": r.tax_withholding_usd,
+        "islr_withholding_usd": r.islr_withholding_usd,
+        "status": r.status,
+        "payments_count": len(created_payments)
+    }
+
+
+# ==============================================================================
+# CONSULTA Y REVERSIÓN DE COBROS
+# ==============================================================================
+@router.get("/cxc/{receivable_id}/payments")
+def get_cxc_payments(receivable_id: int, db: Session = Depends(get_db)):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura no encontrada.")
+    payments = db.query(FinancialPayment).filter(FinancialPayment.receivable_id == receivable_id).order_by(FinancialPayment.payment_date.desc()).all()
+    return [
+        {
+            "id": p.id,
+            "payment_type": p.payment_type,
+            "payment_method": p.payment_method,
+            "amount_usd": p.amount_usd,
+            "amount_bs": p.amount_bs,
+            "exchange_rate": p.exchange_rate,
+            "bank_account": p.bank_account,
+            "financial_account_id": p.financial_account_id,
+            "reference_number": p.reference_number,
+            "voucher_number": p.voucher_number,
+            "payment_date": p.payment_date.strftime("%Y-%m-%d %H:%M") if p.payment_date else None,
+            "notes": p.notes
+        }
+        for p in payments
+    ]
+
+
+@router.post("/cxc/{receivable_id}/revert-payment/{payment_id}", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "administrador_financiero"]))])
+def revert_cxc_payment(
+    receivable_id: int,
+    payment_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).with_for_update().first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura no encontrada.")
+
+    p = db.query(FinancialPayment).filter(
+        FinancialPayment.id == payment_id,
+        FinancialPayment.receivable_id == receivable_id
+    ).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Pago no encontrado o no pertenece a esta factura.")
+
+    rev_amount = float(p.amount_usd)
+
+    if p.payment_type == "retencion_iva":
+        r.tax_withholding_usd = max(0.0, round(float(r.tax_withholding_usd or 0.0) - rev_amount, 2))
+    elif p.payment_type == "retencion_islr":
+        r.islr_withholding_usd = max(0.0, round(float(r.islr_withholding_usd or 0.0) - rev_amount, 2))
+
+    r.paid_amount_usd = max(0.0, round(float(r.paid_amount_usd or 0.0) - rev_amount, 2))
+    r.balance_usd = min(float(r.amount_usd), round(float(r.amount_usd) - float(r.paid_amount_usd), 2))
+
+    if r.paid_amount_usd <= 0.001:
+        r.status = "pendiente"
+    else:
+        r.status = "abono_parcial"
+
+    p_ref = p.reference_number or p.voucher_number or str(p.id)
+    db.delete(p)
+
+    audit = AuditLog(
+        username=current_user.username,
+        module="finanzas_cxc",
+        action="reversar_cobro_cxc",
+        details=f"Cobro #{payment_id} (${rev_amount:.2f}, Ref: {p_ref}) revertido en Factura [{r.invoice_number}] por {current_user.username}. Nuevo saldo: ${r.balance_usd:.2f}"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(r)
+
+    return {
+        "success": True,
+        "message": f"Pago de ${rev_amount:.2f} revertido con éxito. Factura reabierta.",
+        "invoice_number": r.invoice_number,
+        "paid_amount_usd": r.paid_amount_usd,
+        "balance_usd": r.balance_usd,
+        "status": r.status
+    }
+
+
+# ==============================================================================
+# EDICIÓN QUIRÚRGICA DE FACTURA / CxC
+# ==============================================================================
+@router.put("/cxc/{receivable_id}", dependencies=[Depends(require_roles(["director_general", "director", "administracion", "administrador_financiero"]))])
+def update_receivable(
+    receivable_id: int,
+    up_in: ReceivableUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura no encontrada.")
+
+    if up_in.invoice_number is not None and up_in.invoice_number.strip():
+        exist = db.query(AccountReceivable).filter(
+            AccountReceivable.invoice_number == up_in.invoice_number.strip(),
+            AccountReceivable.id != r.id
+        ).first()
+        if exist:
+            raise HTTPException(status_code=400, detail=f"El número de factura '{up_in.invoice_number}' ya está registrado.")
+        r.invoice_number = up_in.invoice_number.strip()
+
+    if up_in.fiscal_invoice_number is not None:
+        r.fiscal_invoice_number = up_in.fiscal_invoice_number.strip() or None
+    if up_in.control_number is not None:
+        r.control_number = up_in.control_number.strip() or None
+    if up_in.description is not None:
+        r.description = up_in.description.strip()
+    if up_in.due_date is not None:
+        r.due_date = up_in.due_date
+    if up_in.issue_date is not None:
+        r.issue_date = up_in.issue_date
+    if up_in.notes is not None:
+        r.notes = up_in.notes.strip()
+
+    if up_in.amount_usd is not None and up_in.amount_usd > 0:
+        new_amount = float(up_in.amount_usd)
+        paid = float(r.paid_amount_usd or 0.0)
+        if new_amount < paid:
+            raise HTTPException(status_code=400, detail=f"El nuevo monto (${new_amount:.2f}) no puede ser menor a lo ya cobrado (${paid:.2f}). Reversa los cobros primero.")
+        r.amount_usd = new_amount
+        r.balance_usd = max(0.0, round(new_amount - paid, 2))
+        if up_in.taxable_base_usd is not None:
+            r.taxable_base_usd = float(up_in.taxable_base_usd)
+        if up_in.tax_amount_usd is not None:
+            r.tax_amount_usd = float(up_in.tax_amount_usd)
+        if r.balance_usd <= 0.001 and paid > 0:
+            r.status = "al_dia"
+        elif paid > 0:
+            r.status = "abono_parcial"
+        else:
+            r.status = "pendiente"
+
+    audit = AuditLog(
+        username=current_user.username,
+        module="finanzas_cxc",
+        action="modificar_factura_cxc",
+        details=f"Factura [{r.invoice_number}] modificada por {current_user.username}. Monto: ${r.amount_usd:.2f}, Saldo: ${r.balance_usd:.2f}"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(r)
+
+    return {
+        "success": True,
+        "message": f"Factura [{r.invoice_number}] actualizada exitosamente.",
+        "id": r.id,
+        "invoice_number": r.invoice_number,
+        "control_number": r.control_number,
+        "description": r.description,
+        "amount_usd": r.amount_usd,
+        "balance_usd": r.balance_usd,
+        "status": r.status
+    }
+
+
+# ==============================================================================
+# ANULACIÓN FORMAL DE FACTURA
+# ==============================================================================
+@router.post("/cxc/{receivable_id}/cancel", dependencies=[Depends(require_roles(["director_general", "director", "administrador_financiero"]))])
+def cancel_receivable(
+    receivable_id: int,
+    c_in: ReceivableCancelIn,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    r = db.query(AccountReceivable).filter(AccountReceivable.id == receivable_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Factura no encontrada.")
+    if r.status == "anulada":
+        raise HTTPException(status_code=400, detail="Esta factura ya se encuentra anulada.")
+
+    reason = c_in.cancellation_reason.strip()
+    if not reason:
+        raise HTTPException(status_code=400, detail="Debe indicar el motivo formal de anulación.")
+
+    db.query(FinancialPayment).filter(FinancialPayment.receivable_id == r.id).delete(synchronize_session=False)
+
+    r.status = "anulada"
+    r.paid_amount_usd = 0.0
+    r.balance_usd = 0.0
+    r.notes = (r.notes or "") + f"\n[ANULADA el {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} por {current_user.username}. Motivo: {reason}]"
+
+    audit = AuditLog(
+        username=current_user.username,
+        module="finanzas_cxc",
+        action="anular_factura_cxc",
+        details=f"Factura [{r.invoice_number}] ANULADA formalmente por {current_user.username}. Motivo: {reason}"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(r)
+
+    return {
+        "success": True,
+        "message": f"Factura [{r.invoice_number}] anulada formalmente.",
+        "invoice_number": r.invoice_number,
+        "balance_usd": r.balance_usd,
+        "status": "anulada"
+    }
 

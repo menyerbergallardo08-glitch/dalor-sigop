@@ -52,19 +52,19 @@ function getAssetKind(a) {
     const code = (a.asset_code || a.code || '').toLowerCase();
     const name = (a.name || '').toLowerCase();
 
-    // 1. Vehículos
-    if (t.includes('veh') || c.includes('veh') || code.includes('-v-') || Boolean(a.license_plate)) {
-        return 'vehiculo';
-    }
-
-    // 2. Maquinaria y Equipos Mayores
+    // 1. Maquinaria y Equipos Mayores (evaluar antes para no confundir montacargas o equipos con placa interna con vehículos de carretera)
     const machKeywords = [
         'torno', 'fresadora', 'generador', 'compresor', 'maquina de soldar', 
         'soldadora', 'plasma', 'prensa', 'plegadora', 'cilindradora', 
-        'taladro de columna', 'taladro radial', 'grua', 'montacarga', 'retroexcavadora'
+        'taladro de columna', 'taladro radial', 'grua', 'montacarga', 'retroexcavadora', 'hidrojet'
     ];
     if (t.includes('maquinaria') || t.includes('pesado') || machKeywords.some(k => name.includes(k))) {
         return 'machinery';
+    }
+
+    // 2. Vehículos de Carretera / Flota Automotriz
+    if (t.includes('veh') || c.includes('veh') || code.includes('-v-')) {
+        return 'vehiculo';
     }
 
     // 3. Todo lo demás son herramientas y equipos de taller

@@ -72,6 +72,9 @@ def list_dispatch_guides(
             "received_by_client_name": g.received_by_client_name or "",
             "received_by_client_id_doc": g.received_by_client_id_doc or "",
             "reception_date": g.reception_date.strftime("%Y-%m-%d %H:%M") if g.reception_date else "",
+            "cancelled_at": g.cancelled_at.strftime("%Y-%m-%d %H:%M") if getattr(g, "cancelled_at", None) else None,
+            "cancellation_reason": getattr(g, "cancellation_reason", None) or "",
+            "cancelled_by": getattr(g, "cancelled_by", None) or "",
             "items_count": len(g.items),
             "items": [{
                 "id": it.id,
@@ -146,6 +149,9 @@ def get_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
         "received_by_client_name": g.received_by_client_name or "",
         "received_by_client_id_doc": g.received_by_client_id_doc or "",
         "reception_date": g.reception_date.strftime("%Y-%m-%d %H:%M") if g.reception_date else "",
+        "cancelled_at": g.cancelled_at.strftime("%Y-%m-%d %H:%M") if getattr(g, "cancelled_at", None) else None,
+        "cancellation_reason": getattr(g, "cancellation_reason", None) or "",
+        "cancelled_by": getattr(g, "cancelled_by", None) or "",
         "items": [{
             "id": it.id,
             "item_number": it.item_number,

@@ -482,3 +482,137 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL: EDITAR GUÍA DE DESPACHO / TRASLADO -->
+    <div id="modalEditDispatchGuide" class="modal-overlay hidden" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 750px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <span class="badge-tag" style="background: #e0f2fe; color: #0369a1; font-weight: 800;">Modificación de Guía Emitida</span>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
+                        <i class="fa-solid fa-pen-to-square" style="color: #0284c7;"></i> Editar Guía N° <span id="edit_disp_guide_badge" style="color: #0284c7;">-</span>
+                    </h3>
+                </div>
+                <button type="button" onclick="closeModal('modalEditDispatchGuide')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="formEditDispatchGuide" onsubmit="submitEditDispatchGuide(event)">
+                <input type="hidden" id="edit_disp_id">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label">Dirección de Destino *</label>
+                        <input type="text" id="edit_disp_destination" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Planta / Frente de Trabajo</label>
+                        <input type="text" id="edit_disp_plant" class="form-input" placeholder="Ej: Planta Refinería / Frente Morón">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label">Chofer / Custodio Responsable</label>
+                        <input type="text" id="edit_disp_driver_name" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Cédula del Conductor</label>
+                        <input type="text" id="edit_disp_driver_id_doc" class="form-input" placeholder="V-00.000.000">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label">Teléfono de Contacto</label>
+                        <input type="text" id="edit_disp_driver_phone" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Placa de Vehículo</label>
+                        <input type="text" id="edit_disp_vehicle_plate" class="form-input" style="text-transform: uppercase;">
+                    </div>
+                    <div>
+                        <label class="form-label">Empresa Transportista</label>
+                        <input type="text" id="edit_disp_carrier_company" class="form-input">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label class="form-label">Motivo de Traslado</label>
+                    <input type="text" id="edit_disp_transfer_reason" class="form-input">
+                </div>
+
+                <!-- Renglones de la Guía -->
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-list-check" style="color: #0284c7;"></i> Renglones de Carga / Ítems
+                        </span>
+                        <button type="button" onclick="addEditDispatchItemRow()" class="btn-secondary" style="font-size: 11px; padding: 3px 8px;">
+                            <i class="fa-solid fa-plus"></i> Agregar Fila
+                        </button>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #cbd5e1; color: #64748b; text-align: left;">
+                                <th style="padding: 4px;">#</th>
+                                <th style="padding: 4px;">Descripción</th>
+                                <th style="padding: 4px; width: 70px;">Cant.</th>
+                                <th style="padding: 4px; width: 70px;">Unidad</th>
+                                <th style="padding: 4px; width: 130px;">Condición</th>
+                                <th style="padding: 4px; width: 35px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="edit_disp_items_tbody"></tbody>
+                    </table>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label class="form-label">Observaciones / Notas de Entrega</label>
+                    <textarea id="edit_disp_notes" rows="2" class="form-input" style="resize: vertical;"></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+                    <button type="button" onclick="closeModal('modalEditDispatchGuide')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #0284c7; font-weight: 800;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Modificaciones
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ANULACIÓN FORMAL DE GUÍA -->
+    <div id="modalCancelDispatchGuide" class="modal-overlay hidden" style="z-index: 2200;">
+        <div class="modal-content" style="max-width: 500px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #fee2e2; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <span class="badge-tag" style="background: #fef2f2; color: #dc2626; font-weight: 800;">Acción Irreversible</span>
+                    <h3 style="font-size: 15px; font-weight: 800; color: #991b1b; margin-top: 4px;">
+                        <i class="fa-solid fa-ban"></i> Anular Formalmente Guía <span id="cancel_disp_guide_badge">-</span>
+                    </h3>
+                </div>
+                <button type="button" onclick="closeModal('modalCancelDispatchGuide')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="formCancelDispatchGuide" onsubmit="submitCancelDispatchGuide(event)">
+                <input type="hidden" id="cancel_disp_id">
+                
+                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 11.5px; color: #9f1239;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> <b>Consecuencias operativas:</b> Todos los equipos, herramientas, maquinaria y vehículos asociados a esta guía retornarán inmediatamente al inventario como <b>Disponibles en Sede Central Dalor</b>.
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label class="form-label" style="font-weight: 800; color: #991b1b;">Motivo Formal de Anulación *</label>
+                    <textarea id="cancel_disp_reason" rows="3" class="form-input" placeholder="Ej: Error en los renglones cargados / Despacho cancelado por el cliente / Cambio de flete a última hora" required style="border-color: #fca5a5;"></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalCancelDispatchGuide')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="background: #dc2626; font-weight: 800;">
+                        <i class="fa-solid fa-ban"></i> Anular Guía Definitivamente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+

@@ -4,11 +4,11 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.models.models import (
-    DispatchGuide, DispatchGuideItem, Project, Client, Asset,
+    DispatchGuide, DispatchGuideItem, Project, Client, Asset, User,
     AccountPayable, AccountReceivable, Expense, ExpenseCategory, AuditLog, ProjectAddendum,
     Material, MaterialMovement, ResourceAssignmentHistory
 )
-from .dispatch_common import DispatchGuideCreate
+from .dispatch_common import DispatchGuideCreate, DispatchGuideUpdate, DispatchGuideCancelIn
 from app.api.deps import get_current_active_user
 
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
@@ -282,11 +282,237 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
         "message": f"Guía de Despacho {guide_num} emitida exitosamente."
     }
 
-@router.delete("/{guide_id}")
-def delete_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
+def release_guide_resources(guide: DispatchGuide, db: Session, action_name: str, reason: str = ""):
+    """Libera activos, vehículos y devuelve stock de materiales a base cuando una guía se reversa, anula o elimina."""
+    import re
+    # 1. Liberar activos de carga
+    for item in guide.items:
+        cargo_asset = None
+        if getattr(item, "asset_id", None):
+            cargo_asset = db.query(Asset).filter(Asset.id == item.asset_id).first()
+        elif item.description:
+            m = re.search(r'\[([A-Za-z0-9\-_]+)\]', item.description)
+            if m:
+                code = m.group(1)
+                cargo_asset = db.query(Asset).filter(Asset.asset_code == code).first()
+            if not cargo_asset:
+                cargo_asset = db.query(Asset).filter(Asset.name == item.description.strip()).first()
+        
+        if cargo_asset:
+            cargo_asset.status = "disponible"
+            cargo_asset.current_project_id = None
+            cargo_asset.current_location = "Sede Central Dalor (Guacara)"
+            hist = ResourceAssignmentHistory(
+                project_id=guide.project_id,
+                resource_type="asset",
+                resource_id=cargo_asset.id,
+                resource_code=cargo_asset.asset_code,
+                resource_name=cargo_asset.name,
+                origin_location=guide.destination_address or "Frente de Obra",
+                destination_location="Sede Central Dalor (Guacara)",
+                status="disponible",
+                transfer_code=guide.guide_number,
+                notes=f"{action_name}: Guía {guide.guide_number} reversada/anulada. {reason}".strip()
+            )
+            db.add(hist)
+
+        # 2. Devolver stock de materiales consumibles
+        cargo_mat = None
+        if getattr(item, "material_id", None):
+            cargo_mat = db.query(Material).filter(Material.id == item.material_id).first()
+        elif item.description:
+            cargo_mat = db.query(Material).filter(Material.name == item.description.strip()).first()
+            
+        if cargo_mat:
+            return_qty = float(item.quantity or 0.0)
+            if return_qty > 0:
+                cargo_mat.stock_quantity = round(cargo_mat.stock_quantity + return_qty, 2)
+                cargo_mat.total_cost_usd = round(cargo_mat.stock_quantity * (cargo_mat.unit_cost_usd or 0.0), 2)
+                mov = MaterialMovement(
+                    material_id=cargo_mat.id,
+                    movement_type="reversion_despacho",
+                    quantity=return_qty,
+                    unit_cost_usd=cargo_mat.unit_cost_usd or 0.0,
+                    total_cost_usd=round(return_qty * (cargo_mat.unit_cost_usd or 0.0), 2),
+                    project_id=guide.project_id,
+                    destination="Almacén Central Dalor",
+                    reference_doc=guide.guide_number,
+                    notes=f"Reincorporación a stock por {action_name} Guía {guide.guide_number}. {reason}".strip(),
+                    performed_by="Auditoría / Sistema"
+                )
+                db.add(mov)
+
+    # 3. Liberar vehículo DALOR si estaba asignado
+    if guide.asset_id:
+        veh = db.query(Asset).filter(Asset.id == guide.asset_id).first()
+        if veh:
+            veh.status = "disponible"
+            veh.current_project_id = None
+            veh.current_location = "Sede Central Dalor (Guacara)"
+            hist = ResourceAssignmentHistory(
+                resource_type="asset",
+                resource_id=veh.id,
+                resource_code=veh.asset_code,
+                resource_name=veh.name,
+                project_id=guide.project_id,
+                origin_location="En ruta / Despacho",
+                destination_location="Sede Central Dalor (Guacara)",
+                transfer_code=guide.guide_number,
+                notes=f"Vehículo liberado por {action_name} Guía {guide.guide_number}"
+            )
+            db.add(hist)
+
+@router.put("/{guide_id}")
+def update_dispatch_guide(
+    guide_id: int,
+    guide_in: DispatchGuideUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     g = db.query(DispatchGuide).filter(DispatchGuide.id == guide_id).first()
     if not g:
         raise HTTPException(status_code=404, detail="Guía no encontrada.")
+    if g.status == "anulada":
+        raise HTTPException(status_code=400, detail="Una guía anulada no puede ser modificada.")
+
+    if guide_in.destination_address is not None:
+        g.destination_address = guide_in.destination_address
+    if guide_in.destination_plant is not None:
+        g.destination_plant = guide_in.destination_plant
+    if guide_in.transfer_reason is not None:
+        g.transfer_reason = guide_in.transfer_reason
+    if guide_in.carrier_company is not None:
+        g.carrier_company = guide_in.carrier_company
+    if guide_in.driver_name is not None:
+        g.driver_name = guide_in.driver_name
+    if guide_in.driver_id_doc is not None:
+        g.driver_id_doc = guide_in.driver_id_doc
+    if guide_in.driver_phone is not None:
+        g.driver_phone = guide_in.driver_phone
+    if guide_in.vehicle_model is not None:
+        g.vehicle_model = guide_in.vehicle_model
+    if guide_in.vehicle_plate is not None:
+        g.vehicle_plate = guide_in.vehicle_plate
+    if guide_in.notes is not None:
+        g.notes = guide_in.notes
+
+    # Si se actualizan ítems
+    if guide_in.items is not None:
+        # Eliminar items antiguos y agregar nuevos
+        db.query(DispatchGuideItem).filter(DispatchGuideItem.dispatch_guide_id == g.id).delete(synchronize_session=False)
+        for idx, it in enumerate(guide_in.items):
+            db.add(DispatchGuideItem(
+                dispatch_guide_id=g.id,
+                item_number=idx + 1,
+                description=it.description.strip(),
+                quantity=it.quantity,
+                unit=it.unit or "Pzas",
+                condition_status=it.condition_status or "Reparado / Listo para Montaje",
+                approx_weight_kg=it.approx_weight_kg or 0.0,
+                asset_id=getattr(it, "asset_id", None),
+                material_id=getattr(it, "material_id", None)
+            ))
+
+    audit = AuditLog(
+        username=current_user.username,
+        module="despachos_taller",
+        action="modificar_guia_despacho",
+        details=f"Guía de Despacho {g.guide_number} modificada por usuario '{current_user.username}'"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(g)
+    return {"success": True, "message": f"Guía {g.guide_number} actualizada con éxito.", "id": g.id}
+
+@router.put("/{guide_id}/revert")
+def revert_dispatch_guide(
+    guide_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    g = db.query(DispatchGuide).filter(DispatchGuide.id == guide_id).first()
+    if not g:
+        raise HTTPException(status_code=404, detail="Guía no encontrada.")
+    if g.status == "anulada":
+        raise HTTPException(status_code=400, detail="Una guía anulada no puede ser revertida.")
+
+    # Liberar recursos y devolverlos a base
+    release_guide_resources(g, db, "Reversión Operativa", "Reversión de guía a estado en preparación")
+
+    # Cancelar CxP y CxC asociadas
+    if g.payable_id:
+        db.query(AccountPayable).filter(AccountPayable.id == g.payable_id).delete(synchronize_session=False)
+        g.payable_id = None
+    if g.receivable_id:
+        db.query(AccountReceivable).filter(AccountReceivable.id == g.receivable_id).delete(synchronize_session=False)
+        g.receivable_id = None
+
+    g.status = "en_preparacion"
+    audit = AuditLog(
+        username=current_user.username,
+        module="despachos_taller",
+        action="revertir_guia_despacho",
+        details=f"Guía {g.guide_number} revertida a estado 'en preparación'. Recursos devueltos a base."
+    )
+    db.add(audit)
+    db.commit()
+    return {"success": True, "message": f"Guía {g.guide_number} revertida con éxito. Activos y recursos liberados a base."}
+
+@router.put("/{guide_id}/cancel")
+def cancel_dispatch_guide(
+    guide_id: int,
+    cancel_in: DispatchGuideCancelIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    g = db.query(DispatchGuide).filter(DispatchGuide.id == guide_id).first()
+    if not g:
+        raise HTTPException(status_code=404, detail="Guía no encontrada.")
+    if g.status == "anulada":
+        raise HTTPException(status_code=400, detail="La guía ya se encuentra anulada.")
+
+    reason = cancel_in.cancellation_reason.strip()
+    if not reason:
+        raise HTTPException(status_code=400, detail="Debe especificar un motivo formal de anulación.")
+
+    # Liberar recursos a base
+    release_guide_resources(g, db, "Anulación Formal", reason)
+
+    # Cancelar CxP y CxC asociadas
+    if g.payable_id:
+        db.query(AccountPayable).filter(AccountPayable.id == g.payable_id).delete(synchronize_session=False)
+        g.payable_id = None
+    if g.receivable_id:
+        db.query(AccountReceivable).filter(AccountReceivable.id == g.receivable_id).delete(synchronize_session=False)
+        g.receivable_id = None
+
+    g.status = "anulada"
+    g.cancelled_at = datetime.utcnow()
+    g.cancellation_reason = reason
+    g.cancelled_by = cancel_in.cancelled_by or current_user.username
+
+    audit = AuditLog(
+        username=current_user.username,
+        module="despachos_taller",
+        action="anular_guia_despacho",
+        details=f"Guía {g.guide_number} anulada formalmente. Motivo: {reason}"
+    )
+    db.add(audit)
+    db.commit()
+    return {"success": True, "message": f"Guía {g.guide_number} anulada formalmente.", "id": g.id}
+
+@router.delete("/{guide_id}")
+def delete_dispatch_guide(
+    guide_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    g = db.query(DispatchGuide).filter(DispatchGuide.id == guide_id).first()
+    if not g:
+        raise HTTPException(status_code=404, detail="Guía no encontrada.")
+
+    # Liberar recursos antes de borrar físicamente
+    release_guide_resources(g, db, "Eliminación de Registro", "Eliminación física del registro de guía")
 
     # Si tenía CxP generada por flete, eliminarla
     if g.payable_id:
@@ -297,4 +523,5 @@ def delete_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
 
     db.delete(g)
     db.commit()
-    return {"success": True, "message": f"Guía {g.guide_number} eliminada con éxito."}
+    return {"success": True, "message": f"Guía {g.guide_number} eliminada con éxito y recursos reincorporados a base."}
+

@@ -191,12 +191,18 @@ export async function initDispatchForm() {
                 const res = await authFetch(`${API_BASE}/assets/`);
                 if (res.ok) assets = window.allAssets = await res.json();
             }
-            const vehicles = assets.filter(a => 
-                (a.category && a.category.toLowerCase().includes('veh')) || 
-                (a.sub_category && a.sub_category.toLowerCase().includes('veh')) ||
-                (a.asset_type && a.asset_type.toLowerCase().includes('veh')) ||
-                (a.asset_code && a.asset_code.toLowerCase().includes('veh'))
-            );
+            const vehicles = assets.filter(a => {
+                const type = (a.asset_type || '').toLowerCase();
+                const cat = (a.category || '').toLowerCase();
+                const name = (a.name || '').toLowerCase();
+                // Excluir expresamente maquinaria pesada, herramientas y equipos
+                const machKeywords = ['montacarga', 'generador', 'torno', 'soldar', 'compresor', 'hidrojet', 'plasma', 'oxicorte'];
+                if (type.includes('maq') || type.includes('herr') || type.includes('equipo')) return false;
+                if (cat.includes('maq') || cat.includes('herr') || cat.includes('equipo')) return false;
+                if (machKeywords.some(k => name.includes(k))) return false;
+                // Exclusivamente vehículos de carretera / flota automotriz
+                return type === 'vehiculo' || cat === 'vehiculo' || cat.includes('flota') || type.includes('flota');
+            });
 
             const availableVehicles = [];
             const unavailableVehicles = [];

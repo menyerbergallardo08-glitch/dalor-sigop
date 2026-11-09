@@ -358,6 +358,9 @@ export async function performLogin(username, password) {
         redirectUserByRole(State.currentUser);
 
         // Inicializar cargas visuales si existen en app.js
+        if (typeof window.fetchAndApplyBcvRate === 'function') {
+            try { window.fetchAndApplyBcvRate(false); } catch(e) {}
+        }
         if (typeof window.loadInitialMasterData === 'function') {
             try { window.loadInitialMasterData(); } catch(e) { console.warn(e); }
         }

@@ -180,11 +180,21 @@ export function renderDispatchPaginated() {
         const isFreeform = !!g.is_freeform;
         const isDelivered = (g.status === 'entregada' || g.status === 'entregado_conforme');
         const isIssued = (g.status === 'emitida');
-        const statusBadge = isDelivered
-            ? `<span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-circle-check"></i> ${isInternal ? 'Conforme Sede' : 'Entregada'}</span>`
-            : (isIssued
-                ? `<span style="background: #fefce8; color: #a16207; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fef08a;"><i class="fa-solid fa-file-circle-check"></i> ${isInternal ? 'Emitida (Taller)' : 'Emitida'}</span>`
-                : `<span style="background: #fff7ed; color: #c2410c; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fed7aa;"><i class="fa-solid fa-truck-fast"></i> En Tránsito</span>`);
+        const isCancelled = (g.status === 'anulada' || g.status === 'cancelada');
+        const isPreparation = (g.status === 'en_preparacion' || g.status === 'borrador');
+        
+        let statusBadge = '';
+        if (isCancelled) {
+            statusBadge = `<span style="background: #fef2f2; color: #dc2626; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fecaca;"><i class="fa-solid fa-ban"></i> Anulada</span>`;
+        } else if (isDelivered) {
+            statusBadge = `<span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-circle-check"></i> ${isInternal ? 'Conforme Sede' : 'Entregada'}</span>`;
+        } else if (isIssued) {
+            statusBadge = `<span style="background: #fefce8; color: #a16207; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fef08a;"><i class="fa-solid fa-file-circle-check"></i> ${isInternal ? 'Emitida (Taller)' : 'Emitida'}</span>`;
+        } else if (isPreparation) {
+            statusBadge = `<span style="background: #f1f5f9; color: #475569; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #cbd5e1;"><i class="fa-solid fa-pen-ruler"></i> En Preparación</span>`;
+        } else {
+            statusBadge = `<span style="background: #fff7ed; color: #c2410c; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; border: 1px solid #fed7aa;"><i class="fa-solid fa-truck-fast"></i> En Tránsito</span>`;
+        }
 
         let typeBadge = '';
         if (isInternal) {
@@ -212,8 +222,8 @@ export function renderDispatchPaginated() {
         }
 
         return `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                <td style="padding: 10px; font-weight: 900; color: var(--dalor-navy);">
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease; ${isCancelled ? 'opacity: 0.7; background: #fafafa;' : ''}" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='${isCancelled ? '#fafafa' : 'transparent'}'">
+                <td style="padding: 10px; font-weight: 900; color: ${isCancelled ? '#94a3b8; text-decoration: line-through;' : 'var(--dalor-navy);'}">
                     ${g.guide_number}
                 </td>
                 <td style="padding: 10px; color: #64748b; font-size: 11px;">
@@ -247,12 +257,23 @@ export function renderDispatchPaginated() {
                         <button type="button" onclick="printOfficialDispatchGuide(${g.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Ver e Imprimir Guía Oficial">
                             <i class="fa-solid fa-print"></i>
                         </button>
-                        ${(!isDelivered) ? `
+                        ${(!isCancelled) ? `
+                            <button type="button" onclick="openEditDispatchGuideModal(${g.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #0284c7;" title="Editar Guía">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        ` : ''}
+                        ${(!isCancelled && !isDelivered) ? `
+                            <button type="button" onclick="revertDispatchGuide(${g.id}, '${g.guide_number}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #d97706;" title="Revertir a Preparación (Liberar Recursos a Base)">
+                                <i class="fa-solid fa-rotate-left"></i>
+                            </button>
+                            <button type="button" onclick="openCancelDispatchGuideModal(${g.id}, '${g.guide_number}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #b91c1c;" title="Anular Guía Formalmente">
+                                <i class="fa-solid fa-ban"></i>
+                            </button>
                             <button type="button" onclick="openConfirmDeliveryModal(${g.id}, '${g.guide_number}')" class="btn-primary" style="padding: 4px 8px; font-size: 11px; background: #059669;" title="Confirmar Recepción / Entrega">
                                 <i class="fa-solid fa-clipboard-check"></i>
                             </button>
                         ` : ''}
-                        <button type="button" onclick="deleteDispatchGuide(${g.id}, '${g.guide_number}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #dc2626;" title="Eliminar Guía">
+                        <button type="button" onclick="deleteDispatchGuide(${g.id}, '${g.guide_number}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #dc2626;" title="Eliminar Registro">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
@@ -331,6 +352,250 @@ export async function submitConfirmDelivery(event) {
 }
 
 // ==============================================================================
+// EDICIÓN DE GUÍA
+// ==============================================================================
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+export async function openEditDispatchGuideModal(guideId) {
+    try {
+        const res = await authFetch(`${API_BASE}/dispatch/${guideId}`);
+        if (!res.ok) throw new Error("No se pudo obtener la información de la guía.");
+        const g = await res.json();
+
+        const idEl = document.getElementById('edit_disp_id');
+        if (idEl) idEl.value = g.id;
+        const badgeEl = document.getElementById('edit_disp_guide_badge');
+        if (badgeEl) badgeEl.textContent = g.guide_number;
+        const destEl = document.getElementById('edit_disp_destination');
+        if (destEl) destEl.value = g.destination_address || '';
+        const plantEl = document.getElementById('edit_disp_plant');
+        if (plantEl) plantEl.value = g.destination_plant || '';
+        const driverEl = document.getElementById('edit_disp_driver_name');
+        if (driverEl) driverEl.value = g.driver_name || '';
+        const docEl = document.getElementById('edit_disp_driver_id_doc');
+        if (docEl) docEl.value = g.driver_id_doc || '';
+        const phoneEl = document.getElementById('edit_disp_driver_phone');
+        if (phoneEl) phoneEl.value = g.driver_phone || '';
+        const plateEl = document.getElementById('edit_disp_vehicle_plate');
+        if (plateEl) plateEl.value = g.vehicle_plate || '';
+        const carrierEl = document.getElementById('edit_disp_carrier_company');
+        if (carrierEl) carrierEl.value = g.carrier_company || '';
+        const reasonEl = document.getElementById('edit_disp_transfer_reason');
+        if (reasonEl) reasonEl.value = g.transfer_reason || '';
+        const notesEl = document.getElementById('edit_disp_notes');
+        if (notesEl) notesEl.value = g.notes || '';
+
+        const tbody = document.getElementById('edit_disp_items_tbody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            if (g.items && g.items.length > 0) {
+                g.items.forEach(it => {
+                    addEditDispatchItemRow(it.description, it.quantity, it.unit, it.condition_status);
+                });
+            } else {
+                addEditDispatchItemRow();
+            }
+        }
+
+        if (typeof window.openModal === 'function') {
+            window.openModal('modalEditDispatchGuide');
+        } else {
+            const m = document.getElementById('modalEditDispatchGuide');
+            if (m) m.classList.remove('hidden');
+        }
+    } catch (err) {
+        alert('Error al abrir editor de guía: ' + err.message);
+    }
+}
+
+export function addEditDispatchItemRow(desc = '', qty = 1, unit = 'Pzas', cond = 'Reparado / Listo para Montaje') {
+    const tbody = document.getElementById('edit_disp_items_tbody');
+    if (!tbody) return;
+    const rowIdx = tbody.children.length + 1;
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #e2e8f0';
+    tr.innerHTML = `
+        <td style="padding: 4px; font-weight: 700; color: #64748b;">${rowIdx}</td>
+        <td style="padding: 4px;"><input type="text" class="form-input edit-item-desc" value="${escapeHtml(desc)}" placeholder="Descripción del ítem" style="padding: 4px 6px; font-size: 11px; width: 100%;" required></td>
+        <td style="padding: 4px;"><input type="number" step="0.01" class="form-input edit-item-qty" value="${qty}" style="padding: 4px 6px; font-size: 11px; width: 100%;" required></td>
+        <td style="padding: 4px;">
+            <select class="form-select edit-item-unit" style="padding: 4px; font-size: 11px; width: 100%;">
+                <option value="Pzas" ${unit === 'Pzas' ? 'selected' : ''}>Pzas</option>
+                <option value="UND" ${unit === 'UND' ? 'selected' : ''}>UND</option>
+                <option value="Metros" ${unit === 'Metros' ? 'selected' : ''}>Metros</option>
+                <option value="Kg" ${unit === 'Kg' ? 'selected' : ''}>Kg</option>
+                <option value="Juego" ${unit === 'Juego' ? 'selected' : ''}>Juego</option>
+                <option value="Tambor" ${unit === 'Tambor' ? 'selected' : ''}>Tambor</option>
+            </select>
+        </td>
+        <td style="padding: 4px;"><input type="text" class="form-input edit-item-cond" value="${escapeHtml(cond)}" style="padding: 4px 6px; font-size: 11px; width: 100%;"></td>
+        <td style="padding: 4px; text-align: center;">
+            <button type="button" onclick="this.closest('tr').remove()" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 12px;"><i class="fa-solid fa-trash-can"></i></button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+export async function submitEditDispatchGuide(event) {
+    if (event) event.preventDefault();
+    const guideId = document.getElementById('edit_disp_id')?.value;
+    const destination = document.getElementById('edit_disp_destination')?.value?.trim() || '';
+    const plant = document.getElementById('edit_disp_plant')?.value?.trim() || '';
+    const driver = document.getElementById('edit_disp_driver_name')?.value?.trim() || '';
+    const driverDoc = document.getElementById('edit_disp_driver_id_doc')?.value?.trim() || '';
+    const driverPhone = document.getElementById('edit_disp_driver_phone')?.value?.trim() || '';
+    const plate = document.getElementById('edit_disp_vehicle_plate')?.value?.trim() || '';
+    const carrier = document.getElementById('edit_disp_carrier_company')?.value?.trim() || '';
+    const reason = document.getElementById('edit_disp_transfer_reason')?.value?.trim() || '';
+    const notes = document.getElementById('edit_disp_notes')?.value?.trim() || '';
+
+    const itemRows = document.querySelectorAll('#edit_disp_items_tbody tr');
+    const items = [];
+    itemRows.forEach(tr => {
+        const d = tr.querySelector('.edit-item-desc')?.value?.trim();
+        const q = parseFloat(tr.querySelector('.edit-item-qty')?.value || '1');
+        const u = tr.querySelector('.edit-item-unit')?.value || 'Pzas';
+        const c = tr.querySelector('.edit-item-cond')?.value?.trim() || 'Reparado / Listo para Montaje';
+        if (d) {
+            items.push({ description: d, quantity: q, unit: u, condition_status: c });
+        }
+    });
+
+    try {
+        const res = await authFetch(`${API_BASE}/dispatch/${guideId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                destination_address: destination,
+                destination_plant: plant,
+                driver_name: driver,
+                driver_id_doc: driverDoc,
+                driver_phone: driverPhone,
+                vehicle_plate: plate,
+                carrier_company: carrier,
+                transfer_reason: reason,
+                notes: notes,
+                items: items.length > 0 ? items : undefined
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Error al guardar cambios de la guía.');
+        }
+
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('modalEditDispatchGuide');
+        } else {
+            const m = document.getElementById('modalEditDispatchGuide');
+            if (m) m.classList.add('hidden');
+        }
+
+        if (typeof window.showToast === 'function') {
+            window.showToast('Guía modificada exitosamente.', 'success');
+        } else {
+            alert('Guía modificada exitosamente.');
+        }
+
+        await loadDispatchGuidesList();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+// ==============================================================================
+// REVERSIÓN OPERATIVA (ROLLBACK)
+// ==============================================================================
+export async function revertDispatchGuide(guideId, guideNum) {
+    if (!confirm(`¿Deseas revertir la ejecución de la Guía N° ${guideNum}?\n\nEsta acción devolverá todos los equipos, herramientas, maquinaria y vehículos asociados al inventario de Sede Central Dalor y colocará la guía en estado 'en preparación'.`)) {
+        return;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/dispatch/${guideId}/revert`, {
+            method: 'PUT'
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Error al revertir guía.');
+        }
+
+        if (typeof window.showToast === 'function') {
+            window.showToast(`Guía ${guideNum} revertida a borrador. Recursos devueltos a base.`, 'warning');
+        } else {
+            alert(`Guía ${guideNum} revertida con éxito.`);
+        }
+
+        await loadDispatchGuidesList();
+    } catch (err) {
+        alert('Error al revertir guía: ' + err.message);
+    }
+}
+
+// ==============================================================================
+// ANULACIÓN FORMAL DE GUÍA
+// ==============================================================================
+export function openCancelDispatchGuideModal(guideId, guideNum) {
+    const idEl = document.getElementById('cancel_disp_id');
+    if (idEl) idEl.value = guideId;
+    const badgeEl = document.getElementById('cancel_disp_guide_badge');
+    if (badgeEl) badgeEl.textContent = guideNum;
+    const rEl = document.getElementById('cancel_disp_reason');
+    if (rEl) rEl.value = '';
+    if (typeof window.openModal === 'function') {
+        window.openModal('modalCancelDispatchGuide');
+    } else {
+        const m = document.getElementById('modalCancelDispatchGuide');
+        if (m) m.classList.remove('hidden');
+    }
+}
+
+export async function submitCancelDispatchGuide(event) {
+    if (event) event.preventDefault();
+    const guideId = document.getElementById('cancel_disp_id')?.value;
+    const reason = document.getElementById('cancel_disp_reason')?.value?.trim();
+
+    if (!reason) {
+        alert('Por favor especifica un motivo de anulación formal.');
+        return;
+    }
+
+    try {
+        const res = await authFetch(`${API_BASE}/dispatch/${guideId}/cancel`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cancellation_reason: reason })
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Error al anular la guía.');
+        }
+
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('modalCancelDispatchGuide');
+        } else {
+            const m = document.getElementById('modalCancelDispatchGuide');
+            if (m) m.classList.add('hidden');
+        }
+
+        if (typeof window.showToast === 'function') {
+            window.showToast('Guía anulada formalmente y recursos liberados a base.', 'info');
+        } else {
+            alert('Guía anulada exitosamente.');
+        }
+
+        await loadDispatchGuidesList();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+// ==============================================================================
 // ELIMINACIÓN DE GUÍA
 // ==============================================================================
 export async function deleteDispatchGuide(guideId, guideNum) {
@@ -374,4 +639,11 @@ if (typeof window !== 'undefined') {
     window.openConfirmDeliveryModal = openConfirmDeliveryModal;
     window.submitConfirmDelivery = submitConfirmDelivery;
     window.deleteDispatchGuide = deleteDispatchGuide;
+    window.openEditDispatchGuideModal = openEditDispatchGuideModal;
+    window.addEditDispatchItemRow = addEditDispatchItemRow;
+    window.submitEditDispatchGuide = submitEditDispatchGuide;
+    window.revertDispatchGuide = revertDispatchGuide;
+    window.openCancelDispatchGuideModal = openCancelDispatchGuideModal;
+    window.submitCancelDispatchGuide = submitCancelDispatchGuide;
 }
+

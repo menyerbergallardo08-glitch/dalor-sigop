@@ -731,6 +731,11 @@ class DispatchGuide(Base):
     received_by_client_id_doc = Column(String(50), nullable=True)
     reception_date = Column(DateTime, nullable=True)
     
+    # Auditoría de Reversión y Anulación Formal
+    cancelled_at = Column(DateTime, nullable=True)
+    cancellation_reason = Column(Text, nullable=True)
+    cancelled_by = Column(String(150), nullable=True)
+    
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)
 
@@ -751,6 +756,8 @@ class DispatchGuideItem(Base):
     unit = Column(String(50), default="Pzas") # Pzas, Ejes, Tramos, Kg, Tn, Conjuntos
     condition_status = Column(String(100), default="Reparado / Listo para Montaje")
     approx_weight_kg = Column(Money, default=0.0)
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=True)
 
     dispatch_guide = relationship("DispatchGuide", back_populates="items")
 

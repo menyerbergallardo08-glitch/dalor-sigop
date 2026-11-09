@@ -136,6 +136,11 @@ def init_db():
         f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}guide_type VARCHAR(50) DEFAULT 'traslado_externo';",
         f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}delivered_by_staff VARCHAR(150);",
         f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}received_by_staff VARCHAR(150);",
+        f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}cancelled_at TIMESTAMP;",
+        f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}cancellation_reason TEXT;",
+        f"ALTER TABLE dispatch_guides ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}cancelled_by VARCHAR(150);",
+        f"ALTER TABLE dispatch_guide_items ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}asset_id INTEGER;",
+        f"ALTER TABLE dispatch_guide_items ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}material_id INTEGER;",
         f"ALTER TABLE expense_categories ADD COLUMN {'IF NOT EXISTS ' if not is_sqlite else ''}business_rule VARCHAR(50) DEFAULT 'costo_material_obra';",
     ]
     if not is_sqlite:

@@ -145,6 +145,23 @@ export async function printOfficialDispatchGuide(guideId) {
                         @page { margin: 10mm; }
                         .no-print { display: none !important; }
                     }
+                    .watermark-anulada {
+                        position: absolute;
+                        top: 45%;
+                        left: 50%;
+                        transform: translate(-50%, -50%) rotate(-30deg);
+                        font-size: 85px;
+                        font-weight: 900;
+                        color: rgba(220, 38, 38, 0.22);
+                        border: 8px solid rgba(220, 38, 38, 0.22);
+                        padding: 12px 40px;
+                        border-radius: 12px;
+                        letter-spacing: 12px;
+                        pointer-events: none;
+                        z-index: 1000;
+                        text-transform: uppercase;
+                        white-space: nowrap;
+                    }
                 </style>
             </head>
             <body>
@@ -154,7 +171,21 @@ export async function printOfficialDispatchGuide(guideId) {
                     </button>
                 </div>
 
-                <div style="background: white; padding: 25px; border-radius: 8px; font-family: 'Inter', sans-serif; color: #1e293b; max-width: 820px; margin: 0 auto; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="background: white; padding: 25px; border-radius: 8px; font-family: 'Inter', sans-serif; color: #1e293b; max-width: 820px; margin: 0 auto; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; overflow: hidden;">
+                    ${(g.status === 'anulada' || g.status === 'cancelada') ? `
+                        <div class="watermark-anulada">ANULADA</div>
+                        <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; color: #991b1b;">
+                            <div style="font-size: 14px; font-weight: 900; display: flex; align-items: center; gap: 8px;">
+                                ⚠️ DOCUMENTO OFICIALMENTE ANULADO
+                            </div>
+                            <div style="font-size: 11px; margin-top: 4px;">
+                                <b>Fecha de Anulación:</b> ${g.cancelled_at || '-'} &bull; <b>Anulada por:</b> ${g.cancelled_by || 'Dirección / Auditoría'}
+                            </div>
+                            <div style="font-size: 11px; margin-top: 2px;">
+                                <b>Motivo Registrado:</b> ${g.cancellation_reason || 'Sin motivo especificado'}
+                            </div>
+                        </div>
+                    ` : ''}
                     <!-- ENCABEZADO OFICIAL DALOR -->
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F5B800; padding-bottom: 12px; margin-bottom: 14px;">
                         <div style="display: flex; align-items: center; gap: 14px;">

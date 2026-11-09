@@ -51,6 +51,28 @@ class DeliveryConfirmIn(BaseModel):
     reception_date: Optional[datetime] = None
     notes: Optional[str] = None
 
+class DispatchGuideUpdate(BaseModel):
+    destination_address: Optional[str] = None
+    destination_plant: Optional[str] = None
+    transfer_reason: Optional[str] = None
+    carrier_company: Optional[str] = None
+    driver_name: Optional[str] = None
+    driver_id_doc: Optional[str] = None
+    driver_phone: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_plate: Optional[str] = None
+    transport_type: Optional[str] = None
+    asset_id: Optional[int] = None
+    freight_cost_usd: Optional[float] = None
+    freight_price_charged_usd: Optional[float] = None
+    notes: Optional[str] = None
+    items: Optional[List[DispatchItemIn]] = None
+
+class DispatchGuideCancelIn(BaseModel):
+    cancellation_reason: str
+    cancelled_by: Optional[str] = "Dirección / Auditoría"
+
 class BadDebtIn(BaseModel):
     reason: str
     notes: Optional[str] = None
+

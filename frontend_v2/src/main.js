@@ -248,38 +248,10 @@ function initSearchDebounceBindings() {
 }
 window.initSearchDebounceBindings = initSearchDebounceBindings;
 
-// Control de Tasa Oficial BCV
+// Control de Tasa Oficial BCV unificado con bcv.js
 async function fetchAndApplyBcvRate(forceRefresh = false) {
-    try {
-        const data = await Api.financial.getBcvRate(forceRefresh);
-        State.bcvData = data;
-        window.BCV_DATA = data;
-        const val = parseFloat(data.rate);
-        if (!isNaN(val) && val > 0) {
-            State.exchangeRate = val;
-            window.EXCHANGE_RATE = val;
-            localStorage.setItem('dalor_exchange_rate', val);
-            
-            const display = document.getElementById("bcvRateDisplay");
-            if (display) display.innerText = data.formatted_rate || val.toFixed(2);
-            
-            const input = document.getElementById("globalExchangeRateInput");
-            if (input) input.value = val.toFixed(2);
-            
-            const modalRate = document.getElementById("modalBcvCurrentRate");
-            if (modalRate) modalRate.innerText = `${val.toFixed(2)} Bs/$ (${data.source || 'BCV'})`;
-            
-            const modalDate = document.getElementById("modalBcvDateValue");
-            if (modalDate) modalDate.innerText = data.date_value || 'Vigente';
-            
-            const kpiBcv = document.getElementById("kpi_partners_bcv_rate");
-            if (kpiBcv) kpiBcv.innerText = `${val.toFixed(2)} Bs/$`;
-
-            const manualInput = document.getElementById("manualTasaInput");
-            if (manualInput && !manualInput.value) manualInput.value = val.toFixed(2);
-        }
-    } catch (e) {
-        console.warn("No se pudo actualizar tasa BCV:", e);
+    if (typeof window.fetchAndApplyBcvRate === 'function') {
+        return window.fetchAndApplyBcvRate(forceRefresh);
     }
 }
 window.fetchAndApplyBcvRate = fetchAndApplyBcvRate;

@@ -253,7 +253,7 @@ export function renderDispatchPaginated() {
                     ${statusBadge}
                 </td>
                 <td style="padding: 10px; text-align: center;">
-                    <div style="display: inline-flex; gap: 4px;">
+                    <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center; flex-wrap: nowrap;">
                         <button type="button" onclick="printOfficialDispatchGuide(${g.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Ver e Imprimir Guía Oficial">
                             <i class="fa-solid fa-print"></i>
                         </button>
@@ -261,14 +261,16 @@ export function renderDispatchPaginated() {
                             <button type="button" onclick="openEditDispatchGuideModal(${g.id})" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #0284c7;" title="Editar Guía">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </button>
-                        ` : ''}
-                        ${(!isCancelled && !isDelivered) ? `
                             <button type="button" onclick="revertDispatchGuide(${g.id}, '${g.guide_number}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #d97706;" title="Revertir a Preparación (Liberar Recursos a Base)">
                                 <i class="fa-solid fa-rotate-left"></i>
                             </button>
-                            <button type="button" onclick="openCancelDispatchGuideModal(${g.id}, '${g.guide_number}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #b91c1c;" title="Anular Guía Formalmente">
-                                <i class="fa-solid fa-ban"></i>
+                            <button type="button" onclick="openCancelDispatchGuideModal(${g.id}, '${g.guide_number}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;" title="Anular Guía Formalmente">
+                                <i class="fa-solid fa-ban"></i> <span>Anular</span>
                             </button>
+                        ` : `
+                            <span style="font-size: 10px; color: #dc2626; font-weight: 800; background: #fef2f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fecdd3;">ANULADA</span>
+                        `}
+                        ${(!isCancelled && !isDelivered) ? `
                             <button type="button" onclick="openConfirmDeliveryModal(${g.id}, '${g.guide_number}')" class="btn-primary" style="padding: 4px 8px; font-size: 11px; background: #059669;" title="Confirmar Recepción / Entrega">
                                 <i class="fa-solid fa-clipboard-check"></i>
                             </button>

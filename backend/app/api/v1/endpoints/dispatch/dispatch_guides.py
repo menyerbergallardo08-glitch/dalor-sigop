@@ -56,6 +56,7 @@ def list_dispatch_guides(
             "destination_address": g.destination_address,
             "destination_plant": g.destination_plant or "",
             "transport_type": g.transport_type,
+            "asset_id": g.asset_id,
             "carrier_company": g.carrier_company or "",
             "driver_name": g.driver_name or ("Personal Dalor Taller / Custodia Interna" if (getattr(g, 'guide_type', None) == 'control_interno' or (g.guide_number and g.guide_number.startswith('GCI-'))) else "Sin Conductor Asignado"),
             "driver_id_doc": g.driver_id_doc or ("INTERNO" if (getattr(g, 'guide_type', None) == 'control_interno' or (g.guide_number and g.guide_number.startswith('GCI-'))) else "-"),
@@ -83,7 +84,9 @@ def list_dispatch_guides(
                 "quantity": it.quantity,
                 "unit": it.unit,
                 "condition_status": it.condition_status,
-                "approx_weight_kg": it.approx_weight_kg
+                "approx_weight_kg": it.approx_weight_kg,
+                "asset_id": it.asset_id,
+                "material_id": it.material_id
             } for it in g.items],
             "notes": g.notes or ""
         })
@@ -133,6 +136,7 @@ def get_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
         "destination_address": g.destination_address,
         "destination_plant": g.destination_plant or "",
         "transport_type": g.transport_type,
+        "asset_id": g.asset_id,
         "carrier_company": g.carrier_company or "",
         "driver_name": g.driver_name or ("Personal Dalor Taller / Custodia Interna" if (getattr(g, 'guide_type', None) == 'control_interno' or (g.guide_number and g.guide_number.startswith('GCI-'))) else "Sin Conductor Asignado"),
         "driver_id_doc": g.driver_id_doc or ("INTERNO" if (getattr(g, 'guide_type', None) == 'control_interno' or (g.guide_number and g.guide_number.startswith('GCI-'))) else "-"),
@@ -159,7 +163,9 @@ def get_dispatch_guide(guide_id: int, db: Session = Depends(get_db)):
             "quantity": it.quantity,
             "unit": it.unit,
             "condition_status": it.condition_status,
-            "approx_weight_kg": it.approx_weight_kg
+            "approx_weight_kg": it.approx_weight_kg,
+            "asset_id": it.asset_id,
+            "material_id": it.material_id
         } for it in g.items],
         "notes": g.notes or ""
     }

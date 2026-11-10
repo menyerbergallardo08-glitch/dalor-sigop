@@ -396,10 +396,99 @@ def update_dispatch_guide(
     if guide_in.notes is not None:
         g.notes = guide_in.notes
 
+    # Sincronización Logística de Vehículo de Flota DALOR
+    new_asset_id = guide_in.asset_id
+    if not new_asset_id and guide_in.vehicle_plate:
+        matched_veh = db.query(Asset).filter(
+            Asset.license_plate == guide_in.vehicle_plate.strip().upper(),
+            Asset.is_active == True
+        ).first()
+        if matched_veh:
+            new_asset_id = matched_veh.id
+
+    if new_asset_id is not None and new_asset_id != g.asset_id:
+        # 1. Si tenía un vehículo anterior asignado diferente, liberarlo a base
+        if g.asset_id:
+            old_veh = db.query(Asset).filter(Asset.id == g.asset_id).first()
+            if old_veh:
+                old_veh.status = "disponible_base"
+                old_veh.current_project_id = None
+                old_veh.current_location = "Sede Central Dalor (Guacara)"
+                old_veh.current_custodian_name = "Disponible en Base"
+                db.add(ResourceAssignmentHistory(
+                    project_id=g.project_id,
+                    resource_type="asset",
+                    resource_id=old_veh.id,
+                    resource_code=old_veh.asset_code,
+                    resource_name=old_veh.name,
+                    origin_location=g.destination_plant or g.destination_address or "En ruta",
+                    destination_location="Sede Central Dalor (Guacara)",
+                    status="disponible_base",
+                    transfer_code=g.guide_number,
+                    notes=f"Vehículo sustituido en edición de Guía {g.guide_number}"
+                ))
+
+        # 2. Asignar nuevo vehículo
+        new_veh = db.query(Asset).filter(Asset.id == new_asset_id).first()
+        if new_veh:
+            target_dest = guide_in.destination_plant or guide_in.destination_address or g.destination_plant or g.destination_address or "En ruta"
+            new_veh.status = "en_obra" if g.project_id else "en_transito"
+            new_veh.current_project_id = g.project_id
+            new_veh.current_location = target_dest
+            if guide_in.driver_name and guide_in.driver_name.strip():
+                new_veh.current_custodian_name = guide_in.driver_name.strip()
+            g.asset_id = new_veh.id
+            if not guide_in.vehicle_model:
+                g.vehicle_model = new_veh.name
+            if not guide_in.vehicle_plate and new_veh.license_plate:
+                g.vehicle_plate = new_veh.license_plate
+
+            db.add(ResourceAssignmentHistory(
+                project_id=g.project_id,
+                resource_type="asset",
+                resource_id=new_veh.id,
+                resource_code=new_veh.asset_code,
+                resource_name=new_veh.name,
+                destination_location=target_dest,
+                custodian_name=new_veh.current_custodian_name,
+                driver_name=guide_in.driver_name or g.driver_name,
+                status="en_obra" if g.project_id else "en_transito",
+                transfer_code=g.guide_number,
+                notes=f"Vehículo asignado por edición de Guía {g.guide_number}"
+            ))
+    elif new_asset_id is not None:
+        g.asset_id = new_asset_id
+
     # Si se actualizan ítems
     if guide_in.items is not None:
+        old_item_asset_ids = set([it.asset_id for it in g.items if it.asset_id])
+        new_item_asset_ids = set([getattr(it, "asset_id", None) for it in guide_in.items if getattr(it, "asset_id", None)])
+
+        # Activos retirados de la carga -> devolver a base
+        removed_asset_ids = old_item_asset_ids - new_item_asset_ids
+        for r_id in removed_asset_ids:
+            rem_asset = db.query(Asset).filter(Asset.id == r_id).first()
+            if rem_asset:
+                rem_asset.status = "disponible_base"
+                rem_asset.current_project_id = None
+                rem_asset.current_location = "Sede Central Dalor (Guacara)"
+                rem_asset.current_custodian_name = "Disponible en Base"
+                db.add(ResourceAssignmentHistory(
+                    project_id=g.project_id,
+                    resource_type="asset",
+                    resource_id=rem_asset.id,
+                    resource_code=rem_asset.asset_code,
+                    resource_name=rem_asset.name,
+                    origin_location=g.destination_plant or g.destination_address or "En obra",
+                    destination_location="Sede Central Dalor (Guacara)",
+                    status="disponible_base",
+                    transfer_code=g.guide_number,
+                    notes=f"Equipo/Herramienta desincorporado en edición de Guía {g.guide_number}"
+                ))
+
         # Eliminar items antiguos y agregar nuevos
         db.query(DispatchGuideItem).filter(DispatchGuideItem.dispatch_guide_id == g.id).delete(synchronize_session=False)
+        target_dest = guide_in.destination_plant or guide_in.destination_address or g.destination_plant or g.destination_address or "En ruta"
         for idx, it in enumerate(guide_in.items):
             db.add(DispatchGuideItem(
                 dispatch_guide_id=g.id,
@@ -412,6 +501,25 @@ def update_dispatch_guide(
                 asset_id=getattr(it, "asset_id", None),
                 material_id=getattr(it, "material_id", None)
             ))
+
+            # Si es un nuevo activo agregado a la carga
+            if getattr(it, "asset_id", None) and it.asset_id in (new_item_asset_ids - old_item_asset_ids):
+                add_asset = db.query(Asset).filter(Asset.id == it.asset_id).first()
+                if add_asset:
+                    add_asset.status = "en_obra" if g.project_id else "en_transito"
+                    add_asset.current_project_id = g.project_id
+                    add_asset.current_location = target_dest
+                    db.add(ResourceAssignmentHistory(
+                        project_id=g.project_id,
+                        resource_type="asset",
+                        resource_id=add_asset.id,
+                        resource_code=add_asset.asset_code,
+                        resource_name=add_asset.name,
+                        destination_location=target_dest,
+                        status="en_obra" if g.project_id else "en_transito",
+                        transfer_code=g.guide_number,
+                        notes=f"Equipo/Herramienta incorporado en edición de Guía {g.guide_number}"
+                    ))
 
     audit = AuditLog(
         username=current_user.username,

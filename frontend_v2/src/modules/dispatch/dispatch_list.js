@@ -390,12 +390,33 @@ export async function openEditDispatchGuideModal(guideId) {
         const notesEl = document.getElementById('edit_disp_notes');
         if (notesEl) notesEl.value = g.notes || '';
 
+        // Poblar selector de flota DALOR y modelo
+        const vehSel = document.getElementById('edit_disp_select_asset');
+        const vehModelInput = document.getElementById('edit_disp_vehicle_model');
+        if (vehModelInput) vehModelInput.value = g.vehicle_model || '';
+
+        if (vehSel) {
+            vehSel.innerHTML = '<option value="">-- Seleccionar de Flota Propia (Opcional) --</option>';
+            const fleet = (window.allAssets || []).filter(a => ['vehiculo', 'camioneta', 'camion'].includes((a.asset_type || '').toLowerCase()));
+            fleet.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = `[${v.asset_code || 'FLT'}] ${v.name} (${v.license_plate || 'S/P'})`;
+                opt.setAttribute('data-plate', v.license_plate || '');
+                opt.setAttribute('data-model', v.name || '');
+                if ((g.asset_id && String(v.id) === String(g.asset_id)) || (g.vehicle_plate && v.license_plate && v.license_plate.trim().toUpperCase() === g.vehicle_plate.trim().toUpperCase())) {
+                    opt.selected = true;
+                }
+                vehSel.appendChild(opt);
+            });
+        }
+
         const tbody = document.getElementById('edit_disp_items_tbody');
         if (tbody) {
             tbody.innerHTML = '';
             if (g.items && g.items.length > 0) {
                 g.items.forEach(it => {
-                    addEditDispatchItemRow(it.description, it.quantity, it.unit, it.condition_status);
+                    addEditDispatchItemRow(it.description, it.quantity, it.unit, it.condition_status, it.asset_id, it.material_id);
                 });
             } else {
                 addEditDispatchItemRow();
@@ -413,15 +434,34 @@ export async function openEditDispatchGuideModal(guideId) {
     }
 }
 
-export function addEditDispatchItemRow(desc = '', qty = 1, unit = 'Pzas', cond = 'Reparado / Listo para Montaje') {
+export function onEditDispatchAssetChanged() {
+    const sel = document.getElementById('edit_disp_select_asset');
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    const plate = opt ? (opt.getAttribute('data-plate') || '') : '';
+    const model = opt ? (opt.getAttribute('data-model') || '') : '';
+    const plateInput = document.getElementById('edit_disp_vehicle_plate');
+    const modelInput = document.getElementById('edit_disp_vehicle_model');
+    if (plateInput && plate) plateInput.value = plate.toUpperCase();
+    if (modelInput && model) modelInput.value = model;
+}
+
+export function addEditDispatchItemRow(desc = '', qty = 1, unit = 'Pzas', cond = 'Reparado / Listo para Montaje', assetId = null, materialId = null) {
     const tbody = document.getElementById('edit_disp_items_tbody');
     if (!tbody) return;
     const rowIdx = tbody.children.length + 1;
     const tr = document.createElement('tr');
     tr.style.borderBottom = '1px solid #e2e8f0';
+    if (assetId) tr.dataset.assetId = String(assetId);
+    if (materialId) tr.dataset.materialId = String(materialId);
+
     tr.innerHTML = `
         <td style="padding: 4px; font-weight: 700; color: #64748b;">${rowIdx}</td>
-        <td style="padding: 4px;"><input type="text" class="form-input edit-item-desc" value="${escapeHtml(desc)}" placeholder="Descripción del ítem" style="padding: 4px 6px; font-size: 11px; width: 100%;" required></td>
+        <td style="padding: 4px;">
+            <input type="text" class="form-input edit-item-desc" value="${escapeHtml(desc)}" placeholder="Descripción del ítem" style="padding: 4px 6px; font-size: 11px; width: 100%;" required>
+            ${assetId ? '<span style="font-size: 9px; color: #2563eb; font-weight: 700; display: block; margin-top: 2px;"><i class="fa-solid fa-cube"></i> Activo Vinculado</span>' : ''}
+            ${materialId ? '<span style="font-size: 9px; color: #059669; font-weight: 700; display: block; margin-top: 2px;"><i class="fa-solid fa-boxes-stacked"></i> Material Vinculado</span>' : ''}
+        </td>
         <td style="padding: 4px;"><input type="number" step="0.01" class="form-input edit-item-qty" value="${qty}" style="padding: 4px 6px; font-size: 11px; width: 100%;" required></td>
         <td style="padding: 4px;">
             <select class="form-select edit-item-unit" style="padding: 4px; font-size: 11px; width: 100%;">
@@ -450,6 +490,8 @@ export async function submitEditDispatchGuide(event) {
     const driverDoc = document.getElementById('edit_disp_driver_id_doc')?.value?.trim() || '';
     const driverPhone = document.getElementById('edit_disp_driver_phone')?.value?.trim() || '';
     const plate = document.getElementById('edit_disp_vehicle_plate')?.value?.trim() || '';
+    const vehModel = document.getElementById('edit_disp_vehicle_model')?.value?.trim() || '';
+    const vehAssetId = document.getElementById('edit_disp_select_asset')?.value;
     const carrier = document.getElementById('edit_disp_carrier_company')?.value?.trim() || '';
     const reason = document.getElementById('edit_disp_transfer_reason')?.value?.trim() || '';
     const notes = document.getElementById('edit_disp_notes')?.value?.trim() || '';
@@ -461,8 +503,17 @@ export async function submitEditDispatchGuide(event) {
         const q = parseFloat(tr.querySelector('.edit-item-qty')?.value || '1');
         const u = tr.querySelector('.edit-item-unit')?.value || 'Pzas';
         const c = tr.querySelector('.edit-item-cond')?.value?.trim() || 'Reparado / Listo para Montaje';
+        const aId = tr.dataset.assetId ? parseInt(tr.dataset.assetId) : null;
+        const mId = tr.dataset.materialId ? parseInt(tr.dataset.materialId) : null;
         if (d) {
-            items.push({ description: d, quantity: q, unit: u, condition_status: c });
+            items.push({
+                description: d,
+                quantity: q,
+                unit: u,
+                condition_status: c,
+                asset_id: aId,
+                material_id: mId
+            });
         }
     });
 
@@ -477,6 +528,8 @@ export async function submitEditDispatchGuide(event) {
                 driver_id_doc: driverDoc,
                 driver_phone: driverPhone,
                 vehicle_plate: plate,
+                vehicle_model: vehModel,
+                asset_id: vehAssetId ? parseInt(vehAssetId) : null,
                 carrier_company: carrier,
                 transfer_reason: reason,
                 notes: notes,
@@ -497,12 +550,18 @@ export async function submitEditDispatchGuide(event) {
         }
 
         if (typeof window.showToast === 'function') {
-            window.showToast('Guía modificada exitosamente.', 'success');
+            window.showToast('Guía modificada y recursos sincronizados exitosamente.', 'success');
         } else {
-            alert('Guía modificada exitosamente.');
+            alert('Guía modificada y recursos sincronizados exitosamente.');
         }
 
         await loadDispatchGuidesList();
+        if (typeof window.loadInitialMasterData === 'function') {
+            await window.loadInitialMasterData();
+        }
+        if (typeof window.loadFleetList === 'function') {
+            window.loadFleetList();
+        }
     } catch (err) {
         alert('Error: ' + err.message);
     }
@@ -642,6 +701,7 @@ if (typeof window !== 'undefined') {
     window.submitConfirmDelivery = submitConfirmDelivery;
     window.deleteDispatchGuide = deleteDispatchGuide;
     window.openEditDispatchGuideModal = openEditDispatchGuideModal;
+    window.onEditDispatchAssetChanged = onEditDispatchAssetChanged;
     window.addEditDispatchItemRow = addEditDispatchItemRow;
     window.submitEditDispatchGuide = submitEditDispatchGuide;
     window.revertDispatchGuide = revertDispatchGuide;

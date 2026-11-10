@@ -140,7 +140,7 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-CSEBuEas.js"></script>
+  <script type="module" crossorigin src="/assets/main-C-DQd5va.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-N9j7vjEk.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-CYs-hkKB.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-fbJhjjM7.js">
@@ -150,7 +150,7 @@
   <link rel="modulepreload" crossorigin href="/assets/expenses-Isgpu5ua.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-bnrLaYtW.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-Bd7xgO0B.js">
-  <link rel="modulepreload" crossorigin href="/assets/dispatch-CaHzcFPU.js">
+  <link rel="modulepreload" crossorigin href="/assets/dispatch-DLH9LdfT.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-ufqzXZk_.js">
 </head>
 <body>
@@ -12364,6 +12364,19 @@
                     <div>
                         <label class="form-label">Cédula del Conductor</label>
                         <input type="text" id="edit_disp_driver_id_doc" class="form-input" placeholder="V-00.000.000">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label"><i class="fa-solid fa-truck" style="color: #0284c7;"></i> Vehículo de Flota DALOR</label>
+                        <select id="edit_disp_select_asset" class="form-select" onchange="onEditDispatchAssetChanged()">
+                            <option value="">-- Seleccionar de Flota Propia (Opcional) --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Modelo / Descripción Vehículo</label>
+                        <input type="text" id="edit_disp_vehicle_model" class="form-input" placeholder="Ej: Camioneta Toyota Hilux Kavak">
                     </div>
                 </div>
 

@@ -66,14 +66,22 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
     guide_num = g_in.guide_number
     prefix = "GCI-2026" if is_internal else "GD-2026"
     if not guide_num:
-        count = db.query(DispatchGuide).filter(DispatchGuide.guide_number.like(f"{prefix}-%")).count() + 1
-        guide_num = f"{prefix}-{count:04d}" if is_internal else f"{prefix}-{count:03d}"
-
-    # Validar unicidad
-    existing = db.query(DispatchGuide).filter(DispatchGuide.guide_number == guide_num).first()
-    if existing:
-        count = db.query(DispatchGuide).filter(DispatchGuide.guide_number.like(f"{prefix}-%")).count() + 10
-        guide_num = f"{prefix}-{count:04d}" if is_internal else f"{prefix}-{count:03d}"
+        import re
+        existing_guides = db.query(DispatchGuide.guide_number).filter(DispatchGuide.guide_number.like(f"{prefix}-%")).all()
+        max_num = 0
+        for eg in existing_guides:
+            if eg[0]:
+                m = re.search(r'(\d+)$', eg[0])
+                if m:
+                    try:
+                        max_num = max(max_num, int(m.group(1)))
+                    except ValueError:
+                        pass
+        next_num = max_num + 1
+        guide_num = f"{prefix}-{next_num:04d}" if is_internal else f"{prefix}-{next_num:03d}"
+        while db.query(DispatchGuide.id).filter(DispatchGuide.guide_number == guide_num).first():
+            next_num += 1
+            guide_num = f"{prefix}-{next_num:04d}" if is_internal else f"{prefix}-{next_num:03d}"
 
     dest_addr = (g_in.destination_address or ("Taller DALOR Guacara (Control Interno)" if is_internal else "Sede Central DALOR")).strip()
     d_name = (g_in.driver_name or ("Personal Dalor Taller" if is_internal else "Chofer")).strip()
@@ -151,16 +159,22 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
         elif getattr(it, "material_id", None):
             cargo_mat = db.query(Material).filter(Material.id == it.material_id).with_for_update().first()
             if cargo_mat:
-                deduct_qty = min(float(it.quantity or 0.0), float(cargo_mat.stock_quantity or 0.0))
-                if deduct_qty > 0:
-                    cargo_mat.stock_quantity = round(cargo_mat.stock_quantity - deduct_qty, 2)
+                req_qty = float(it.quantity or 0.0)
+                curr_stock = float(cargo_mat.stock_quantity or 0.0)
+                if curr_stock < req_qty:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Stock insuficiente en almacén para '{cargo_mat.name}' ({cargo_mat.code}). Stock disponible: {curr_stock} {cargo_mat.unit_of_measure or 'Pzas'}, solicitado: {req_qty}."
+                    )
+                if req_qty > 0:
+                    cargo_mat.stock_quantity = round(cargo_mat.stock_quantity - req_qty, 2)
                     cargo_mat.total_cost_usd = round(cargo_mat.stock_quantity * (cargo_mat.unit_cost_usd or 0.0), 2)
                     mov = MaterialMovement(
                         material_id=cargo_mat.id,
                         movement_type="despacho_obra" if g_in.project_id else "salida_ajuste",
-                        quantity=deduct_qty,
+                        quantity=req_qty,
                         unit_cost_usd=cargo_mat.unit_cost_usd or 0.0,
-                        total_cost_usd=round(deduct_qty * (cargo_mat.unit_cost_usd or 0.0), 2),
+                        total_cost_usd=round(req_qty * (cargo_mat.unit_cost_usd or 0.0), 2),
                         project_id=g_in.project_id,
                         destination=dest_addr,
                         reference_doc=guide_num,
@@ -362,6 +376,32 @@ def release_guide_resources(guide: DispatchGuide, db: Session, action_name: str,
             )
             db.add(hist)
 
+def safe_cancel_guide_financials(guide: DispatchGuide, db: Session, action_name: str, reason: str = ""):
+    """Anula o desvincula CxP y CxC asociadas a la guía protegiendo contra errores de clave foránea si hay pagos."""
+    if guide.payable_id:
+        ap = db.query(AccountPayable).filter(AccountPayable.id == guide.payable_id).first()
+        if ap:
+            has_payments = bool(getattr(ap, 'payments', None) and len(ap.payments) > 0)
+            if has_payments:
+                ap.notes = f"{ap.notes or ''} [Guía {guide.guide_number} {action_name.lower()} - CxP conservada por pagos existentes]".strip()
+            else:
+                ap.status = "anulada"
+                ap.balance_usd = 0.0
+                ap.notes = f"{ap.notes or ''} [Anulada por {action_name} de Guía {guide.guide_number}. {reason}]".strip()
+        guide.payable_id = None
+
+    if guide.receivable_id:
+        ar = db.query(AccountReceivable).filter(AccountReceivable.id == guide.receivable_id).first()
+        if ar:
+            has_payments = bool(getattr(ar, 'payments', None) and len(ar.payments) > 0)
+            if has_payments:
+                ar.notes = f"{ar.notes or ''} [Guía {guide.guide_number} {action_name.lower()} - CxC conservada por cobros existentes]".strip()
+            else:
+                ar.status = "anulada"
+                ar.balance_usd = 0.0
+                ar.notes = f"{ar.notes or ''} [Anulada por {action_name} de Guía {guide.guide_number}. {reason}]".strip()
+        guide.receivable_id = None
+
 @router.put("/{guide_id}")
 def update_dispatch_guide(
     guide_id: int,
@@ -464,7 +504,7 @@ def update_dispatch_guide(
         old_item_asset_ids = set([it.asset_id for it in g.items if it.asset_id])
         new_item_asset_ids = set([getattr(it, "asset_id", None) for it in guide_in.items if getattr(it, "asset_id", None)])
 
-        # Activos retirados de la carga -> devolver a base
+        # 1. Activos retirados de la carga -> devolver a base
         removed_asset_ids = old_item_asset_ids - new_item_asset_ids
         for r_id in removed_asset_ids:
             rem_asset = db.query(Asset).filter(Asset.id == r_id).first()
@@ -486,7 +526,67 @@ def update_dispatch_guide(
                     notes=f"Equipo/Herramienta desincorporado en edición de Guía {g.guide_number}"
                 ))
 
-        # Eliminar items antiguos y agregar nuevos
+        # 2. Sincronización Diferencial de Materiales Consumibles de Almacén
+        from collections import defaultdict
+        old_mat_map = defaultdict(float)
+        for it in g.items:
+            if getattr(it, "material_id", None):
+                old_mat_map[it.material_id] += float(it.quantity or 0.0)
+
+        new_mat_map = defaultdict(float)
+        for it in guide_in.items:
+            if getattr(it, "material_id", None):
+                new_mat_map[it.material_id] += float(it.quantity or 0.0)
+
+        all_mat_ids = set(old_mat_map.keys()) | set(new_mat_map.keys())
+        for m_id in all_mat_ids:
+            old_qty = old_mat_map[m_id]
+            new_qty = new_mat_map[m_id]
+            diff = round(new_qty - old_qty, 2)
+            if diff != 0:
+                mat_obj = db.query(Material).filter(Material.id == m_id).with_for_update().first()
+                if mat_obj:
+                    if diff > 0:
+                        # Se requiere más cantidad: verificar y descontar stock
+                        curr_stock = float(mat_obj.stock_quantity or 0.0)
+                        if curr_stock < diff:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Stock insuficiente en almacén para incrementar '{mat_obj.name}' ({mat_obj.code}). Disponible adicional: {curr_stock}, requerido: {diff}."
+                            )
+                        mat_obj.stock_quantity = round(mat_obj.stock_quantity - diff, 2)
+                        mat_obj.total_cost_usd = round(mat_obj.stock_quantity * (mat_obj.unit_cost_usd or 0.0), 2)
+                        db.add(MaterialMovement(
+                            material_id=mat_obj.id,
+                            movement_type="despacho_obra" if g.project_id else "salida_ajuste",
+                            quantity=diff,
+                            unit_cost_usd=mat_obj.unit_cost_usd or 0.0,
+                            total_cost_usd=round(diff * (mat_obj.unit_cost_usd or 0.0), 2),
+                            project_id=g.project_id,
+                            destination=g.destination_plant or g.destination_address or "En ruta",
+                            reference_doc=g.guide_number,
+                            notes=f"Ajuste en edición de Guía {g.guide_number} (+{diff})",
+                            performed_by=current_user.username
+                        ))
+                    else:
+                        # Se redujo cantidad: retornar diferencial a stock
+                        ret_qty = abs(diff)
+                        mat_obj.stock_quantity = round((mat_obj.stock_quantity or 0.0) + ret_qty, 2)
+                        mat_obj.total_cost_usd = round(mat_obj.stock_quantity * (mat_obj.unit_cost_usd or 0.0), 2)
+                        db.add(MaterialMovement(
+                            material_id=mat_obj.id,
+                            movement_type="reversion_despacho",
+                            quantity=ret_qty,
+                            unit_cost_usd=mat_obj.unit_cost_usd or 0.0,
+                            total_cost_usd=round(ret_qty * (mat_obj.unit_cost_usd or 0.0), 2),
+                            project_id=g.project_id,
+                            destination="Almacén Central Dalor",
+                            reference_doc=g.guide_number,
+                            notes=f"Reincorporación a stock por edición de Guía {g.guide_number} (-{ret_qty})",
+                            performed_by=current_user.username
+                        ))
+
+        # 3. Eliminar items antiguos y agregar nuevos
         db.query(DispatchGuideItem).filter(DispatchGuideItem.dispatch_guide_id == g.id).delete(synchronize_session=False)
         target_dest = guide_in.destination_plant or guide_in.destination_address or g.destination_plant or g.destination_address or "En ruta"
         for idx, it in enumerate(guide_in.items):
@@ -547,13 +647,8 @@ def revert_dispatch_guide(
     # Liberar recursos y devolverlos a base
     release_guide_resources(g, db, "Reversión Operativa", "Reversión de guía a estado en preparación")
 
-    # Cancelar CxP y CxC asociadas
-    if g.payable_id:
-        db.query(AccountPayable).filter(AccountPayable.id == g.payable_id).delete(synchronize_session=False)
-        g.payable_id = None
-    if g.receivable_id:
-        db.query(AccountReceivable).filter(AccountReceivable.id == g.receivable_id).delete(synchronize_session=False)
-        g.receivable_id = None
+    # Cancelar o desvincular CxP y CxC asociadas de forma segura
+    safe_cancel_guide_financials(g, db, "Reversión Operativa", "Reversión a preparación")
 
     g.status = "en_preparacion"
     audit = AuditLog(
@@ -586,13 +681,8 @@ def cancel_dispatch_guide(
     # Liberar recursos a base
     release_guide_resources(g, db, "Anulación Formal", reason)
 
-    # Cancelar CxP y CxC asociadas
-    if g.payable_id:
-        db.query(AccountPayable).filter(AccountPayable.id == g.payable_id).delete(synchronize_session=False)
-        g.payable_id = None
-    if g.receivable_id:
-        db.query(AccountReceivable).filter(AccountReceivable.id == g.receivable_id).delete(synchronize_session=False)
-        g.receivable_id = None
+    # Cancelar o desvincular CxP y CxC asociadas de forma segura
+    safe_cancel_guide_financials(g, db, "Anulación Formal", reason)
 
     g.status = "anulada"
     g.cancelled_at = datetime.utcnow()
@@ -622,12 +712,8 @@ def delete_dispatch_guide(
     # Liberar recursos antes de borrar físicamente
     release_guide_resources(g, db, "Eliminación de Registro", "Eliminación física del registro de guía")
 
-    # Si tenía CxP generada por flete, eliminarla
-    if g.payable_id:
-        db.query(AccountPayable).filter(AccountPayable.id == g.payable_id).delete(synchronize_session=False)
-    # Si tenía CxC generada, eliminarla
-    if g.receivable_id:
-        db.query(AccountReceivable).filter(AccountReceivable.id == g.receivable_id).delete(synchronize_session=False)
+    # Cancelar o desvincular CxP y CxC asociadas de forma segura
+    safe_cancel_guide_financials(g, db, "Eliminación de Registro", "Eliminación física del registro de guía")
 
     db.delete(g)
     db.commit()

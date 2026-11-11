@@ -691,14 +691,65 @@ def get_asset_by_id(asset_id: int, db: Session = Depends(get_db)):
     return asset
 
 @router.put("/{asset_id}")
-def update_asset(asset_id: int, asset_in: AssetUpdate, db: Session = Depends(get_db)):
+def update_asset(
+    asset_id: int,
+    asset_in: AssetUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Activo no encontrado.")
     
-    for field, val in asset_in.dict(exclude_unset=True).items():
+    update_data = asset_in.dict(exclude_unset=True)
+
+    # Reglas de Coherencia Relacional de Estado y Ubicación
+    if "status" in update_data:
+        st_clean = (update_data["status"] or "").lower().strip()
+        if st_clean in ["disponible", "disponible_base"]:
+            update_data["current_project_id"] = None
+            if not update_data.get("current_custodian_name") or "obra" in (update_data.get("current_custodian_name") or "").lower():
+                update_data["current_custodian_name"] = "Disponible en Base"
+            if not update_data.get("current_location") or "obra" in (update_data.get("current_location") or "").lower():
+                update_data["current_location"] = "Sede Central Dalor (Guacara)"
+        elif st_clean == "en_obra" and not update_data.get("current_project_id") and not asset.current_project_id:
+            # Si no tiene proyecto asignado pero está en custodia, marcarlo como 'asignado'
+            update_data["status"] = "asignado"
+
+    if "current_project_id" in update_data:
+        if update_data["current_project_id"] is not None:
+            update_data["status"] = "en_obra"
+        elif update_data.get("status") == "en_obra":
+            update_data["status"] = "disponible_base"
+
+    old_location = asset.current_location
+    old_status = asset.status
+
+    for field, val in update_data.items():
         setattr(asset, field, val)
         
+    # Registro de Trazabilidad Histórica si cambió ubicación o estatus
+    if asset.current_location != old_location or asset.status != old_status:
+        db.add(ResourceAssignmentHistory(
+            project_id=asset.current_project_id,
+            resource_type="asset",
+            resource_id=asset.id,
+            resource_code=asset.asset_code,
+            resource_name=asset.name,
+            custodian_name=asset.current_custodian_name,
+            origin_location=old_location or "Sede Central Dalor",
+            destination_location=asset.current_location or "Sede Central Dalor",
+            status=asset.status or "actualizado",
+            notes="Actualización manual de ficha técnica de activo"
+        ))
+
+    db.add(AuditLog(
+        username=current_user.username,
+        module="recursos",
+        action="actualizar_activo",
+        details=f"Activo [{asset.asset_code}] '{asset.name}' actualizado por {current_user.username}. Estatus: {asset.status}, Ubicación: {asset.current_location}"
+    ))
+
     db.commit()
     db.refresh(asset)
     return asset

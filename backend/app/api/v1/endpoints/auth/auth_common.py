@@ -52,6 +52,8 @@ def resolve_user_permissions(user: User, db: Session) -> dict:
         "comercial_view", "comercial_edit", "quotations_create",
         "proyectos_view", "proyectos_edit", "proyectos_create",
         "recursos_view", "recursos_edit", "personal_view", "almacen_view",
+        "despacho_view", "requisiciones_view", "alquileres_view",
+        "mantenimiento_vehicular", "cuadrillas_assign",
         "usuarios_admin", "backups_admin", "executive_dashboard"
     ]
     role_has_granular = any(k in role_perms for k in GRANULAR_KEYS)

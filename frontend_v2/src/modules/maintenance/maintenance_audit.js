@@ -66,20 +66,20 @@ function renderMaintenanceAuditLogs(logs) {
         let displayDate = rawDate;
         if (rawDate) {
             try {
-                // If it already contains YYYY-MM-DD HH:MM:SS
-                if (rawDate.includes(' ') && rawDate.length >= 19) {
-                    const [dPart, tPart] = rawDate.split(' ');
-                    const [y, m, d] = dPart.split('-');
-                    displayDate = `${d}/${m}/${y} ${tPart}`;
-                } else {
-                    const dt = new Date(rawDate);
-                    if (!isNaN(dt.getTime())) {
-                        displayDate = dt.toLocaleString('es-VE', {
-                            year: 'numeric', month: '2-digit', day: '2-digit',
-                            hour: '2-digit', minute: '2-digit', second: '2-digit',
-                            hour12: true
-                        });
-                    }
+                let dtStr = rawDate;
+                if (dtStr.includes(' ') && !dtStr.includes('T')) {
+                    dtStr = dtStr.replace(' ', 'T') + 'Z';
+                } else if (!dtStr.endsWith('Z') && !dtStr.includes('+')) {
+                    dtStr += 'Z';
+                }
+                const dt = new Date(dtStr);
+                if (!isNaN(dt.getTime())) {
+                    displayDate = dt.toLocaleString('es-VE', {
+                        timeZone: 'America/Caracas',
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit',
+                        hour12: true
+                    });
                 }
             } catch(e) {}
         }

@@ -273,7 +273,11 @@ def get_assets(
     return query.all()
 
 @router.post("/")
-def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
+def create_asset(
+    asset_in: AssetCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     qty = getattr(asset_in, 'quantity', 1) or 1
     code_val = (asset_in.asset_code or "").strip().upper()
 
@@ -360,6 +364,13 @@ def create_asset(asset_in: AssetCreate, db: Session = Depends(get_db)):
         is_active=asset_in.is_active
     )
     db.add(new_asset)
+    db.add(AuditLog(
+        user_id=current_user.id,
+        username=current_user.username,
+        module="recursos",
+        action="crear_activo",
+        details=f"Nuevo activo [{new_asset.asset_code}] '{new_asset.name}' ({new_asset.asset_type}) registrado en base por {current_user.username}."
+    ))
     db.commit()
     db.refresh(new_asset)
     return new_asset
@@ -755,17 +766,22 @@ def update_asset(
     return asset
 
 @router.post("/{asset_id}/toggle-active")
-def toggle_asset_active(asset_id: int, db: Session = Depends(get_db)):
+def toggle_asset_active(
+    asset_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Activo no encontrado.")
     asset.is_active = not asset.is_active
     action_str = "reactivar_activo" if asset.is_active else "inactivar_activo"
-    details_str = f"Recurso '{asset.name}' ({asset.asset_code}) {'reactivado y puesto disponible en base' if asset.is_active else 'inactivado / dado de baja'}."
+    details_str = f"Recurso '{asset.name}' ({asset.asset_code}) {'reactivado y puesto disponible en base' if asset.is_active else 'inactivado / dado de baja'} por {current_user.username}."
     if asset.is_active and not asset.status:
         asset.status = "disponible_base"
     db.add(AuditLog(
-        username="director_general",
+        user_id=current_user.id,
+        username=current_user.username,
         module="recursos",
         action=action_str,
         details=details_str
@@ -780,33 +796,43 @@ def toggle_asset_active(asset_id: int, db: Session = Depends(get_db)):
     }
 
 @router.post("/{asset_id}/reactivate")
-def reactivate_asset(asset_id: int, db: Session = Depends(get_db)):
+def reactivate_asset(
+    asset_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Activo no encontrado.")
     asset.is_active = True
     asset.status = "disponible_base"
     db.add(AuditLog(
-        username="director_general",
+        user_id=current_user.id,
+        username=current_user.username,
         module="recursos",
         action="reactivar_activo",
-        details=f"Recurso '{asset.name}' ({asset.asset_code}) reactivado y puesto en base."
+        details=f"Recurso '{asset.name}' ({asset.asset_code}) reactivado y puesto en base por {current_user.username}."
     ))
     db.commit()
     return {"success": True, "message": f"Recurso '{asset.name}' reactivado exitosamente."}
 
 @router.delete("/{asset_id}")
-def delete_asset(asset_id: int, db: Session = Depends(get_db)):
+def delete_asset(
+    asset_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Activo no encontrado.")
     asset.is_active = False
     asset.status = "inactivo"
     db.add(AuditLog(
-        username="director_general",
+        user_id=current_user.id,
+        username=current_user.username,
         module="recursos",
         action="inactivar_activo",
-        details=f"Baja de recurso '{asset.name}' ({asset.asset_code}) registrada en bitácora."
+        details=f"Baja de recurso '{asset.name}' ({asset.asset_code}) registrada en bitácora por {current_user.username}."
     ))
     db.commit()
     return {"message": "Activo/Herramienta inactivado exitosamente (traza histórica preservada)."}

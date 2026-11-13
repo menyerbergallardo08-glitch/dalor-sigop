@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.models import Client
+from app.models.models import Client, AuditLog, User
 from app.schemas.schemas import ClientCreate, ClientOut
 from app.api.deps import get_current_active_user
 
@@ -44,7 +44,11 @@ def get_next_client_code_endpoint(db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=ClientOut)
-def create_client(client_in: ClientCreate, db: Session = Depends(get_db)):
+def create_client(
+    client_in: ClientCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     client_dict = client_in.dict()
     name_val = (client_dict.get("name") or "").strip()
     rif_val = (client_dict.get("rif") or "").strip().upper()
@@ -83,11 +87,29 @@ def create_client(client_in: ClientCreate, db: Session = Depends(get_db)):
     db.add(new_client)
     db.commit()
     db.refresh(new_client)
+
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="clientes",
+            action="crear_cliente",
+            details=f"Cliente registrado: {new_client.code} - {new_client.name} (RIF: {new_client.rif or 'N/A'})."
+        ))
+        db.commit()
+    except Exception:
+        pass
+
     return new_client
 
 
 @router.put("/{client_id}", response_model=ClientOut)
-def update_client(client_id: int, client_in: ClientCreate, db: Session = Depends(get_db)):
+def update_client(
+    client_id: int,
+    client_in: ClientCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     client = db.query(Client).filter(Client.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
@@ -121,11 +143,28 @@ def update_client(client_id: int, client_in: ClientCreate, db: Session = Depends
             
     db.commit()
     db.refresh(client)
+
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="clientes",
+            action="actualizar_cliente",
+            details=f"Cliente {client.code} ({client.name}) actualizado."
+        ))
+        db.commit()
+    except Exception:
+        pass
+
     return client
 
 
 @router.delete("/{client_id}")
-def delete_client(client_id: int, db: Session = Depends(get_db)):
+def delete_client(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     client = db.query(Client).filter(Client.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
@@ -133,4 +172,17 @@ def delete_client(client_id: int, db: Session = Depends(get_db)):
     # Soft Delete para preservar la traza
     client.is_active = False
     db.commit()
+
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="clientes",
+            action="inactivar_cliente",
+            details=f"Cliente {client.code} ({client.name}) inactivado (soft-delete)."
+        ))
+        db.commit()
+    except Exception:
+        pass
+
     return {"message": "Cliente inactivado exitosamente (traza histórica preservada)."}

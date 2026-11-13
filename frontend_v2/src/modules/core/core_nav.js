@@ -204,7 +204,38 @@ function switchView(viewName, moduleCategory, targetSubtab = null) {
     }
     if (viewName === 'dashboard' && typeof window.loadComparisonDashboard === 'function') window.loadComparisonDashboard();
     if (viewName === 'resources') {
-        const sub = targetSubtab || localStorage.getItem('dalor_active_subtab_resources') || sessionStorage.getItem('dalor_active_subtab_resources') || 'dashboard';
+        let sub = targetSubtab || localStorage.getItem('dalor_active_subtab_resources') || sessionStorage.getItem('dalor_active_subtab_resources') || 'dashboard';
+        const u = window.currentUser || (window.State && window.State.currentUser);
+        if (u) {
+            let p = {};
+            try { p = typeof u.permissions_json === 'string' ? JSON.parse(u.permissions_json) : (u.permissions_json || u.permissions || {}); } catch(e){}
+            const isDir = (u.username||'').toLowerCase() === 'director' || (u.role_name||'').toLowerCase().includes('director') || u.is_superuser === true;
+            if (!isDir) {
+                const hasGranular = p.recursos_view !== undefined || p.almacen_view !== undefined || p.personal_view !== undefined || p.despacho_view !== undefined || p.alquileres_view !== undefined;
+                if (hasGranular) {
+                    const canEq = !!(p.recursos_view || p.recursos_edit || p.mantenimiento_vehicular);
+                    const canAlm = !!(p.almacen_view || p.almacen_adjust);
+                    const canPer = !!(p.personal_view || p.personal_edit || p.cuadrillas_assign);
+                    const canRent = !!(p.alquileres_view || p.alquileres_create);
+                    const canDisp = !!(p.despacho_view || p.despacho_create);
+
+                    const isSubAllowed = (['dashboard', 'fleet', 'machinery', 'tools'].includes(sub) && canEq) ||
+                                         (sub === 'materials' && canAlm) ||
+                                         (sub === 'personnel' && canPer) ||
+                                         (sub === 'rentals' && canRent);
+
+                    if (!isSubAllowed) {
+                        if (canEq) sub = 'dashboard';
+                        else if (canAlm) sub = 'materials';
+                        else if (canPer) sub = 'personnel';
+                        else if (canRent) sub = 'rentals';
+                        else if (canDisp) {
+                            return switchView('dispatch', 'operaciones');
+                        }
+                    }
+                }
+            }
+        }
         if (typeof window.switchResourceSubtab === 'function') window.switchResourceSubtab(sub);
         else if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab(sub);
     }

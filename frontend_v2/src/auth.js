@@ -230,10 +230,18 @@ export function applyPermissionMap(user) {
     const btnNewPay = document.getElementById('btnFinNewPayable');
     if (btnNewPay) btnNewPay.style.display = canCxp ? '' : 'none';
 
-    // 5. Dropdown Menú de Recursos
-    const canAlmacen = isDirector || !!(p.almacen_view || p.almacen_adjust || p.recursos_view || !hasExplicitGranular);
-    const canPersonal = isDirector || !!(p.personal_view || p.personal_edit || p.recursos_view || !hasExplicitGranular);
-    const canEquipos = isDirector || !!(p.recursos_view || p.recursos_edit || !hasExplicitGranular);
+    // 5. Dropdown Menú de Recursos y Permisos Granulares Internos
+    const isFinLegacy = !hasExplicitGranular && (isDirector || uname === 'administracion' || role.includes('finanzas') || role.includes('administrador_financiero'));
+    const isIngLegacy = !hasExplicitGranular && (isDirector || uname === 'ingeniero' || role.includes('ingeniero'));
+    const isAlmLegacy = !hasExplicitGranular && (isDirector || uname === 'almacen' || role.includes('almacen') || role.includes('panol') || role.includes('taller'));
+    const isCmpLegacy = !hasExplicitGranular && (uname === 'campo' || role.includes('supervisor') || role.includes('campo'));
+
+    const canEquipos = isDirector || (hasExplicitGranular ? !!(p.recursos_view || p.recursos_edit || p.mantenimiento_vehicular) : (!isCmpLegacy && (isIngLegacy || isAlmLegacy)));
+    const canAlmacen = isDirector || (hasExplicitGranular ? !!(p.almacen_view || p.almacen_adjust) : isAlmLegacy);
+    const canPersonal = isDirector || (hasExplicitGranular ? !!(p.personal_view || p.personal_edit || p.cuadrillas_assign) : isIngLegacy);
+    const canReqs = isDirector || (hasExplicitGranular ? !!(p.requisiciones_view || p.requisiciones_create) : (isIngLegacy || isAlmLegacy));
+    const canDispatch = isDirector || (hasExplicitGranular ? !!(p.despacho_view || p.despacho_create) : isAlmLegacy);
+    const canRentals = isDirector || (hasExplicitGranular ? !!(p.alquileres_view || p.alquileres_create) : (isIngLegacy || isAlmLegacy));
 
     const itmRecDashboard = document.getElementById('nav-item-rec-dashboard');
     if (itmRecDashboard) itmRecDashboard.style.display = canEquipos ? 'flex' : 'none';
@@ -254,13 +262,66 @@ export function applyPermissionMap(user) {
     if (itmRecPersonnel) itmRecPersonnel.style.display = canPersonal ? 'flex' : 'none';
 
     const itmRecReqs = document.getElementById('nav-item-rec-reqs');
-    if (itmRecReqs) itmRecReqs.style.display = (isDirector || p.requisiciones_view || p.requisiciones_create || !hasExplicitGranular) ? 'flex' : 'none';
+    if (itmRecReqs) itmRecReqs.style.display = canReqs ? 'flex' : 'none';
 
     const itmRecDispatch = document.getElementById('nav-item-rec-dispatch');
-    if (itmRecDispatch) itmRecDispatch.style.display = (isDirector || p.despacho_view || p.despacho_create || !hasExplicitGranular) ? 'flex' : 'none';
+    if (itmRecDispatch) itmRecDispatch.style.display = canDispatch ? 'flex' : 'none';
 
     const itmRecRentals = document.getElementById('nav-item-rec-rentals');
-    if (itmRecRentals) itmRecRentals.style.display = (isDirector || p.alquileres_view || p.alquileres_create || !hasExplicitGranular) ? 'flex' : 'none';
+    if (itmRecRentals) itmRecRentals.style.display = canRentals ? 'flex' : 'none';
+
+    // Subpestañas del Módulo de Recursos (Dentro de view-resources)
+    const tabResDashboard = document.getElementById('tabbtn-res-dashboard');
+    if (tabResDashboard) tabResDashboard.style.display = canEquipos ? '' : 'none';
+
+    const tabResFleet = document.getElementById('tabbtn-res-fleet');
+    if (tabResFleet) tabResFleet.style.display = canEquipos ? '' : 'none';
+
+    const tabResMachinery = document.getElementById('tabbtn-res-machinery');
+    if (tabResMachinery) tabResMachinery.style.display = canEquipos ? '' : 'none';
+
+    const tabResTools = document.getElementById('tabbtn-res-tools');
+    if (tabResTools) tabResTools.style.display = canEquipos ? '' : 'none';
+
+    const tabResMaterials = document.getElementById('tabbtn-res-materials');
+    if (tabResMaterials) tabResMaterials.style.display = canAlmacen ? '' : 'none';
+
+    const tabResPersonnel = document.getElementById('tabbtn-res-personnel');
+    if (tabResPersonnel) tabResPersonnel.style.display = canPersonal ? '' : 'none';
+
+    const tabResRentals = document.getElementById('tabbtn-res-rentals');
+    if (tabResRentals) tabResRentals.style.display = canRentals ? '' : 'none';
+
+    // Botones de Acción del Banner de Recursos
+    const btnResReqs = document.getElementById('btn-res-banner-reqs');
+    if (btnResReqs) btnResReqs.style.display = canReqs ? 'inline-flex' : 'none';
+
+    const btnResTransfer = document.getElementById('btn-res-banner-transfer');
+    if (btnResTransfer) btnResTransfer.style.display = (isDirector || (hasExplicitGranular ? !!p.recursos_edit : true)) ? '' : 'none';
+
+    const btnResGuide = document.getElementById('btn-res-banner-guide');
+    if (btnResGuide) btnResGuide.style.display = (isDirector || (hasExplicitGranular ? !!(p.despacho_view || p.recursos_edit) : true)) ? '' : 'none';
+
+    const btnResMatIn = document.getElementById('btn-res-banner-material-in');
+    if (btnResMatIn) btnResMatIn.style.display = (isDirector || (hasExplicitGranular ? !!p.almacen_adjust : true)) ? '' : 'none';
+
+    const btnResDelivery = document.getElementById('btn-res-banner-delivery');
+    if (btnResDelivery) btnResDelivery.style.display = (isDirector || (hasExplicitGranular ? !!(p.despacho_view || p.almacen_adjust) : true)) ? '' : 'none';
+
+    const btnResNewMat = document.getElementById('btn-res-banner-new-material');
+    if (btnResNewMat) btnResNewMat.style.display = (isDirector || (hasExplicitGranular ? !!p.almacen_adjust : true)) ? '' : 'none';
+
+    const btnResNewTool = document.getElementById('btn-res-banner-new-tool');
+    if (btnResNewTool) btnResNewTool.style.display = (isDirector || (hasExplicitGranular ? !!p.recursos_edit : true)) ? '' : 'none';
+
+    const btnResNewMach = document.getElementById('btn-res-banner-new-machinery');
+    if (btnResNewMach) btnResNewMach.style.display = (isDirector || (hasExplicitGranular ? !!p.recursos_edit : true)) ? '' : 'none';
+
+    const btnResNewVeh = document.getElementById('btn-res-banner-new-vehicle');
+    if (btnResNewVeh) btnResNewVeh.style.display = (isDirector || (hasExplicitGranular ? !!p.recursos_edit : true)) ? '' : 'none';
+
+    const btnResNewPers = document.getElementById('btn-res-banner-new-personnel');
+    if (btnResNewPers) btnResNewPers.style.display = (isDirector || (hasExplicitGranular ? !!p.personal_edit : true)) ? '' : 'none';
 
     // 6. Opciones del Menú Gastos
     const itmInbox = document.getElementById('item-gasto-inbox');
@@ -406,17 +467,35 @@ export function redirectUserByRole(user) {
     const canCxp = isDirector || p.cxp_view === true || p.cxp_pay === true;
     const hasFin = isDirector || canCxc || canCxp || p.bancos_view === true || p.finanzas === true;
     const hasProj = isDirector || p.proyectos === true || p.proyectos_view === true || role.includes('ingeniero');
-    const hasRec = isDirector || p.recursos === true || p.recursos_view === true || role.includes('almacen');
+    const canEquipos = isDirector || p.recursos_view === true || p.recursos_edit === true;
+    const canAlmacen = isDirector || p.almacen_view === true || p.almacen_adjust === true;
+    const canPersonal = isDirector || p.personal_view === true || p.personal_edit === true;
+    const hasDispatch = isDirector || p.despacho_view === true || p.despacho_create === true;
+    const hasRec = isDirector || p.recursos === true || canEquipos || canAlmacen || canPersonal || hasDispatch || role.includes('almacen');
     const hasGas = isDirector || p.gastos === true || p.gastos_view === true || p.gastos_create === true || role.includes('campo');
     const hasCom = isDirector || p.comercial === true || p.comercial_view === true;
     const hasMaint = isDirector || p.mantenimiento === true || p.usuarios_admin === true;
 
+    const hasDispatchOnly = hasDispatch && !canEquipos && !canAlmacen && !canPersonal && !hasProj && !hasFin && !hasGas && !hasCom;
+
     if (isDirector) {
         window.switchView('projects', 'proyectos');
         if (typeof window.loadProjectsList === 'function') window.loadProjectsList();
+    } else if (hasDispatchOnly) {
+        window.switchView('dispatch', 'operaciones');
     } else if (role.includes('almacen') || (hasRec && !hasProj && !hasFin && !hasGas)) {
-        window.switchView('resources', 'recursos');
-        if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('materials');
+        if (!canEquipos && canAlmacen) {
+            window.switchView('resources', 'recursos');
+            if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('materials');
+        } else if (!canEquipos && canPersonal) {
+            window.switchView('resources', 'recursos');
+            if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('personnel');
+        } else if (!canEquipos && hasDispatch) {
+            window.switchView('dispatch', 'operaciones');
+        } else {
+            window.switchView('resources', 'recursos');
+            if (typeof window.openResourceSubtab === 'function') window.openResourceSubtab('dashboard');
+        }
     } else if (role.includes('supervisor') || role.includes('campo') || (hasGas && !hasProj && !hasFin && !hasRec)) {
         window.switchView('pwa', 'gastos');
     } else if (hasFin && !hasProj) {

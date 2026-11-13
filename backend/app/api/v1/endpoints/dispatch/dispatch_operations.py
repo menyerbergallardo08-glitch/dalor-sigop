@@ -14,7 +14,11 @@ from app.api.deps import get_current_active_user
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/")
-def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_db)):
+def create_dispatch_guide(
+    g_in: DispatchGuideCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     client = None
     if g_in.client_id:
         client = db.query(Client).filter(Client.id == g_in.client_id).first()
@@ -280,7 +284,8 @@ def create_dispatch_guide(g_in: DispatchGuideCreate, db: Session = Depends(get_d
 
     # Auditoría
     audit = AuditLog(
-        username="despacho",
+        user_id=current_user.id,
+        username=current_user.username,
         module="despachos_taller",
         action="emitir_guia_despacho",
         details=f"Guía de Despacho {guide_num} emitida para cliente '{recipient}' ({len(g_in.items)} ítems, Modalidad: {g_in.transport_type})"
@@ -652,6 +657,7 @@ def revert_dispatch_guide(
 
     g.status = "en_preparacion"
     audit = AuditLog(
+        user_id=current_user.id,
         username=current_user.username,
         module="despachos_taller",
         action="revertir_guia_despacho",
@@ -690,6 +696,7 @@ def cancel_dispatch_guide(
     g.cancelled_by = cancel_in.cancelled_by or current_user.username
 
     audit = AuditLog(
+        user_id=current_user.id,
         username=current_user.username,
         module="despachos_taller",
         action="anular_guia_despacho",
@@ -709,6 +716,8 @@ def delete_dispatch_guide(
     if not g:
         raise HTTPException(status_code=404, detail="Guía no encontrada.")
 
+    guide_num = g.guide_number
+
     # Liberar recursos antes de borrar físicamente
     release_guide_resources(g, db, "Eliminación de Registro", "Eliminación física del registro de guía")
 
@@ -716,6 +725,14 @@ def delete_dispatch_guide(
     safe_cancel_guide_financials(g, db, "Eliminación de Registro", "Eliminación física del registro de guía")
 
     db.delete(g)
+    audit = AuditLog(
+        user_id=current_user.id,
+        username=current_user.username,
+        module="despachos_taller",
+        action="eliminar_guia_despacho",
+        details=f"Guía de Despacho {guide_num} eliminada definitivamente. Recursos reincorporados a base."
+    )
+    db.add(audit)
     db.commit()
-    return {"success": True, "message": f"Guía {g.guide_number} eliminada con éxito y recursos reincorporados a base."}
+    return {"success": True, "message": f"Guía {guide_num} eliminada con éxito y recursos reincorporados a base."}
 

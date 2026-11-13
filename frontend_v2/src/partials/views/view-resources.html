@@ -14,57 +14,57 @@
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
 
-                    <button type="button" onclick="openProjectRequisitionsInboxModal()" class="btn-primary" style="background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%); color: #ffffff; font-size: 12.5px; font-weight: 800; border: 1.5px solid #38bdf8; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35); padding: 7px 16px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                    <button id="btn-res-banner-reqs" type="button" onclick="openProjectRequisitionsInboxModal()" class="btn-primary" style="background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%); color: #ffffff; font-size: 12.5px; font-weight: 800; border: 1.5px solid #38bdf8; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35); padding: 7px 16px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fa-solid fa-clipboard-list" style="color: #38bdf8;"></i> 📦 Bandeja Requisiciones de Obra
                         <span id="badgePendingRequisitionsBanner" style="background: #ef4444; color: white; padding: 2px 7px; border-radius: 12px; font-size: 11px; margin-left: 6px; font-weight: 800; display: none;">0</span>
                     </button>
 
-                    <button onclick="openAssignModal('asset', null, 'Recurso', 'transfer')" class="btn-primary" style="background-color: #4f46e5; color: #ffffff; font-size: 12px; font-weight: 800;">
+                    <button id="btn-res-banner-transfer" onclick="openAssignModal('asset', null, 'Recurso', 'transfer')" class="btn-primary" style="background-color: #4f46e5; color: #ffffff; font-size: 12px; font-weight: 800;">
                         <i class="fa-solid fa-right-left"></i> 🔄 Transferir entre Obras
                     </button>
-                    <button onclick="openTransferGuideModal()" class="btn-primary" style="background-color: #0284c7; color: #ffffff; font-size: 12px; font-weight: 800;">
+                    <button id="btn-res-banner-guide" onclick="openTransferGuideModal()" class="btn-primary" style="background-color: #0284c7; color: #ffffff; font-size: 12px; font-weight: 800;">
 
                         <i class="fa-solid fa-truck-ramp-box"></i> 🚚 Guía Traslado Equipos
 
                     </button>
 
-                    <button onclick="openMaterialEntryModal()" class="btn-primary" style="background-color: #059669; color: #ffffff; font-size: 12px;">
+                    <button id="btn-res-banner-material-in" onclick="openMaterialEntryModal()" class="btn-primary" style="background-color: #059669; color: #ffffff; font-size: 12px;">
 
                         <i class="fa-solid fa-cart-plus"></i> + Entrada Material
 
                     </button>
 
-                    <button onclick="openMaterialDeliveryModal()" class="btn-primary" style="background-color: #0891b2; color: #ffffff; font-size: 12px; font-weight: 800;">
+                    <button id="btn-res-banner-delivery" onclick="openMaterialDeliveryModal()" class="btn-primary" style="background-color: #0891b2; color: #ffffff; font-size: 12px; font-weight: 800;">
 
                         <i class="fa-solid fa-boxes-packing"></i> 📦 Nota Entrega Materiales
 
                     </button>
 
-                    <button onclick="openNewMaterialModal()" class="btn-primary" style="background-color: #d97706; color: #ffffff; font-size: 12px; font-weight: 800;">
+                    <button id="btn-res-banner-new-material" onclick="openNewMaterialModal()" class="btn-primary" style="background-color: #d97706; color: #ffffff; font-size: 12px; font-weight: 800;">
 
                         <i class="fa-solid fa-boxes-stacked"></i> + Nuevo Material
 
                     </button>
 
-                    <button onclick="openNewAssetModal('herramienta_mayor')" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px; font-weight: 800;">
+                    <button id="btn-res-banner-new-tool" onclick="openNewAssetModal('herramienta_mayor')" class="btn-primary" style="background-color: var(--dalor-gold); color: var(--dalor-navy); font-size: 12px; font-weight: 800;">
 
                         <i class="fa-solid fa-toolbox"></i> + Nueva Herramienta
 
                     </button>
 
-                    <button onclick="openNewAssetModal('maquinaria')" class="btn-primary" style="background-color: #ea580c; color: #ffffff; font-size: 12px; font-weight: 800;">
+                    <button id="btn-res-banner-new-machinery" onclick="openNewAssetModal('maquinaria')" class="btn-primary" style="background-color: #ea580c; color: #ffffff; font-size: 12px; font-weight: 800;">
 
                         <i class="fa-solid fa-tractor"></i> + Nueva Maquinaria
 
                     </button>
 
-                    <button onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background-color: #6366f1; color: #ffffff; font-size: 12px; font-weight: 800;">
+                    <button id="btn-res-banner-new-vehicle" onclick="openNewAssetModal('vehiculo')" class="btn-primary" style="background-color: #6366f1; color: #ffffff; font-size: 12px; font-weight: 800;">
 
                         <i class="fa-solid fa-truck"></i> + Nuevo Vehículo
 
                     </button>
 
-                    <button onclick="openNewPersonnelModal()" class="btn-primary" style="background-color: #10b981; color: #ffffff; font-size: 12px; font-weight: 800;">
+                    <button id="btn-res-banner-new-personnel" onclick="openNewPersonnelModal()" class="btn-primary" style="background-color: #10b981; color: #ffffff; font-size: 12px; font-weight: 800;">
 
                         <i class="fa-solid fa-user-plus"></i> + Nuevo Empleado
 

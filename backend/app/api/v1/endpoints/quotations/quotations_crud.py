@@ -5,7 +5,7 @@ from app.api.deps import get_current_active_user
 from .quotations_common import (
     APIRouter, Depends, HTTPException, Session, List, datetime, re,
     get_db, Quotation, QuotationItem, Client,
-    QuotationCreate, QuotationUpdate, QuotationOut
+    QuotationCreate, QuotationUpdate, QuotationOut, AuditLog, User
 )
 
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
@@ -44,7 +44,11 @@ def get_quotations(db: Session = Depends(get_db)):
     return db.query(Quotation).order_by(Quotation.created_at.desc()).all()
 
 @router.post("/", response_model=QuotationOut)
-def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
+def create_quotation(
+    quote_in: QuotationCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     client = db.query(Client).filter(Client.id == quote_in.client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
@@ -125,6 +129,18 @@ def create_quotation(quote_in: QuotationCreate, db: Session = Depends(get_db)):
         else:
             raise HTTPException(status_code=400, detail=f"Error al registrar presupuesto: {str(e)}")
 
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="comercial",
+            action="crear_cotizacion",
+            details=f"Presupuesto {new_quote.quote_number} elaborado para cliente '{client.name}' (Monto: ${new_quote.total_usd:,.2f} USD)."
+        ))
+        db.commit()
+    except Exception:
+        pass
+
     return new_quote
 
 @router.get("/{quotation_id}", response_model=QuotationOut)
@@ -141,7 +157,12 @@ def get_quotation_by_id(quotation_id: int, db: Session = Depends(get_db)):
 @router.post("/{quotation_id}/", response_model=QuotationOut)
 @router.patch("/{quotation_id}", response_model=QuotationOut)
 @router.patch("/{quotation_id}/", response_model=QuotationOut)
-def update_quotation(quotation_id: int, quote_in: QuotationUpdate, db: Session = Depends(get_db)):
+def update_quotation(
+    quotation_id: int,
+    quote_in: QuotationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada.")
@@ -206,13 +227,30 @@ def update_quotation(quotation_id: int, quote_in: QuotationUpdate, db: Session =
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error al actualizar presupuesto: {str(e)}")
 
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="comercial",
+            action="modificar_cotizacion",
+            details=f"Presupuesto {quote.quote_number} actualizado. Monto: ${quote.total_usd:,.2f} USD, Estado: {quote.status}."
+        ))
+        db.commit()
+    except Exception:
+        pass
+
     return quote
 
 @router.delete("/{quotation_id}")
-def delete_quotation(quotation_id: int, db: Session = Depends(get_db)):
+def delete_quotation(
+    quotation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada.")
+    q_num = quote.quote_number
     try:
         db.query(QuotationItem).filter(QuotationItem.quotation_id == quotation_id).delete()
         db.delete(quote)
@@ -220,4 +258,17 @@ def delete_quotation(quotation_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error al eliminar presupuesto: {str(e)}")
-    return {"success": True, "message": f"Cotización {quote.quote_number} eliminada exitosamente."}
+
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="comercial",
+            action="eliminar_cotizacion",
+            details=f"Presupuesto {q_num} eliminado permanentemente del sistema."
+        ))
+        db.commit()
+    except Exception:
+        pass
+
+    return {"success": True, "message": f"Cotización {q_num} eliminada exitosamente."}

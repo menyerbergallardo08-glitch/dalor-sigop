@@ -46,7 +46,7 @@ def get_audit_logs(
         "module": l.module,
         "action": l.action,
         "details": l.details,
-        "created_at": l.created_at.strftime("%Y-%m-%d %H:%M:%S") if l.created_at else ""
+        "created_at": (l.created_at.strftime("%Y-%m-%dT%H:%M:%SZ") if l.created_at else "")
     } for l in logs]
 
 # ------------------------------------------------------------------------------

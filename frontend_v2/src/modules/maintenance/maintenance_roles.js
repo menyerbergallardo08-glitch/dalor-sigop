@@ -116,10 +116,6 @@ function openNewRoleModal() {
     document.getElementById('roleModalTitle').textContent = 'Crear Rol de Seguridad';
     document.getElementById('role_name').readOnly = false;
     toggleAllRoleCheckboxes(false);
-    ['comercial_view', 'proyectos_view', 'gastos_view', 'gastos_create', 'recursos_view'].forEach(k => {
-        const el = document.getElementById('role_perm_' + k);
-        if (el) el.checked = true;
-    });
     openModal('modalRoleForm');
 }
 
@@ -190,25 +186,21 @@ async function submitRoleForm(event) {
         permissions[k] = el ? el.checked : false;
     });
 
-    // Rollup legacy flags for 100% backward compatibility
-    permissions.comercial = permissions.comercial_view || permissions.comercial_edit || permissions.quotations_create;
-    permissions.comercial_view = permissions.comercial_view;
-    permissions.comercial_edit = permissions.comercial_edit;
-    permissions.proyectos = permissions.proyectos_view || permissions.proyectos_edit;
-    permissions.proyectos_view = permissions.proyectos_view;
-    permissions.proyectos_edit = permissions.proyectos_edit;
-    permissions.finanzas = permissions.cxc_view || permissions.cxp_view || permissions.bancos_view;
+    // Rollup legacy flags for backward compatibility - WITHOUT destroying granular booleans
+    permissions.comercial = !!(permissions.comercial_view || permissions.comercial_edit || permissions.services_view || permissions.quotations_create || permissions.quotations_approve);
+    permissions.proyectos = !!(permissions.proyectos_view || permissions.proyectos_edit || permissions.proyectos_phases || permissions.proyectos_adendas || permissions.proyectos_costs);
+    permissions.finanzas = !!(permissions.cxc_view || permissions.cxc_pay || permissions.cxp_view || permissions.cxp_pay || permissions.bancos_view || permissions.conciliacion_view || permissions.retiros_view);
     permissions.finanzas_view = permissions.finanzas;
-    permissions.finanzas_edit = permissions.cxc_pay || permissions.cxp_pay;
-    permissions.gastos = permissions.gastos_view || permissions.gastos_create;
-    permissions.gastos_view = permissions.gastos_view;
-    permissions.gastos_edit = permissions.gastos_create;
-    permissions.recursos = permissions.recursos_view || permissions.personal_view || permissions.almacen_view;
-    permissions.recursos_view = permissions.recursos;
-    permissions.recursos_edit = permissions.recursos_edit || permissions.almacen_adjust;
-    permissions.executive_bi = permissions.executive_dashboard;
-    permissions.executive_dashboard = permissions.executive_dashboard;
-    permissions.mantenimiento = permissions.usuarios_admin || permissions.backups_admin || permissions.audit_logs;
+    permissions.finanzas_edit = !!(permissions.cxc_pay || permissions.cxp_pay);
+    permissions.gastos = !!(permissions.gastos_view || permissions.gastos_create || permissions.gastos_approve);
+    permissions.recursos = !!(
+        permissions.recursos_view || permissions.recursos_edit || permissions.mantenimiento_vehicular ||
+        permissions.personal_view || permissions.cuadrillas_assign ||
+        permissions.almacen_view || permissions.almacen_adjust ||
+        permissions.requisiciones_view || permissions.despacho_view || permissions.alquileres_view
+    );
+    permissions.executive_bi = !!permissions.executive_dashboard;
+    permissions.mantenimiento = !!(permissions.usuarios_admin || permissions.backups_admin || permissions.audit_logs);
     permissions.mantenimiento_admin = permissions.mantenimiento;
 
     try {

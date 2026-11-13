@@ -4,14 +4,19 @@ Conversion & approval logic: Quotation -> Active Project and Material Requisitio
 from app.api.deps import get_current_active_user
 from .quotations_common import (
     APIRouter, Depends, HTTPException, Session, datetime, re, Optional,
-    get_db, Quotation, Project, Material, ProjectMaterialRequisition
+    get_db, Quotation, Project, Material, ProjectMaterialRequisition,
+    AuditLog, User
 )
 
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.post("/{quotation_id}/convert-to-project")
 @router.post("/{quotation_id}/approve")
-def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db)):
+def convert_quotation_to_project(
+    quotation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada.")
@@ -104,6 +109,17 @@ def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db
         )
         db.add(req)
 
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="comercial",
+            action="aprobar_cotizacion",
+            details=f"Presupuesto {quote.quote_number} aprobado y convertido en Proyecto Activo {proj_code} ({new_project.name}) por un monto total de ${quote.total_usd:,.2f} USD."
+        ))
+    except Exception:
+        pass
+
     db.commit()
     db.refresh(new_project)
 
@@ -120,7 +136,8 @@ def convert_quotation_to_project(quotation_id: int, db: Session = Depends(get_db
 def decline_quotation(
     quotation_id: int,
     reason: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Marca un presupuesto como declinado por el cliente sin alterar proyectos ni caja."""
     quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
@@ -145,6 +162,17 @@ def decline_quotation(
     note_entry = f"[{stamp}] Cliente declinó la propuesta" + (f". Motivo: {clean_reason}" if clean_reason else ".")
     quote.notes = f"{quote.notes}\n{note_entry}" if quote.notes else note_entry
 
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="comercial",
+            action="declinar_cotizacion",
+            details=f"Presupuesto {quote.quote_number} marcado como DECLINADO. Motivo: {clean_reason or 'Sin especificar'}."
+        ))
+    except Exception:
+        pass
+
     db.commit()
     db.refresh(quote)
     return {
@@ -156,7 +184,11 @@ def decline_quotation(
 
 
 @router.post("/{quotation_id}/reopen")
-def reopen_quotation(quotation_id: int, db: Session = Depends(get_db)):
+def reopen_quotation(
+    quotation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     """Reabre una cotización declinada devolviéndola al estado borrador para su renegociación."""
     quote = db.query(Quotation).filter(Quotation.id == quotation_id).first()
     if not quote:
@@ -166,6 +198,17 @@ def reopen_quotation(quotation_id: int, db: Session = Depends(get_db)):
     stamp = datetime.utcnow().strftime("%d/%m/%Y")
     note_entry = f"[{stamp}] Presupuesto reabierto a Borrador para renegociación comercial."
     quote.notes = f"{quote.notes}\n{note_entry}" if quote.notes else note_entry
+
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            module="comercial",
+            action="reabrir_cotizacion",
+            details=f"Presupuesto {quote.quote_number} reabierto a estado BORRADOR para renegociación comercial."
+        ))
+    except Exception:
+        pass
 
     db.commit()
     db.refresh(quote)

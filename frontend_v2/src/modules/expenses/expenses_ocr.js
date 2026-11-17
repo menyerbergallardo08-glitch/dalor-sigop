@@ -5,6 +5,7 @@
 
 var API_BASE = window.API_BASE || (window.location.origin + '/api/v1');
 var EXCHANGE_RATE = window.EXCHANGE_RATE || 850.0;
+var allCategories = window.allCategories = window.allCategories || [];
 
 function authFetch(url, options = {}) {
     var _t = sessionStorage.getItem('dalor_token') || localStorage.getItem('dalor_token') || window.authToken || '';
@@ -136,20 +137,21 @@ async function processOCRFile(rawFile) {
     const file = await compressImageForOCR(rawFile);
     const formData = new FormData();
     formData.append("file", file, file.name);
-    formData.append("exchange_rate", EXCHANGE_RATE || 800.0);
+    const liveRate = window.EXCHANGE_RATE || (window.BCV_DATA && window.BCV_DATA.rate) || EXCHANGE_RATE || 800.0;
+    formData.append("exchange_rate", liveRate);
     try {
         // Asegurar que las categorías y proyectos estén cargados
-        if (!allCategories || allCategories.length === 0) {
+        if (!window.allCategories || window.allCategories.length === 0) {
             try {
                 const resCat = await authFetch(`${API_BASE}/expenses/categories`);
-                allCategories = await resCat.json();
-                populateSelectDropdowns();
+                window.allCategories = allCategories = await resCat.json();
+                if (typeof window.populateSelectDropdowns === "function") window.populateSelectDropdowns();
             } catch (err) {
                 console.warn("No se pudieron cargar categorías:", err);
             }
         }
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 35000);
         let res;
         try {
             res = await authFetch(`${API_BASE}/ocr/scan-ticket`, {
@@ -179,7 +181,9 @@ async function processOCRFile(rawFile) {
         if (document.getElementById("field_is_tax_exempt")) {
             document.getElementById("field_is_tax_exempt").value = data.is_tax_exempt ? "true" : "false";
         }
-        updateFieldTaxDisplays();
+        if (typeof window.updateFieldTaxDisplays === "function") {
+            window.updateFieldTaxDisplays();
+        }
         if (data.fuel_liters && document.getElementById("field_fuel_liters")) {
             document.getElementById("field_fuel_liters").value = data.fuel_liters;
         }

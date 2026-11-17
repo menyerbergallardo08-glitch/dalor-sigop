@@ -90,4 +90,8 @@ window.onValTaxChanged = function() {
 
 };
 
+if (typeof window !== 'undefined') {
+    window.updateFieldTaxDisplays = updateFieldTaxDisplays;
+}
+
 export { updateFieldTaxDisplays };

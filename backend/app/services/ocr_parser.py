@@ -672,8 +672,8 @@ Responde ÚNICAMENTE con este JSON válido:
                         {"text": prompt},
                         {
                             "inline_data": {
-                                "mime_type": inline_mime,
-                                "data": b64_data
+                                "mime_type": "image/jpeg",
+                                "data": b64_image
                             }
                         }
                     ]
@@ -685,7 +685,10 @@ Responde ÚNICAMENTE con este JSON válido:
             }
 
             candidate_models = [
-                "models/gemini-flash-latest",
+                "models/gemini-3.5-flash",
+                "models/gemini-3.5-flash-lite",
+                "models/gemini-3.7-flash",
+                "models/gemini-3.8-flash",
                 "models/gemini-2.0-flash",
                 "models/gemini-2.5-flash",
                 "models/gemini-3.5-flash-lite",

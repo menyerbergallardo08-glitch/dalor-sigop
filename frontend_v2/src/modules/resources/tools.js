@@ -979,6 +979,9 @@ async function submitImportAssetsExcel(event) {
 // --- VINCULACIÓN CON WINDOW Y SCOPE GLOBAL ---
 if (typeof window !== 'undefined') {
     window.populateToolCategoryDropdown = populateToolCategoryDropdown;
+    window.onToolCategoryTyped = onToolCategoryTyped;
+    window.onToolTypeOrCategoryChanged = onToolTypeOrCategoryChanged;
+    window.fetchNextToolCode = fetchNextToolCode;
     window.loadToolsList = loadToolsList;
     window.goToToolsPage = goToToolsPage;
     window.changeToolsPageSize = changeToolsPageSize;

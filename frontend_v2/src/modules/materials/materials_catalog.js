@@ -589,6 +589,8 @@ if (typeof window !== 'undefined') {
     window.filterMaterialsTable = filterMaterialsTable;
     window.populateMaterialCategories = populateMaterialCategories;
     window.onNewMaterialCategoryChanged = onNewMaterialCategoryChanged;
+    window.onCustomCategoryTyped = onCustomCategoryTyped;
+    window.fetchNextMaterialCode = fetchNextMaterialCode;
     window.openNewMaterialModal = openNewMaterialModal;
     window.openNewMaterialModalFromCxp = openNewMaterialModalFromCxp;
     window.submitCreateMaterial = submitCreateMaterial;

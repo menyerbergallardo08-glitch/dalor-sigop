@@ -834,6 +834,7 @@ if (typeof window !== 'undefined') {
     window.onAssetCategorySelected = onAssetCategorySelected;
     window.onAssetTypeChanged = onAssetTypeChanged;
     window.onEditAssetTypeChanged = onEditAssetTypeChanged;
+    window.populateAssetTypesDropdown = populateAssetTypesDropdown;
     window.submitCreateAsset = submitCreateAsset;
     window.openEditAssetModal = openEditAssetModal;
     window.submitEditAsset = submitEditAsset;

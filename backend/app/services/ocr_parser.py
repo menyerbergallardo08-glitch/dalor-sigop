@@ -95,12 +95,18 @@ class OCRReceiptParser:
                                 if text_resp:
                                     return text_resp
                 except urllib.error.HTTPError as m_err:
-                    if m_err.code in [429, 403]:
+                    if m_err.code == 403:
                         try:
-                            print(f"[OCR Failover] Llave ({tier_label}) agotada/saturada (HTTP {m_err.code}). Conmutando al siguiente nivel...")
+                            print(f"[OCR Failover] Llave ({tier_label}) sin permiso/inválida (HTTP {m_err.code}). Conmutando al siguiente nivel...")
                         except Exception:
                             pass
                         break
+                    if m_err.code == 429:
+                        try:
+                            print(f"[OCR Failover] Modelo {model_name} saturado (HTTP 429) en llave ({tier_label}). Probando siguiente modelo...")
+                        except Exception:
+                            pass
+                        continue
                     continue
                 except Exception:
                     continue
@@ -117,26 +123,33 @@ class OCRReceiptParser:
             import io
             from PIL import ImageEnhance
 
-            with Image.open(file_path) as img:
-                img = ImageOps.exif_transpose(img)
-                img = img.convert("RGB")
-                
-                # Pre-procesamiento de contraste y nitidez para recibos de campo
-                try:
-                    img = ImageOps.autocontrast(img, cutoff=0.5)
-                    enhancer = ImageEnhance.Sharpness(img)
-                    img = enhancer.enhance(1.3)
-                except Exception:
-                    pass
+            is_pdf = file_path.lower().endswith(".pdf")
+            if is_pdf:
+                with open(file_path, "rb") as f_pdf:
+                    b64_data = base64.b64encode(f_pdf.read()).decode("utf-8")
+                inline_mime = "application/pdf"
+            else:
+                with Image.open(file_path) as img:
+                    img = ImageOps.exif_transpose(img)
+                    img = img.convert("RGB")
+                    
+                    # Pre-procesamiento de contraste y nitidez para recibos de campo
+                    try:
+                        img = ImageOps.autocontrast(img, cutoff=0.5)
+                        enhancer = ImageEnhance.Sharpness(img)
+                        img = enhancer.enhance(1.3)
+                    except Exception:
+                        pass
 
-                max_dim = max(img.width, img.height)
-                if max_dim > 1024:
-                    scale = 1024 / max_dim
-                    img = img.resize((int(img.width * scale), int(img.height * scale)), Image.Resampling.LANCZOS)
-                
-                buffer = io.BytesIO()
-                img.save(buffer, format="JPEG", quality=80)
-                b64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                    max_dim = max(img.width, img.height)
+                    if max_dim > 1024:
+                        scale = 1024 / max_dim
+                        img = img.resize((int(img.width * scale), int(img.height * scale)), Image.Resampling.LANCZOS)
+                    
+                    buffer = io.BytesIO()
+                    img.save(buffer, format="JPEG", quality=80)
+                    b64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                inline_mime = "image/jpeg"
 
             prompt = f"""Actúa como auditor contable experto en comprobantes de gasto y facturación venezolana (facturas SENIAT, máquinas fiscales térmicas, tickets de venta, notas de entrega y talonarios manuscritos a bolígrafo/lápiz).
 Analiza detenidamente esta imagen y extrae con precisión los datos contables en formato JSON válido.
@@ -184,8 +197,8 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
                         {"text": prompt},
                         {
                             "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": b64_image
+                                "mime_type": inline_mime,
+                                "data": b64_data
                             }
                         }
                     ]
@@ -198,13 +211,11 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
 
             # Modelos ordenados por disponibilidad activa (con cuota verificada y respuesta instantánea)
             candidate_models = [
-                "models/gemini-flash-latest",
-                "models/gemini-2.0-flash",
-                "models/gemini-2.5-flash",
-                "models/gemini-3.5-flash-lite",
                 "models/gemini-3.5-flash",
+                "models/gemini-3.5-flash-lite",
                 "models/gemini-3.7-flash",
-                "models/gemini-3.8-flash"
+                "models/gemini-3.8-flash",
+                "models/gemini-2.0-flash"
             ]
             text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=12)
 
@@ -661,8 +672,8 @@ Responde ÚNICAMENTE con este JSON válido:
                         {"text": prompt},
                         {
                             "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": b64_image
+                                "mime_type": inline_mime,
+                                "data": b64_data
                             }
                         }
                     ]

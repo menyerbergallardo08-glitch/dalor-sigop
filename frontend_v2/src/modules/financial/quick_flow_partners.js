@@ -182,6 +182,9 @@ async function submitQuickFlow(event) {
 
             const partner_name = (document.getElementById('qf_partner_name')?.value || '').trim() || 'Accionista';
             const concept = document.getElementById('qf_partner_concept').value.trim() || description;
+            const liveRate = parseFloat(window.EXCHANGE_RATE || (window.BCV_DATA && window.BCV_DATA.rate) || EXCHANGE_RATE) || 850.0;
+            const rawBs = parseFloat(document.getElementById('qf_amount_bs')?.value);
+            const exact_amount_bs = (!isNaN(rawBs) && rawBs > 0) ? Math.round(rawBs * 100) / 100 : Math.round(amount_usd * liveRate * 100) / 100;
 
 
 
@@ -199,9 +202,11 @@ async function submitQuickFlow(event) {
 
                     amount_usd,
 
+                    amount_bs: exact_amount_bs,
+
                     payment_method,
 
-                    exchange_rate: EXCHANGE_RATE,
+                    exchange_rate: liveRate,
 
                     notes: `Registrado vía Carga Rápida. Proveedor/Destino: ${vendor}`
 

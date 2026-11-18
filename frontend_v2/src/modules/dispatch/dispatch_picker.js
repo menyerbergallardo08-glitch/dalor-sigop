@@ -76,7 +76,7 @@ function isUnitAvailableInBase(a) {
     const isInactive = a.is_active === false;
     const isAssigned = Boolean(a.current_project_id);
     const isUnavail = isInactive || isAssigned || 
-        ['en_obra', 'asignado', 'alquilado_a_tercero', 'en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
+        ['en_obra', 'asignado', 'alquilado_a_tercero', 'en_servicio', 'en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
     return !isUnavail;
 }
 
@@ -224,7 +224,7 @@ export async function renderDispatchPickerItems(filterText = '') {
                             </div>
                             <div style="display: flex; align-items: center; gap: 6px;">
                                 <span style="font-size: 11px; font-weight: 700; color: #475569;">Cant:</span>
-                                <input type="number" min="1" max="${availCount || 1}" value="${selectedQty}" 
+                                <input type="number" step="1" min="1" max="${availCount || 1}" value="${selectedQty}" 
                                        id="picker_qty_${itemKey}" 
                                        onchange="onPickerToolGroupQuantityChanged('${encodeURIComponent(g.key)}', this.value)" 
                                        oninput="onPickerToolGroupQuantityChanged('${encodeURIComponent(g.key)}', this.value)" 
@@ -233,6 +233,18 @@ export async function renderDispatchPickerItems(filterText = '') {
                                 <span style="font-size: 11px; font-weight: 700; color: #64748b;">Unid</span>
                             </div>
                         </div>
+                        ${availCount > 1 ? `
+                        <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 5px;">
+                            ${availableUnits.map(u => {
+                                const unitKey = `asset-${u.id}`;
+                                const uChk = pickerSelectedResources.has(unitKey);
+                                const snTxt = u.serial_number ? ` (${u.serial_number})` : '';
+                                return `<label style="display:inline-flex; align-items:center; gap:4px; background:${uChk ? '#dbeafe' : '#f1f5f9'}; border:1px solid ${uChk ? '#3b82f6' : '#cbd5e1'}; border-radius:6px; padding:2px 7px; font-size:10.5px; font-weight:700; cursor:pointer;">
+                                    <input type="checkbox" ${uChk ? 'checked' : ''} onchange="togglePickerSpecificToolUnit(${u.id}, '${encodeURIComponent(g.name)}', '${encodeURIComponent(u.asset_code || 'HERR')}', '${encodeURIComponent(u.serial_number || '')}', this.checked)">
+                                    <span>${u.asset_code || 'HERR'}${snTxt}</span>
+                                </label>`;
+                            }).join('')}
+                        </div>` : ''}
                     </div>
                 `;
             });
@@ -399,6 +411,32 @@ export function togglePickerToolGroupSelection(encodedGroupKey, isChecked) {
         pickerSelectedResources.delete(itemKey);
     }
     updatePickerSelectedCount();
+}
+
+export function togglePickerSpecificToolUnit(unitId, encName, encCode, encSn, isChecked) {
+    const key = `asset-${unitId}`;
+    const name = decodeURIComponent(encName || 'Herramienta');
+    const code = decodeURIComponent(encCode || 'HERR');
+    const sn = decodeURIComponent(encSn || '');
+    if (isChecked) {
+        pickerSelectedResources.set(key, {
+            type: 'asset',
+            id: unitId,
+            name: sn ? `${name} (S/N: ${sn})` : name,
+            code,
+            unit: 'Unid',
+            cond: 'Operativo / En Custodia',
+            category: 'tools',
+            qty: 1
+        });
+    } else {
+        pickerSelectedResources.delete(key);
+    }
+    updatePickerSelectedCount();
+}
+
+if (typeof window !== 'undefined') {
+    window.togglePickerSpecificToolUnit = togglePickerSpecificToolUnit;
 }
 
 export function togglePickerItemSelection(key, type, id, isChecked) {

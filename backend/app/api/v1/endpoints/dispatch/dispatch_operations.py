@@ -55,7 +55,7 @@ def create_dispatch_guide(
         veh_asset = db.query(Asset).filter(Asset.id == g_in.asset_id).first()
         if veh_asset:
             st = (veh_asset.status or "").lower()
-            if not veh_asset.is_active or st in ["en_mantenimiento", "mantenimiento", "en_reparacion", "reparacion", "inactivo", "desincorporado", "no_disponible"]:
+            if not veh_asset.is_active or st in ["en_servicio", "en_mantenimiento", "mantenimiento", "en_reparacion", "reparacion", "inactivo", "desincorporado", "no_disponible"]:
                 raise HTTPException(
                     status_code=400,
                     detail=f"El vehículo de flota [{veh_asset.asset_code}] '{veh_asset.name}' no está disponible para despacho (Estatus actual: {veh_asset.status})."
@@ -102,7 +102,7 @@ def create_dispatch_guide(
         recipient_name=recipient,
         transfer_reason=(g_in.transfer_reason or ("Control Interno Taller Guacara" if is_internal else "Despacho de Producción")).strip(),
         is_freeform=is_free,
-        dispatch_date=g_in.dispatch_date or datetime.utcnow(),
+        dispatch_date=g_in.dispatch_date or (datetime.utcnow() - timedelta(hours=4)),
         destination_address=dest_addr,
         destination_plant=g_in.destination_plant.strip() if g_in.destination_plant else None,
         transport_type=g_in.transport_type or "propio_dalor",
@@ -420,6 +420,10 @@ def update_dispatch_guide(
     if g.status == "anulada":
         raise HTTPException(status_code=400, detail="Una guía anulada no puede ser modificada.")
 
+    if guide_in.dispatch_date is not None:
+        g.dispatch_date = guide_in.dispatch_date
+    if guide_in.recipient_name is not None:
+        g.recipient_name = guide_in.recipient_name.strip() or g.recipient_name
     if guide_in.destination_address is not None:
         g.destination_address = guide_in.destination_address
     if guide_in.destination_plant is not None:

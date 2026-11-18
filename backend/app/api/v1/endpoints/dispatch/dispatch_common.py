@@ -52,6 +52,8 @@ class DeliveryConfirmIn(BaseModel):
     notes: Optional[str] = None
 
 class DispatchGuideUpdate(BaseModel):
+    dispatch_date: Optional[datetime] = None
+    recipient_name: Optional[str] = None
     destination_address: Optional[str] = None
     destination_plant: Optional[str] = None
     transfer_reason: Optional[str] = None

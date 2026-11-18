@@ -22,7 +22,7 @@
 
             <form id="transferGuideForm" onsubmit="submitGenerateTransferGuide(event)" style="display: flex; flex-direction: column; gap: 10px;">
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
 
                     <div>
 
@@ -37,6 +37,14 @@
                         <label class="form-label">Ubicación de Destino *</label>
 
                         <input type="text" id="tg_destination" placeholder="Planta Centro - Morón" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Fecha y Hora de Envío</label>
+
+                        <input type="datetime-local" id="tg_dispatch_date" class="form-input">
 
                     </div>
 
@@ -499,14 +507,22 @@
             <form id="formEditDispatchGuide" onsubmit="submitEditDispatchGuide(event)">
                 <input type="hidden" id="edit_disp_id">
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label">Destinatario / Receptor</label>
+                        <input type="text" id="edit_disp_recipient_name" class="form-input" placeholder="Empresa, Obra o Custodio receptor">
+                    </div>
+                    <div>
+                        <label class="form-label">Fecha y Hora de Envío</label>
+                        <input type="datetime-local" id="edit_disp_dispatch_date" class="form-input">
+                    </div>
                     <div>
                         <label class="form-label">Dirección de Destino *</label>
                         <input type="text" id="edit_disp_destination" class="form-input" required>
                     </div>
                     <div>
-                        <label class="form-label">Planta / Frente de Trabajo</label>
-                        <input type="text" id="edit_disp_plant" class="form-input" placeholder="Ej: Planta Refinería / Frente Morón">
+                        <label class="form-label">Lugar de Origen</label>
+                        <input type="text" id="edit_disp_plant" class="form-input" placeholder="Ej: Sede Central Dalor (Guacara)">
                     </div>
                 </div>
 

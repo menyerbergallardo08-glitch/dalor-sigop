@@ -24,14 +24,10 @@ export async function printOfficialDispatchGuide(guideId) {
         const fullLoc = `${g.destination_address || ''} ${g.destination_plant || ''} ${g.project_location || ''} ${g.project_name || ''} ${g.transfer_reason || ''}`.toLowerCase();
         const isInternal = (
             g.guide_type === 'control_interno' || 
-            (g.guide_number && g.guide_number.startsWith('GCI-')) ||
-            g.transport_type === 'interno' ||
-            fullLoc.includes('sede dalor') ||
-            fullLoc.includes('sede central') ||
-            fullLoc.includes('taller guacara')
+            (g.guide_number && g.guide_number.startsWith('GCI-'))
         );
         const isFreeform = !!g.is_freeform;
-        const clientName = isFreeform ? (g.recipient_name || 'Destinatario Libre') : (g.client_name || 'Cliente DALOR');
+        const clientName = (isFreeform || !g.client_id) ? (g.recipient_name || g.client_name || 'Destinatario Libre') : (g.client_name || g.recipient_name || 'Cliente DALOR');
         const motiveDisplay = isFreeform ? (g.transfer_reason || 'Traslado Libre') : (`${g.project_code || 'PRJ'} - ${g.project_name || 'Servicio de Taller'}`);
 
         let itemsHtml = (g.items && g.items.length > 0) ? g.items.map((it, idx) => `

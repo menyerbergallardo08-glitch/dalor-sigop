@@ -140,7 +140,7 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-C5KDspfQ.js"></script>
+  <script type="module" crossorigin src="/assets/main-DbTjHxyU.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-cS6s6UF3.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-B8pOSQr6.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-fbJhjjM7.js">
@@ -149,8 +149,8 @@
   <link rel="modulepreload" crossorigin href="/assets/resources-yYSX8m0f.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-CzJzOhA1.js">
   <link rel="modulepreload" crossorigin href="/assets/financial-CBfH5Mxu.js">
-  <link rel="modulepreload" crossorigin href="/assets/materials-CBtfPiv2.js">
-  <link rel="modulepreload" crossorigin href="/assets/dispatch-DLH9LdfT.js">
+  <link rel="modulepreload" crossorigin href="/assets/materials-BJOW1G6G.js">
+  <link rel="modulepreload" crossorigin href="/assets/dispatch-D8Meaxu4.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-ufqzXZk_.js">
 </head>
 <body>
@@ -3669,6 +3669,11 @@
                                 <span id="disp_step1_title">Datos del Destinatario & Obra / Motivo</span>
                             </h4>
 
+                            <div style="margin-bottom: 10px; max-width: 280px;">
+                                <label style="font-size: 11px; font-weight: 700; color: #475569;">Fecha y Hora de Envío (Todas las Guías)</label>
+                                <input type="datetime-local" id="disp_dispatch_date" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                            </div>
+
                             <!-- Modo A: Por Proyecto / Obra -->
                             <div id="disp_sec_project_mode">
                                 <div class="grid-4" style="margin-bottom: 10px;">
@@ -3688,8 +3693,8 @@
                                         </button>
                                     </div>
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Planta / Frente de Entrega</label>
-                                        <input type="text" id="disp_destination_plant" placeholder="Ej: Planta Guacara / Patio 3" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Lugar de Origen</label>
+                                        <input type="text" id="disp_destination_plant" placeholder="Ej: Sede Central Dalor (Guacara)" value="Sede Central Dalor (Guacara)" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
                                     </div>
                                     <div>
                                         <label style="font-size: 11px; font-weight: 700; color: #475569;">Dirección Completa de Destino *</label>
@@ -3719,8 +3724,8 @@
                                         </datalist>
                                     </div>
                                     <div>
-                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Planta / Frente / Almacén Destino</label>
-                                        <input type="text" id="disp_ff_destination_plant" placeholder="Ej: Galpón Principal / Obra Planta" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                                        <label style="font-size: 11px; font-weight: 700; color: #475569;">Lugar de Origen</label>
+                                        <input type="text" id="disp_ff_destination_plant" placeholder="Ej: Sede Central Dalor (Guacara)" value="Sede Central Dalor (Guacara)" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
                                     </div>
                                     <div>
                                         <label style="font-size: 11px; font-weight: 700; color: #475569;">Dirección Completa de Destino *</label>
@@ -12301,7 +12306,7 @@
 
             <form id="transferGuideForm" onsubmit="submitGenerateTransferGuide(event)" style="display: flex; flex-direction: column; gap: 10px;">
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
 
                     <div>
 
@@ -12316,6 +12321,14 @@
                         <label class="form-label">Ubicación de Destino *</label>
 
                         <input type="text" id="tg_destination" placeholder="Planta Centro - Morón" class="form-input" required>
+
+                    </div>
+
+                    <div>
+
+                        <label class="form-label">Fecha y Hora de Envío</label>
+
+                        <input type="datetime-local" id="tg_dispatch_date" class="form-input">
 
                     </div>
 
@@ -12778,14 +12791,22 @@
             <form id="formEditDispatchGuide" onsubmit="submitEditDispatchGuide(event)">
                 <input type="hidden" id="edit_disp_id">
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label">Destinatario / Receptor</label>
+                        <input type="text" id="edit_disp_recipient_name" class="form-input" placeholder="Empresa, Obra o Custodio receptor">
+                    </div>
+                    <div>
+                        <label class="form-label">Fecha y Hora de Envío</label>
+                        <input type="datetime-local" id="edit_disp_dispatch_date" class="form-input">
+                    </div>
                     <div>
                         <label class="form-label">Dirección de Destino *</label>
                         <input type="text" id="edit_disp_destination" class="form-input" required>
                     </div>
                     <div>
-                        <label class="form-label">Planta / Frente de Trabajo</label>
-                        <input type="text" id="edit_disp_plant" class="form-input" placeholder="Ej: Planta Refinería / Frente Morón">
+                        <label class="form-label">Lugar de Origen</label>
+                        <input type="text" id="edit_disp_plant" class="form-input" placeholder="Ej: Sede Central Dalor (Guacara)">
                     </div>
                 </div>
 

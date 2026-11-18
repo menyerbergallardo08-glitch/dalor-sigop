@@ -215,7 +215,7 @@ export function renderDispatchPaginated() {
             projectDisplay = g.project_name ? `${g.project_code || 'PRJ'} - ${g.project_name}` : (g.transfer_reason || 'Uso en Taller');
             transportDisplay = `<div><b>${g.delivered_by_staff || 'Almacén'} &rarr; ${g.received_by_staff || 'Taller'}</b></div><div style="font-size: 10px; color: #64748b;">Custodia Interna</div>`;
         } else {
-            const cName = isFreeform ? (g.recipient_name || 'Destinatario Libre') : (g.client_name || 'Cliente DALOR');
+            const cName = (isFreeform || !g.client_id) ? (g.recipient_name || g.client_name || 'Destinatario Libre') : (g.client_name || g.recipient_name || 'Cliente DALOR');
             clientDisplay = `<div>${cName}</div><div style="font-size: 10px; color: #64748b; font-weight: 400;">${g.destination_plant ? g.destination_plant + ' &bull; ' : ''}${g.destination_address || ''}</div>`;
             projectDisplay = isFreeform ? (g.transfer_reason || 'Traslado Libre') : (g.project_code ? `${g.project_code} - ${g.project_name}` : 'Servicio Directo');
             transportDisplay = `<div><b>${g.driver_name || 'Personal DALOR'}</b></div><div style="font-size: 10px; color: #64748b;">${g.vehicle_plate || 'S/P'} &bull; ${g.transport_type === 'flete_tercerizado' ? 'Tercerizado' : (g.transport_type === 'retiro_cliente' ? 'Retiro' : 'DALOR')}</div>`;
@@ -371,6 +371,10 @@ export async function openEditDispatchGuideModal(guideId) {
         if (idEl) idEl.value = g.id;
         const badgeEl = document.getElementById('edit_disp_guide_badge');
         if (badgeEl) badgeEl.textContent = g.guide_number;
+        const recNameEl = document.getElementById('edit_disp_recipient_name');
+        if (recNameEl) recNameEl.value = g.recipient_name || g.client_name || '';
+        const dateEl = document.getElementById('edit_disp_dispatch_date');
+        if (dateEl) dateEl.value = g.dispatch_date_iso || '';
         const destEl = document.getElementById('edit_disp_destination');
         if (destEl) destEl.value = g.destination_address || '';
         const plantEl = document.getElementById('edit_disp_plant');
@@ -484,6 +488,8 @@ export function addEditDispatchItemRow(desc = '', qty = 1, unit = 'Pzas', cond =
 export async function submitEditDispatchGuide(event) {
     if (event) event.preventDefault();
     const guideId = document.getElementById('edit_disp_id')?.value;
+    const recipientNameVal = document.getElementById('edit_disp_recipient_name')?.value?.trim() || '';
+    const dispDateVal = document.getElementById('edit_disp_dispatch_date')?.value?.trim() || '';
     const destination = document.getElementById('edit_disp_destination')?.value?.trim() || '';
     const plant = document.getElementById('edit_disp_plant')?.value?.trim() || '';
     const driver = document.getElementById('edit_disp_driver_name')?.value?.trim() || '';
@@ -522,6 +528,8 @@ export async function submitEditDispatchGuide(event) {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                recipient_name: recipientNameVal || null,
+                dispatch_date: dispDateVal ? (dispDateVal.length === 16 ? `${dispDateVal}:00` : dispDateVal) : null,
                 destination_address: destination,
                 destination_plant: plant,
                 driver_name: driver,

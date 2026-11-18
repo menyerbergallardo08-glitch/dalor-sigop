@@ -217,8 +217,21 @@ function renderTransferToolsItemsHtml() {
         const initialQty = g.projectUnits.length > 0 ? g.projectUnits.length : 0;
         const isInitiallyActive = initialQty > 0;
 
+        const allRowUnits = [...g.projectUnits, ...g.availableUnits];
+        const unitChipsHtml = totalAvail > 1 ? `
+            <div style="width: 100%; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #cbd5e1; display: flex; flex-wrap: wrap; gap: 5px;">
+                ${allRowUnits.map(u => {
+                    const snTxt = u.serial_number && u.serial_number !== '-' ? ` (${u.serial_number})` : '';
+                    return `<label style="display:inline-flex; align-items:center; gap:4px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:2px 7px; font-size:10.5px; font-weight:700; cursor:pointer;">
+                        <input type="checkbox" class="tg-unit-chk-${idx}" value="${u.id}" onchange="onToggleTransferSpecificUnit(${idx})">
+                        <span>${u.asset_code || 'HERR'}${snTxt}</span>
+                    </label>`;
+                }).join('')}
+            </div>
+        ` : '';
+
         return `
-        <div class="tg-tool-item" data-index="${idx}" data-text="${g.name} ${g.asset_code_sample} ${g.brand}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 6px; background: ${isInitiallyActive ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isInitiallyActive ? '#86efac' : '#e2e8f0'}; transition: all 0.2s ease;">
+        <div class="tg-tool-item" data-index="${idx}" data-text="${g.name} ${g.asset_code_sample} ${g.brand}" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 6px; background: ${isInitiallyActive ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isInitiallyActive ? '#86efac' : '#e2e8f0'}; transition: all 0.2s ease;">
             <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
                 <input type="checkbox" id="tg_chk_${idx}" class="tg-tool-checkbox" data-index="${idx}" ${isInitiallyActive ? 'checked' : ''} onchange="onToggleTransferToolRow(${idx})" style="width: 16px; height: 16px; accent-color: #0284c7; cursor: pointer; flex-shrink: 0;">
                 <label for="tg_chk_${idx}" style="cursor: pointer; display: flex; flex-direction: column; min-width: 0;">
@@ -234,14 +247,28 @@ function renderTransferToolsItemsHtml() {
             
             <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
                 <button type="button" onclick="adjustTransferToolQty(${idx}, -1)" class="btn-qty-minus" style="width: 24px; height: 24px; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 4px; font-weight: 800; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 12px;">-</button>
-                <input type="number" id="tg_qty_${idx}" class="tg-tool-qty-input" data-index="${idx}" min="0" max="${Math.max(1, totalAvail)}" value="${initialQty}" oninput="onTransferToolQtyInput(${idx})" style="width: 52px; height: 24px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 800; color: #0284c7;">
+                <input type="number" step="1" id="tg_qty_${idx}" class="tg-tool-qty-input" data-index="${idx}" min="0" max="${Math.max(1, totalAvail)}" value="${initialQty}" oninput="onTransferToolQtyInput(${idx})" style="width: 52px; height: 24px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 800; color: #0284c7;">
                 <button type="button" onclick="adjustTransferToolQty(${idx}, 1)" class="btn-qty-plus" style="width: 24px; height: 24px; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 4px; font-weight: 800; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 12px;">+</button>
             </div>
+            ${unitChipsHtml}
         </div>
         `;
     }).join('');
 
     filterTransferToolsChecklist();
+}
+
+function onToggleTransferSpecificUnit(idx) {
+    const chks = Array.from(document.querySelectorAll(`.tg-unit-chk-${idx}:checked`));
+    const chk = document.getElementById(`tg_chk_${idx}`);
+    const input = document.getElementById(`tg_qty_${idx}`);
+    const row = chk?.closest('.tg-tool-item');
+    if (input) input.value = String(chks.length);
+    if (chk) chk.checked = chks.length > 0;
+    if (row) {
+        row.style.background = chks.length > 0 ? '#f0fdf4' : '#f8fafc';
+        row.style.borderColor = chks.length > 0 ? '#86efac' : '#e2e8f0';
+    }
 }
 
 function onToggleTransferToolRow(idx) {
@@ -367,7 +394,8 @@ async function submitGenerateTransferGuide(event) {
         const chk = document.getElementById(`tg_chk_${idx}`);
         const qty = parseInt(input?.value || "0");
         if (qty > 0 || (chk && chk.checked)) {
-            const finalQty = qty > 0 ? qty : 1;
+            const specificCheckedIds = Array.from(document.querySelectorAll(`.tg-unit-chk-${idx}:checked`)).map(el => parseInt(el.value));
+            const finalQty = specificCheckedIds.length > 0 ? specificCheckedIds.length : (qty > 0 ? qty : 1);
             // Tomar primero unidades ya en este proyecto o disponibles en base
             const allCandidates = [...g.projectUnits, ...g.availableUnits, ...g.allUnits];
             const uniqueUnits = [];
@@ -378,7 +406,9 @@ async function submitGenerateTransferGuide(event) {
                     uniqueUnits.push(u);
                 }
             }
-            const allocatedUnits = uniqueUnits.slice(0, finalQty);
+            const allocatedUnits = specificCheckedIds.length > 0
+                ? uniqueUnits.filter(u => specificCheckedIds.includes(u.id))
+                : uniqueUnits.slice(0, finalQty);
             selectedToolGroups.push({
                 group: g,
                 name: g.name,
@@ -429,11 +459,14 @@ async function submitGenerateTransferGuide(event) {
             }
         });
 
+        const tgDateVal = (document.getElementById("tg_dispatch_date")?.value || "").trim();
         const dispatchPayload = {
             project_id: projId,
             client_id: proj ? proj.client_id : null,
-            guide_type: isSedeCentralOrNoVeh ? "control_interno" : "traslado_externo",
-            destination_address: dest || (isSedeCentralOrNoVeh ? "Taller DALOR Guacara (Sede Central)" : "En Obra"),
+            recipient_name: proj ? (proj.client_name || proj.name) : (dest || "Obra DALOR"),
+            dispatch_date: tgDateVal ? (tgDateVal.length === 16 ? `${tgDateVal}:00` : tgDateVal) : null,
+            guide_type: "traslado_externo",
+            destination_address: dest || "En Obra",
             driver_name: finalDriver,
             vehicle_plate: vehPlate,
             carrier_company: "DALOR C.A.",
@@ -711,6 +744,7 @@ if (typeof window !== 'undefined') {
     window.renderTransferToolsChecklist = renderTransferToolsChecklist;
     window.filterTransferToolsChecklist = filterTransferToolsChecklist;
     window.onToggleTransferToolRow = onToggleTransferToolRow;
+    window.onToggleTransferSpecificUnit = onToggleTransferSpecificUnit;
     window.adjustTransferToolQty = adjustTransferToolQty;
     window.onTransferToolQtyInput = onTransferToolQtyInput;
     window.submitGenerateTransferGuide = submitGenerateTransferGuide;

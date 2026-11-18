@@ -186,11 +186,12 @@ export async function initDispatchForm() {
     try {
         const assetSel = document.getElementById('disp_select_asset');
         if (assetSel) {
-            let assets = window.allAssets || [];
-            if (assets.length === 0) {
+            let assets = [];
+            try {
                 const res = await authFetch(`${API_BASE}/assets/`);
                 if (res.ok) assets = window.allAssets = await res.json();
-            }
+            } catch (_) {}
+            if (!assets.length) assets = window.allAssets || [];
             const vehicles = assets.filter(a => {
                 const type = (a.asset_type || '').toLowerCase();
                 const cat = (a.category || '').toLowerCase();
@@ -212,7 +213,7 @@ export async function initDispatchForm() {
                 const isInactive = v.is_active === false;
                 const isAssigned = Boolean(v.current_project_id);
                 const isUnavail = isInactive || isAssigned || 
-                    ['en_obra', 'asignado', 'en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
+                    ['en_obra', 'asignado', 'en_servicio', 'en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
                 
                 if (isUnavail) {
                     unavailableVehicles.push(v);
@@ -383,22 +384,6 @@ export function onDispatchProjectChanged() {
     const project = projects.find(p => String(p.id) === String(projId));
 
     if (project) {
-        const loc = (project.location || '').toLowerCase();
-        const pName = (project.name || '').toLowerCase();
-        const isSede = loc.includes('sede') || loc.includes('taller') || loc.includes('guacara') || loc.includes('planta dalor') || pName.includes('taller') || pName.includes('sede');
-
-        if (isSede) {
-            setDispatchMode('internal');
-            const ciProjSel = document.getElementById('disp_ci_project_id');
-            if (ciProjSel) ciProjSel.value = String(projId);
-            const areaInp = document.getElementById('disp_ci_destination_area');
-            if (areaInp && (!areaInp.value || areaInp.value.includes('Taller Metalmecánico'))) {
-                areaInp.value = `${project.name} (Taller / Sede)`;
-            }
-        } else {
-            setDispatchMode('project');
-        }
-
         if (project.client_id && clientSel) {
             clientSel.value = String(project.client_id);
             onDispatchClientChanged();
@@ -406,7 +391,7 @@ export function onDispatchProjectChanged() {
         }
         const plantInput = document.getElementById('disp_destination_plant');
         if (plantInput && !plantInput.value) {
-            plantInput.value = project.name || 'Planta de Obra';
+            plantInput.value = 'Sede Central Dalor (Guacara)';
         }
     }
 }

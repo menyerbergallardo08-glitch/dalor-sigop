@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.core.database import get_db
 from app.models.models import AssetRentalLoan
@@ -61,8 +61,8 @@ def get_rental_delivery_note(item_id: int, db: Session = Depends(get_db)):
         "contact_phone": item.contact_phone or "No indicado",
         "destination_reference": item.destination_reference or (item.project.name if item.project else "Taller Central Guacara"),
         "project_name": item.project.name if item.project else (item.destination_reference or "Uso Externo / Destino Particular"),
-        "dispatch_date": item.start_date.strftime("%d/%m/%Y") if item.start_date else datetime.utcnow().strftime("%d/%m/%Y"),
-        "expected_return_date": item.expected_return_date.strftime("%d/%m/%Y") if item.expected_return_date else "Indefinido",
+        "dispatch_date": item.start_date.strftime("%d/%m/%y %H:%M") if item.start_date else (datetime.utcnow() - timedelta(hours=4)).strftime("%d/%m/%y %H:%M"),
+        "expected_return_date": item.expected_return_date.strftime("%d/%m/%y") if item.expected_return_date else "Indefinido",
         "rate_usd": item.rate_usd or 0.0,
         "rate_period": item.rate_period or "dia",
         "total_amount_usd": item.total_amount_usd or 0.0,

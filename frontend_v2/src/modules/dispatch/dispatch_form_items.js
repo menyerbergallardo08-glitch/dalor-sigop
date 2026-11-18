@@ -62,7 +62,7 @@ export function addDispatchItemRow(desc = "", qty = 1, unit = "Pzas", cond = "Re
             <input type="text" class="form-input disp-item-desc" value="${desc}" placeholder="Ej: Eje motriz rectificado / Válvula compuerta 6\"" style="width: 100%; font-size: 12px;" required>
         </td>
         <td style="padding: 6px;">
-            <input type="number" step="0.01" min="0.01" class="form-input disp-item-qty" value="${qty}" style="width: 100%; font-size: 12px; text-align: right;" required>
+            <input type="number" step="1" min="1" class="form-input disp-item-qty" value="${Math.max(1, Math.round(Number(qty) || 1))}" style="width: 100%; font-size: 12px; text-align: right;" required>
         </td>
         <td style="padding: 6px;">
             <select class="form-select disp-item-unit" style="width: 100%; font-size: 11.5px;">
@@ -192,7 +192,7 @@ export async function submitCreateDispatchGuide(event) {
                 if (!vehicleModel) vehicleModel = selectedVeh.name;
                 const st = (selectedVeh.status || '').toLowerCase().trim();
                 const isUnavail = selectedVeh.is_active === false || 
-                    ['en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
+                    ['en_servicio', 'en_mantenimiento', 'mantenimiento', 'en_reparacion', 'reparacion', 'inactivo', 'desincorporado', 'no_disponible'].includes(st);
                 if (isUnavail) {
                     alert(`⛔ El vehículo seleccionado [${selectedVeh.asset_code || ''}] '${selectedVeh.name}' NO se encuentra disponible para despacho (Estatus actual: ${selectedVeh.status}). Por favor selecciona una unidad operativa.`);
                     return;
@@ -247,8 +247,10 @@ export async function submitCreateDispatchGuide(event) {
         return;
     }
 
+    const dispDateVal = (document.getElementById('disp_dispatch_date')?.value || '').trim();
     const payload = {
         guide_type: guideType,
+        dispatch_date: dispDateVal ? (dispDateVal.length === 16 ? `${dispDateVal}:00` : dispDateVal) : null,
         delivered_by_staff: deliveredByStaff,
         received_by_staff: receivedByStaff,
         project_id: projectId ? parseInt(projectId) : null,

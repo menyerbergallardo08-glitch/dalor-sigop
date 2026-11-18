@@ -174,17 +174,18 @@ function renderFleetTablePaginated() {
         }
 
         const st = (v?.status || '').toLowerCase().trim();
+        const isInService = st === 'en_servicio' || st === 'en_mantenimiento' || (v?.current_location || '').toLowerCase().includes('taller / en servicio');
         const isAlquilado = st === 'alquilado_a_tercero' || st === 'alquilado';
         const isPrestado = st === 'prestado_a_cliente' || st === 'en_prestamo' || st === 'prestamo';
         const isEnRuta = v?.status === 'en_obra' || (v?.current_location && v.current_location.toLowerCase().includes('en ruta'));
-        const inBase = !isAlquilado && !isPrestado && (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && !isEnRuta && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
+        const inBase = !isInService && !isAlquilado && !isPrestado && (v?.status === 'disponible_base' || v?.status === 'disponible') && !v?.current_project_id && !isEnRuta && (!v?.custodian || v.custodian.toLowerCase().includes('base') || v.custodian === '-');
         const plateStr = v?.license_plate || '-';
-        const locStr = isAlquilado ? (v?.current_location || 'Custodia Externa (Alquiler)') : (isPrestado ? (v?.current_location || 'Custodia Externa (Préstamo)') : (inBase 
+        const locStr = isInService ? (v?.current_location || 'Taller / En Servicio (No Disponible)') : (isAlquilado ? (v?.current_location || 'Custodia Externa (Alquiler)') : (isPrestado ? (v?.current_location || 'Custodia Externa (Préstamo)') : (inBase 
             ? (v?.current_location || 'Sede Central Dalor (Guacara)')
-            : (v?.current_location || (v?.current_project_id ? 'En Operación / Obra' : 'Sede Central (Uso Administrativo / Logística)'))));
-        const custStr = isAlquilado ? (v?.current_custodian_name || 'Cliente / Arrendatario') : (isPrestado ? (v?.current_custodian_name || 'Tercero en Alianza') : (inBase 
+            : (v?.current_location || (v?.current_project_id ? 'En Operación / Obra' : 'Sede Central (Uso Administrativo / Logística)')))));
+        const custStr = isInService ? 'En Mantenimiento / Servicio' : (isAlquilado ? (v?.current_custodian_name || 'Cliente / Arrendatario') : (isPrestado ? (v?.current_custodian_name || 'Tercero en Alianza') : (inBase 
             ? 'Disponible en Base'
-            : (v?.custodian && !v.custodian.toLowerCase().includes('base') ? v.custodian : (v?.current_custodian_name || (v?.current_project_id ? 'Equipo de Obra' : 'En Operación')))));
+            : (v?.custodian && !v.custodian.toLowerCase().includes('base') ? v.custodian : (v?.current_custodian_name || (v?.current_project_id ? 'Equipo de Obra' : 'En Operación'))))));
         const vName = v?.name || 'Vehículo';
         const safeName = String(vName).replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const safeCode = v?.asset_code || 'FLT';
@@ -197,7 +198,12 @@ function renderFleetTablePaginated() {
         let badgeColor = '#166534';
         let badgeIcon = 'fa-warehouse';
 
-        if (isAlquilado) {
+        if (isInService) {
+            badgeText = 'EN MANTENIMIENTO / SERVICIO';
+            badgeBg = '#fee2e2';
+            badgeColor = '#b91c1c';
+            badgeIcon = 'fa-screwdriver-wrench';
+        } else if (isAlquilado) {
             badgeText = 'ALQUILADO A TERCERO';
             badgeBg = '#e0e7ff';
             badgeColor = '#3730a3';
@@ -262,9 +268,16 @@ function renderFleetTablePaginated() {
                 <button onclick="openCalibrateOdometerModal(${vId}, '${safeCode}', '${safeName}', ${curOdo})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-right: 4px; color: #7c3aed; border-color: #c4b5fd;" title="Calibrar / Resetear Odómetro con Clave de Director">
                     <i class="fa-solid fa-key"></i> Calibrar
                 </button>
-                ${inBase ? `
+                ${isInService ? `
+                    <button onclick="toggleAssetServiceStatus(${vId}, true)" class="btn-primary" style="padding: 3px 8px; font-size: 11px; background: #059669;" title="Finalizar mantenimiento y devolver a Disponible">
+                        ✅ Liberar
+                    </button>
+                ` : (inBase ? `
                     <button onclick="openAssignModal('asset', ${vId}, '${safeName}', 'assign')" class="btn-primary" style="padding: 3px 8px; font-size: 11px;">
                         Asignar
+                    </button>
+                    <button onclick="toggleAssetServiceStatus(${vId}, false)" class="btn-secondary" style="padding: 3px 7px; font-size: 11px; margin-left: 4px; background: #fee2e2; color: #b91c1c; border-color: #fca5a5;" title="Enviar unidad a Mantenimiento / En Servicio (No Disponible)">
+                        🔧 Mtto
                     </button>
                 ` : `
                     <button onclick="openAssignModal('asset', ${vId}, '${safeName}', 'transfer')" class="btn-secondary" style="padding: 3px 6px; font-size: 11px;" title="Transferir a otra obra o sede">
@@ -278,7 +291,7 @@ function renderFleetTablePaginated() {
                     <button onclick="returnResourceToBase('asset', ${vId})" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-left: 4px; background: #059669;" title="Devolver a Sede Central">
                         <i class="fa-solid fa-warehouse"></i> Devolver
                     </button>
-                `}
+                `)}
                 <button onclick="openEditAssetModal(${vId})" class="btn-secondary" style="padding: 3px 6px; font-size: 11px; margin-left: 4px; color: #0284c7; border-color: #bae6fd;" title="Editar Activo / Vehículo">
                     <i class="fa-solid fa-pen"></i>
                 </button>

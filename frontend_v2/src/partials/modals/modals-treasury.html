@@ -25,6 +25,7 @@
 
 
             <form id="quickFlowForm" onsubmit="submitQuickFlow(event)" style="display: flex; flex-direction: column; gap: 14px;">
+                <input type="hidden" id="qf_edit_withdrawal_id" value="">
 
                 
 
@@ -41,10 +42,20 @@
                             <input type="number" step="0.01" id="qf_amount_bs" oninput="calcQuickUsd()" placeholder="0.00" class="form-input" style="padding-left: 36px; font-size: 15px; font-weight: 800; background: #ffffff;">
                         </div>
                     </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+                        <div>
+                            <label class="form-label" style="font-size: 11px; font-weight: 700; color: #475569;">Fecha y Hora de Operación</label>
+                            <input type="datetime-local" id="qf_operation_date" class="form-input" style="font-size: 12px; font-weight: 700;">
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 11px; font-weight: 700; color: #475569;">Tasa Aplicada (Bs/$)</label>
+                            <input type="number" step="0.01" id="qf_exchange_rate" oninput="calcQuickBs()" class="form-input" style="font-size: 13px; font-weight: 800; color: #0369a1;">
+                        </div>
+                    </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; color: #64748b;">
                         <span><i class="fa-solid fa-calculator" style="color: #0284c7;"></i> Conversión automática bidireccional</span>
                         <span style="background: #e0f2fe; color: #0369a1; font-weight: 800; padding: 2px 6px; border-radius: 4px;">
-                            <i class="fa-solid fa-building-columns"></i> Tasa Oficial BCV activa
+                            <i class="fa-solid fa-building-columns"></i> Tasa editable / BCV
                         </span>
                     </div>
                 </div>
@@ -180,6 +191,10 @@
                     <label class="form-label" style="color: #6b21a8;">Motivo / Detalle del Retiro</label>
 
                     <input type="text" id="qf_partner_concept" placeholder="Ej: Retiro personal quincenal / Gastos particulares" class="form-input" style="background: white;">
+
+                    <label class="form-label" style="color: #6b21a8; margin-top: 8px;">Nº Referencia / Comprobante</label>
+
+                    <input type="text" id="qf_reference_number" placeholder="Ej: Ref bancaria / comprobante" class="form-input" style="background: white;">
 
                 </div>
 
@@ -613,9 +628,10 @@
             <button type="button" onclick="closeModal('modalManageAccounts')" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">&times;</button>
         </div>
 
-        <!-- Formulario nueva cuenta -->
+        <!-- Formulario nueva / editar cuenta -->
         <div style="background:#f1f5f9; border-radius:8px; padding:14px; margin-bottom:14px;">
-            <h4 style="font-size:13px; font-weight:700; color:#1e293b; margin:0 0 10px 0;"><i class="fa-solid fa-plus"></i> Nueva Cuenta / Caja</h4>
+            <input type="hidden" id="edit_acc_id" value="">
+            <h4 id="formManageAccountTitle" style="font-size:13px; font-weight:700; color:#1e293b; margin:0 0 10px 0;"><i class="fa-solid fa-plus"></i> Nueva Cuenta / Caja</h4>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                 <div>
                     <label class="form-label">Nombre de la Cuenta *</label>
@@ -637,12 +653,22 @@
                     <input type="text" id="new_acc_number" class="form-input" placeholder="Ej: **5678 o N/A">
                 </div>
                 <div>
+                    <label class="form-label">Titularidad / Ámbito</label>
+                    <select id="new_acc_scope" class="form-select">
+                        <option value="empresa">🏢 Cuenta Operativa Empresa</option>
+                        <option value="socio">👤 Cuenta Personal Socio</option>
+                    </select>
+                </div>
+                <div>
                     <label class="form-label">Notas</label>
                     <input type="text" id="new_acc_notes" class="form-input" placeholder="Opcional">
                 </div>
-                <div style="display:flex; align-items:flex-end;">
-                    <button type="button" onclick="submitNewFinancialAccount()" class="btn-primary" style="width:100%; background:#2563eb;">
+                <div style="grid-column: span 2; display:flex; gap:8px; align-items:center;">
+                    <button type="button" id="btnSubmitManageAccount" onclick="submitNewFinancialAccount()" class="btn-primary" style="flex:1; background:#2563eb;">
                         <i class="fa-solid fa-plus"></i> Crear Cuenta
+                    </button>
+                    <button type="button" id="btnCancelEditAccount" onclick="cancelEditFinancialAccount()" class="btn-secondary" style="display:none;">
+                        Cancelar Edición
                     </button>
                 </div>
             </div>

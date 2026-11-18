@@ -20,6 +20,25 @@ const authFetch = (url, options = {}) => {
     return window.fetch(url, { ...options, headers });
 };
 
+function getFinancialScopeMode() {
+    try {
+        const saved = localStorage.getItem('dalor_financial_scope_mode') || 'consolidado';
+        return ['empresa', 'socio', 'consolidado'].includes(saved) ? saved : 'consolidado';
+    } catch (_) {
+        return 'consolidado';
+    }
+}
+
+function onFinancialScopeModeChanged(mode) {
+    const cleanMode = ['empresa', 'socio', 'consolidado'].includes(mode) ? mode : 'consolidado';
+    try {
+        localStorage.setItem('dalor_financial_scope_mode', cleanMode);
+    } catch (_) {}
+    const sel = document.getElementById('treasury_scope_mode');
+    if (sel && sel.value !== cleanMode) sel.value = cleanMode;
+    loadTreasurySummary();
+}
+
 function onTreasurySummaryPeriodChange() {
     const period = document.getElementById('treasury_sum_period')?.value || 'all';
     const customContainer = document.getElementById('treasury_sum_custom_dates');
@@ -153,6 +172,10 @@ async function loadTreasurySummary() {
     if (accountId && accountId !== 'all') {
         queryParams.append('account_id', accountId);
     }
+    const scopeMode = getFinancialScopeMode();
+    const scopeSel = document.getElementById('treasury_scope_mode');
+    if (scopeSel && scopeSel.value !== scopeMode) scopeSel.value = scopeMode;
+    queryParams.append('scope_mode', scopeMode);
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
     try {
@@ -204,7 +227,17 @@ async function loadTreasurySummary() {
         }
 
         if (cashflowDetails) {
+            const activeScope = k.scope_mode || scopeMode || 'consolidado';
+            const scopeLabelMap = {
+                empresa: '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:800;">🏢 Modo Activo: Solo Empresa (Operativo)</span>',
+                socio: '<span style="background:#f3e8ff;color:#6b21a8;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:800;">👤 Modo Activo: Solo Socios (Personal)</span>',
+                consolidado: '<span style="background:#f1f5f9;color:#334155;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:800;">📊 Modo Activo: Consolidado (Empresa + Socios)</span>'
+            };
             cashflowDetails.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                    ${scopeLabelMap[activeScope] || scopeLabelMap.consolidado}
+                    ${activeScope === 'consolidado' && k.net_company_only_cash_usd !== undefined ? `<span style="font-size:10.5px; color:#0369a1; font-weight:700;">Solo Empresa: $${Number(k.net_company_only_cash_usd || 0).toLocaleString()}</span>` : ''}
+                </div>
                 ${(k.total_initial_balance_usd && k.total_initial_balance_usd > 0) ? `
                 <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 12px;">
                     <span style="color: #15803d; font-weight: 700;"><i class="fa-solid fa-coins"></i> (+) Saldo Inicial / Apertura:</span>
@@ -226,6 +259,12 @@ async function loadTreasurySummary() {
                     <b style="color: #e11d48;">-$${(k.total_direct_expenses_usd || 0).toLocaleString()}</b>
                 </div>
 
+                ${activeScope !== 'empresa' ? `
+                <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 6px; font-size: 12px;">
+                    <span style="color: #6b21a8; font-weight: 700;"><i class="fa-solid fa-user-tie"></i> (-) Retiros Personales de Socios:</span>
+                    <b style="color: #7c3aed;">-$${(k.total_partner_withdrawals_usd || 0).toLocaleString()}</b>
+                </div>` : ''}
+
                 <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px; font-size: 12px;">
                     <span>(+/-) Diferencial Cambiario (Mesa de Cambio / Arbitraje):</span>
                     <b style="color: ${(k.net_exchange_diff_usd || 0) >= 0 ? '#059669' : '#e11d48'};">
@@ -240,8 +279,8 @@ async function loadTreasurySummary() {
 
                 <div style="display: flex; justify-content: space-between; padding: 8px 10px; background: var(--dalor-navy); color: white; border-radius: 6px; font-size: 13px; font-weight: 800; margin-top: 4px;">
                     <span>(=) Saldo Líquido Disponible Real (Libre de Impuestos):</span>
-                    <span style="color: ${((k.net_operating_cash_usd || 0) - (k.total_pending_tax_withholdings_usd || 0)) >= 0 ? '#34d399' : '#f87171'};">
-                        $${((k.net_operating_cash_usd || 0) - (k.total_pending_tax_withholdings_usd || 0)).toLocaleString()}
+                    <span style="color: ${((k.net_operating_cash_usd || 0) - (activeScope === 'socio' ? 0 : (k.total_pending_tax_withholdings_usd || 0))) >= 0 ? '#34d399' : '#f87171'};">
+                        $${((k.net_operating_cash_usd || 0) - (activeScope === 'socio' ? 0 : (k.total_pending_tax_withholdings_usd || 0))).toLocaleString()}
                     </span>
                 </div>
             `;
@@ -291,6 +330,11 @@ async function loadTreasurySummary() {
 
                 const operations = [];
                 const bcvRate = window.BCV_DATA?.rate || (typeof State !== 'undefined' && State.exchangeRate) || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 850.0);
+                const partnerAccountIds = new Set(
+                    (Array.isArray(accList) ? accList : [])
+                        .filter(a => /\[SOCIO\]/i.test(a.notes || '') || /personal/i.test(a.name || ''))
+                        .map(a => Number(a.id))
+                );
 
                 // 0. Trazabilidad de saldos iniciales de apertura
                 if (Array.isArray(accList)) {
@@ -312,7 +356,8 @@ async function loadTreasurySummary() {
                                 amount_usd: acc.initial_balance,
                                 amount_bs: acc.initial_balance_bs || (acc.initial_balance * bcvRate),
                                 notes: acc.notes || 'Saldo de apertura y conciliación de cuenta',
-                                accountId: acc.id
+                                accountId: acc.id,
+                                isPartnerScope: partnerAccountIds.has(Number(acc.id))
                             });
                         }
                     });
@@ -433,7 +478,8 @@ async function loadTreasurySummary() {
                             ref: w.reference_number || w.payment_method || '-',
                             amount_usd: w.amount_usd,
                             amount_bs: w.amount_bs || (w.amount_usd * (w.exchange_rate || window.BCV_DATA?.rate || 850.0)),
-                            accountId: w.financial_account_id || null
+                            accountId: w.financial_account_id || null,
+                            isPartnerScope: true
                         });
                     });
                 }
@@ -469,12 +515,13 @@ async function loadTreasurySummary() {
                         const rawD = getIsoDate(e.expense_date || e.created_at || '');
                         const dispD = formatDateDisplay(e.expense_date || e.created_at || 'Reciente');
                         const catName = (e.category?.name || e.expense_type || 'Gasto').replace(/_/g, ' ');
+                        const isSocioExp = (e.expense_type === 'retiro_socio') || (e.financial_account_id && partnerAccountIds.has(Number(e.financial_account_id)));
                         operations.push({
                             date: dispD,
                             rawDate: rawD,
                             dateDisplay: dispD,
-                            type: 'GASTO OPERATIVO',
-                            typeColor: '#ea580c',
+                            type: isSocioExp ? 'RETIRO SOCIO' : 'GASTO OPERATIVO',
+                            typeColor: isSocioExp ? '#7c3aed' : '#ea580c',
                             sign: '-',
                             concept: `[${catName}] ${e.description || 'Gasto operacional'}`,
                             entity: e.supplier_vendor || 'Varios / Sede',
@@ -483,7 +530,8 @@ async function loadTreasurySummary() {
                             amount_usd: usd,
                             amount_bs: e.amount_bs || (usd * bcvRate),
                             notes: e.description || '',
-                            accountId: e.financial_account_id || null
+                            accountId: e.financial_account_id || null,
+                            isPartnerScope: isSocioExp
                         });
                     });
                 }
@@ -509,10 +557,14 @@ if (typeof window !== 'undefined') {
     window.onTreasurySummaryPeriodChange = onTreasurySummaryPeriodChange;
     window.resetTreasurySummaryFilters = resetTreasurySummaryFilters;
     window.loadTreasurySummary = loadTreasurySummary;
+    window.getFinancialScopeMode = getFinancialScopeMode;
+    window.onFinancialScopeModeChanged = onFinancialScopeModeChanged;
 }
 
 export {
     onTreasurySummaryPeriodChange,
     resetTreasurySummaryFilters,
-    loadTreasurySummary
+    loadTreasurySummary,
+    getFinancialScopeMode,
+    onFinancialScopeModeChanged
 };

@@ -34,7 +34,7 @@ function switchResourceSubtab(subtabName) {
         localStorage.setItem('dalor_active_subtab_resources', subtabName);
     } catch(e) {}
 
-    const allSubtabs = ['dashboard', 'fleet', 'machinery', 'tools', 'materials', 'personnel', 'rentals'];
+    const allSubtabs = ['dashboard', 'fleet', 'obligations', 'machinery', 'tools', 'materials', 'personnel', 'rentals'];
 
     allSubtabs.forEach(tab => {
 
@@ -63,6 +63,7 @@ function switchResourceSubtab(subtabName) {
     if (subtabName === 'dashboard') loadResourceDashboard();
 
     if (subtabName === 'fleet') loadFleetList();
+    if (subtabName === 'obligations' && typeof window.loadFleetObligations === 'function') window.loadFleetObligations();
 
     if (subtabName === 'machinery') loadMachineryList();
 

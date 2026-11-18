@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
@@ -128,54 +128,74 @@ def get_bcv_rate_history(limit: int = Query(60), db: Session = Depends(get_db)):
 def list_financial_accounts(db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     """Lista todas las cuentas bancarias y cajas con su saldo inicial y saldo actual calculado."""
     accounts = db.query(FinancialAccount).order_by(FinancialAccount.sort_order, FinancialAccount.id).all()
+    if not accounts:
+        return accounts
+
+    # Pre-agregar gastos y retiros por cuenta en 2 consultas GROUP BY (evita N+1)
+    exp_rows = db.query(
+        Expense.financial_account_id,
+        func.coalesce(func.sum(Expense.amount_usd), 0.0)
+    ).filter(Expense.status == "aprobado", Expense.financial_account_id.isnot(None)).group_by(Expense.financial_account_id).all()
+    exp_by_acc = {acc_id: float(total or 0.0) for acc_id, total in exp_rows}
+
+    pw_rows = db.query(
+        PartnerWithdrawal.financial_account_id,
+        func.coalesce(func.sum(PartnerWithdrawal.amount_usd), 0.0)
+    ).filter(PartnerWithdrawal.financial_account_id.isnot(None)).group_by(PartnerWithdrawal.financial_account_id).all()
+    pw_by_acc = {acc_id: float(total or 0.0) for acc_id, total in pw_rows}
+
+    # Cargar movimientos relevantes de FinancialPayment en 1 sola consulta ligera
+    payments = db.query(
+        FinancialPayment.financial_account_id,
+        FinancialPayment.bank_account,
+        FinancialPayment.payment_type,
+        FinancialPayment.payment_method,
+        FinancialPayment.receivable_id,
+        FinancialPayment.payable_id,
+        FinancialPayment.amount_usd,
+        FinancialPayment.amount_bs,
+        FinancialPayment.payment_date,
+    ).all()
+
+    init_by_acc = {}
+    acc_name_lowers = {acc.id: (acc.name or "").strip().lower() for acc in accounts}
+    totals_by_acc = {acc.id: {"cxc": 0.0, "cxp": 0.0, "ex_in": 0.0, "ex_out": 0.0} for acc in accounts}
+
+    for p in payments:
+        if p.payment_type == "saldo_inicial" and p.financial_account_id and p.financial_account_id not in init_by_acc:
+            init_by_acc[p.financial_account_id] = p
+
+        p_bank = (p.bank_account or "").lower()
+        amt = float(p.amount_usd or 0.0)
+        is_cxc = p.receivable_id is not None
+        is_cxp = p.payable_id is not None and p.payment_method not in ("retencion_iva", "retencion_islr")
+        is_ex_in = p.payment_type == "cambio_divisa_ingreso"
+        is_ex_out = p.payment_type == "cambio_divisa_egreso"
+        if not (is_cxc or is_cxp or is_ex_in or is_ex_out):
+            continue
+
+        for acc_id, acc_name in acc_name_lowers.items():
+            if p.financial_account_id == acc_id or (acc_name and acc_name in p_bank):
+                t = totals_by_acc[acc_id]
+                if is_cxc:
+                    t["cxc"] += amt
+                if is_cxp:
+                    t["cxp"] += amt
+                if is_ex_in:
+                    t["ex_in"] += amt
+                if is_ex_out:
+                    t["ex_out"] += amt
+
     for acc in accounts:
-        # Saldo inicial registrado
-        init_p = db.query(FinancialPayment).filter(
-            FinancialPayment.financial_account_id == acc.id,
-            FinancialPayment.payment_type == "saldo_inicial"
-        ).first()
+        init_p = init_by_acc.get(acc.id)
         init_usd = float(init_p.amount_usd or 0.0) if init_p else 0.0
         init_bs = float(init_p.amount_bs or 0.0) if init_p else 0.0
         init_date = init_p.payment_date.strftime("%Y-%m-%d") if (init_p and init_p.payment_date) else None
 
-        # 1. Cobros CxC en esta cuenta
-        cxc_in = db.query(FinancialPayment).filter(
-            (FinancialPayment.financial_account_id == acc.id) | (FinancialPayment.bank_account.ilike(f"%{acc.name}%")),
-            FinancialPayment.receivable_id.isnot(None)
-        ).all()
-        tot_cxc = sum(float(p.amount_usd or 0.0) for p in cxc_in)
-
-        # 2. Pagos CxP en esta cuenta (excluyendo retenciones que no son salida bancaria)
-        cxp_out = db.query(FinancialPayment).filter(
-            (FinancialPayment.financial_account_id == acc.id) | (FinancialPayment.bank_account.ilike(f"%{acc.name}%")),
-            FinancialPayment.payable_id.isnot(None),
-            FinancialPayment.payment_method.notin_(["retencion_iva", "retencion_islr"])
-        ).all()
-        tot_cxp = sum(float(p.amount_usd or 0.0) for p in cxp_out)
-
-        # 3. Gastos operativos directos
-        exp_out = db.query(Expense).filter(Expense.financial_account_id == acc.id, Expense.status == "aprobado").all()
-        tot_exp = sum(float(e.amount_usd or 0.0) for e in exp_out)
-
-        # 4. Retiros de socios
-        pw_out = db.query(PartnerWithdrawal).filter(PartnerWithdrawal.financial_account_id == acc.id).all()
-        tot_pw = sum(float(w.amount_usd or 0.0) for w in pw_out)
-
-        # 5. Mesa de cambio (ingresos / egresos)
-        ex_in = db.query(FinancialPayment).filter(
-            (FinancialPayment.financial_account_id == acc.id) | (FinancialPayment.bank_account.ilike(f"%{acc.name}%")),
-            FinancialPayment.payment_type == "cambio_divisa_ingreso"
-        ).all()
-        tot_ex_in = sum(float(p.amount_usd or 0.0) for p in ex_in)
-
-        ex_out = db.query(FinancialPayment).filter(
-            (FinancialPayment.financial_account_id == acc.id) | (FinancialPayment.bank_account.ilike(f"%{acc.name}%")),
-            FinancialPayment.payment_type == "cambio_divisa_egreso"
-        ).all()
-        tot_ex_out = sum(float(p.amount_usd or 0.0) for p in ex_out)
-
-        # Cálculo de saldo disponible en cuenta
-        cur_balance = round(init_usd + tot_cxc - tot_cxp - tot_exp - tot_pw + (tot_ex_in - tot_ex_out), 2)
+        t = totals_by_acc[acc.id]
+        tot_exp = exp_by_acc.get(acc.id, 0.0)
+        tot_pw = pw_by_acc.get(acc.id, 0.0)
+        cur_balance = round(init_usd + t["cxc"] - t["cxp"] - tot_exp - tot_pw + (t["ex_in"] - t["ex_out"]), 2)
 
         acc.initial_balance = init_usd
         acc.initial_balance_bs = init_bs
@@ -193,6 +213,7 @@ def create_financial_account(data: FinancialAccountCreate, db: Session = Depends
     db.refresh(acc)
     return acc
 
+@router.put("/accounts/{account_id}", response_model=FinancialAccountOut)
 @router.patch("/accounts/{account_id}", response_model=FinancialAccountOut)
 def update_financial_account(account_id: int, data: FinancialAccountUpdate, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     """Actualiza una cuenta bancaria o caja."""

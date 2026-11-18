@@ -44,14 +44,22 @@ class FinancialExcelService:
         if month:
             query = query.filter(func.extract('month', AccountReceivable.issue_date) == month)
     
-        if filter_type in ("fiscales", "con_iva"):
+        if filter_type in ("fiscales", "fiscal", "con_iva"):
+            # Solo facturas fiscales emitidas formalmente desde el sistema (con N° Control o N° Factura Fiscal)
             query = query.filter(
-                AccountReceivable.tax_amount_usd > 0.001,
                 ~AccountReceivable.invoice_number.ilike("NE-%"),
                 ~AccountReceivable.invoice_number.ilike("NDE-%"),
                 ~AccountReceivable.invoice_number.ilike("REC-%"),
-                ~AccountReceivable.invoice_number.ilike("VAL-%")
+                ~AccountReceivable.invoice_number.ilike("VAL-%"),
+                ~AccountReceivable.invoice_number.ilike("COT-%"),
+                ~AccountReceivable.invoice_number.ilike("NOTA-%"),
+                (
+                    (AccountReceivable.control_number.isnot(None) & (func.trim(AccountReceivable.control_number) != "")) |
+                    (AccountReceivable.fiscal_invoice_number.isnot(None) & (func.trim(AccountReceivable.fiscal_invoice_number) != ""))
+                )
             )
+            if filter_type == "con_iva":
+                query = query.filter(AccountReceivable.tax_amount_usd > 0.001)
         elif filter_type == "sin_iva":
             query = query.filter(
                 (AccountReceivable.tax_amount_usd == 0) | (AccountReceivable.tax_amount_usd == None) | (AccountReceivable.tax_amount_usd <= 0.001),
@@ -328,15 +336,20 @@ class FinancialExcelService:
         if month:
             query = query.filter(func.extract('month', AccountPayable.issue_date) == month)
     
-        if filter_type in ("fiscales", "con_iva"):
+        if filter_type in ("fiscales", "fiscal", "con_iva"):
+            # Solo facturas fiscales formales cargadas en Compras (doc_type == 'factura', excluye notas/vales/recibos)
             query = query.filter(
-                AccountPayable.tax_amount_usd > 0.001,
-                AccountPayable.doc_type != "nota_entrega",
+                AccountPayable.doc_type == "factura",
+                AccountPayable.invoice_number.isnot(None),
+                func.trim(AccountPayable.invoice_number) != "",
                 ~AccountPayable.invoice_number.ilike("NE-%"),
                 ~AccountPayable.invoice_number.ilike("NDE-%"),
                 ~AccountPayable.invoice_number.ilike("REC-%"),
-                ~AccountPayable.invoice_number.ilike("VAL-%")
+                ~AccountPayable.invoice_number.ilike("VAL-%"),
+                ~AccountPayable.invoice_number.ilike("S/N%")
             )
+            if filter_type == "con_iva":
+                query = query.filter(AccountPayable.tax_amount_usd > 0.001)
         elif filter_type == "sin_iva":
             query = query.filter(
                 (AccountPayable.tax_amount_usd == 0) | (AccountPayable.tax_amount_usd == None) | (AccountPayable.tax_amount_usd <= 0.001),

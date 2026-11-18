@@ -610,6 +610,7 @@ def get_fiscal_invoice_data(receivable_id: int, db: Session = Depends(get_db)):
         "delivery_note": r.invoice_number if is_operational else "N/A",
         "ot_number": ot_code,
         "service_order": f"{r.id:08d}",
+        "description": r.description or "",
         "items": items,
         "exchange_rate": rate,
         "taxable_base_usd": base_usd,
@@ -671,29 +672,38 @@ def update_receivable(
     if up_in.notes is not None:
         r.notes = up_in.notes.strip()
 
+    if up_in.taxable_base_usd is not None:
+        r.taxable_base_usd = float(up_in.taxable_base_usd)
+    if up_in.tax_amount_usd is not None:
+        r.tax_amount_usd = float(up_in.tax_amount_usd)
+
     if up_in.amount_usd is not None and up_in.amount_usd > 0:
         new_amount = float(up_in.amount_usd)
         paid = float(r.paid_amount_usd or 0.0)
-        if new_amount < paid:
+        if new_amount + 0.01 < paid:
             raise HTTPException(status_code=400, detail=f"El nuevo monto (${new_amount:.2f}) no puede ser menor a lo ya cobrado (${paid:.2f}). Reversa los cobros primero.")
         r.amount_usd = new_amount
         r.balance_usd = max(0.0, round(new_amount - paid, 2))
-        if up_in.taxable_base_usd is not None:
-            r.taxable_base_usd = float(up_in.taxable_base_usd)
-        if up_in.tax_amount_usd is not None:
-            r.tax_amount_usd = float(up_in.tax_amount_usd)
-        if r.balance_usd <= 0.001 and paid > 0:
-            r.status = "al_dia"
+        if r.balance_usd <= 0.01 and paid > 0:
+            r.status = "cobrado_total"
         elif paid > 0:
             r.status = "abono_parcial"
         else:
             r.status = "pendiente"
 
+    if up_in.exchange_rate is not None and up_in.exchange_rate > 0:
+        r.exchange_rate = float(up_in.exchange_rate)
+
+    if up_in.amount_bs is not None and up_in.amount_bs >= 0:
+        r.amount_bs = round(float(up_in.amount_bs), 2)
+    elif (up_in.exchange_rate is not None or up_in.amount_usd is not None) and float(r.exchange_rate or 0.0) > 0:
+        r.amount_bs = round(float(r.amount_usd or 0.0) * float(r.exchange_rate or 0.0), 2)
+
     audit = AuditLog(
         username=current_user.username,
         module="finanzas_cxc",
         action="modificar_factura_cxc",
-        details=f"Factura [{r.invoice_number}] modificada por {current_user.username}. Monto: ${r.amount_usd:.2f}, Saldo: ${r.balance_usd:.2f}"
+        details=f"Factura [{r.invoice_number}] modificada por {current_user.username}. Monto: ${r.amount_usd:.2f}, Tasa: {r.exchange_rate or 0:.2f}, Saldo: ${r.balance_usd:.2f}"
     )
     db.add(audit)
     db.commit()
@@ -704,9 +714,12 @@ def update_receivable(
         "message": f"Factura [{r.invoice_number}] actualizada exitosamente.",
         "id": r.id,
         "invoice_number": r.invoice_number,
+        "fiscal_invoice_number": r.fiscal_invoice_number,
         "control_number": r.control_number,
         "description": r.description,
         "amount_usd": r.amount_usd,
+        "amount_bs": r.amount_bs,
+        "exchange_rate": r.exchange_rate,
         "balance_usd": r.balance_usd,
         "status": r.status
     }

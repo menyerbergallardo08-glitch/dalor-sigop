@@ -409,4 +409,91 @@
     </div>
 
     <!-- MODAL: EDITAR CUENTA POR PAGAR -->
+
+    <!-- MODAL: PAGO MIXTO MULTIMONEDA ($ USD + BS.) CXP -->
+    <div id="modalMixedCxpPayment" class="modal-overlay hidden" style="z-index: 2150;">
+        <div class="modal-content" style="max-width: 760px; width: min(96vw, 760px); max-height: 92vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <span class="badge-tag" style="background: #fff1f2; color: #be123c; font-weight: 800;">Pago Mixto Multimoneda</span>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
+                        <i class="fa-solid fa-coins" style="color: #e11d48;"></i> Pagar CxP ($ + Bs.): <span id="mixed_cxp_badge">-</span>
+                    </h3>
+                </div>
+                <button type="button" onclick="closeModal('modalMixedCxpPayment')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="formMixedCxpPayment" onsubmit="submitMixedCxpPayment(event)">
+                <input type="hidden" id="mixed_cxp_id">
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+                    <div>
+                        <span style="font-size: 10.5px; color: #64748b; font-weight: 700; display: block;">Saldo Pendiente CxP</span>
+                        <b id="mixed_cxp_pending_lbl" style="font-size: 16px; color: #e11d48;">$0.00</b>
+                    </div>
+                    <div>
+                        <label class="form-label">Fecha de Pago *</label>
+                        <input type="date" id="mixed_cxp_date" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Tasa de Cambio (Bs/$) *</label>
+                        <input type="number" step="0.01" min="0.01" id="mixed_cxp_rate" oninput="recalcMixedCxpPayment()" class="form-input" style="font-weight: 800; color: #0369a1;" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                    <div style="border: 1px solid #bbf7d0; background: #f0fdf4; border-radius: 8px; padding: 10px;">
+                        <div style="font-size: 12px; font-weight: 800; color: #166534; margin-bottom: 8px;"><i class="fa-solid fa-dollar-sign"></i> Tramo en Divisas ($ USD)</div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <select id="mixed_cxp_usd_account" class="form-select"></select>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                <select id="mixed_cxp_usd_method" class="form-select">
+                                    <option value="transferencia">Transferencia / Zelle</option>
+                                    <option value="efectivo_usd">Efectivo USD</option>
+                                    <option value="binance_usdt">Binance USDT</option>
+                                </select>
+                                <input type="text" id="mixed_cxp_usd_ref" class="form-input" placeholder="Referencia">
+                            </div>
+                            <input type="number" step="0.01" min="0" id="mixed_cxp_usd_amt" oninput="recalcMixedCxpPayment()" class="form-input" placeholder="Monto en $ USD (ej: 100.00)" style="font-weight: 800; color: #047857;">
+                            <div id="mixed_cxp_usd_eq_bs" style="font-size: 11px; font-weight: 700; color: #15803d;">Equiv: Bs. 0,00</div>
+                        </div>
+                    </div>
+
+                    <div style="border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 8px; padding: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #1e40af;"><i class="fa-solid fa-money-bill-transfer"></i> Tramo en Bolívares (Bs.)</span>
+                            <button type="button" onclick="autoFillRemainingToBsCxp()" class="btn-secondary" style="font-size: 10px; padding: 2px 6px;">Completar Saldo en Bs.</button>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <select id="mixed_cxp_bs_account" class="form-select"></select>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                <select id="mixed_cxp_bs_method" class="form-select">
+                                    <option value="transferencia">Transferencia Bs.</option>
+                                    <option value="pago_movil">Pago Móvil</option>
+                                    <option value="efectivo_bs">Efectivo Bs.</option>
+                                </select>
+                                <input type="text" id="mixed_cxp_bs_ref" class="form-input" placeholder="Referencia">
+                            </div>
+                            <input type="number" step="0.01" min="0" id="mixed_cxp_bs_amt" oninput="recalcMixedCxpPayment()" class="form-input" placeholder="Monto en Bs. (ej: 45000.00)" style="font-weight: 800; color: #1d4ed8;">
+                            <div id="mixed_cxp_bs_eq_usd" style="font-size: 11px; font-weight: 700; color: #1d4ed8;">Equiv: $0.00 USD</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mixed_cxp_total_summary" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 12px; text-align: center;"></div>
+
+                <div style="margin-bottom: 12px;">
+                    <label class="form-label">Notas / Observación</label>
+                    <input type="text" id="mixed_cxp_notes" class="form-input" placeholder="Ej: Abono parcial mixto efectivo + transferencia Bs">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalMixedCxpPayment')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" id="btnSubmitMixedCxp" class="btn-primary" style="background: #e11d48; font-weight: 800;">
+                        <i class="fa-solid fa-check-double"></i> Registrar Pago Mixto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     

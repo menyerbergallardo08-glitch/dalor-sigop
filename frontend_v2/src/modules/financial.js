@@ -106,6 +106,7 @@ export const submitFinancialPayment = (...args) => (typeof window !== 'undefined
 export const onTreasurySummaryPeriodChange = (...args) => (typeof window !== 'undefined' && window.onTreasurySummaryPeriodChange ? window.onTreasurySummaryPeriodChange(...args) : undefined);
 export const resetTreasurySummaryFilters = (...args) => (typeof window !== 'undefined' && window.resetTreasurySummaryFilters ? window.resetTreasurySummaryFilters(...args) : undefined);
 export const loadTreasurySummary = (...args) => (typeof window !== 'undefined' && window.loadTreasurySummary ? window.loadTreasurySummary(...args) : undefined);
+export const onFinancialScopeModeChanged = (...args) => (typeof window !== 'undefined' && window.onFinancialScopeModeChanged ? window.onFinancialScopeModeChanged(...args) : undefined);
 export const getIsoDate = (...args) => (typeof window !== 'undefined' && window.getIsoDate ? window.getIsoDate(...args) : undefined);
 export const formatDateDisplay = (...args) => (typeof window !== 'undefined' && window.formatDateDisplay ? window.formatDateDisplay(...args) : undefined);
 export const applyTreasuryFilters = (...args) => (typeof window !== 'undefined' && window.applyTreasuryFilters ? window.applyTreasuryFilters(...args) : undefined);
@@ -146,6 +147,7 @@ export const goToPartnersPage = (...args) => (typeof window !== 'undefined' && w
 export const changePartnersPageSize = (...args) => (typeof window !== 'undefined' && window.changePartnersPageSize ? window.changePartnersPageSize(...args) : undefined);
 export const confirmDeletePartnerWithdrawal = (...args) => (typeof window !== 'undefined' && window.confirmDeletePartnerWithdrawal ? window.confirmDeletePartnerWithdrawal(...args) : undefined);
 export const openNewPartnerWithdrawalModal = (...args) => (typeof window !== 'undefined' && window.openNewPartnerWithdrawalModal ? window.openNewPartnerWithdrawalModal(...args) : undefined);
+export const openEditPartnerWithdrawalModal = (...args) => (typeof window !== 'undefined' && window.openEditPartnerWithdrawalModal ? window.openEditPartnerWithdrawalModal(...args) : undefined);
 // --- bank_accounts.js ---
 export const openMaterialConsumeModalWithProject = (...args) => (typeof window !== 'undefined' && window.openMaterialConsumeModalWithProject ? window.openMaterialConsumeModalWithProject(...args) : undefined);
 export const loadFinancialAccounts = (...args) => (typeof window !== 'undefined' && window.loadFinancialAccounts ? window.loadFinancialAccounts(...args) : undefined);
@@ -153,6 +155,9 @@ export const _fillAccountSelect = (...args) => (typeof window !== 'undefined' &&
 export const openManageAccountsModal = (...args) => (typeof window !== 'undefined' && window.openManageAccountsModal ? window.openManageAccountsModal(...args) : undefined);
 export const _renderAccountsList = (...args) => (typeof window !== 'undefined' && window._renderAccountsList ? window._renderAccountsList(...args) : undefined);
 export const submitNewFinancialAccount = (...args) => (typeof window !== 'undefined' && window.submitNewFinancialAccount ? window.submitNewFinancialAccount(...args) : undefined);
+export const openEditFinancialAccount = (...args) => (typeof window !== 'undefined' && window.openEditFinancialAccount ? window.openEditFinancialAccount(...args) : undefined);
+export const cancelEditFinancialAccount = (...args) => (typeof window !== 'undefined' && window.cancelEditFinancialAccount ? window.cancelEditFinancialAccount(...args) : undefined);
+export const reactivateFinancialAccount = (...args) => (typeof window !== 'undefined' && window.reactivateFinancialAccount ? window.reactivateFinancialAccount(...args) : undefined);
 export const deactivateFinancialAccount = (...args) => (typeof window !== 'undefined' && window.deactivateFinancialAccount ? window.deactivateFinancialAccount(...args) : undefined);
 export const openInitialBalanceModal = (...args) => (typeof window !== 'undefined' && window.openInitialBalanceModal ? window.openInitialBalanceModal(...args) : undefined);
 export const submitInitialBalance = (...args) => (typeof window !== 'undefined' && window.submitInitialBalance ? window.submitInitialBalance(...args) : undefined);

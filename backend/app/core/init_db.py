@@ -84,6 +84,7 @@ def init_db():
         "ALTER TABLE expenses ALTER COLUMN alert_notes TYPE TEXT;",
         "ALTER TABLE expenses ALTER COLUMN receipt_image_path TYPE TEXT;",
         "ALTER TABLE projects ALTER COLUMN name TYPE TEXT;",
+        "ALTER TABLE projects ADD COLUMN owner_scope VARCHAR(30) DEFAULT 'empresa';",
         "ALTER TABLE quotations ALTER COLUMN project_title TYPE TEXT;",
         "ALTER TABLE quotation_items ALTER COLUMN description TYPE TEXT;",
         "ALTER TABLE project_addendums ALTER COLUMN title TYPE TEXT;",

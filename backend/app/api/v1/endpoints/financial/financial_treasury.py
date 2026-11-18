@@ -67,16 +67,19 @@ def get_financial_summary(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     account_id: Optional[int] = None,
+    scope_mode: Optional[str] = Query("consolidado"),
     db: Session = Depends(get_db)
 ):
     """
     Retorna el estado de tesorería en tiempo real: saldos de cuentas, CxC vivas y CxP.
+    Soporta disgregación: empresa | socio | consolidado.
     """
     return CashFlowService.calculate_financial_summary(
         db=db,
         date_from=date_from,
         date_to=date_to,
-        account_id=account_id
+        account_id=account_id,
+        scope_mode=scope_mode
     )
 
 # ------------------------------------------------------------------------------
@@ -100,13 +103,30 @@ def direct_client_collection(
 # ------------------------------------------------------------------------------
 # 3. RETIROS DE SOCIOS
 # ------------------------------------------------------------------------------
+def _serialize_partner_withdrawal(r: PartnerWithdrawal) -> dict:
+    return {
+        "id": r.id,
+        "partner_name": r.partner_name,
+        "concept": r.concept,
+        "amount_usd": float(r.amount_usd or 0.0),
+        "amount_bs": float(r.amount_bs or 0.0),
+        "exchange_rate": float(r.exchange_rate or 850.0),
+        "payment_method": r.payment_method,
+        "financial_account_id": r.financial_account_id,
+        "reference_number": r.reference_number,
+        "notes": r.notes,
+        "withdrawal_date": r.withdrawal_date.isoformat() if r.withdrawal_date else None,
+        "date": r.withdrawal_date.strftime("%Y-%m-%d %H:%M") if r.withdrawal_date else ""
+    }
+
 @router.get("/withdrawals")
 @router.get("/partners/withdrawals")
 def get_partner_withdrawals(db: Session = Depends(get_db)):
     """
     Lista el histórico de retiros de socios ordenados cronológicamente.
     """
-    return db.query(PartnerWithdrawal).order_by(PartnerWithdrawal.withdrawal_date.desc()).all()
+    rows = db.query(PartnerWithdrawal).order_by(PartnerWithdrawal.withdrawal_date.desc(), PartnerWithdrawal.id.desc()).all()
+    return [_serialize_partner_withdrawal(r) for r in rows]
 
 @router.post("/withdrawals")
 @router.post("/partners/withdrawals")
@@ -122,7 +142,7 @@ def create_partner_withdrawal(
         raise HTTPException(status_code=400, detail="El monto del retiro debe ser mayor a cero.")
 
     exchange_rate = w_in.exchange_rate or 850.0
-    amount_bs = w_in.amount_bs if (w_in.amount_bs and w_in.amount_bs > 0) else round(w_in.amount_usd * exchange_rate, 2)
+    amount_bs = round(w_in.amount_bs, 2) if (w_in.amount_bs and w_in.amount_bs > 0) else round(w_in.amount_usd * exchange_rate, 2)
 
     fin_acc_id = w_in.financial_account_id
     if not fin_acc_id and w_in.bank_account:
@@ -130,9 +150,11 @@ def create_partner_withdrawal(
         if acc:
             fin_acc_id = acc.id
 
+    w_dt = w_in.withdrawal_date.replace(tzinfo=None) if (w_in.withdrawal_date and getattr(w_in.withdrawal_date, "tzinfo", None)) else w_in.withdrawal_date
+
     withdrawal = PartnerWithdrawal(
         partner_name=w_in.partner_name,
-        withdrawal_date=w_in.withdrawal_date or datetime.utcnow(),
+        withdrawal_date=w_dt or datetime.utcnow(),
         concept=w_in.concept or "Retiro a cuenta de utilidades / Gasto personal",
         amount_usd=w_in.amount_usd,
         amount_bs=amount_bs,
@@ -145,7 +167,51 @@ def create_partner_withdrawal(
     db.add(withdrawal)
     db.commit()
     db.refresh(withdrawal)
-    return withdrawal
+    return _serialize_partner_withdrawal(withdrawal)
+
+@router.put("/withdrawals/{withdrawal_id}")
+@router.put("/partners/withdrawals/{withdrawal_id}")
+def update_partner_withdrawal(
+    withdrawal_id: int,
+    w_in: PartnerWithdrawalCreate,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Edita un retiro de socio existente (monto USD/Bs, tasa, fecha/hora, socio, concepto, método y referencia).
+    """
+    w = db.query(PartnerWithdrawal).filter(PartnerWithdrawal.id == withdrawal_id).first()
+    if not w:
+        raise HTTPException(status_code=404, detail="Retiro de socio no encontrado.")
+    if w_in.amount_usd <= 0 and (w_in.amount_bs or 0) <= 0:
+        raise HTTPException(status_code=400, detail="El monto del retiro debe ser mayor a cero.")
+
+    exchange_rate = w_in.exchange_rate or w.exchange_rate or 850.0
+    amount_bs = round(w_in.amount_bs, 2) if (w_in.amount_bs and w_in.amount_bs > 0) else round(w_in.amount_usd * exchange_rate, 2)
+
+    if w_in.withdrawal_date:
+        w.withdrawal_date = w_in.withdrawal_date.replace(tzinfo=None) if getattr(w_in.withdrawal_date, "tzinfo", None) else w_in.withdrawal_date
+
+    if w_in.financial_account_id is not None:
+        w.financial_account_id = w_in.financial_account_id
+    elif w_in.bank_account:
+        acc = db.query(FinancialAccount).filter(FinancialAccount.name.ilike(f"%{w_in.bank_account}%")).first()
+        if acc:
+            w.financial_account_id = acc.id
+
+    w.partner_name = w_in.partner_name.strip()
+    w.concept = (w_in.concept or w.concept or "Retiro a cuenta de utilidades / Gasto personal").strip()
+    w.amount_usd = w_in.amount_usd
+    w.amount_bs = amount_bs
+    w.exchange_rate = exchange_rate
+    w.payment_method = w_in.payment_method or w.payment_method or "transferencia"
+    w.reference_number = w_in.reference_number
+    if w_in.notes is not None:
+        w.notes = w_in.notes
+
+    db.commit()
+    db.refresh(w)
+    return _serialize_partner_withdrawal(w)
 
 @router.delete("/partners/withdrawals/{withdrawal_id}")
 def delete_partner_withdrawal(withdrawal_id: int, db: Session = Depends(get_db)):

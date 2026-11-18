@@ -86,6 +86,13 @@ import {
 } from './cxc/cxc_statements.js';
 
 import { printOfficialFiscalInvoice } from './fiscal_invoice_print.js';
+import {
+    openBatchInvoicePaymentsModal,
+    loadUnbilledPaymentsForBatch,
+    toggleAllBatchInvoicePayments,
+    recalcBatchInvoiceSelection,
+    submitBatchInvoicePayments
+} from './cxc/cxc_batch_invoicing.js';
 
 // 2. Registro en Scope Global Window (Compatibilidad con index.html)
 if (typeof window !== 'undefined') {
@@ -214,5 +221,10 @@ export {
     checkDirectorCorrelativeAccess,
     openEmergencyInvoiceOverrideModal,
     submitEmergencyInvoiceOverride,
-    printOfficialFiscalInvoice
+    printOfficialFiscalInvoice,
+    openBatchInvoicePaymentsModal,
+    loadUnbilledPaymentsForBatch,
+    toggleAllBatchInvoicePayments,
+    recalcBatchInvoiceSelection,
+    submitBatchInvoicePayments
 };

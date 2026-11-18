@@ -23,6 +23,25 @@ var selectedToolIds = (typeof window !== 'undefined' && window.selectedToolIds) 
 var selectedMaterialItems = (typeof window !== 'undefined' && window.selectedMaterialItems) || [];
 let currentProjectSubtab = 'list';
 
+export function setProjectOwnerScope(scope) {
+    const clean = scope === 'socio' ? 'socio' : 'empresa';
+    const inp = document.getElementById('new_proj_owner_scope');
+    if (inp) inp.value = clean;
+
+    const btnEmp = document.getElementById('btn_new_scope_empresa');
+    const btnSoc = document.getElementById('btn_new_scope_socio');
+    if (btnEmp) {
+        btnEmp.style.borderColor = clean === 'empresa' ? '#0284c7' : '#cbd5e1';
+        btnEmp.style.background = clean === 'empresa' ? '#e0f2fe' : '#ffffff';
+        btnEmp.style.color = clean === 'empresa' ? '#0369a1' : '#64748b';
+    }
+    if (btnSoc) {
+        btnSoc.style.borderColor = clean === 'socio' ? '#7c3aed' : '#cbd5e1';
+        btnSoc.style.background = clean === 'socio' ? '#faf5ff' : '#ffffff';
+        btnSoc.style.color = clean === 'socio' ? '#6b21a8' : '#64748b';
+    }
+}
+
 export function setProjectType(type) {
     const hiddenInp = document.getElementById("new_proj_type");
     if (hiddenInp) hiddenInp.value = type;
@@ -518,6 +537,7 @@ export async function submitCreateProject(event) {
         estimated_materials_usd: parseLocalizedNumber(document.getElementById("new_proj_materials")?.value),
         estimated_tools_usd: parseLocalizedNumber(document.getElementById("new_proj_tools")?.value),
         estimated_services_usd: parseLocalizedNumber(document.getElementById("new_proj_services")?.value),
+        owner_scope: document.getElementById("new_proj_owner_scope")?.value || "empresa",
         phases: phases,
 
         assigned_personnel_ids: selectedPersonnelIds,
@@ -546,6 +566,9 @@ export async function submitCreateProject(event) {
 
         if (res.ok) {
             const data = await res.json();
+            if (typeof window.flushDraftProjectSubcontracts === 'function') {
+                await window.flushDraftProjectSubcontracts(data.id);
+            }
             
             // Si proviene de un presupuesto, marcar la cotización como 'aprobado'
             const convQuoteId = document.getElementById("converting_quotation_id") ? document.getElementById("converting_quotation_id").value : "";

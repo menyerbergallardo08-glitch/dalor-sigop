@@ -72,8 +72,16 @@ function applyTreasuryFilters() {
     const mondayIso = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
 
     const sourceOps = allTreasuryOperations.length > 0 ? allTreasuryOperations : (window.allTreasuryOperations || []);
+    const activeScopeMode = (() => {
+        try { return localStorage.getItem('dalor_financial_scope_mode') || 'consolidado'; } catch (_) { return 'consolidado'; }
+    })();
 
     filteredTreasuryOperations = sourceOps.filter(op => {
+        // -1. Filtro por Ámbito Persistente (Empresa vs Socios)
+        const isPartnerOp = Boolean(op.isPartnerScope) || op.type === 'RETIRO SOCIO';
+        if (activeScopeMode === 'empresa' && isPartnerOp) return false;
+        if (activeScopeMode === 'socio' && !isPartnerOp) return false;
+
         // 0. Filtro por Cuenta Bancaria Seleccionada
         if (filterAcc && filterAcc !== 'all') {
             const accNum = parseInt(filterAcc);

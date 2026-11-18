@@ -210,15 +210,13 @@ async function printClientAccountStatement(clientId) {
 
                 <td style="padding: 6px 8px; text-align: right; font-weight: 800; color: #059669;">$${Number(p.amount_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
 
-                <td style="padding: 6px 8px; text-align: right; font-weight: 700; color: #475569;">Bs. ${Number(p.amount_bs || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-
             </tr>
 
         `).join('');
 
         if (!payRows) {
 
-            payRows = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran abonos o pagos bancarios aplicados aún.</td></tr>`;
+            payRows = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 12px;">No se registran abonos o pagos bancarios aplicados aún.</td></tr>`;
 
         }
 
@@ -252,7 +250,7 @@ async function printClientAccountStatement(clientId) {
 
                     <div style="font-size: 13px; font-weight: 900; color: #0284c7;">AL: ${data.statement_date}</div>
 
-                    <div style="font-size: 10px; color: #475569; font-weight: 700;">Tasa BCV: Bs. ${Number(data.exchange_rate).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div style="font-size: 10px; color: #475569; font-weight: 700;">Moneda: Dólares ($ USD)</div>
 
                 </div>
 
@@ -288,7 +286,7 @@ async function printClientAccountStatement(clientId) {
 
             <!-- Resumen Financiero & Aging -->
 
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
 
                 <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; text-align: center;">
 
@@ -311,14 +309,6 @@ async function printClientAccountStatement(clientId) {
                     <span style="font-size: 10px; font-weight: 800; color: ${tot.total_pending_usd > 0.05 ? '#991b1b' : '#166534'}; text-transform: uppercase;">Saldo Deudor (USD)</span>
 
                     <div style="font-size: 15px; font-weight: 900; color: ${tot.total_pending_usd > 0.05 ? '#dc2626' : '#059669'}; margin-top: 2px;">$${tot.total_pending_usd.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
-
-                </div>
-
-                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px; text-align: center;">
-
-                    <span style="font-size: 10px; font-weight: 800; color: #1d4ed8; text-transform: uppercase;">Saldo Deudor (Bs. BCV)</span>
-
-                    <div style="font-size: 13px; font-weight: 900; color: #2563eb; margin-top: 2px;">Bs. ${tot.total_pending_bs.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
 
                 </div>
 
@@ -397,8 +387,6 @@ async function printClientAccountStatement(clientId) {
                         <th style="padding: 6px 8px; text-align: left;">Forma de Pago & Referencia</th>
 
                         <th style="padding: 6px 8px; text-align: right;">Monto USD</th>
-
-                        <th style="padding: 6px 8px; text-align: right;">Monto Bs.</th>
 
                     </tr>
 

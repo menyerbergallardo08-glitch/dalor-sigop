@@ -84,6 +84,57 @@ export function setProjectCxcFilter(fType) {
     filterProjectsList();
 }
 
+export async function toggleProjectOwnerScope(projectId, nextScope) {
+    const cleanScope = nextScope === 'socio' ? 'socio' : 'empresa';
+    try {
+        const res = await authFetch(`${API_BASE}/projects/${projectId}/scope`, {
+            method: 'PATCH',
+            body: JSON.stringify({ owner_scope: cleanScope })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        // Actualizar en caché local inmediatamente y re-renderizar
+        (allProjects || []).forEach(p => {
+            if (Number(p.id) === Number(projectId)) {
+                p.owner_scope = cleanScope;
+                p.is_partner_project = (cleanScope === 'socio');
+            }
+        });
+        if (window.allProjects) {
+            window.allProjects.forEach(p => {
+                if (Number(p.id) === Number(projectId)) {
+                    p.owner_scope = cleanScope;
+                    p.is_partner_project = (cleanScope === 'socio');
+                }
+            });
+        }
+        renderProjectsWithPagination(false);
+    } catch (e) {
+        alert('Error al cambiar clasificación del proyecto: ' + e.message);
+    }
+}
+
+export function getProjectScopeMode() {
+    try {
+        const saved = localStorage.getItem('dalor_project_scope_mode') || 'consolidado';
+        return ['empresa', 'socio', 'consolidado'].includes(saved) ? saved : 'consolidado';
+    } catch (_) {
+        return 'consolidado';
+    }
+}
+
+export function onProjectScopeModeChanged(mode) {
+    const cleanMode = ['empresa', 'socio', 'consolidado'].includes(mode) ? mode : 'consolidado';
+    try {
+        localStorage.setItem('dalor_project_scope_mode', cleanMode);
+    } catch (_) {}
+    const sel = document.getElementById('project_scope_mode');
+    if (sel && sel.value !== cleanMode) sel.value = cleanMode;
+    renderProjectsWithPagination(true);
+}
+
 export function filterProjectsList() {
     renderProjectsWithPagination(true);
 }
@@ -100,7 +151,17 @@ export function renderProjectsWithPagination(resetPage = false) {
     const q = (document.getElementById("project_search_input")?.value || '').toLowerCase().trim();
     const selClient = (document.getElementById("project_client_filter")?.value || '').toLowerCase().trim();
 
+    const scopeMode = getProjectScopeMode();
+    const scopeSel = document.getElementById("project_scope_mode");
+    if (scopeSel && scopeSel.value !== scopeMode) scopeSel.value = scopeMode;
+
     let list = (allProjects || []).filter(p => isCompletedView ? (p.status === 'culminado') : (p.status !== 'culminado'));
+
+    if (scopeMode === 'empresa') {
+        list = list.filter(p => !p.is_partner_project);
+    } else if (scopeMode === 'socio') {
+        list = list.filter(p => Boolean(p.is_partner_project) || Number(p.partner_spent_usd || 0) > 0);
+    }
 
     if (q) {
         list = list.filter(p =>
@@ -251,7 +312,12 @@ export function renderProjectsPaginationControls(totalItems, pageSize, totalPage
 }
 
 export function renderProjectCardHtml(p, canSeeFinances, isDirector) {
-    const spent = p.total_spent_usd || 0;
+    const scopeMode = getProjectScopeMode();
+    const spent = (scopeMode === 'empresa' && p.company_spent_usd !== undefined)
+        ? Number(p.company_spent_usd || 0)
+        : ((scopeMode === 'socio' && p.partner_spent_usd !== undefined)
+            ? Number(p.partner_spent_usd || 0)
+            : Number(p.total_spent_usd || 0));
     const budget = p.budget_limit_usd || 0;
     const contract = p.contract_amount_usd || 0;
     const balance = budget - spent;
@@ -319,6 +385,12 @@ export function renderProjectCardHtml(p, canSeeFinances, isDirector) {
                 <div style="max-width: 75%;">
                     <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                         <span style="font-size: 11px; font-weight: 800; background: var(--dalor-navy); color: white; padding: 2px 8px; border-radius: 4px;">${p.code}</span>
+                        ${(() => {
+                            const curScope = (p.owner_scope || (p.is_partner_project ? 'socio' : 'empresa')).toLowerCase();
+                            const isSocio = curScope === 'socio';
+                            const nextScope = isSocio ? 'empresa' : 'socio';
+                            return `<button type="button" onclick="event.stopPropagation(); toggleProjectOwnerScope(${p.id}, '${nextScope}')" style="font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid ${isSocio ? '#c4b5fd' : '#bae6fd'}; background: ${isSocio ? '#faf5ff' : '#e0f2fe'}; color: ${isSocio ? '#6b21a8' : '#0369a1'}; display: inline-flex; align-items: center; gap: 4px;" title="Clic para cambiar clasificación entre Empresa y Socio">${isSocio ? '👤 Socio' : '🏢 Empresa'}</button>`;
+                        })()}
                         ${cxcBadgeHtml}
                     </div>
                     <h4 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px; line-height: 1.35; word-break: break-word;" title="${p.name}">${p.name}</h4>
@@ -469,6 +541,10 @@ export function renderProjectCardHtml(p, canSeeFinances, isDirector) {
 
                 <button type="button" onclick="navigateToProjectGuides(${p.id}, '${p.code}')" class="btn-secondary" style="padding: 6px 4px; font-size: 10.5px; background: #f8fafc; color: #0284c7; border: 1px solid #cbd5e1; text-align: center; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;" title="Consultar Guías de Despacho emitidas para esta obra">
                     <i class="fa-solid fa-truck"></i> Guías
+                </button>
+
+                <button type="button" onclick="openProjectSubcontractsModal(${p.id}, '${(p.code || '').replace(/'/g, "\\'")}', '${(p.name || '').replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 6px 4px; font-size: 10.5px; background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; font-weight: 800; text-align: center; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;" title="Personal Subcontratado y Recursos Opcionales (Solo Proyectos)">
+                    <i class="fa-solid fa-people-arrows"></i> Subcontr.
                 </button>
 
                 <button type="button" onclick="openEditProjectModal(${p.id})" class="btn-secondary" style="padding: 6px 4px; font-size: 10.5px; background: #fffbeb; color: #b45309; border: 1.5px solid #fde68a; font-weight: 800; text-align: center; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;" title="Reabrir / Editar Proyecto">

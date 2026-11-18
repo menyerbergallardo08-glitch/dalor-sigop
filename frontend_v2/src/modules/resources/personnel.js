@@ -164,14 +164,36 @@ async function populatePersonnelDatalists() {
             }
         }
         const payrollDatalist = document.getElementById("payrollDatalist");
-        if (payrollDatalist && (!payrollDatalist.children || payrollDatalist.children.length === 0)) {
-            const payrollTypes = ["Semanal", "Quincenal", "Mensual", "Por Obra / Destajo", "Honorarios Profesionales"];
-            payrollDatalist.innerHTML = payrollTypes.map(p => `<option value="${p}"></option>`).join('');
+        if (payrollDatalist) {
+            try {
+                const resP = await authFetch(`${API_BASE}/personnel/payroll-types`);
+                if (resP.ok) {
+                    const pTypes = await resP.json();
+                    if (Array.isArray(pTypes) && pTypes.length > 0) {
+                        payrollDatalist.innerHTML = pTypes.map(p => `<option value="${p}"></option>`).join('');
+                    }
+                }
+            } catch (_) {}
         }
     } catch (e) {
         console.warn("Could not populate personnel datalists:", e);
     }
 }
+
+function addDynamicSpecialtyPrompt(targetInputId) {
+    const newSpec = prompt("Nombre de la nueva especialidad / cargo:", "");
+    if (!newSpec || !newSpec.trim()) return;
+    const clean = newSpec.trim();
+    const dl = document.getElementById("rolesDatalist");
+    if (dl && !Array.from(dl.options).some(o => o.value.toLowerCase() === clean.toLowerCase())) {
+        const opt = document.createElement("option");
+        opt.value = clean;
+        dl.appendChild(opt);
+    }
+    const inp = document.getElementById(targetInputId);
+    if (inp) inp.value = clean;
+}
+if (typeof window !== 'undefined') window.addDynamicSpecialtyPrompt = addDynamicSpecialtyPrompt;
 
 function openNewPersonnelModal() {
     const form = document.getElementById("newPersonnelForm");

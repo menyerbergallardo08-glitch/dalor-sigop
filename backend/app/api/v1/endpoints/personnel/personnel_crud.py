@@ -34,6 +34,15 @@ def get_roles_list(db: Session = Depends(get_db)):
     return sorted(list(roles_set))
 
 
+@router.get("/payroll-types")
+def get_payroll_types(db: Session = Depends(get_db)):
+    db_types = db.query(Personnel.payroll_type).filter(Personnel.payroll_type != None, Personnel.payroll_type != "").distinct().all()
+    types_set = set(t[0].strip() for t in db_types if t[0] and t[0].strip())
+    for dt in ["Semanal", "Quincenal", "Mensual", "Destajo por Obra / Por Avance", "Honorarios Profesionales", "Bono / Viático Temporal"]:
+        types_set.add(dt)
+    return sorted(list(types_set))
+
+
 @router.post("/")
 def create_personnel(person_in: PersonnelCreate, db: Session = Depends(get_db)):
     existing = db.query(Personnel).filter(Personnel.code == person_in.code).first()

@@ -571,6 +571,9 @@ async function openEditProjectModal(projectId) {
         }
         document.getElementById("edit_project_location").value = p.location || "Sede Central";
         document.getElementById("edit_project_status").value = (p.status || "activo").toLowerCase();
+    if (document.getElementById("edit_project_owner_scope")) {
+        document.getElementById("edit_project_owner_scope").value = (p.owner_scope || (p.is_partner_project ? "socio" : "empresa")).toLowerCase();
+    }
         document.getElementById("edit_project_duration").value = p.duration_days || 30;
         document.getElementById("edit_project_execution_time").value = p.execution_time || `${p.duration_days || 15} días hábiles`;
         document.getElementById("edit_project_contract").value = p.contract_amount_usd || 0;
@@ -741,6 +744,7 @@ async function submitEditProject(event) {
         client_name: clientName,
         location: (document.getElementById("edit_project_location")?.value || "Sede Central").trim(),
         status: document.getElementById("edit_project_status")?.value || "activo",
+        owner_scope: document.getElementById("edit_project_owner_scope")?.value || "empresa",
         duration_days: parseInt(document.getElementById("edit_project_duration")?.value) || 30,
         start_date: formattedEditStartDate,
         execution_time: (document.getElementById("edit_project_execution_time")?.value || "").trim() || "15 días hábiles",

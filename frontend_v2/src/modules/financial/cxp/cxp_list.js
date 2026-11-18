@@ -237,6 +237,9 @@ export function renderPayablesPaginated() {
                         <button onclick="openRecordPaymentModal('pago_cxp', ${p.id}, ${p.balance_usd})" class="btn-primary" style="font-size: 11px; padding: 4px 10px; background: #e11d48;" title="Registrar Pago Bancario del Saldo Neto">
                             <i class="fa-solid fa-money-bill-wave"></i> Pagar
                         </button>
+                        <button onclick="openMixedCxpPaymentModal(${p.id})" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; background: #fff1f2; color: #be123c; border-color: #fecdd3; font-weight: 700;" title="Pago Mixto ($ USD + Bs.) con Tasa y Fecha editable">
+                            <i class="fa-solid fa-coins"></i> Mixto
+                        </button>
                     ` : `<span style="color: #059669; font-weight: 800; font-size: 11px; margin-right: 2px;"><i class="fa-solid fa-circle-check"></i> Pagado</span>`}
 
                     ${(p.tax_withholding_usd > 0 || p.withholding_voucher_number) ? `

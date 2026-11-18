@@ -85,6 +85,55 @@ async def lifespan(app: FastAPI):
     t_bk = threading.Thread(target=daily_backup_worker, daemon=True)
     t_bk.start()
 
+    # 4. Worker Automático Diario de Alertas por Correo (CxC, Gastos, Flota)
+    def daily_alerts_email_worker():
+        import time
+        from datetime import timedelta
+        from app.core.database import SessionLocal
+        from app.services.alert_service import AlertService
+        from app.models.models import AuditLog
+
+        time.sleep(150)
+        while True:
+            try:
+                cfg = AlertService.get_smtp_config()
+                if cfg.get("configured"):
+                    db = SessionLocal()
+                    try:
+                        sched = AlertService.get_email_schedule_settings(db)
+                        if sched.get("enabled", True):
+                            interval_hours = max(1, int(sched.get("interval_hours", 24) or 24))
+                            cutoff = datetime.utcnow() - timedelta(hours=max(1, interval_hours - 1))
+                        already_sent = (
+                            db.query(AuditLog)
+                            .filter(
+                                AuditLog.module == "alertas_sistema",
+                                AuditLog.action == "envio_automatico_correo",
+                                AuditLog.created_at >= cutoff,
+                            )
+                            .first()
+                        )
+                        if not already_sent:
+                            alerts = AlertService.collect_system_alerts(db)
+                            if alerts.get("total_count", 0) > 0:
+                                res = AlertService.send_alerts_email(db)
+                                if res.get("sent"):
+                                    db.add(AuditLog(
+                                        username="sistema_auto",
+                                        module="alertas_sistema",
+                                        action="envio_automatico_correo",
+                                        details=f"Alertas enviadas automáticamente ({alerts['total_count']}): {res.get('message')}",
+                                    ))
+                                    db.commit()
+                    finally:
+                        db.close()
+            except Exception as e_al:
+                print(f"[AutoAlerts Error] {e_al}")
+            time.sleep(3600)
+
+    t_al = threading.Thread(target=daily_alerts_email_worker, daemon=True)
+    t_al.start()
+
     yield
 
 app = FastAPI(

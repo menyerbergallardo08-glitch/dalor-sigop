@@ -201,6 +201,7 @@ class Project(Base):
     estimated_tools_usd = Column(Money, default=0.0)
     estimated_services_usd = Column(Money, default=0.0)
     budget_limit_usd = Column(Money, default=0.0)
+    owner_scope = Column(String(30), default="empresa") # empresa | socio
     
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=utc_now)
@@ -849,6 +850,57 @@ class CompanyProfile(Base):
     next_control_number = Column(Integer, nullable=True) # Override número de control (ej: 558)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+
+class ProjectSubcontractResource(Base):
+    """Personal subcontratado y recursos opcionales exclusivos de Proyectos (no Servicios APU)."""
+    __tablename__ = "project_subcontract_resources"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    resource_kind = Column(String(40), nullable=False, default="personal_subcontratado")  # personal_subcontratado | recurso_opcional
+    name = Column(String(180), nullable=False)
+    specialty_or_unit = Column(String(120), nullable=True)
+    provider_name = Column(String(150), nullable=True)
+    quantity = Column(Float, default=1.0)
+    unit_cost_usd = Column(Money, default=0.0)
+    total_cost_usd = Column(Money, default=0.0)
+    is_optional = Column(Boolean, default=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    project = relationship("Project")
+
+
+class FleetObligation(Base):
+    """Obligaciones legales de Flota: Seguros, Pólizas, Trimestres Municipales y Permisos."""
+    __tablename__ = "fleet_obligations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True)
+    obligation_type = Column(String(50), nullable=False, default="seguro_rcv")  # seguro_rcv | poliza_todo_riesgo | trimestre_municipal | permiso_racda | otro
+    title = Column(String(160), nullable=False)
+    provider_or_entity = Column(String(150), nullable=True)
+    policy_or_ref_number = Column(String(80), nullable=True)
+    issue_date = Column(DateTime, nullable=True)
+    expiration_date = Column(DateTime, nullable=True)
+    amount_usd = Column(Money, default=0.0)
+    alert_days_before = Column(Integer, default=30)
+    status = Column(String(30), default="vigente")  # vigente | por_vencer | vencido | pagado
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    asset = relationship("Asset")
+
+
+class SystemSetting(Base):
+    """Configuraciones dinámicas del sistema persistidas en BD (ej: frecuencia de alertas)."""
+    __tablename__ = "system_settings"
+
+    key = Column(String(80), primary_key=True, index=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
 
 
 

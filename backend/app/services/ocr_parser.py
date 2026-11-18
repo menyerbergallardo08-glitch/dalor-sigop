@@ -215,9 +215,27 @@ Responde ÚNICAMENTE con el bloque JSON válido, sin texto adicional."""
                 "models/gemini-3.1-flash-lite",
                 "models/gemini-3.1-flash-lite-preview",
                 "models/gemini-flash-lite-latest",
-                "models/gemini-3.5-flash"
+                "models/gemini-3.5-flash",
+                "models/gemini-2.5-flash-lite",
+                "models/gemini-2.0-flash"
             ]
-            text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=12)
+            text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=14)
+
+            # Fallback resiliente para PDF: si el envío nativo de PDF falla, renderizar página 1 a JPEG y reintentar
+            if not text_resp and is_pdf:
+                try:
+                    import fitz  # PyMuPDF opcional
+                    doc = fitz.open(file_path)
+                    if len(doc) > 0:
+                        pix = doc[0].get_pixmap(dpi=180)
+                        img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
+                        payload["contents"][0]["parts"][1]["inline_data"] = {
+                            "mime_type": "image/jpeg",
+                            "data": img_b64
+                        }
+                        text_resp = OCRReceiptParser.call_gemini_vision(payload, candidate_models, timeout=14)
+                except Exception as pdf_fb_err:
+                    print(f"[OCR PDF Fallback] No se pudo rasterizar PDF: {pdf_fb_err}")
 
             if not text_resp:
                 return None

@@ -249,12 +249,58 @@ function _fillAccountSelect(selectId, accounts) {
 /** Abre el modal de gestión de cuentas y carga la lista */
 async function openManageAccountsModal() {
     document.getElementById('modalManageAccounts')?.classList.remove('hidden');
-    // Limpiar campos del formulario
+    cancelEditFinancialAccount();
+    await _renderAccountsList();
+}
+
+function openEditFinancialAccount(accountId) {
+    const accounts = window._allManageAccountsRaw || [];
+    const acc = accounts.find(a => Number(a.id) === Number(accountId));
+    if (!acc) return;
+
+    const editIdEl = document.getElementById('edit_acc_id');
+    const nameEl = document.getElementById('new_acc_name');
+    const typeEl = document.getElementById('new_acc_type');
+    const bankEl = document.getElementById('new_acc_bank');
+    const numEl = document.getElementById('new_acc_number');
+    const scopeEl = document.getElementById('new_acc_scope');
+    const notesEl = document.getElementById('new_acc_notes');
+    const titleEl = document.getElementById('formManageAccountTitle');
+    const btnEl = document.getElementById('btnSubmitManageAccount');
+    const cancelBtn = document.getElementById('btnCancelEditAccount');
+
+    const rawNotes = acc.notes || '';
+    const isPartnerAcc = /\[SOCIO\]/i.test(rawNotes) || /personal/i.test(acc.name || '');
+
+    if (editIdEl) editIdEl.value = String(acc.id);
+    if (nameEl) nameEl.value = acc.name || '';
+    if (typeEl) typeEl.value = (acc.account_type || 'usd').toLowerCase();
+    if (bankEl) bankEl.value = acc.bank_or_provider || '';
+    if (numEl) numEl.value = acc.account_number || '';
+    if (scopeEl) scopeEl.value = isPartnerAcc ? 'socio' : 'empresa';
+    if (notesEl) notesEl.value = rawNotes.replace(/^\[SOCIO\]\s*/i, '').trim();
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen"></i> Editando Cuenta #${acc.id}`;
+    if (btnEl) btnEl.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios`;
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+}
+
+function cancelEditFinancialAccount() {
+    const editIdEl = document.getElementById('edit_acc_id');
+    if (editIdEl) editIdEl.value = '';
     ['new_acc_name','new_acc_bank','new_acc_number','new_acc_notes'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
-    await _renderAccountsList();
+    const scopeEl = document.getElementById('new_acc_scope');
+    if (scopeEl) scopeEl.value = 'empresa';
+    const typeEl = document.getElementById('new_acc_type');
+    if (typeEl) typeEl.value = 'usd';
+    const titleEl = document.getElementById('formManageAccountTitle');
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-plus"></i> Nueva Cuenta / Caja`;
+    const btnEl = document.getElementById('btnSubmitManageAccount');
+    if (btnEl) btnEl.innerHTML = `<i class="fa-solid fa-plus"></i> Crear Cuenta`;
+    const cancelBtn = document.getElementById('btnCancelEditAccount');
+    if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
 /** Renderiza la tabla de cuentas dentro del modal */
@@ -263,10 +309,9 @@ async function _renderAccountsList() {
     if (!container) return;
     container.innerHTML = '<p style="text-align:center;color:#64748b;font-size:13px;">Cargando...</p>';
     try {
-        const resp = await fetch(`${API_BASE}/financial/accounts`, {
-            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
-        });
+        const resp = await authFetch(`${API_BASE}/financial/accounts`);
         const accounts = await resp.json();
+        window._allManageAccountsRaw = Array.isArray(accounts) ? accounts : [];
 
         if (!accounts.length) {
             container.innerHTML = '<p style="text-align:center;color:#94a3b8;font-size:13px;">No hay cuentas registradas aún.</p>';
@@ -279,11 +324,15 @@ async function _renderAccountsList() {
             const balUsd = acc.current_balance !== undefined ? acc.current_balance : (acc.initial_balance || 0);
             const balBs = acc.initial_balance_bs ? acc.initial_balance_bs : (balUsd * bcvRate);
             const balColor = balUsd > 0 ? '#059669' : (balUsd < 0 ? '#dc2626' : '#64748b');
+            const isPartnerAcc = /\[SOCIO\]/i.test(acc.notes || '') || /personal/i.test(acc.name || '');
 
             return `
             <tr style="border-bottom:1px solid #f1f5f9;">
                 <td style="padding:8px 6px; font-weight:700; font-size:13px; color:${acc.is_active ? '#1e293b' : '#94a3b8'};">
                     ${acc.is_active ? '🟢' : '🔴'} ${acc.name}
+                    <div style="font-size:10px; font-weight:700; color:${isPartnerAcc ? '#7c3aed' : '#0284c7'};">
+                        ${isPartnerAcc ? '👤 Socio' : '🏢 Empresa'}
+                    </div>
                 </td>
                 <td style="padding:8px 6px; font-size:12px; color:#475569;">
                     ${isBs ? '🇻🇪 Bs' : '💵 USD'}
@@ -295,6 +344,11 @@ async function _renderAccountsList() {
                 <td style="padding:8px 6px; font-size:12px; color:#64748b;">${acc.bank_or_provider || '—'}</td>
                 <td style="padding:8px 6px; font-size:12px; color:#94a3b8;">${acc.account_number || '—'}</td>
                 <td style="padding:8px 6px; text-align:center; white-space:nowrap;">
+                    <button onclick="openEditFinancialAccount(${acc.id})"
+                        style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;margin-right:4px;"
+                        title="Editar Cuenta">
+                        <i class="fa-solid fa-pen"></i> Editar
+                    </button>
                     ${acc.is_active ? `
                         <button onclick="openInitialBalanceModal(${acc.id}, '${acc.name.replace(/'/g, "\\'")}', '${acc.account_type}')" 
                             style="background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;margin-right:4px;" 
@@ -306,7 +360,13 @@ async function _renderAccountsList() {
                             title="Desactivar cuenta">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
-                    ` : `<span style="font-size:10px;color:#94a3b8;">Inactiva</span>`}
+                    ` : `
+                        <button onclick="reactivateFinancialAccount(${acc.id})"
+                            style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;"
+                            title="Reactivar cuenta">
+                            <i class="fa-solid fa-rotate-left"></i> Reactivar
+                        </button>
+                    `}
                 </td>
             </tr>
             `;
@@ -332,43 +392,58 @@ async function _renderAccountsList() {
     }
 }
 
-/** Crea una nueva cuenta bancaria o caja */
+/** Crea o edita una cuenta bancaria o caja */
 async function submitNewFinancialAccount() {
+    const editId = document.getElementById('edit_acc_id')?.value?.trim();
     const name = document.getElementById('new_acc_name')?.value?.trim();
     const account_type = document.getElementById('new_acc_type')?.value;
     const bank_or_provider = document.getElementById('new_acc_bank')?.value?.trim() || null;
     const account_number = document.getElementById('new_acc_number')?.value?.trim() || null;
-    const notes = document.getElementById('new_acc_notes')?.value?.trim() || null;
+    const scopeVal = document.getElementById('new_acc_scope')?.value || 'empresa';
+    let notesClean = (document.getElementById('new_acc_notes')?.value?.trim() || '').replace(/^\[SOCIO\]\s*/i, '').trim();
+    const notes = scopeVal === 'socio' ? (`[SOCIO] ${notesClean}`).trim() : (notesClean || null);
 
     if (!name) { alert('El nombre de la cuenta es obligatorio.'); return; }
     if (!account_type) { alert('Debes seleccionar el tipo de moneda.'); return; }
 
+    const isEditing = Boolean(editId);
+    const url = isEditing ? `${API_BASE}/financial/accounts/${editId}` : `${API_BASE}/financial/accounts`;
+    const method = isEditing ? 'PATCH' : 'POST';
+
     try {
-        const resp = await fetch(`${API_BASE}/financial/accounts`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
-            },
+        const resp = await authFetch(url, {
+            method,
             body: JSON.stringify({ name, account_type, bank_or_provider, account_number, notes })
         });
         if (!resp.ok) {
-            const err = await resp.json();
+            const err = await resp.json().catch(() => ({}));
             throw new Error(err.detail || `HTTP ${resp.status}`);
         }
-        // Limpiar campos
-        ['new_acc_name','new_acc_bank','new_acc_number','new_acc_notes'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
-        });
-        // Recargar lista y selectores
+        cancelEditFinancialAccount();
         await _renderAccountsList();
         await loadFinancialAccounts();
-        // Feedback visual
-        const btn = document.querySelector('#modalManageAccounts .btn-primary');
-        if (btn) { btn.textContent = '✅ Creada'; setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-plus"></i> Crear Cuenta'; }, 2000); }
+        const btn = document.getElementById('btnSubmitManageAccount');
+        if (btn) {
+            btn.textContent = isEditing ? '✅ Actualizada' : '✅ Creada';
+            setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-plus"></i> Crear Cuenta'; }, 2000);
+        }
     } catch(err) {
-        alert(`Error al crear la cuenta: ${err.message}`);
+        alert(`Error al ${isEditing ? 'actualizar' : 'crear'} la cuenta: ${err.message}`);
+    }
+}
+
+/** Reactiva una cuenta previamente desactivada */
+async function reactivateFinancialAccount(accountId) {
+    try {
+        const resp = await authFetch(`${API_BASE}/financial/accounts/${accountId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ is_active: true })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        await _renderAccountsList();
+        await loadFinancialAccounts();
+    } catch(err) {
+        alert(`Error al reactivar la cuenta: ${err.message}`);
     }
 }
 
@@ -487,6 +562,9 @@ if (typeof window !== 'undefined') {
     window.openManageAccountsModal = openManageAccountsModal;
     window._renderAccountsList = _renderAccountsList;
     window.submitNewFinancialAccount = submitNewFinancialAccount;
+    window.openEditFinancialAccount = openEditFinancialAccount;
+    window.cancelEditFinancialAccount = cancelEditFinancialAccount;
+    window.reactivateFinancialAccount = reactivateFinancialAccount;
     window.deactivateFinancialAccount = deactivateFinancialAccount;
     window.openInitialBalanceModal = openInitialBalanceModal;
     window.submitInitialBalance = submitInitialBalance;
@@ -498,6 +576,9 @@ export { _fillAccountSelect };
 export { openManageAccountsModal };
 export { _renderAccountsList };
 export { submitNewFinancialAccount };
+export { openEditFinancialAccount };
+export { cancelEditFinancialAccount };
+export { reactivateFinancialAccount };
 export { deactivateFinancialAccount };
 export { openInitialBalanceModal };
 export { submitInitialBalance };

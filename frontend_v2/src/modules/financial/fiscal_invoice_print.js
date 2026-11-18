@@ -93,6 +93,7 @@ async function printOfficialFiscalInvoice(receivableId, initialMode = 'digital')
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Factura ${data.invoice_number} - Metalmecánica Dalor, C.A.</title>
     <style>
         @page {
@@ -424,6 +425,27 @@ async function printOfficialFiscalInvoice(receivableId, initialMode = 'digital')
                 visibility: visible !important;
             }
         }
+
+        /* Adaptación Responsiva en Pantalla para cualquier tamaño/pulgada de monitor */
+        @media screen and (max-width: 900px) {
+            body {
+                overflow-x: auto;
+            }
+            .toolbar-container {
+                padding: 8px 12px;
+                gap: 8px;
+            }
+            .page-sheet {
+                zoom: 0.72;
+                margin: 10px auto;
+            }
+        }
+        @media screen and (max-width: 600px) {
+            .page-sheet {
+                zoom: 0.45;
+                margin: 6px auto;
+            }
+        }
     </style>
 </head>
 <body class="mode-${initialMode}">
@@ -457,7 +479,40 @@ async function printOfficialFiscalInvoice(receivableId, initialMode = 'digital')
             <label style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-left: 4px;">Fecha:</label>
             <input type="date" id="inputIssueDate" value="${data.issue_date_iso || ''}" style="font-size: 11px; font-weight: 800; padding: 2px 4px; border-radius: 4px; border: 1px solid #94a3b8; background: white; color: #000;">
 
-            <button type="button" onclick="saveCorrelatives(${data.id})" style="background: #0284c7; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 11px; font-weight: 800; cursor: pointer;" title="Guardar ajustes de correlativos y fecha oficial (Dirección/Administración)">💾 Guardar</button>
+            <label style="font-size: 11px; font-weight: 700; color: #38bdf8; margin-left: 4px;">Tasa Bs/$:</label>
+            <input type="number" step="0.01" min="0.01" id="inputExchangeRate" value="${Number(data.exchange_rate || 0).toFixed(2)}" style="width: 82px; font-size: 12px; font-weight: 900; padding: 2px 4px; text-align: right; border-radius: 4px; border: 1px solid #38bdf8; background: white; color: #0369a1;">
+
+            <button type="button" onclick="toggleExtendedInvoiceEditor()" class="btn-tool" style="padding: 3px 8px; font-size: 11px;" title="Editar montos ($), IVA y concepto">✏️ Montos / Concepto</button>
+            <button type="button" onclick="saveCorrelatives(${data.id})" style="background: #0284c7; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 11px; font-weight: 800; cursor: pointer;" title="Guardar todos los ajustes fiscales y recalcular en vivo">💾 Guardar</button>
+        </div>
+
+        <!-- Panel Desplegable de Edición Completa (Base, IVA, Total USD, Concepto) -->
+        <div id="extendedInvoiceEditor" style="display: ${Number(data.tax_amount_usd || 0) <= 0.001 ? 'flex' : 'none'}; width: 100%; background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 8px 12px; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <label style="font-size: 11px; font-weight: 700; color: #fbbf24;">IVA 16%:</label>
+                <select id="inputIvaMode" onchange="onPreviewIvaModeChanged(this.value)" style="font-size: 11px; font-weight: 800; padding: 3px 6px; border-radius: 4px; border: 1px solid #fbbf24; background: #fffbeb; color: #92400e;">
+                    <option value="manual" ${Number(data.tax_amount_usd || 0) > 0.001 ? 'selected' : ''}>-- Actual --</option>
+                    <option value="add_16">+ Sumar 16% IVA a la Base</option>
+                    <option value="included_16">16% IVA ya incluido en Total</option>
+                    <option value="exempt" ${Number(data.tax_amount_usd || 0) <= 0.001 ? 'selected' : ''}>Exenta (0% IVA)</option>
+                </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <label style="font-size: 11px; font-weight: 700; color: #cbd5e1;">Base $:</label>
+                <input type="number" step="0.01" id="inputBaseUsd" value="${Number(data.taxable_base_usd || 0).toFixed(2)}" oninput="onPreviewBaseChanged(this.value)" style="width: 88px; font-size: 11.5px; font-weight: 800; padding: 3px 5px; border-radius: 4px; border: 1px solid #94a3b8;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <label style="font-size: 11px; font-weight: 700; color: #cbd5e1;">IVA 16% $:</label>
+                <input type="number" step="0.01" id="inputTaxUsd" value="${Number(data.tax_amount_usd || 0).toFixed(2)}" oninput="onPreviewTaxChanged(this.value)" style="width: 82px; font-size: 11.5px; font-weight: 800; padding: 3px 5px; border-radius: 4px; border: 1px solid #94a3b8;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <label style="font-size: 11px; font-weight: 700; color: #4ade80;">Total $:</label>
+                <input type="number" step="0.01" id="inputTotalUsd" value="${Number(data.total_usd || 0).toFixed(2)}" oninput="onPreviewTotalChanged(this.value)" style="width: 92px; font-size: 11.5px; font-weight: 900; padding: 3px 5px; border-radius: 4px; border: 1px solid #4ade80; color: #065f46;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px; flex: 1; min-width: 240px;">
+                <label style="font-size: 11px; font-weight: 700; color: #cbd5e1;">Concepto:</label>
+                <input type="text" id="inputDescription" value="${(data.description || '').replace(/"/g, '&quot;')}" style="width: 100%; font-size: 11.5px; font-weight: 700; padding: 3px 6px; border-radius: 4px; border: 1px solid #94a3b8;">
+            </div>
         </div>
 
         <!-- Botones de Impresión Directa -->
@@ -676,28 +731,104 @@ async function printOfficialFiscalInvoice(receivableId, initialMode = 'digital')
             return Number(num).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        function toggleExtendedInvoiceEditor() {
+            const p = document.getElementById('extendedInvoiceEditor');
+            if (!p) return;
+            p.style.display = (p.style.display === 'none' || !p.style.display) ? 'flex' : 'none';
+        }
+
+        function onPreviewBaseChanged(val) {
+            const base = parseFloat(val) || 0;
+            const mode = document.getElementById('inputIvaMode')?.value || 'add_16';
+            const tax = mode === 'exempt' ? 0 : Math.round(base * 0.16 * 100) / 100;
+            const tot = Math.round((base + tax) * 100) / 100;
+            const tEl = document.getElementById('inputTaxUsd');
+            const totEl = document.getElementById('inputTotalUsd');
+            if (tEl) tEl.value = tax.toFixed(2);
+            if (totEl) totEl.value = tot.toFixed(2);
+        }
+
+        function onPreviewTotalChanged(val) {
+            const tot = parseFloat(val) || 0;
+            const mode = document.getElementById('inputIvaMode')?.value || 'manual';
+            const bEl = document.getElementById('inputBaseUsd');
+            const tEl = document.getElementById('inputTaxUsd');
+            if (mode === 'included_16') {
+                const base = Math.round((tot / 1.16) * 100) / 100;
+                const tax = Math.round((tot - base) * 100) / 100;
+                if (bEl) bEl.value = base.toFixed(2);
+                if (tEl) tEl.value = tax.toFixed(2);
+            } else if (mode === 'exempt') {
+                if (bEl) bEl.value = tot.toFixed(2);
+                if (tEl) tEl.value = '0.00';
+            }
+        }
+
+        function onPreviewIvaModeChanged(mode) {
+            const bEl = document.getElementById('inputBaseUsd');
+            const tEl = document.getElementById('inputTaxUsd');
+            const totEl = document.getElementById('inputTotalUsd');
+            const base = parseFloat(bEl?.value) || 0;
+            const tot = parseFloat(totEl?.value) || base;
+            if (mode === 'add_16') {
+                const tax = Math.round(base * 0.16 * 100) / 100;
+                if (tEl) tEl.value = tax.toFixed(2);
+                if (totEl) totEl.value = (Math.round((base + tax) * 100) / 100).toFixed(2);
+            } else if (mode === 'included_16') {
+                const newBase = Math.round((tot / 1.16) * 100) / 100;
+                const newTax = Math.round((tot - newBase) * 100) / 100;
+                if (bEl) bEl.value = newBase.toFixed(2);
+                if (tEl) tEl.value = newTax.toFixed(2);
+            } else if (mode === 'exempt') {
+                if (bEl) bEl.value = tot.toFixed(2);
+                if (tEl) tEl.value = '0.00';
+                if (totEl) totEl.value = tot.toFixed(2);
+            }
+        }
+
+        function onPreviewTaxChanged(val) {
+            const base = parseFloat(document.getElementById('inputBaseUsd')?.value) || 0;
+            const tax = parseFloat(val) || 0;
+            const totEl = document.getElementById('inputTotalUsd');
+            if (totEl) totEl.value = (Math.round((base + tax) * 100) / 100).toFixed(2);
+        }
+
         async function saveCorrelatives(recId) {
-            const invInput = document.getElementById('inputInvoiceNumber');
-            const ctrlInput = document.getElementById('inputControlNumber');
-            const dateInput = document.getElementById('inputIssueDate');
-            const invVal = (invInput?.value || '').trim();
-            const ctrlVal = (ctrlInput?.value || '').trim();
-            const dateVal = (dateInput?.value || '').trim();
-            if (!invVal && !ctrlVal && !dateVal) {
+            const invVal = (document.getElementById('inputInvoiceNumber')?.value || '').trim();
+            const ctrlVal = (document.getElementById('inputControlNumber')?.value || '').trim();
+            const dateVal = (document.getElementById('inputIssueDate')?.value || '').trim();
+            const rateVal = parseFloat(document.getElementById('inputExchangeRate')?.value);
+            const baseVal = parseFloat(document.getElementById('inputBaseUsd')?.value);
+            const taxVal = parseFloat(document.getElementById('inputTaxUsd')?.value);
+            const totalVal = parseFloat(document.getElementById('inputTotalUsd')?.value);
+            const descVal = (document.getElementById('inputDescription')?.value || '').trim();
+
+            if (!invVal && !ctrlVal && !dateVal && (!rateVal || rateVal <= 0)) {
                 alert('Por favor especifique al menos un campo a actualizar.');
                 return;
             }
-            const reason = prompt('Indique el motivo del ajuste o confirmación fiscal (Auditoría Directiva):', 'Emisión oficial de factura SENIAT');
-            if (reason === null) return;
+            const payload = {
+                fiscal_invoice_number: invVal || null,
+                control_number: ctrlVal || null,
+                issue_date: dateVal ? (dateVal + 'T12:00:00') : null,
+                exchange_rate: (!isNaN(rateVal) && rateVal > 0) ? rateVal : null,
+                taxable_base_usd: (!isNaN(baseVal) && baseVal >= 0) ? baseVal : null,
+                tax_amount_usd: (!isNaN(taxVal) && taxVal >= 0) ? taxVal : null,
+                amount_usd: (!isNaN(totalVal) && totalVal > 0) ? totalVal : null,
+                description: descVal || null
+            };
             try {
                 const token = SAVED_TOKEN || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('dalor_token')) || (typeof localStorage !== 'undefined' && localStorage.getItem('dalor_token')) || '';
-                const r = await fetch(API_ENDPOINT + '/financial/cxc/' + recId + '/fiscal-correlative', {
+                const r = await fetch(API_ENDPOINT + '/financial/cxc/' + recId, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                    body: JSON.stringify({ fiscal_invoice_number: invVal, control_number: ctrlVal, issue_date: dateVal, reason: reason })
+                    body: JSON.stringify(payload)
                 });
                 const res = await r.json().catch(() => ({}));
                 if (r.ok) {
+                    if (window.opener && typeof window.opener.loadReceivablesList === 'function') {
+                        window.opener.loadReceivablesList();
+                    }
                     // Obtener los datos frescos de la factura tras el cambio para actualizar en vivo sin recargar ventana
                     const freshRes = await fetch(API_ENDPOINT + '/financial/cxc/' + recId + '/fiscal-invoice-data', {
                         headers: { 'Authorization': 'Bearer ' + token }

@@ -6,6 +6,9 @@ import {
     changeProjectPageSize,
     goToProjectPage,
     setProjectCxcFilter,
+    getProjectScopeMode,
+    onProjectScopeModeChanged,
+    toggleProjectOwnerScope,
     filterProjectsList,
     renderProjectsWithPagination,
     renderProjectsPaginationControls,
@@ -14,6 +17,7 @@ import {
 
 import {
     setProjectType,
+    setProjectOwnerScope,
     onProjectLocationInput,
     applyEditProjectSedeRules,
     onEditProjectLocationInput,
@@ -86,11 +90,15 @@ export {
     changeProjectPageSize,
     goToProjectPage,
     setProjectCxcFilter,
+    getProjectScopeMode,
+    onProjectScopeModeChanged,
+    toggleProjectOwnerScope,
     filterProjectsList,
     renderProjectsWithPagination,
     renderProjectsPaginationControls,
     renderProjectCardHtml,
     setProjectType,
+    setProjectOwnerScope,
     onProjectLocationInput,
     applyEditProjectSedeRules,
     onEditProjectLocationInput,
@@ -148,11 +156,15 @@ if (typeof window !== 'undefined') {
     window.changeProjectPageSize = changeProjectPageSize;
     window.goToProjectPage = goToProjectPage;
     window.setProjectCxcFilter = setProjectCxcFilter;
+    window.getProjectScopeMode = getProjectScopeMode;
+    window.onProjectScopeModeChanged = onProjectScopeModeChanged;
+    window.toggleProjectOwnerScope = toggleProjectOwnerScope;
     window.filterProjectsList = filterProjectsList;
     window.renderProjectsWithPagination = renderProjectsWithPagination;
     window.renderProjectsPaginationControls = renderProjectsPaginationControls;
     window.renderProjectCardHtml = renderProjectCardHtml;
     window.setProjectType = setProjectType;
+    window.setProjectOwnerScope = setProjectOwnerScope;
     window.onProjectLocationInput = onProjectLocationInput;
     window.applyEditProjectSedeRules = applyEditProjectSedeRules;
     window.onEditProjectLocationInput = onEditProjectLocationInput;
@@ -203,3 +215,4 @@ if (typeof window !== 'undefined') {
     window.deleteProject = deleteProject;
     window.closeAndCulminateProject = closeAndCulminateProject;
 }
+import './projects_subcontracts.js';

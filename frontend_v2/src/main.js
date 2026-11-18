@@ -57,6 +57,7 @@ import './modules/materials.js';
 import './modules/dispatch.js';
 import './modules/rentals.js';
 import './modules/offline_sync.js';
+import './modules/notifications.js';
 
 // Exportar al scope global para compatibilidad total con eventos inline de index.html
 window.Api = Api;

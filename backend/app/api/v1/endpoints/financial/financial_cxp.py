@@ -745,3 +745,123 @@ def record_cxp_payment(payable_id: int, p_in: PaymentCreate, db: Session = Depen
     db.commit()
     return {"success": True, "message": "Pago aplicado con éxito.", "new_balance_usd": p.balance_usd, "status": p.status}
 
+
+class MixedPaymentTranche(BaseModel):
+    currency: str = "USD"  # "USD" | "BS"
+    amount_usd: float = 0.0
+    amount_bs: float = 0.0
+    payment_method: str = "transferencia"
+    financial_account_id: Optional[int] = None
+    bank_account: Optional[str] = None
+    reference_number: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class MixedCxpPaymentRequest(BaseModel):
+    exchange_rate: float
+    payment_date: Optional[datetime] = None
+    tranches: List[MixedPaymentTranche]
+    notes: Optional[str] = None
+
+
+@router.post("/cxp/{payable_id}/mixed-payment")
+def record_cxp_mixed_payment(
+    payable_id: int,
+    req: MixedCxpPaymentRequest,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user),
+):
+    """Registra un pago mixto ($ USD + Bs.) en una misma operación CxP con tasa y fecha editables."""
+    p = db.query(AccountPayable).filter(AccountPayable.id == payable_id).with_for_update().first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Deuda no encontrada.")
+    if req.exchange_rate <= 0:
+        raise HTTPException(status_code=400, detail="La tasa de cambio debe ser mayor a cero.")
+    if not req.tranches:
+        raise HTTPException(status_code=400, detail="Debes incluir al menos un tramo de pago ($ USD o Bs.).")
+
+    pay_dt = req.payment_date or datetime.utcnow()
+    rate = float(req.exchange_rate)
+    total_usd = 0.0
+    total_bs = 0.0
+    normalized_tranches = []
+
+    for tr in req.tranches:
+        curr = (tr.currency or "USD").upper()
+        if curr == "BS":
+            bs_val = round(float(tr.amount_bs or 0.0), 2)
+            usd_val = round(float(tr.amount_usd or (bs_val / rate if rate > 0 else 0.0)), 2)
+            if bs_val <= 0 and usd_val > 0:
+                bs_val = round(usd_val * rate, 2)
+        else:
+            usd_val = round(float(tr.amount_usd or 0.0), 2)
+            bs_val = round(float(tr.amount_bs or (usd_val * rate)), 2)
+
+        if usd_val <= 0:
+            continue
+
+        acc_name = tr.bank_account
+        if tr.financial_account_id and not acc_name:
+            acc = db.query(FinancialAccount).filter(FinancialAccount.id == tr.financial_account_id).first()
+            if acc:
+                acc_name = acc.name
+        normalized_tranches.append((curr, usd_val, bs_val, tr, acc_name or "banesco_usd"))
+        total_usd = round(total_usd + usd_val, 2)
+        total_bs = round(total_bs + bs_val, 2)
+
+    if total_usd <= 0:
+        raise HTTPException(status_code=400, detail="El monto total del pago mixto debe ser mayor a cero.")
+    if total_usd > (float(p.balance_usd or 0.0) + 0.05):
+        raise HTTPException(
+            status_code=400,
+            detail=f"El pago mixto (${total_usd:.2f}) supera el saldo pendiente (${float(p.balance_usd or 0.0):.2f}).",
+        )
+
+    payment_ids = []
+    for curr, usd_val, bs_val, tr, acc_name in normalized_tranches:
+        ref = (tr.reference_number or "").strip() or None
+        note_parts = [f"Pago mixto CxP ({curr})"]
+        if tr.notes:
+            note_parts.append(tr.notes.strip())
+        elif req.notes:
+            note_parts.append(req.notes.strip())
+        payment = FinancialPayment(
+            payment_type="cxp_pago",
+            payable_id=p.id,
+            financial_account_id=tr.financial_account_id,
+            bank_account=acc_name,
+            amount_usd=usd_val,
+            amount_bs=bs_val,
+            exchange_rate=rate,
+            payment_method=tr.payment_method or ("transferencia_bs" if curr == "BS" else "transferencia"),
+            reference_number=ref,
+            voucher_number=ref,
+            payment_date=pay_dt,
+            notes=" | ".join(note_parts),
+        )
+        db.add(payment)
+        db.flush()
+        payment_ids.append(payment.id)
+
+    p.paid_amount_usd = round(float(p.paid_amount_usd or 0.0) + total_usd, 2)
+    p.balance_usd = max(0.0, round(float(p.balance_usd or 0.0) - total_usd, 2))
+    p.status = "pagado_total" if p.balance_usd <= 0.01 else "abono_parcial"
+
+    db.add(AuditLog(
+        username=current_user.username,
+        module="cuentas_por_pagar",
+        action="registrar_pago_mixto_cxp",
+        details=f"Pago mixto de ${total_usd:.2f} (Bs. {total_bs:,.2f} @ {rate:.2f}) a '{p.supplier_name}' ({p.invoice_number}). Tramos: {len(payment_ids)}. Nuevo Saldo: ${p.balance_usd:.2f}",
+    ))
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Pago mixto aplicado (${total_usd:.2f} / Bs. {total_bs:,.2f}).",
+        "total_paid_usd": total_usd,
+        "total_paid_bs": total_bs,
+        "new_balance_usd": p.balance_usd,
+        "status": p.status,
+        "payment_ids": payment_ids,
+    }
+

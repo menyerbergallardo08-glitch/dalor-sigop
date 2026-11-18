@@ -6,6 +6,7 @@
 // 1. Carga de Submódulos Especializados (< 700 líneas c/u)
 import './resources/dashboard.js';
 import './resources/fleet.js';
+import './resources/fleet_obligations.js';
 import './resources/services.js';
 import './resources/machinery.js';
 import './resources/tools.js';

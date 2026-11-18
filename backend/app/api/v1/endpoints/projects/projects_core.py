@@ -40,6 +40,12 @@ def get_projects(db: Session = Depends(get_db)):
         .group_by(Expense.project_id)
         .all()
     )
+    exp_partner_sums = dict(
+        db.query(Expense.project_id, func.sum(Expense.amount_usd))
+        .filter(Expense.project_id.isnot(None), Expense.status == 'aprobado', Expense.expense_type == 'retiro_socio')
+        .group_by(Expense.project_id)
+        .all()
+    )
 
     # 2. Compras y Facturas CxP pagadas imputadas a proyectos
     cxp_sums = dict(
@@ -75,8 +81,12 @@ def get_projects(db: Session = Depends(get_db)):
     results = []
     for proj in projects:
         exp_spent = float(exp_sums.get(proj.id, 0.0) or 0.0)
+        partner_spent = float(exp_partner_sums.get(proj.id, 0.0) or 0.0)
         cxp_spent = float(cxp_sums.get(proj.id, 0.0) or 0.0)
         spent = round(exp_spent + cxp_spent, 2)
+        company_spent = round(max(0.0, exp_spent - partner_spent) + cxp_spent, 2)
+        owner_scope = (getattr(proj, "owner_scope", None) or "empresa").lower()
+        is_partner_proj = (owner_scope == "socio") or (partner_spent > 0 and company_spent == 0)
         
         # Calculate physical progress percentage based on tasks or completed phases (ponderado)
         prog_pct = calculate_project_progress(proj.phases, proj.status)
@@ -119,7 +129,11 @@ def get_projects(db: Session = Depends(get_db)):
             "estimated_tools_usd": proj.estimated_tools_usd,
             "estimated_services_usd": proj.estimated_services_usd,
             "budget_limit_usd": proj.budget_limit_usd,
+            "owner_scope": owner_scope,
             "total_spent_usd": round(spent, 2),
+            "company_spent_usd": company_spent,
+            "partner_spent_usd": round(partner_spent, 2),
+            "is_partner_project": is_partner_proj,
             "progress_pct": prog_pct,
             "has_cxc": has_cxc,
             "cxc_status": cxc_status,
@@ -438,6 +452,7 @@ def create_project(project_in: ProjectCreate, db: Session = Depends(get_db)):
             estimated_tools_usd=project_in.estimated_tools_usd,
             estimated_services_usd=project_in.estimated_services_usd,
             budget_limit_usd=total_budget if total_budget > 0 else (project_in.contract_amount_usd * 0.70),
+            owner_scope=(getattr(project_in, "owner_scope", None) or "empresa").lower(),
             is_active=True,
             created_at=start_d
         )
@@ -769,6 +784,10 @@ def update_project(project_id: int, project_in: ProjectUpdate, db: Session = Dep
             proj.estimated_tools_usd = float(project_in.estimated_tools_usd or 0.0)
         if project_in.estimated_services_usd is not None:
             proj.estimated_services_usd = float(project_in.estimated_services_usd or 0.0)
+        if getattr(project_in, "owner_scope", None) is not None:
+            sc = project_in.owner_scope.strip().lower()
+            if sc in ("empresa", "socio"):
+                proj.owner_scope = sc
 
         # Recalcular límite presupuestario si los rubros cambiaron
         total_budget = (
@@ -981,6 +1000,21 @@ def update_project_status(project_id: int, status_in: ProjectStatusUpdate, db: S
         "released_assets": released_assets_count,
         "released_personnel": released_personnel_count
     }
+
+class ProjectScopeUpdate(BaseModel):
+    owner_scope: str  # "empresa" | "socio"
+
+@router.patch("/{project_id}/scope")
+def update_project_owner_scope(project_id: int, scope_in: ProjectScopeUpdate, db: Session = Depends(get_db)):
+    proj = db.query(Project).filter(Project.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+    clean_scope = (scope_in.owner_scope or "empresa").strip().lower()
+    if clean_scope not in ("empresa", "socio"):
+        raise HTTPException(status_code=400, detail="Ámbito inválido. Use 'empresa' o 'socio'.")
+    proj.owner_scope = clean_scope
+    db.commit()
+    return {"success": True, "id": proj.id, "code": proj.code, "owner_scope": proj.owner_scope}
 
 class AdminAuthProjectDelete(BaseModel):
     admin_password: str

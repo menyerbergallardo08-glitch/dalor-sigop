@@ -694,6 +694,8 @@ async function openEditReceivableModal(receivableId) {
     document.getElementById("edit_cxc_id").value = rec.id;
     document.getElementById("edit_cxc_badge").innerText = rec.invoice_number || `FAC-${rec.id}`;
     document.getElementById("edit_cxc_invoice_number").value = rec.invoice_number || "";
+    const fisEl = document.getElementById("edit_cxc_fiscal_invoice_number");
+    if (fisEl) fisEl.value = rec.fiscal_invoice_number || "";
     document.getElementById("edit_cxc_control_number").value = rec.control_number || "";
     document.getElementById("edit_cxc_description").value = rec.description || "";
 
@@ -702,9 +704,16 @@ async function openEditReceivableModal(receivableId) {
     document.getElementById("edit_cxc_issue_date").value = issueDateStr;
     document.getElementById("edit_cxc_due_date").value = dueDateStr;
 
-    document.getElementById("edit_cxc_amount_usd").value = parseFloat(rec.amount_usd || 0).toFixed(2);
+    const amtUsd = parseFloat(rec.amount_usd || 0);
+    const rateVal = parseFloat(rec.exchange_rate || window.currentExchangeRate || 0);
+    const amtBs = parseFloat(rec.amount_bs || (amtUsd * rateVal) || 0);
+    document.getElementById("edit_cxc_amount_usd").value = amtUsd.toFixed(2);
     document.getElementById("edit_cxc_base_usd").value = parseFloat(rec.taxable_base_usd || 0).toFixed(2);
     document.getElementById("edit_cxc_tax_usd").value = parseFloat(rec.tax_amount_usd || 0).toFixed(2);
+    const rateEl = document.getElementById("edit_cxc_exchange_rate");
+    if (rateEl) rateEl.value = rateVal > 0 ? rateVal.toFixed(2) : "";
+    const bsEl = document.getElementById("edit_cxc_amount_bs");
+    if (bsEl) bsEl.value = amtBs > 0 ? amtBs.toFixed(2) : "";
     document.getElementById("edit_cxc_notes").value = rec.notes || "";
 
     if (typeof window.openModal === 'function') {
@@ -721,20 +730,34 @@ function onEditCxcBaseChange(val) {
     const total = roundFinancial(base + tax);
     document.getElementById("edit_cxc_tax_usd").value = tax.toFixed(2);
     document.getElementById("edit_cxc_amount_usd").value = total.toFixed(2);
+    onEditCxcRateOrAmountChange();
 }
 
 function onEditCxcTaxChange(val) {
     const base = parseFloat(document.getElementById("edit_cxc_base_usd").value) || 0.0;
     const tax = parseFloat(val) || 0.0;
     document.getElementById("edit_cxc_amount_usd").value = (base + tax).toFixed(2);
+    onEditCxcRateOrAmountChange();
+}
+
+function onEditCxcRateOrAmountChange() {
+    const totalUsd = parseFloat(document.getElementById("edit_cxc_amount_usd")?.value) || 0.0;
+    const rate = parseFloat(document.getElementById("edit_cxc_exchange_rate")?.value) || 0.0;
+    const bsEl = document.getElementById("edit_cxc_amount_bs");
+    if (bsEl && rate > 0) {
+        bsEl.value = roundFinancial(totalUsd * rate).toFixed(2);
+    }
 }
 
 async function submitEditReceivable(event) {
     if (event && event.preventDefault) event.preventDefault();
 
     const recId = parseInt(document.getElementById("edit_cxc_id").value);
+    const rateVal = parseFloat(document.getElementById("edit_cxc_exchange_rate")?.value);
+    const bsVal = parseFloat(document.getElementById("edit_cxc_amount_bs")?.value);
     const payload = {
         invoice_number: document.getElementById("edit_cxc_invoice_number").value.trim(),
+        fiscal_invoice_number: document.getElementById("edit_cxc_fiscal_invoice_number")?.value.trim() || null,
         control_number: document.getElementById("edit_cxc_control_number").value.trim() || null,
         description: document.getElementById("edit_cxc_description").value.trim(),
         issue_date: document.getElementById("edit_cxc_issue_date").value || null,
@@ -742,6 +765,8 @@ async function submitEditReceivable(event) {
         amount_usd: parseFloat(document.getElementById("edit_cxc_amount_usd").value) || 0.0,
         taxable_base_usd: parseFloat(document.getElementById("edit_cxc_base_usd").value) || 0.0,
         tax_amount_usd: parseFloat(document.getElementById("edit_cxc_tax_usd").value) || 0.0,
+        exchange_rate: (!isNaN(rateVal) && rateVal > 0) ? rateVal : null,
+        amount_bs: (!isNaN(bsVal) && bsVal >= 0) ? bsVal : null,
         notes: document.getElementById("edit_cxc_notes").value.trim() || null
     };
 
@@ -841,6 +866,7 @@ if (typeof window !== 'undefined') {
     window.openEditReceivableModal = openEditReceivableModal;
     window.onEditCxcBaseChange = onEditCxcBaseChange;
     window.onEditCxcTaxChange = onEditCxcTaxChange;
+    window.onEditCxcRateOrAmountChange = onEditCxcRateOrAmountChange;
     window.submitEditReceivable = submitEditReceivable;
 
     // Anulación
@@ -866,6 +892,7 @@ export {
     openEditReceivableModal,
     onEditCxcBaseChange,
     onEditCxcTaxChange,
+    onEditCxcRateOrAmountChange,
     submitEditReceivable,
     openCancelReceivableModal,
     submitCancelReceivable

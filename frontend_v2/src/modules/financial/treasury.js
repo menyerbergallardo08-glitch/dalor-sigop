@@ -26,7 +26,9 @@ import {
 import {
     onTreasurySummaryPeriodChange,
     resetTreasurySummaryFilters,
-    loadTreasurySummary
+    loadTreasurySummary,
+    getFinancialScopeMode,
+    onFinancialScopeModeChanged
 } from './treasury/treasury_dashboard.js';
 
 import {
@@ -86,6 +88,8 @@ if (typeof window !== 'undefined') {
     window.resetTreasurySummaryFilters = resetTreasurySummaryFilters;
     window.loadTreasurySummary = loadTreasurySummary;
     window.loadFinancialSummary = loadTreasurySummary;
+    window.getFinancialScopeMode = getFinancialScopeMode;
+    window.onFinancialScopeModeChanged = onFinancialScopeModeChanged;
 
     window.setTreasuryOperations = setTreasuryOperations;
     window.getIsoDate = getIsoDate;
@@ -137,6 +141,8 @@ export {
     onTreasurySummaryPeriodChange,
     resetTreasurySummaryFilters,
     loadTreasurySummary,
+    getFinancialScopeMode,
+    onFinancialScopeModeChanged,
     setTreasuryOperations,
     getIsoDate,
     formatDateDisplay,

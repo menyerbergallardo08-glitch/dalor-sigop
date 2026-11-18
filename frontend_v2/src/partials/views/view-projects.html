@@ -107,6 +107,15 @@
                             </select>
                         </div>
 
+                        <div style="display: flex; align-items: center; gap: 6px; background: #faf5ff; border: 1.5px solid #c4b5fd; border-radius: 6px; padding: 3px 8px;">
+                            <span style="font-size: 11px; font-weight: 800; color: #6b21a8; white-space: nowrap;"><i class="fa-solid fa-layer-group"></i> Ámbito:</span>
+                            <select id="project_scope_mode" onchange="onProjectScopeModeChanged(this.value)" style="border: none; background: transparent; padding: 4px 2px; font-size: 12px; outline: none; color: #5b21b6; font-weight: 800; cursor: pointer;">
+                                <option value="consolidado">📊 Todos (Empresa + Socios)</option>
+                                <option value="empresa">🏢 Solo Obras Empresa</option>
+                                <option value="socio">👤 Solo Socios / Personal</option>
+                            </select>
+                        </div>
+
                     </div>
 
                     <div style="display: flex; gap: 8px; align-items: center;">
@@ -245,6 +254,22 @@
                                 </div>
 
                                 <input type="hidden" id="new_proj_type" value="foraneo">
+
+                                <!-- Selector visible Empresa vs Socio -->
+                                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                                    <span style="font-size: 11px; font-weight: 800; color: #1e293b;">
+                                        <i class="fa-solid fa-layer-group" style="color: #7c3aed;"></i> Clasificación Contable del Proyecto:
+                                    </span>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button type="button" id="btn_new_scope_empresa" onclick="setProjectOwnerScope('empresa')" style="padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; border: 2px solid #0284c7; background: #e0f2fe; color: #0369a1;">
+                                            🏢 Obra de Empresa
+                                        </button>
+                                        <button type="button" id="btn_new_scope_socio" onclick="setProjectOwnerScope('socio')" style="padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; border: 2px solid #cbd5e1; background: #ffffff; color: #64748b;">
+                                            👤 Proyecto / Gestión de Socio
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="new_proj_owner_scope" value="empresa">
+                                </div>
 
                             </div>
 
@@ -463,6 +488,34 @@
                                             <span style="font-size: 11.5px; font-weight: 700; color: #475569;">Total Costo Materiales:</span>
                                             <span id="plan_materials_total_cost_badge" style="font-size: 13px; font-weight: 800; color: #002B49; background: #e0f2fe; padding: 3px 10px; border-radius: 6px; border: 1px solid #bae6fd;">$0.00 USD</span>
                                         </div>
+                                    </div>
+                                </div>
+                                <div style="min-width: 0; grid-column: 1 / -1; background: #faf5ff; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 12px 14px; margin-top: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                                        <label style="font-size: 12px; font-weight: 800; color: #5b21b6; margin: 0;">
+                                            <i class="fa-solid fa-people-arrows"></i> Personal Subcontratado &amp; Recursos Opcionales (Exclusivo de Proyectos)
+                                        </label>
+                                        <span style="font-size: 10.5px; color: #6d28d9;">No aplica a Servicios APU</span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; align-items: center;">
+                                        <select id="draft_subc_kind" class="form-select" style="font-size: 11px;">
+                                            <option value="personal_subcontratado">Personal Subcontratado</option>
+                                            <option value="recurso_opcional">Recurso Opcional</option>
+                                        </select>
+                                        <input type="text" id="draft_subc_name" class="form-input" placeholder="Nombre / Cuadrilla / Recurso" style="font-size: 11px;">
+                                        <input type="text" id="draft_subc_spec" class="form-input" placeholder="Especialidad o Unidad" style="font-size: 11px;">
+                                        <input type="text" id="draft_subc_provider" class="form-input" placeholder="Contratista / Proveedor" style="font-size: 11px;">
+                                        <input type="number" step="0.01" min="0.01" id="draft_subc_qty" value="1" class="form-input" placeholder="Cant." style="font-size: 11px;">
+                                        <input type="number" step="0.01" min="0" id="draft_subc_cost" value="0" class="form-input" placeholder="Costo Unit. $" style="font-size: 11px;">
+                                        <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; font-weight: 700; color: #5b21b6;">
+                                            <input type="checkbox" id="draft_subc_optional"> Opcional
+                                        </label>
+                                        <button type="button" onclick="addDraftProjectSubcontract()" class="btn-primary" style="background: #7c3aed; font-size: 11px; padding: 6px 10px;">
+                                            <i class="fa-solid fa-plus"></i> Agregar
+                                        </button>
+                                    </div>
+                                    <div id="draft_subcontracts_list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
+                                        <span style="font-size: 11px; color: #64748b;">Sin personal subcontratado ni recursos opcionales agregados aún.</span>
                                     </div>
                                 </div>
                             </div>

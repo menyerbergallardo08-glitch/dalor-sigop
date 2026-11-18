@@ -27,6 +27,7 @@ from .cxc_schemas import (
 from . import cxc_invoices
 from . import cxc_payments
 from . import cxc_timeline
+from . import cxc_batch_router
 
 from .cxc_invoices import (
     compute_next_invoice_code,
@@ -65,6 +66,7 @@ router = APIRouter(dependencies=[Depends(get_current_active_user)])
 router.include_router(cxc_invoices.router)
 router.include_router(cxc_payments.router)
 router.include_router(cxc_timeline.router)
+router.include_router(cxc_batch_router.router)
 
 __all__ = [
     "router",

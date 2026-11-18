@@ -65,7 +65,10 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
                         <label class="form-label">Cargo / Especialidad *</label>
-                        <input type="text" id="npers_role" list="rolesDatalist" class="form-input" placeholder="Ej: Soldador 6G, Mecánico..." required autocomplete="off">
+                        <div style="display: flex; gap: 4px;">
+                            <input type="text" id="npers_role" list="rolesDatalist" class="form-input" placeholder="Ej: Soldador 6G, Mecánico..." required autocomplete="off" style="flex: 1;">
+                            <button type="button" onclick="addDynamicSpecialtyPrompt('npers_role')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800;" title="Crear nueva especialidad dinámicamente">+</button>
+                        </div>
                         <datalist id="rolesDatalist">
                             <option value="Ingeniero Residente de Obra">
                             <option value="Supervisor de Soldadura y Montaje">
@@ -160,7 +163,10 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
                         <label class="form-label">Cargo / Especialidad *</label>
-                        <input type="text" id="edit_pers_role" list="rolesDatalist" class="form-input" required autocomplete="off">
+                        <div style="display: flex; gap: 4px;">
+                            <input type="text" id="edit_pers_role" list="rolesDatalist" class="form-input" required autocomplete="off" style="flex: 1;">
+                            <button type="button" onclick="addDynamicSpecialtyPrompt('edit_pers_role')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800;" title="Crear nueva especialidad dinámicamente">+</button>
+                        </div>
                     </div>
                     <div>
                         <label class="form-label">Tipo de Nómina *</label>

@@ -88,7 +88,13 @@
 
                 <button class="subtab-btn" id="tabbtn-res-fleet" onclick="switchResourceSubtab('fleet')">
 
-                    <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota & Vehículos
+                    <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota &amp; Vehículos
+
+                </button>
+
+                <button class="subtab-btn" id="tabbtn-res-obligations" onclick="switchResourceSubtab('obligations')">
+
+                    <i class="fa-solid fa-shield-halved" style="color: #dc2626;"></i> Obligaciones Flota
 
                 </button>
 
@@ -204,6 +210,7 @@
                                 <option value="all">Estado: Todos (Activos + Inactivos)</option>
                                 <option value="disponible_base">Activos - Disponibles en Base</option>
                                 <option value="en_obra">Activos - En Obra / Operación</option>
+                                <option value="en_servicio">🔧 En Servicio (No Disponible)</option>
                                 <option value="inactivo">🛑 Inactivos / De Baja / Desincorporados</option>
                             </select>
                             <select id="fleetMaintFilter" onchange="filterFleetList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
@@ -780,6 +787,92 @@
                     <div id="rentalsPaginationContainer" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-radius: 0 0 8px 8px;">
                         <div id="rentalsPaginationInfo" style="font-size: 12px; color: #64748b; font-weight: 600;">Mostrando 0 de 0 registros</div>
                         <div id="rentalsPaginationControls" style="display: flex; gap: 6px; align-items: center;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBTAB: OBLIGACIONES LEGALES DE FLOTA (SEGUROS, PÓLIZAS Y TRIMESTRES) -->
+            <div id="subtab-res-obligations" class="hidden">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-shield-halved" style="color: #dc2626;"></i> Obligaciones Legales de Flota (Seguros, Pólizas, Trimestres)
+                        </h3>
+                        <div id="fleetObligationsSummary" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;"></div>
+                    </div>
+
+                    <form id="formFleetObligation" onsubmit="submitCreateFleetObligation(event)" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                        <input type="hidden" id="ob_edit_id" value="">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: end;">
+                            <div>
+                                <label class="form-label">Vehículo *</label>
+                                <select id="ob_asset_id" class="form-select" required></select>
+                            </div>
+                            <div>
+                                <label class="form-label">Tipo de Documentación *</label>
+                                <div style="display: flex; gap: 4px;">
+                                    <input type="text" id="ob_type" list="obTypeDatalist" class="form-input" placeholder="Ej: Seguro RCV, ROTC..." required autocomplete="off" value="Seguro RCV" style="flex: 1;">
+                                    <button type="button" onclick="addDynamicObligationTypePrompt()" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800;" title="Crear nuevo tipo de documentación">+</button>
+                                </div>
+                                <datalist id="obTypeDatalist">
+                                    <option value="Seguro RCV">
+                                    <option value="Póliza Todo Riesgo">
+                                    <option value="Trimestre / Impuesto Municipal">
+                                    <option value="Permiso RACDA / Certificación">
+                                    <option value="ROTC / Transporte">
+                                    <option value="Certificado Médico / Revisión Técnica">
+                                </datalist>
+                            </div>
+                            <div>
+                                <label class="form-label">Título / Descripción *</label>
+                                <input type="text" id="ob_title" class="form-input" placeholder="Ej: Póliza RCV 2026" required>
+                            </div>
+                            <div>
+                                <label class="form-label">Aseguradora / Ente</label>
+                                <input type="text" id="ob_provider" class="form-input" placeholder="Ej: Seguros Caracas / Alcaldía">
+                            </div>
+                            <div>
+                                <label class="form-label">N° Póliza / Planilla</label>
+                                <input type="text" id="ob_policy_num" class="form-input" placeholder="POL-12345">
+                            </div>
+                            <div>
+                                <label class="form-label">Vencimiento</label>
+                                <input type="date" id="ob_expiration_date" class="form-input">
+                            </div>
+                            <div>
+                                <label class="form-label">Monto ($ USD)</label>
+                                <input type="number" step="0.01" min="0" id="ob_amount_usd" class="form-input" value="0">
+                            </div>
+                            <div>
+                                <label class="form-label">Alerta (días antes)</label>
+                                <input type="number" min="1" id="ob_alert_days" class="form-input" value="30">
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="submit" id="btnSubmitFleetObligation" class="btn-primary" style="flex: 1; background: #dc2626; font-weight: 800;">
+                                    <i class="fa-solid fa-plus"></i> Registrar
+                                </button>
+                                <button type="button" id="btnCancelEditObligation" onclick="cancelEditFleetObligation()" class="btn-secondary hidden" style="padding: 6px 10px; font-weight: 700;">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Vehículo</th>
+                                    <th>Obligación</th>
+                                    <th>Aseguradora / Ref.</th>
+                                    <th>Vencimiento</th>
+                                    <th style="text-align: right;">Monto $</th>
+                                    <th>Estado</th>
+                                    <th style="text-align: center;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fleetObligationsTbody"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>

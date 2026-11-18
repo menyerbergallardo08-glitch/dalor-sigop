@@ -32,8 +32,12 @@ class CashFlowService:
         db: Session,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
-        account_id: Optional[int] = None
+        account_id: Optional[int] = None,
+        scope_mode: Optional[str] = "consolidado"
     ) -> Dict[str, Any]:
+        scope_mode_norm = (scope_mode or "consolidado").strip().lower()
+        if scope_mode_norm not in ("empresa", "socio", "consolidado"):
+            scope_mode_norm = "consolidado"
         df = None
         dt = None
         if date_from:
@@ -144,8 +148,30 @@ class CashFlowService:
             exp_q = exp_q.filter(Expense.expense_date <= dt)
         if account_id:
             exp_q = exp_q.filter(Expense.financial_account_id == account_id)
+        projects_meta = db.query(Project).options(joinedload(Project.client)).filter(Project.is_active == True).all()
+        partner_project_ids = {
+            p.id for p in projects_meta
+            if (getattr(p, "owner_scope", None) or "empresa").lower() == "socio"
+        }
+
         all_expenses = exp_q.all()
+        company_expenses = [
+            e for e in all_expenses
+            if (getattr(e, "expense_type", "") or "") != "retiro_socio" and e.project_id not in partner_project_ids
+        ]
+        partner_expenses = [
+            e for e in all_expenses
+            if (getattr(e, "expense_type", "") or "") == "retiro_socio" or e.project_id in partner_project_ids
+        ]
+        total_company_expenses = sum(e.amount_usd for e in company_expenses)
+        total_partner_expenses = sum(e.amount_usd for e in partner_expenses)
         total_direct_expenses = sum(e.amount_usd for e in all_expenses)
+
+        all_accounts_meta = db.query(FinancialAccount).all()
+        partner_account_ids = {
+            a.id for a in all_accounts_meta
+            if "[SOCIO]" in (a.notes or "").upper() or "PERSONAL" in (a.name or "").upper()
+        }
 
         # 4. Retiros Personales de Socios / Dueños
         part_q = db.query(PartnerWithdrawal)
@@ -189,20 +215,49 @@ class CashFlowService:
                 init_bal_q = init_bal_q.filter((FinancialPayment.financial_account_id == account_id) | (FinancialPayment.bank_account.ilike(f"%{acc_name_tag}%")))
             else:
                 init_bal_q = init_bal_q.filter(FinancialPayment.financial_account_id == account_id)
-        total_initial_balance = sum(p.amount_usd for p in init_bal_q.all())
+        init_bal_rows = init_bal_q.all()
+        total_initial_balance = sum(p.amount_usd for p in init_bal_rows)
+        company_initial_balance = sum(p.amount_usd for p in init_bal_rows if p.financial_account_id not in partner_account_ids)
+        partner_initial_balance = sum(p.amount_usd for p in init_bal_rows if p.financial_account_id in partner_account_ids)
 
-        # 6. Saldo Líquido Real en Caja / Bancos Disponible (incluye saldos iniciales + flujos operativos + mesa de cambio)
-        net_operating_cash = total_initial_balance + total_collected_cxc - cxp_bank_outflows - total_direct_expenses - total_partner_withdrawals + net_exchange_diff
+        # 6. Saldo Líquido Real según scope_mode (empresa | socio | consolidado)
+        if scope_mode_norm == "empresa":
+            eff_initial_balance = company_initial_balance
+            eff_collected_cxc = total_collected_cxc
+            eff_paid_cxp = cxp_bank_outflows
+            eff_direct_expenses = total_company_expenses
+            eff_partner_withdrawals = 0.0
+            eff_exchange_diff = net_exchange_diff
+            eff_expenses_for_pnl = company_expenses
+        elif scope_mode_norm == "socio":
+            eff_initial_balance = partner_initial_balance
+            eff_collected_cxc = 0.0
+            eff_paid_cxp = 0.0
+            eff_direct_expenses = total_partner_expenses
+            eff_partner_withdrawals = total_partner_withdrawals
+            eff_exchange_diff = 0.0
+            eff_expenses_for_pnl = partner_expenses
+        else:
+            eff_initial_balance = total_initial_balance
+            eff_collected_cxc = total_collected_cxc
+            eff_paid_cxp = cxp_bank_outflows
+            eff_direct_expenses = total_direct_expenses
+            eff_partner_withdrawals = total_partner_withdrawals
+            eff_exchange_diff = net_exchange_diff
+            eff_expenses_for_pnl = all_expenses
 
-        # 7. Ganancia Neta Devengada (Utilidad de Obras - Gastos Generales - Retiros + Diferencial Cambiario)
-        net_accrual_profit = total_invoiced_cxc - total_invoiced_cxp - total_direct_expenses + net_exchange_diff
-        net_margin_pct = round((net_accrual_profit / total_invoiced_cxc * 100), 1) if total_invoiced_cxc > 0 else 0.0
+        net_operating_cash = eff_initial_balance + eff_collected_cxc - eff_paid_cxp - eff_direct_expenses - eff_partner_withdrawals + eff_exchange_diff
+        net_company_only_cash = company_initial_balance + total_collected_cxc - cxp_bank_outflows - total_company_expenses + net_exchange_diff
+
+        # 7. Ganancia Neta Devengada (Utilidad de Obras - Gastos Generales + Diferencial Cambiario)
+        net_accrual_profit = (total_invoiced_cxc - total_invoiced_cxp - eff_direct_expenses + eff_exchange_diff) if scope_mode_norm != "socio" else (-eff_direct_expenses - eff_partner_withdrawals)
+        net_margin_pct = round((net_accrual_profit / total_invoiced_cxc * 100), 1) if (total_invoiced_cxc > 0 and scope_mode_norm != "socio") else 0.0
 
         # Cobertura de Gastos Fijos (Punto de Equilibrio del mes)
         fixed_overhead_covered_pct = min(100, round((net_accrual_profit / monthly_fixed_budget) * 100)) if monthly_fixed_budget > 0 and net_accrual_profit > 0 else 0
 
         # 8. Estado de Resultados (P&L) Limpio Obra por Obra - Eager load client to eliminate N+1
-        projects = db.query(Project).options(joinedload(Project.client)).filter(Project.is_active == True).all()
+        projects = projects_meta
         projects_pnl = []
         total_contracted = 0.0
 
@@ -214,11 +269,11 @@ class CashFlowService:
             p_invoiced = sum(r.amount_usd for r in proj_receivables)
             p_collected = sum(r.paid_amount_usd for r in proj_receivables)
         
-            # Costos Directos Limpios de la Obra (Gastos directos + CxP de materiales imputables)
-            proj_expenses = [e for e in all_expenses if e.project_id == proj.id]
+            # Costos Directos Limpios de la Obra (Gastos directos según ámbito + CxP de materiales imputables)
+            proj_expenses = [e for e in eff_expenses_for_pnl if e.project_id == proj.id]
             p_exp_cost = sum(e.amount_usd for e in proj_expenses)
         
-            proj_payables = [p for p in p_query if p.project_id == proj.id]
+            proj_payables = [p for p in p_query if p.project_id == proj.id] if scope_mode_norm != "socio" else []
             p_cxp_cost = sum(p.amount_usd for p in proj_payables)
         
             total_p_cost = p_exp_cost + p_cxp_cost
@@ -284,22 +339,27 @@ class CashFlowService:
         total_pending_tax_withholdings = round(pending_seniat_iva + pending_seniat_islr, 2)
 
         kpis_data = {
+                "scope_mode": scope_mode_norm,
                 "total_contracted_usd": total_contracted,
-                "total_initial_balance_usd": round(total_initial_balance, 2),
-                "total_invoiced_cxc_usd": round(total_invoiced_cxc, 2),
-                "total_collected_cxc_usd": round(total_collected_cxc, 2),
-                "pending_cxc_usd": round(pending_cxc, 2),
-                "total_invoiced_cxp_usd": round(total_invoiced_cxp, 2),
-                "total_paid_cxp_usd": round(total_paid_cxp, 2),
-                "pending_cxp_usd": round(pending_cxp, 2),
-                "total_direct_expenses_usd": round(total_direct_expenses, 2),
-                "total_partner_withdrawals_usd": round(total_partner_withdrawals, 2),
+                "total_initial_balance_usd": round(eff_initial_balance, 2),
+                "total_invoiced_cxc_usd": round(total_invoiced_cxc if scope_mode_norm != "socio" else 0.0, 2),
+                "total_collected_cxc_usd": round(eff_collected_cxc, 2),
+                "pending_cxc_usd": round(pending_cxc if scope_mode_norm != "socio" else 0.0, 2),
+                "total_invoiced_cxp_usd": round(total_invoiced_cxp if scope_mode_norm != "socio" else 0.0, 2),
+                "total_paid_cxp_usd": round(eff_paid_cxp, 2),
+                "pending_cxp_usd": round(pending_cxp if scope_mode_norm != "socio" else 0.0, 2),
+                "total_direct_expenses_usd": round(eff_direct_expenses, 2),
+                "total_company_expenses_usd": round(total_company_expenses, 2),
+                "total_partner_expenses_usd": round(total_partner_expenses, 2),
+                "total_partner_withdrawals_usd": round(eff_partner_withdrawals, 2),
+                "total_all_partner_withdrawals_usd": round(total_partner_withdrawals, 2),
                 "monthly_fixed_budget_usd": round(monthly_fixed_budget, 2),
                 "fixed_overhead_covered_percent": fixed_overhead_covered_pct,
                 "net_operating_cash_usd": round(net_operating_cash, 2),
+                "net_company_only_cash_usd": round(net_company_only_cash, 2),
                 "net_accrual_profit_usd": round(net_accrual_profit, 2),
                 "net_margin_percent": net_margin_pct,
-                "net_exchange_diff_usd": net_exchange_diff,
+                "net_exchange_diff_usd": eff_exchange_diff,
                 "total_exchange_egresos_usd": round(total_exchange_egresos, 2),
                 "total_exchange_ingresos_usd": round(total_exchange_ingresos, 2),
                 "total_exchanges_count": len(set(p.voucher_number for p in exchange_payments if p.voucher_number)),

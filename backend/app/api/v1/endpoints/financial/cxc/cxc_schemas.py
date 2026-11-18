@@ -89,6 +89,8 @@ class ReceivableUpdate(BaseModel):
     due_date: Optional[datetime] = None
     issue_date: Optional[datetime] = None
     amount_usd: Optional[float] = None
+    amount_bs: Optional[float] = None
+    exchange_rate: Optional[float] = None
     taxable_base_usd: Optional[float] = None
     tax_amount_usd: Optional[float] = None
     notes: Optional[str] = None

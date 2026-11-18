@@ -40,6 +40,15 @@ const authFetch = (url, options = {}) => {
 
 // ==============================================================================
 
+function _getLocalDatetimeLocalValue(dt = new Date()) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+}
+
+function _getLiveQuickBcvRate() {
+    return parseFloat(window.EXCHANGE_RATE || (window.BCV_DATA && window.BCV_DATA.rate) || (typeof EXCHANGE_RATE !== 'undefined' ? EXCHANGE_RATE : 0)) || 850.0;
+}
+
 function openQuickFlowModal() {
 
     const role = (currentUser?.role_name || currentUser?.username || '').toLowerCase();
@@ -61,6 +70,18 @@ function openQuickFlowModal() {
     }
 
     document.getElementById('quickFlowForm').reset();
+
+    const editIdEl = document.getElementById('qf_edit_withdrawal_id');
+    if (editIdEl) editIdEl.value = '';
+
+    const opDateEl = document.getElementById('qf_operation_date');
+    if (opDateEl) opDateEl.value = _getLocalDatetimeLocalValue();
+
+    const rateEl = document.getElementById('qf_exchange_rate');
+    if (rateEl) rateEl.value = _getLiveQuickBcvRate().toFixed(2);
+
+    const refEl = document.getElementById('qf_reference_number');
+    if (refEl) refEl.value = '';
 
     selectQuickType('obra');
 
@@ -128,21 +149,27 @@ function selectQuickType(type) {
 
 
 
+function _getEffectiveQuickRate() {
+    const inpRate = parseFloat(document.getElementById('qf_exchange_rate')?.value);
+    if (!isNaN(inpRate) && inpRate > 0) return inpRate;
+    return _getLiveQuickBcvRate();
+}
+
 function calcQuickBs() {
     const usd = parseFloat(document.getElementById('qf_amount_usd')?.value) || 0;
     const bsInput = document.getElementById('qf_amount_bs');
-    const rate = window.EXCHANGE_RATE || (window.BCV_DATA && window.BCV_DATA.rate) || 872.39;
+    const rate = _getEffectiveQuickRate();
     if (bsInput) {
-        bsInput.value = (usd * rate).toFixed(2);
+        bsInput.value = usd > 0 ? (usd * rate).toFixed(2) : '';
     }
 }
 
 function calcQuickUsd() {
     const bs = parseFloat(document.getElementById('qf_amount_bs')?.value) || 0;
     const usdInput = document.getElementById('qf_amount_usd');
-    const rate = window.EXCHANGE_RATE || (window.BCV_DATA && window.BCV_DATA.rate) || 872.39;
+    const rate = _getEffectiveQuickRate();
     if (usdInput && rate > 0) {
-        usdInput.value = (bs / rate).toFixed(2);
+        usdInput.value = bs > 0 ? (bs / rate).toFixed(2) : '';
     }
 }
 
@@ -178,39 +205,41 @@ async function submitQuickFlow(event) {
 
         if (selected_type === 'socio') {
 
-            // Registrar como Retiro de Socio
-
+            // Registrar o editar como Retiro de Socio
+            const editId = document.getElementById('qf_edit_withdrawal_id')?.value?.trim();
             const partner_name = (document.getElementById('qf_partner_name')?.value || '').trim() || 'Accionista';
             const concept = document.getElementById('qf_partner_concept').value.trim() || description;
-            const liveRate = parseFloat(window.EXCHANGE_RATE || (window.BCV_DATA && window.BCV_DATA.rate) || EXCHANGE_RATE) || 850.0;
+            const liveRate = _getEffectiveQuickRate();
             const rawBs = parseFloat(document.getElementById('qf_amount_bs')?.value);
             const exact_amount_bs = (!isNaN(rawBs) && rawBs > 0) ? Math.round(rawBs * 100) / 100 : Math.round(amount_usd * liveRate * 100) / 100;
+            const opDate = document.getElementById('qf_operation_date')?.value || null;
+            const refNum = document.getElementById('qf_reference_number')?.value?.trim() || null;
 
+            const isEditing = Boolean(editId);
+            const url = isEditing ? `${API_BASE}/financial/partners/withdrawals/${editId}` : `${API_BASE}/financial/partners/withdrawals`;
+            const method = isEditing ? 'PUT' : 'POST';
 
+            const payload = {
+                partner_name,
+                concept,
+                amount_usd,
+                amount_bs: exact_amount_bs,
+                payment_method,
+                exchange_rate: liveRate,
+                reference_number: refNum,
+                notes: `Registrado vía Carga Rápida. Proveedor/Destino: ${vendor}`
+            };
+            if (opDate) {
+                payload.withdrawal_date = opDate;
+            }
 
-            const res = await authFetch(`${API_BASE}/financial/partners/withdrawals`, {
+            const res = await authFetch(url, {
 
-                method: 'POST',
+                method,
 
                 headers: { 'Content-Type': 'application/json' },
 
-                body: JSON.stringify({
-
-                    partner_name,
-
-                    concept,
-
-                    amount_usd,
-
-                    amount_bs: exact_amount_bs,
-
-                    payment_method,
-
-                    exchange_rate: liveRate,
-
-                    notes: `Registrado vía Carga Rápida. Proveedor/Destino: ${vendor}`
-
-                })
+                body: JSON.stringify(payload)
 
             });
 
@@ -221,7 +250,7 @@ async function submitQuickFlow(event) {
                 throw new Error(errData.detail || 'Error al registrar retiro.');
             }
 
-            alert(`✅ Retiro de $${amount_usd.toLocaleString()} registrado con éxito para ${partner_name}.`);
+            alert(`✅ Retiro ${isEditing ? 'actualizado' : 'registrado'} por $${amount_usd.toLocaleString()} (Bs. ${exact_amount_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}) con éxito para ${partner_name}.`);
 
         } else if (selected_type === 'sede') {
 
@@ -506,17 +535,33 @@ function renderPartnersWithdrawalsPaginated() {
     });
     partnersCurrentPage = currentPage;
 
+    const _fmtDateTime = (w) => {
+        const raw = w.date || w.withdrawal_date || w.created_at || '';
+        if (!raw) return '-';
+        const m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+        if (m) return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+        const dOnly = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (dOnly) return `${dOnly[3]}/${dOnly[2]}/${dOnly[1]} 00:00`;
+        return raw;
+    };
+
     const pageItems = filtered.slice(startIndex, endIndex);
     tbody.innerHTML = pageItems.map(w => `
         <tr>
-            <td style="font-weight: 700; color: #64748b; font-size: 11px;">${w.date}</td>
+            <td style="font-weight: 700; color: #64748b; font-size: 11px; white-space: nowrap;">${_fmtDateTime(w)}</td>
             <td style="font-weight: 800; color: #7c3aed;">${w.partner_name}</td>
             <td style="font-weight: 600;">${w.concept}</td>
             <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px; text-transform: uppercase;">${w.payment_method}</span></td>
             <td style="color: #64748b; font-size: 11px;">${w.reference_number || '-'}</td>
             <td style="font-weight: 900; color: #7c3aed; font-size: 13px;">$${Number(w.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-            <td style="color: #475569; font-weight: 700;">Bs. ${Number(w.amount_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
-            <td style="text-align: center;">
+            <td style="color: #475569; font-weight: 700;">
+                Bs. ${Number(w.amount_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                <div style="font-size: 10px; color: #64748b; font-weight: 600;">Tasa: ${Number(w.exchange_rate || liveBcvRate).toFixed(2)}</div>
+            </td>
+            <td style="text-align: center; white-space: nowrap;">
+                <button type="button" onclick="openEditPartnerWithdrawalModal(${w.id})" class="btn-secondary" style="padding: 2px 7px; font-size: 11px; color: #0284c7; border-color: #bae6fd; margin-right: 4px;" title="Editar este retiro">
+                    <i class="fa-solid fa-pen"></i> Editar
+                </button>
                 <button type="button" onclick="confirmDeletePartnerWithdrawal(${w.id}, '${(w.partner_name || '').replace(/'/g, "\\'")}', ${w.amount_usd})" class="btn-secondary" style="padding: 2px 7px; font-size: 11px; color: #dc2626; border-color: #fca5a5;" title="Anular este retiro">
                     <i class="fa-solid fa-trash-can"></i> Anular
                 </button>
@@ -578,6 +623,45 @@ function openNewPartnerWithdrawalModal() {
 
 }
 
+function openEditPartnerWithdrawalModal(id) {
+    const w = (allPartnersWithdrawalsList || []).find(item => Number(item.id) === Number(id));
+    if (!w) {
+        alert('No se encontró el retiro seleccionado.');
+        return;
+    }
+
+    openQuickFlowModal();
+    selectQuickType('socio');
+
+    const editIdEl = document.getElementById('qf_edit_withdrawal_id');
+    const usdEl = document.getElementById('qf_amount_usd');
+    const bsEl = document.getElementById('qf_amount_bs');
+    const rateEl = document.getElementById('qf_exchange_rate');
+    const dateEl = document.getElementById('qf_operation_date');
+    const partnerEl = document.getElementById('qf_partner_name');
+    const conceptEl = document.getElementById('qf_partner_concept');
+    const methodEl = document.getElementById('qf_payment_method');
+    const refEl = document.getElementById('qf_reference_number');
+    const descEl = document.getElementById('qf_description');
+
+    if (editIdEl) editIdEl.value = String(w.id);
+    if (rateEl) rateEl.value = Number(w.exchange_rate || _getLiveQuickBcvRate()).toFixed(2);
+    if (usdEl) usdEl.value = Number(w.amount_usd || 0).toFixed(2);
+    if (bsEl) bsEl.value = Number(w.amount_bs || 0).toFixed(2);
+
+    const rawDt = w.withdrawal_date || w.date || '';
+    const mDt = String(rawDt).match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    if (dateEl && mDt) {
+        dateEl.value = `${mDt[1]}T${mDt[2]}`;
+    }
+
+    if (partnerEl) partnerEl.value = w.partner_name || '';
+    if (conceptEl) conceptEl.value = w.concept || '';
+    if (methodEl && w.payment_method) methodEl.value = w.payment_method;
+    if (refEl) refEl.value = w.reference_number || '';
+    if (descEl) descEl.value = w.concept || 'Retiro de socio';
+}
+
 
 
 
@@ -599,6 +683,7 @@ if (typeof window !== 'undefined') {
     window.changePartnersPageSize = changePartnersPageSize;
     window.confirmDeletePartnerWithdrawal = confirmDeletePartnerWithdrawal;
     window.openNewPartnerWithdrawalModal = openNewPartnerWithdrawalModal;
+    window.openEditPartnerWithdrawalModal = openEditPartnerWithdrawalModal;
     window.calcQuickUsd = calcQuickUsd;
 }
 
@@ -611,6 +696,7 @@ export { loadPartnersWithdrawalsList };
 export { populatePartnersFilterDropdown };
 export { filterPartnersWithdrawals };
 export { selectPartnerSummaryCard };
+export { openEditPartnerWithdrawalModal };
 export { renderPartnersWithdrawalsPaginated };
 export { goToPartnersPage };
 export { changePartnersPageSize };

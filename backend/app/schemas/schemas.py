@@ -193,6 +193,7 @@ class ProjectCreate(BaseModel):
     estimated_materials_usd: float = 0.0
     estimated_tools_usd: float = 0.0
     estimated_services_usd: float = 0.0
+    owner_scope: Optional[str] = "empresa"
     phases: Optional[List[ProjectPhaseCreate]] = []
     assigned_personnel_ids: Optional[List[int]] = []
     assigned_vehicle_ids: Optional[List[int]] = []
@@ -216,6 +217,7 @@ class ProjectUpdate(BaseModel):
     estimated_materials_usd: Optional[float] = None
     estimated_tools_usd: Optional[float] = None
     estimated_services_usd: Optional[float] = None
+    owner_scope: Optional[str] = None
     phases: Optional[List[ProjectPhaseCreate]] = None
     assigned_personnel_ids: Optional[List[int]] = None
     assigned_vehicle_ids: Optional[List[int]] = None
@@ -239,6 +241,7 @@ class ProjectOut(BaseModel):
     estimated_labor_usd: float
     estimated_fuel_usd: float
     estimated_materials_usd: float
+    owner_scope: Optional[str] = "empresa"
     estimated_tools_usd: float
     estimated_services_usd: float
     budget_limit_usd: float

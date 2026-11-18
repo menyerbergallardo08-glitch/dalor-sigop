@@ -140,15 +140,15 @@
             display: block !important;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-CJ0XVw6d.js"></script>
+  <script type="module" crossorigin src="/assets/main-C5KDspfQ.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/maintenance-cS6s6UF3.js">
   <link rel="modulepreload" crossorigin href="/assets/quotations-B8pOSQr6.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-tracking-fbJhjjM7.js">
   <link rel="modulepreload" crossorigin href="/assets/projects-requisitions-DjtdkW8k.js">
-  <link rel="modulepreload" crossorigin href="/assets/projects-core-CXzvPgY_.js">
-  <link rel="modulepreload" crossorigin href="/assets/resources-Dbx-lQvT.js">
+  <link rel="modulepreload" crossorigin href="/assets/projects-core-Qg8asb9B.js">
+  <link rel="modulepreload" crossorigin href="/assets/resources-yYSX8m0f.js">
   <link rel="modulepreload" crossorigin href="/assets/expenses-CzJzOhA1.js">
-  <link rel="modulepreload" crossorigin href="/assets/financial-bf7D7yh3.js">
+  <link rel="modulepreload" crossorigin href="/assets/financial-CBfH5Mxu.js">
   <link rel="modulepreload" crossorigin href="/assets/materials-CBtfPiv2.js">
   <link rel="modulepreload" crossorigin href="/assets/dispatch-DLH9LdfT.js">
   <link rel="modulepreload" crossorigin href="/assets/rentals-ufqzXZk_.js">
@@ -315,6 +315,13 @@
                     <i class="fa-solid fa-bell" style="font-size: 13px;"></i>
                     <span class="hide-on-mobile">Almacén</span>
                     <span id="badgePendingRequisitionsHeader" style="background: #ef4444; color: #ffffff; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 900; display: none; box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);">0</span>
+                </button>
+
+                <!-- 🚨 Centro de Alertas del Sistema (CxC, Gastos, Flota) -->
+                <button id="btnSystemAlertsBell" onclick="openSystemAlertsModal()" class="btn-secondary" title="Centro de Alertas del Sistema (CxC, Gastos, Flota)" style="background: #1e293b; border: 1px solid #334155; color: #fbbf24; font-weight: 700; font-size: 11px; padding: 6px 11px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 13px;"></i>
+                    <span class="hide-on-mobile">Alertas</span>
+                    <span id="badgeSystemAlertsHeader" style="background: #f59e0b; color: #0f172a; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 900; display: none;">0</span>
                 </button>
 
                 <div class="tasa-editor-box" id="bcvTasaBadge" title="Tasa Oficial del Banco Central de Venezuela sincronizada automáticamente">
@@ -710,14 +717,6 @@
                         <i class="fa-solid fa-clock-rotate-left" style="color: #059669;"></i>
 
                         <span>Bitácora de Auditoría del Sistema</span>
-
-                    </div>
-
-                    <div class="dropdown-item" onclick="openMaintenanceSubtab('clean')">
-
-                        <i class="fa-solid fa-broom" style="color: #e11d48;"></i>
-
-                        <span>Puesta a Cero (Arranque Real)</span>
 
                     </div>
 
@@ -1792,6 +1791,9 @@
                             <button type="button" onclick="exportCxcExcel()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; color: #166534; font-weight: 700; border-color: #bbf7d0; background: #f0fdf4;" title="Descargar cartera de CxC a Excel (.xlsx)">
                                 <i class="fa-solid fa-file-excel"></i> Descargar Excel
                             </button>
+                            <button type="button" onclick="openBatchInvoicePaymentsModal()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; color: #7c3aed; font-weight: 700; border-color: #ddd6fe; background: #f5f3ff;" title="Facturar abonos registrados (Individual o Lote General)">
+                                <i class="fa-solid fa-layer-group"></i> Facturar Abonos
+                            </button>
                             <button type="button" onclick="openNewReceivableModal()" class="btn-primary" style="font-size: 11px; padding: 5px 10px; background: #059669; font-weight: 700;">
                                 <i class="fa-solid fa-file-invoice-dollar"></i> + Facturar Obra / Servicio
                             </button>
@@ -2028,9 +2030,22 @@
                                 <option value="all">Todas las Cuentas / Caja</option>
                             </select>
                         </div>
+
+                        <!-- Selector de Ámbito: Empresa vs Socios (Ruta Persistente) -->
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            <label style="font-size: 11px; font-weight: 700; color: #6b21a8;"><i class="fa-solid fa-layer-group"></i> Ámbito:</label>
+                            <select id="treasury_scope_mode" onchange="onFinancialScopeModeChanged(this.value)" style="font-size: 11.5px; font-weight: 800; padding: 4px 8px; border: 1.5px solid #c4b5fd; border-radius: 6px; background: #faf5ff; color: #5b21b6;">
+                                <option value="consolidado">📊 Vista Consolidada (Empresa + Socios)</option>
+                                <option value="empresa">🏢 Solo Empresa (Operativo)</option>
+                                <option value="socio">👤 Solo Socios (Personal)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div style="display: flex; gap: 8px; align-items: center;">
+                        <button type="button" onclick="openManageAccountsModal()" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; background: white; color: #1e293b; border-color: #cbd5e1; font-weight: 700;">
+                            <i class="fa-solid fa-building-columns" style="color: #2563eb;"></i> Cuentas y Cajas
+                        </button>
                         <button type="button" onclick="loadTreasurySummary()" class="btn-primary" style="font-size: 11px; padding: 5px 12px; background: #2563eb; font-weight: 700;">
                             <i class="fa-solid fa-magnifying-glass"></i> Consultar
                         </button>
@@ -2965,6 +2980,15 @@
                             </select>
                         </div>
 
+                        <div style="display: flex; align-items: center; gap: 6px; background: #faf5ff; border: 1.5px solid #c4b5fd; border-radius: 6px; padding: 3px 8px;">
+                            <span style="font-size: 11px; font-weight: 800; color: #6b21a8; white-space: nowrap;"><i class="fa-solid fa-layer-group"></i> Ámbito:</span>
+                            <select id="project_scope_mode" onchange="onProjectScopeModeChanged(this.value)" style="border: none; background: transparent; padding: 4px 2px; font-size: 12px; outline: none; color: #5b21b6; font-weight: 800; cursor: pointer;">
+                                <option value="consolidado">📊 Todos (Empresa + Socios)</option>
+                                <option value="empresa">🏢 Solo Obras Empresa</option>
+                                <option value="socio">👤 Solo Socios / Personal</option>
+                            </select>
+                        </div>
+
                     </div>
 
                     <div style="display: flex; gap: 8px; align-items: center;">
@@ -3103,6 +3127,22 @@
                                 </div>
 
                                 <input type="hidden" id="new_proj_type" value="foraneo">
+
+                                <!-- Selector visible Empresa vs Socio -->
+                                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                                    <span style="font-size: 11px; font-weight: 800; color: #1e293b;">
+                                        <i class="fa-solid fa-layer-group" style="color: #7c3aed;"></i> Clasificación Contable del Proyecto:
+                                    </span>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button type="button" id="btn_new_scope_empresa" onclick="setProjectOwnerScope('empresa')" style="padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; border: 2px solid #0284c7; background: #e0f2fe; color: #0369a1;">
+                                            🏢 Obra de Empresa
+                                        </button>
+                                        <button type="button" id="btn_new_scope_socio" onclick="setProjectOwnerScope('socio')" style="padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; border: 2px solid #cbd5e1; background: #ffffff; color: #64748b;">
+                                            👤 Proyecto / Gestión de Socio
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="new_proj_owner_scope" value="empresa">
+                                </div>
 
                             </div>
 
@@ -3321,6 +3361,34 @@
                                             <span style="font-size: 11.5px; font-weight: 700; color: #475569;">Total Costo Materiales:</span>
                                             <span id="plan_materials_total_cost_badge" style="font-size: 13px; font-weight: 800; color: #002B49; background: #e0f2fe; padding: 3px 10px; border-radius: 6px; border: 1px solid #bae6fd;">$0.00 USD</span>
                                         </div>
+                                    </div>
+                                </div>
+                                <div style="min-width: 0; grid-column: 1 / -1; background: #faf5ff; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 12px 14px; margin-top: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                                        <label style="font-size: 12px; font-weight: 800; color: #5b21b6; margin: 0;">
+                                            <i class="fa-solid fa-people-arrows"></i> Personal Subcontratado &amp; Recursos Opcionales (Exclusivo de Proyectos)
+                                        </label>
+                                        <span style="font-size: 10.5px; color: #6d28d9;">No aplica a Servicios APU</span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; align-items: center;">
+                                        <select id="draft_subc_kind" class="form-select" style="font-size: 11px;">
+                                            <option value="personal_subcontratado">Personal Subcontratado</option>
+                                            <option value="recurso_opcional">Recurso Opcional</option>
+                                        </select>
+                                        <input type="text" id="draft_subc_name" class="form-input" placeholder="Nombre / Cuadrilla / Recurso" style="font-size: 11px;">
+                                        <input type="text" id="draft_subc_spec" class="form-input" placeholder="Especialidad o Unidad" style="font-size: 11px;">
+                                        <input type="text" id="draft_subc_provider" class="form-input" placeholder="Contratista / Proveedor" style="font-size: 11px;">
+                                        <input type="number" step="0.01" min="0.01" id="draft_subc_qty" value="1" class="form-input" placeholder="Cant." style="font-size: 11px;">
+                                        <input type="number" step="0.01" min="0" id="draft_subc_cost" value="0" class="form-input" placeholder="Costo Unit. $" style="font-size: 11px;">
+                                        <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; font-weight: 700; color: #5b21b6;">
+                                            <input type="checkbox" id="draft_subc_optional"> Opcional
+                                        </label>
+                                        <button type="button" onclick="addDraftProjectSubcontract()" class="btn-primary" style="background: #7c3aed; font-size: 11px; padding: 6px 10px;">
+                                            <i class="fa-solid fa-plus"></i> Agregar
+                                        </button>
+                                    </div>
+                                    <div id="draft_subcontracts_list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
+                                        <span style="font-size: 11px; color: #64748b;">Sin personal subcontratado ni recursos opcionales agregados aún.</span>
                                     </div>
                                 </div>
                             </div>
@@ -3995,7 +4063,13 @@
 
                 <button class="subtab-btn" id="tabbtn-res-fleet" onclick="switchResourceSubtab('fleet')">
 
-                    <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota & Vehículos
+                    <i class="fa-solid fa-truck-pickup" style="color: #6366f1;"></i> Flota &amp; Vehículos
+
+                </button>
+
+                <button class="subtab-btn" id="tabbtn-res-obligations" onclick="switchResourceSubtab('obligations')">
+
+                    <i class="fa-solid fa-shield-halved" style="color: #dc2626;"></i> Obligaciones Flota
 
                 </button>
 
@@ -4111,6 +4185,7 @@
                                 <option value="all">Estado: Todos (Activos + Inactivos)</option>
                                 <option value="disponible_base">Activos - Disponibles en Base</option>
                                 <option value="en_obra">Activos - En Obra / Operación</option>
+                                <option value="en_servicio">🔧 En Servicio (No Disponible)</option>
                                 <option value="inactivo">🛑 Inactivos / De Baja / Desincorporados</option>
                             </select>
                             <select id="fleetMaintFilter" onchange="filterFleetList()" class="form-select" style="font-size: 12px; padding: 6px 10px; width: auto;">
@@ -4687,6 +4762,92 @@
                     <div id="rentalsPaginationContainer" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-radius: 0 0 8px 8px;">
                         <div id="rentalsPaginationInfo" style="font-size: 12px; color: #64748b; font-weight: 600;">Mostrando 0 de 0 registros</div>
                         <div id="rentalsPaginationControls" style="display: flex; gap: 6px; align-items: center;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBTAB: OBLIGACIONES LEGALES DE FLOTA (SEGUROS, PÓLIZAS Y TRIMESTRES) -->
+            <div id="subtab-res-obligations" class="hidden">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <h3 style="font-size: 14px; font-weight: 800; color: var(--dalor-navy);">
+                            <i class="fa-solid fa-shield-halved" style="color: #dc2626;"></i> Obligaciones Legales de Flota (Seguros, Pólizas, Trimestres)
+                        </h3>
+                        <div id="fleetObligationsSummary" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;"></div>
+                    </div>
+
+                    <form id="formFleetObligation" onsubmit="submitCreateFleetObligation(event)" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                        <input type="hidden" id="ob_edit_id" value="">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: end;">
+                            <div>
+                                <label class="form-label">Vehículo *</label>
+                                <select id="ob_asset_id" class="form-select" required></select>
+                            </div>
+                            <div>
+                                <label class="form-label">Tipo de Documentación *</label>
+                                <div style="display: flex; gap: 4px;">
+                                    <input type="text" id="ob_type" list="obTypeDatalist" class="form-input" placeholder="Ej: Seguro RCV, ROTC..." required autocomplete="off" value="Seguro RCV" style="flex: 1;">
+                                    <button type="button" onclick="addDynamicObligationTypePrompt()" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800;" title="Crear nuevo tipo de documentación">+</button>
+                                </div>
+                                <datalist id="obTypeDatalist">
+                                    <option value="Seguro RCV">
+                                    <option value="Póliza Todo Riesgo">
+                                    <option value="Trimestre / Impuesto Municipal">
+                                    <option value="Permiso RACDA / Certificación">
+                                    <option value="ROTC / Transporte">
+                                    <option value="Certificado Médico / Revisión Técnica">
+                                </datalist>
+                            </div>
+                            <div>
+                                <label class="form-label">Título / Descripción *</label>
+                                <input type="text" id="ob_title" class="form-input" placeholder="Ej: Póliza RCV 2026" required>
+                            </div>
+                            <div>
+                                <label class="form-label">Aseguradora / Ente</label>
+                                <input type="text" id="ob_provider" class="form-input" placeholder="Ej: Seguros Caracas / Alcaldía">
+                            </div>
+                            <div>
+                                <label class="form-label">N° Póliza / Planilla</label>
+                                <input type="text" id="ob_policy_num" class="form-input" placeholder="POL-12345">
+                            </div>
+                            <div>
+                                <label class="form-label">Vencimiento</label>
+                                <input type="date" id="ob_expiration_date" class="form-input">
+                            </div>
+                            <div>
+                                <label class="form-label">Monto ($ USD)</label>
+                                <input type="number" step="0.01" min="0" id="ob_amount_usd" class="form-input" value="0">
+                            </div>
+                            <div>
+                                <label class="form-label">Alerta (días antes)</label>
+                                <input type="number" min="1" id="ob_alert_days" class="form-input" value="30">
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="submit" id="btnSubmitFleetObligation" class="btn-primary" style="flex: 1; background: #dc2626; font-weight: 800;">
+                                    <i class="fa-solid fa-plus"></i> Registrar
+                                </button>
+                                <button type="button" id="btnCancelEditObligation" onclick="cancelEditFleetObligation()" class="btn-secondary hidden" style="padding: 6px 10px; font-weight: 700;">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Vehículo</th>
+                                    <th>Obligación</th>
+                                    <th>Aseguradora / Ref.</th>
+                                    <th>Vencimiento</th>
+                                    <th style="text-align: right;">Monto $</th>
+                                    <th>Estado</th>
+                                    <th style="text-align: center;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fleetObligationsTbody"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -6359,6 +6520,52 @@
         </div>
     </div>
 
+    <!-- MODAL: CENTRO DE ALERTAS DEL SISTEMA & ENVÍO POR CORREO -->
+    <div id="modalSystemAlerts" class="modal-overlay hidden" style="z-index: 2200;">
+        <div class="modal-content" style="max-width: 740px; width: min(96vw, 740px); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <span class="badge-tag" style="background: #fef3c7; color: #92400e; font-weight: 800;">Monitoreo Automático</span>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
+                        <i class="fa-solid fa-bell" style="color: #f59e0b;"></i> Centro de Alertas (CxC, Gastos &amp; Flota)
+                    </h3>
+                </div>
+                <button type="button" onclick="closeModal('modalSystemAlerts')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                <div id="systemAlertsSummaryPills" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                <div id="systemAlertsSmtpBadge"></div>
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px;">
+                <input type="text" id="systemAlertsEmailTo" class="form-input" placeholder="Correo(s) destino (ej: metalmecanicadalorca@gmail.com, admmetalmecanicadalor@gmail.com)" style="flex: 1; min-width: 220px; font-size: 11.5px;">
+                <button type="button" id="btnSendSystemAlertsEmail" onclick="sendSystemAlertsEmail()" class="btn-primary" style="background: #0284c7; font-size: 11.5px; font-weight: 800;">
+                    <i class="fa-solid fa-envelope"></i> Enviar Ahora
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; font-size: 11.5px;">
+                <label style="display: flex; align-items: center; gap: 5px; font-weight: 800; color: #0369a1; cursor: pointer;">
+                    <input type="checkbox" id="systemAlertsAutoEnabled" checked> Envío Automático
+                </label>
+                <label style="font-weight: 700; color: #475569;">Frecuencia:</label>
+                <select id="systemAlertsIntervalHours" class="form-select" style="width: auto; font-size: 11px; padding: 4px 8px; font-weight: 700;">
+                    <option value="12">Cada 12 horas</option>
+                    <option value="24" selected>Diario (cada 24 horas)</option>
+                    <option value="48">Cada 2 días (48 horas)</option>
+                    <option value="72">Cada 3 días (72 horas)</option>
+                    <option value="168">Semanal (cada 7 días)</option>
+                </select>
+                <button type="button" onclick="saveSystemAlertsSchedule()" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; font-weight: 800; color: #0369a1; border-color: #7dd3fc;">
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Regulación
+                </button>
+            </div>
+
+            <div id="systemAlertsListContainer" style="display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
 
             <div id="modalReceivable" class="modal-overlay hidden">
 
@@ -7514,7 +7721,7 @@
     <!-- 2. MODAL: EDICIÓN QUIRÚRGICA DE FACTURA / CxC -->
     <!-- ============================================================================== -->
     <div id="modalEditReceivable" class="modal-overlay hidden" style="z-index: 2100;">
-        <div class="modal-content" style="max-width: 650px; width: 95%;">
+        <div class="modal-content" style="max-width: 720px; width: min(96vw, 720px); max-height: 92vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;">
                 <div>
                     <span class="badge-tag" style="background: #e0f2fe; color: #0369a1; font-weight: 800;">Modificación de Cuenta por Cobrar</span>
@@ -7528,10 +7735,14 @@
             <form id="formEditReceivable" onsubmit="submitEditReceivable(event)">
                 <input type="hidden" id="edit_cxc_id">
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px;">
                     <div>
                         <label class="form-label">N° de Factura / Documento *</label>
                         <input type="text" id="edit_cxc_invoice_number" class="form-input" required style="font-weight: 800; color: #1e3a8a;">
+                    </div>
+                    <div>
+                        <label class="form-label">N° Factura Fiscal SENIAT</label>
+                        <input type="text" id="edit_cxc_fiscal_invoice_number" class="form-input" placeholder="0948" style="font-weight: 800; color: #0f172a;">
                     </div>
                     <div>
                         <label class="form-label">N° de Control SENIAT</label>
@@ -7544,7 +7755,7 @@
                     <input type="text" id="edit_cxc_description" class="form-input" required>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px;">
                     <div>
                         <label class="form-label">Fecha de Emisión</label>
                         <input type="date" id="edit_cxc_issue_date" class="form-input">
@@ -7555,7 +7766,7 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px;">
                     <div>
                         <label class="form-label">Base Imponible USD</label>
                         <input type="number" step="0.01" id="edit_cxc_base_usd" oninput="onEditCxcBaseChange(this.value)" class="form-input">
@@ -7566,7 +7777,18 @@
                     </div>
                     <div>
                         <label class="form-label">Monto Total USD *</label>
-                        <input type="number" step="0.01" id="edit_cxc_amount_usd" required class="form-input" style="font-weight: 800; color: var(--dalor-navy);">
+                        <input type="number" step="0.01" id="edit_cxc_amount_usd" oninput="onEditCxcRateOrAmountChange()" required class="form-input" style="font-weight: 800; color: var(--dalor-navy);">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div>
+                        <label class="form-label">Tasa de Cambio (Bs/$)</label>
+                        <input type="number" step="0.01" min="0" id="edit_cxc_exchange_rate" oninput="onEditCxcRateOrAmountChange()" class="form-input" style="font-weight: 800; color: #0369a1;">
+                    </div>
+                    <div>
+                        <label class="form-label">Equivalente Total (Bs.)</label>
+                        <input type="number" step="0.01" min="0" id="edit_cxc_amount_bs" class="form-input" style="font-weight: 800; color: #047857; background: #f0fdf4;">
                     </div>
                 </div>
 
@@ -7659,6 +7881,98 @@
                     <button type="button" onclick="closeModal('modalCancelReceivable')" class="btn-secondary">Cancelar</button>
                     <button type="submit" class="btn-primary" style="background: #dc2626; font-weight: 800;">
                         <i class="fa-solid fa-ban"></i> Anular Factura Definitivamente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================================== -->
+    <!-- 5. MODAL: FACTURACIÓN DE ABONOS (INDIVIDUAL O LOTE GENERAL) -->
+    <!-- ============================================================================== -->
+    <div id="modalBatchInvoicePayments" class="modal-overlay hidden" style="z-index: 2150;">
+        <div class="modal-content" style="max-width: 820px; width: min(96vw, 820px); max-height: 92vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <span class="badge-tag" style="background: #f5f3ff; color: #6d28d9; font-weight: 800;">Facturación Fiscal de Abonos</span>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
+                        <i class="fa-solid fa-layer-group" style="color: #7c3aed;"></i> Facturar Abonos (Individual o Lote General)
+                    </h3>
+                </div>
+                <button type="button" onclick="closeModal('modalBatchInvoicePayments')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="formBatchInvoicePayments" onsubmit="submitBatchInvoicePayments(event)">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label">Cliente *</label>
+                        <select id="batch_inv_client_id" class="form-select" onchange="loadUnbilledPaymentsForBatch()" required></select>
+                    </div>
+                    <div>
+                        <label class="form-label">Fecha de Factura</label>
+                        <input type="date" id="batch_inv_issue_date" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Tasa BCV (Bs/$)</label>
+                        <input type="number" step="0.01" min="0" id="batch_inv_exchange_rate" oninput="recalcBatchInvoiceSelection()" class="form-input" style="font-weight: 800;">
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                    <label class="form-label" style="margin-bottom: 6px; display: block;">Modalidad de Facturación *</label>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                            <input type="radio" name="batch_inv_mode" value="lote" checked onchange="recalcBatchInvoiceSelection()">
+                            Lote General (Varios abonos &rarr; 1 factura fiscal consolidada)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                            <input type="radio" name="batch_inv_mode" value="individual" onchange="recalcBatchInvoiceSelection()">
+                            Individual (Cada abono &rarr; 1 factura fiscal independiente)
+                        </label>
+                    </div>
+                    <div id="batch_inv_mode_hint" style="font-size: 11px; color: #6d28d9; font-weight: 700; margin-top: 6px;"></div>
+                    <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <label class="form-label" style="margin: 0; font-size: 11px; color: #92400e;">Tratamiento de IVA (16%):</label>
+                        <select id="batch_inv_iva_mode" class="form-select" onchange="recalcBatchInvoiceSelection()" style="max-width: 340px; font-size: 11.5px; font-weight: 700; background: #fffbeb; border-color: #fbbf24;">
+                            <option value="included_16" selected>16% IVA ya incluido en el abono (Factura = Abono)</option>
+                            <option value="add_16">+ Sumar 16% IVA encima del abono (queda saldo IVA por cobrar)</option>
+                            <option value="exempt">Exenta (0% IVA)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="max-height: 240px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 12px;">
+                    <table class="data-table" style="margin: 0; font-size: 11.5px;">
+                        <thead>
+                            <tr>
+                                <th style="width: 34px; text-align: center;">
+                                    <input type="checkbox" onchange="toggleAllBatchInvoicePayments(this.checked)">
+                                </th>
+                                <th>Fecha</th>
+                                <th>Doc. Origen</th>
+                                <th>Método / Ref.</th>
+                                <th style="text-align: right;">Monto USD</th>
+                                <th>Observación</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batch_inv_payments_tbody"></tbody>
+                    </table>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 12px; font-weight: 700; color: #166534;">Seleccionados: <b id="batch_inv_selected_count">0 abono(s)</b></span>
+                    <span style="font-size: 13px; font-weight: 900; color: #059669;" id="batch_inv_selected_total">$0.00 (Bs. 0,00)</span>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label class="form-label">Concepto Fiscal Personalizado (Opcional)</label>
+                    <input type="text" id="batch_inv_concept" class="form-input" placeholder="Ej: Servicios / Valuaciones consolidadas según abonos aplicados">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalBatchInvoicePayments')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" id="btnSubmitBatchInvoicePayments" class="btn-primary" style="background: #7c3aed; font-weight: 800;">
+                        <i class="fa-solid fa-file-invoice"></i> Emitir Factura(s) Fiscal(es)
                     </button>
                 </div>
             </form>
@@ -8075,6 +8389,93 @@
     </div>
 
     <!-- MODAL: EDITAR CUENTA POR PAGAR -->
+
+    <!-- MODAL: PAGO MIXTO MULTIMONEDA ($ USD + BS.) CXP -->
+    <div id="modalMixedCxpPayment" class="modal-overlay hidden" style="z-index: 2150;">
+        <div class="modal-content" style="max-width: 760px; width: min(96vw, 760px); max-height: 92vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <span class="badge-tag" style="background: #fff1f2; color: #be123c; font-weight: 800;">Pago Mixto Multimoneda</span>
+                    <h3 style="font-size: 16px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
+                        <i class="fa-solid fa-coins" style="color: #e11d48;"></i> Pagar CxP ($ + Bs.): <span id="mixed_cxp_badge">-</span>
+                    </h3>
+                </div>
+                <button type="button" onclick="closeModal('modalMixedCxpPayment')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="formMixedCxpPayment" onsubmit="submitMixedCxpPayment(event)">
+                <input type="hidden" id="mixed_cxp_id">
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+                    <div>
+                        <span style="font-size: 10.5px; color: #64748b; font-weight: 700; display: block;">Saldo Pendiente CxP</span>
+                        <b id="mixed_cxp_pending_lbl" style="font-size: 16px; color: #e11d48;">$0.00</b>
+                    </div>
+                    <div>
+                        <label class="form-label">Fecha de Pago *</label>
+                        <input type="date" id="mixed_cxp_date" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Tasa de Cambio (Bs/$) *</label>
+                        <input type="number" step="0.01" min="0.01" id="mixed_cxp_rate" oninput="recalcMixedCxpPayment()" class="form-input" style="font-weight: 800; color: #0369a1;" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                    <div style="border: 1px solid #bbf7d0; background: #f0fdf4; border-radius: 8px; padding: 10px;">
+                        <div style="font-size: 12px; font-weight: 800; color: #166534; margin-bottom: 8px;"><i class="fa-solid fa-dollar-sign"></i> Tramo en Divisas ($ USD)</div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <select id="mixed_cxp_usd_account" class="form-select"></select>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                <select id="mixed_cxp_usd_method" class="form-select">
+                                    <option value="transferencia">Transferencia / Zelle</option>
+                                    <option value="efectivo_usd">Efectivo USD</option>
+                                    <option value="binance_usdt">Binance USDT</option>
+                                </select>
+                                <input type="text" id="mixed_cxp_usd_ref" class="form-input" placeholder="Referencia">
+                            </div>
+                            <input type="number" step="0.01" min="0" id="mixed_cxp_usd_amt" oninput="recalcMixedCxpPayment()" class="form-input" placeholder="Monto en $ USD (ej: 100.00)" style="font-weight: 800; color: #047857;">
+                            <div id="mixed_cxp_usd_eq_bs" style="font-size: 11px; font-weight: 700; color: #15803d;">Equiv: Bs. 0,00</div>
+                        </div>
+                    </div>
+
+                    <div style="border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 8px; padding: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #1e40af;"><i class="fa-solid fa-money-bill-transfer"></i> Tramo en Bolívares (Bs.)</span>
+                            <button type="button" onclick="autoFillRemainingToBsCxp()" class="btn-secondary" style="font-size: 10px; padding: 2px 6px;">Completar Saldo en Bs.</button>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <select id="mixed_cxp_bs_account" class="form-select"></select>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                <select id="mixed_cxp_bs_method" class="form-select">
+                                    <option value="transferencia">Transferencia Bs.</option>
+                                    <option value="pago_movil">Pago Móvil</option>
+                                    <option value="efectivo_bs">Efectivo Bs.</option>
+                                </select>
+                                <input type="text" id="mixed_cxp_bs_ref" class="form-input" placeholder="Referencia">
+                            </div>
+                            <input type="number" step="0.01" min="0" id="mixed_cxp_bs_amt" oninput="recalcMixedCxpPayment()" class="form-input" placeholder="Monto en Bs. (ej: 45000.00)" style="font-weight: 800; color: #1d4ed8;">
+                            <div id="mixed_cxp_bs_eq_usd" style="font-size: 11px; font-weight: 700; color: #1d4ed8;">Equiv: $0.00 USD</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mixed_cxp_total_summary" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 12px; text-align: center;"></div>
+
+                <div style="margin-bottom: 12px;">
+                    <label class="form-label">Notas / Observación</label>
+                    <input type="text" id="mixed_cxp_notes" class="form-input" placeholder="Ej: Abono parcial mixto efectivo + transferencia Bs">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" onclick="closeModal('modalMixedCxpPayment')" class="btn-secondary">Cancelar</button>
+                    <button type="submit" id="btnSubmitMixedCxp" class="btn-primary" style="background: #e11d48; font-weight: 800;">
+                        <i class="fa-solid fa-check-double"></i> Registrar Pago Mixto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     
             <div id="modalWithholdingVoucher" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 780px; max-height: 92vh; overflow-y: auto; background: white; padding: 24px; font-family: 'Segoe UI', Arial, sans-serif;">
@@ -8429,6 +8830,7 @@
 
 
             <form id="quickFlowForm" onsubmit="submitQuickFlow(event)" style="display: flex; flex-direction: column; gap: 14px;">
+                <input type="hidden" id="qf_edit_withdrawal_id" value="">
 
                 
 
@@ -8445,10 +8847,20 @@
                             <input type="number" step="0.01" id="qf_amount_bs" oninput="calcQuickUsd()" placeholder="0.00" class="form-input" style="padding-left: 36px; font-size: 15px; font-weight: 800; background: #ffffff;">
                         </div>
                     </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+                        <div>
+                            <label class="form-label" style="font-size: 11px; font-weight: 700; color: #475569;">Fecha y Hora de Operación</label>
+                            <input type="datetime-local" id="qf_operation_date" class="form-input" style="font-size: 12px; font-weight: 700;">
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 11px; font-weight: 700; color: #475569;">Tasa Aplicada (Bs/$)</label>
+                            <input type="number" step="0.01" id="qf_exchange_rate" oninput="calcQuickBs()" class="form-input" style="font-size: 13px; font-weight: 800; color: #0369a1;">
+                        </div>
+                    </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; color: #64748b;">
                         <span><i class="fa-solid fa-calculator" style="color: #0284c7;"></i> Conversión automática bidireccional</span>
                         <span style="background: #e0f2fe; color: #0369a1; font-weight: 800; padding: 2px 6px; border-radius: 4px;">
-                            <i class="fa-solid fa-building-columns"></i> Tasa Oficial BCV activa
+                            <i class="fa-solid fa-building-columns"></i> Tasa editable / BCV
                         </span>
                     </div>
                 </div>
@@ -8584,6 +8996,10 @@
                     <label class="form-label" style="color: #6b21a8;">Motivo / Detalle del Retiro</label>
 
                     <input type="text" id="qf_partner_concept" placeholder="Ej: Retiro personal quincenal / Gastos particulares" class="form-input" style="background: white;">
+
+                    <label class="form-label" style="color: #6b21a8; margin-top: 8px;">Nº Referencia / Comprobante</label>
+
+                    <input type="text" id="qf_reference_number" placeholder="Ej: Ref bancaria / comprobante" class="form-input" style="background: white;">
 
                 </div>
 
@@ -9017,9 +9433,10 @@
             <button type="button" onclick="closeModal('modalManageAccounts')" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">&times;</button>
         </div>
 
-        <!-- Formulario nueva cuenta -->
+        <!-- Formulario nueva / editar cuenta -->
         <div style="background:#f1f5f9; border-radius:8px; padding:14px; margin-bottom:14px;">
-            <h4 style="font-size:13px; font-weight:700; color:#1e293b; margin:0 0 10px 0;"><i class="fa-solid fa-plus"></i> Nueva Cuenta / Caja</h4>
+            <input type="hidden" id="edit_acc_id" value="">
+            <h4 id="formManageAccountTitle" style="font-size:13px; font-weight:700; color:#1e293b; margin:0 0 10px 0;"><i class="fa-solid fa-plus"></i> Nueva Cuenta / Caja</h4>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                 <div>
                     <label class="form-label">Nombre de la Cuenta *</label>
@@ -9041,12 +9458,22 @@
                     <input type="text" id="new_acc_number" class="form-input" placeholder="Ej: **5678 o N/A">
                 </div>
                 <div>
+                    <label class="form-label">Titularidad / Ámbito</label>
+                    <select id="new_acc_scope" class="form-select">
+                        <option value="empresa">🏢 Cuenta Operativa Empresa</option>
+                        <option value="socio">👤 Cuenta Personal Socio</option>
+                    </select>
+                </div>
+                <div>
                     <label class="form-label">Notas</label>
                     <input type="text" id="new_acc_notes" class="form-input" placeholder="Opcional">
                 </div>
-                <div style="display:flex; align-items:flex-end;">
-                    <button type="button" onclick="submitNewFinancialAccount()" class="btn-primary" style="width:100%; background:#2563eb;">
+                <div style="grid-column: span 2; display:flex; gap:8px; align-items:center;">
+                    <button type="button" id="btnSubmitManageAccount" onclick="submitNewFinancialAccount()" class="btn-primary" style="flex:1; background:#2563eb;">
                         <i class="fa-solid fa-plus"></i> Crear Cuenta
+                    </button>
+                    <button type="button" id="btnCancelEditAccount" onclick="cancelEditFinancialAccount()" class="btn-secondary" style="display:none;">
+                        Cancelar Edición
                     </button>
                 </div>
             </div>
@@ -10598,7 +11025,10 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
                         <label class="form-label">Cargo / Especialidad *</label>
-                        <input type="text" id="npers_role" list="rolesDatalist" class="form-input" placeholder="Ej: Soldador 6G, Mecánico..." required autocomplete="off">
+                        <div style="display: flex; gap: 4px;">
+                            <input type="text" id="npers_role" list="rolesDatalist" class="form-input" placeholder="Ej: Soldador 6G, Mecánico..." required autocomplete="off" style="flex: 1;">
+                            <button type="button" onclick="addDynamicSpecialtyPrompt('npers_role')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800;" title="Crear nueva especialidad dinámicamente">+</button>
+                        </div>
                         <datalist id="rolesDatalist">
                             <option value="Ingeniero Residente de Obra">
                             <option value="Supervisor de Soldadura y Montaje">
@@ -10693,7 +11123,10 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
                         <label class="form-label">Cargo / Especialidad *</label>
-                        <input type="text" id="edit_pers_role" list="rolesDatalist" class="form-input" required autocomplete="off">
+                        <div style="display: flex; gap: 4px;">
+                            <input type="text" id="edit_pers_role" list="rolesDatalist" class="form-input" required autocomplete="off" style="flex: 1;">
+                            <button type="button" onclick="addDynamicSpecialtyPrompt('edit_pers_role')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; font-weight: 800;" title="Crear nueva especialidad dinámicamente">+</button>
+                        </div>
                     </div>
                     <div>
                         <label class="form-label">Tipo de Nómina *</label>
@@ -13031,6 +13464,16 @@
                     </div>
                 </div>
 
+                <div style="margin-bottom: 10px; background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 11px; font-weight: 800; color: #6b21a8;">
+                        <i class="fa-solid fa-layer-group"></i> Clasificación (Empresa vs Socio):
+                    </span>
+                    <select id="edit_project_owner_scope" class="form-select" style="width: auto; min-width: 210px; font-size: 12px; font-weight: 800; padding: 4px 10px; background: white; color: #1e293b;">
+                        <option value="empresa">🏢 Obra de Empresa (Operativo)</option>
+                        <option value="socio">👤 Proyecto / Gestión de Socio</option>
+                    </select>
+                </div>
+
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px;">
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: var(--dalor-navy);">
@@ -13457,6 +13900,57 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL: PERSONAL SUBCONTRATADO Y RECURSOS OPCIONALES (SOLO PROYECTOS) -->
+    <div id="modalProjectSubcontracts" class="modal-overlay hidden" style="z-index: 2150;">
+        <div class="modal-content" style="max-width: 780px; width: min(96vw, 780px); max-height: 92vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <span class="badge-tag" style="background: #f5f3ff; color: #6d28d9; font-weight: 800;">Exclusivo de Proyectos / Obras</span>
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--dalor-navy); margin-top: 4px;">
+                        <i class="fa-solid fa-people-arrows" style="color: #7c3aed;"></i> Subcontratación &amp; Recursos Opcionales: <span id="subc_modal_project_badge">-</span>
+                    </h3>
+                </div>
+                <button type="button" onclick="closeModal('modalProjectSubcontracts')" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+
+            <form id="formAddProjectSubcontract" onsubmit="submitAddProjectSubcontract(event)" style="background: #faf5ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; align-items: center;">
+                    <select id="subc_add_kind" class="form-select" style="font-size: 11.5px;">
+                        <option value="personal_subcontratado">Personal Subcontratado</option>
+                        <option value="recurso_opcional">Recurso Opcional</option>
+                    </select>
+                    <input type="text" id="subc_add_name" class="form-input" placeholder="Nombre / Cuadrilla / Recurso *" required style="font-size: 11.5px;">
+                    <input type="text" id="subc_add_spec" class="form-input" placeholder="Especialidad o Unidad" style="font-size: 11.5px;">
+                    <input type="text" id="subc_add_provider" class="form-input" placeholder="Contratista / Proveedor" style="font-size: 11.5px;">
+                    <input type="number" step="0.01" min="0.01" id="subc_add_qty" value="1" class="form-input" placeholder="Cant." style="font-size: 11.5px;">
+                    <input type="number" step="0.01" min="0" id="subc_add_cost" value="0" class="form-input" placeholder="Costo Unit. $" style="font-size: 11.5px;">
+                    <label style="font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                        <input type="checkbox" id="subc_add_optional"> Opcional
+                    </label>
+                    <button type="submit" class="btn-primary" style="background: #7c3aed; font-size: 11.5px; font-weight: 800;">
+                        <i class="fa-solid fa-plus"></i> Agregar
+                    </button>
+                </div>
+            </form>
+
+            <div style="max-height: 280px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <table class="data-table" style="margin: 0; font-size: 11.5px;">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Nombre / Especialidad</th>
+                            <th>Proveedor</th>
+                            <th style="text-align:center;">Cant.</th>
+                            <th style="text-align:right;">Total $</th>
+                            <th style="text-align:center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subc_modal_tbody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 

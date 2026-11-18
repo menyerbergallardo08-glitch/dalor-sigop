@@ -49,6 +49,13 @@ import {
     exportCxpExcel
 } from './cxp/cxp_operations.js';
 
+import {
+    openMixedCxpPaymentModal,
+    recalcMixedCxpPayment,
+    autoFillRemainingToBsCxp,
+    submitMixedCxpPayment
+} from './cxp/cxp_mixed_payments.js';
+
 // Re-exports
 export {
     loadPayablesList,
@@ -86,7 +93,11 @@ export {
     openPayableHistoryModal,
     openDeclareBadDebtModal,
     submitDeclareBadDebt,
-    exportCxpExcel
+    exportCxpExcel,
+    openMixedCxpPaymentModal,
+    recalcMixedCxpPayment,
+    autoFillRemainingToBsCxp,
+    submitMixedCxpPayment
 };
 
 // 100% retrocompatibilidad global con window.* e index.html

@@ -215,7 +215,7 @@ export function renderDispatchPaginated() {
             projectDisplay = g.project_name ? `${g.project_code || 'PRJ'} - ${g.project_name}` : (g.transfer_reason || 'Uso en Taller');
             transportDisplay = `<div><b>${g.delivered_by_staff || 'Almacén'} &rarr; ${g.received_by_staff || 'Taller'}</b></div><div style="font-size: 10px; color: #64748b;">Custodia Interna</div>`;
         } else {
-            const cName = (isFreeform || !g.client_id) ? (g.recipient_name || g.client_name || 'Destinatario Libre') : (g.client_name || g.recipient_name || 'Cliente DALOR');
+            const cName = g.recipient_name || g.client_name || (isFreeform ? 'Destinatario Libre' : 'Cliente DALOR');
             clientDisplay = `<div>${cName}</div><div style="font-size: 10px; color: #64748b; font-weight: 400;">${g.destination_plant ? g.destination_plant + ' &bull; ' : ''}${g.destination_address || ''}</div>`;
             projectDisplay = isFreeform ? (g.transfer_reason || 'Traslado Libre') : (g.project_code ? `${g.project_code} - ${g.project_name}` : 'Servicio Directo');
             transportDisplay = `<div><b>${g.driver_name || 'Personal DALOR'}</b></div><div style="font-size: 10px; color: #64748b;">${g.vehicle_plate || 'S/P'} &bull; ${g.transport_type === 'flete_tercerizado' ? 'Tercerizado' : (g.transport_type === 'retiro_cliente' ? 'Retiro' : 'DALOR')}</div>`;

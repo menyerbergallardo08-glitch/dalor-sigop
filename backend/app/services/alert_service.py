@@ -117,10 +117,11 @@ class AlertService:
         )
         exp_count = len(exp_rows)
         for e in exp_rows:
+            vendor_lbl = getattr(e, "supplier_vendor", None) or (e.category.name if getattr(e, "category", None) else None) or "Sin proveedor"
             items.append({
                 "category": "expenses",
                 "severity": "critical" if e.status == "observado" else "warning",
-                "title": f"Gasto #{e.id} ({e.status.upper()}) — {e.supplier_name or e.category or 'Sin proveedor'}",
+                "title": f"Gasto #{e.id} ({e.status.upper()}) — {vendor_lbl}",
                 "detail": f"${float(e.amount_usd or 0):,.2f} • {(e.description or '')[:70]}",
                 "due_date": e.expense_date.strftime("%Y-%m-%d") if e.expense_date else None,
             })

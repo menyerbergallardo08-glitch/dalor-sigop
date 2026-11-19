@@ -27,7 +27,7 @@ export async function printOfficialDispatchGuide(guideId) {
             (g.guide_number && g.guide_number.startsWith('GCI-'))
         );
         const isFreeform = !!g.is_freeform;
-        const clientName = (isFreeform || !g.client_id) ? (g.recipient_name || g.client_name || 'Destinatario Libre') : (g.client_name || g.recipient_name || 'Cliente DALOR');
+        const clientName = g.recipient_name || g.client_name || (isFreeform ? 'Destinatario Libre' : 'Cliente DALOR');
         const motiveDisplay = isFreeform ? (g.transfer_reason || 'Traslado Libre') : (`${g.project_code || 'PRJ'} - ${g.project_name || 'Servicio de Taller'}`);
 
         let itemsHtml = (g.items && g.items.length > 0) ? g.items.map((it, idx) => `

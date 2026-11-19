@@ -170,7 +170,9 @@ def get_tools_summary(include_inactive: bool = False, db: Session = Depends(get_
         Asset.current_custodian_name,
         Asset.current_project_id,
         Asset.category,
-        Asset.is_active
+        Asset.is_active,
+        Asset.ownership_type,
+        Asset.external_entity_name
     )
     if not include_inactive:
         tools_query = tools_query.filter(Asset.is_active == True)
@@ -178,7 +180,7 @@ def get_tools_summary(include_inactive: bool = False, db: Session = Depends(get_
 
     groups = {}
     for t in tools:
-        t_id, code, name, a_type, brand, model, serial, status, loc, cust, proj_id, cat, is_act = t
+        t_id, code, name, a_type, brand, model, serial, status, loc, cust, proj_id, cat, is_act, own_type, ext_entity = t
         key = (name or 'HERRAMIENTA GENERAL').strip().upper()
         if key not in groups:
             groups[key] = {
@@ -189,6 +191,7 @@ def get_tools_summary(include_inactive: bool = False, db: Session = Depends(get_
                 "available": 0,
                 "in_use": 0,
                 "locations": set(),
+                "owners": set(),
                 "items": []
             }
         g = groups[key]
@@ -208,6 +211,8 @@ def get_tools_summary(include_inactive: bool = False, db: Session = Depends(get_
             g["in_use"] += 1
         if loc:
             g["locations"].add(loc)
+        owner_lbl = (ext_entity or "").strip() or ("DALOR" if (own_type or "propio") == "propio" else (own_type or "propio"))
+        g["owners"].add(owner_lbl)
         
         effective_status = status
         if not is_base_loc and (st_clean in ["disponible_base", "disponible"] or not st_clean):
@@ -225,12 +230,15 @@ def get_tools_summary(include_inactive: bool = False, db: Session = Depends(get_
             "current_location": loc or "Sede Central",
             "current_custodian_name": cust or ("Disponible en Base" if is_base_loc else (loc or "En Obra")),
             "current_project_id": proj_id,
-            "is_active": is_act
+            "is_active": is_act,
+            "ownership_type": own_type or "propio",
+            "external_entity_name": ext_entity or ""
         })
 
     result = []
     for g in groups.values():
         g["locations"] = sorted(list(g["locations"]))
+        g["owners"] = sorted(list(g["owners"]))
         result.append(g)
 
     return result
@@ -443,6 +451,8 @@ def add_tool_units(req: ToolAddUnitsRequest, db: Session = Depends(get_db)):
                 brand=brand,
                 model=model,
                 serial_number=req.serial_number or f"S/N-{candidate_code}",
+                ownership_type=(sample.ownership_type if sample and sample.ownership_type else "propio"),
+                external_entity_name=(sample.external_entity_name if sample else None),
                 status="disponible_base",
                 current_location=loc,
                 current_custodian_name="Disponible en Base",

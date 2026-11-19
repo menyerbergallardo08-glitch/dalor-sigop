@@ -233,10 +233,16 @@ function renderGroupedToolsPaginated() {
                 statusBadge = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #f1f5f9; color: #475569;">${(st || 'OCUPADO').toUpperCase()}</span>`;
             }
 
+            const ownerEntity = (it.external_entity_name || '').trim();
+            const ownType = (it.ownership_type || 'propio').toLowerCase();
+            const isThirdParty = ownType !== 'propio' || (ownerEntity && !ownerEntity.toLowerCase().includes('dalor'));
+            const ownerLabel = ownerEntity || (ownType === 'propio' ? 'DALOR (Propio)' : ownType.replace(/_/g, ' '));
+            const ownerBadge = `<div style="margin-top: 2px;"><span style="font-size: 9.5px; padding: 1px 5px; border-radius: 3px; font-weight: 700; ${isThirdParty ? 'background: #fef3c7; color: #92400e; border: 1px solid #fde68a;' : 'background: #f1f5f9; color: #475569;'}"><i class="fa-solid fa-building"></i> ${ownerLabel}</span></div>`;
+
             return `
                 <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
                     <td style="padding: 5px 8px; font-weight: 800; color: var(--dalor-navy); font-family: monospace;">${it.asset_code}</td>
-                    <td style="padding: 5px 8px; font-size: 11px;">${it.brand || '-'} ${it.model || ''}</td>
+                    <td style="padding: 5px 8px; font-size: 11px;">${it.brand || '-'} ${it.model || ''}${ownerBadge}</td>
                     <td style="padding: 5px 8px; font-family: monospace; font-size: 11px; color: #64748b;">${it.serial_number || '-'}</td>
                     <td style="padding: 5px 8px; font-size: 11px; color: #334155;">${it.current_location || 'Sede Central'}</td>
                     <td style="padding: 5px 8px; font-size: 11px; color: #2563eb; font-weight: 600;">${it.current_custodian_name || 'En Pañol Base'}</td>
@@ -291,6 +297,14 @@ function renderGroupedToolsPaginated() {
                             ${g.name}
                         </div>
                         <div style="font-size: 10px; color: #64748b; font-family: monospace;">Muestra: ${sampleCode} ${sampleBrand} ${sampleModel}</div>
+                        ${(() => {
+                            const owners = Array.isArray(g.owners) && g.owners.length > 0
+                                ? g.owners
+                                : Array.from(new Set((g.items || []).map(x => (x.external_entity_name || '').trim() || ((x.ownership_type || 'propio') === 'propio' ? 'DALOR' : x.ownership_type))));
+                            const ownerTxt = owners.join(', ') || 'DALOR';
+                            const hasExt = owners.some(o => o && !o.toLowerCase().includes('dalor'));
+                            return `<div style="margin-top: 2px;"><span style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; font-weight: 700; ${hasExt ? 'background: #fef3c7; color: #92400e; border: 1px solid #fde68a;' : 'background: #f1f5f9; color: #475569;'}"><i class="fa-solid fa-building"></i> Propietario: ${ownerTxt}</span></div>`;
+                        })()}
                     </div>
                 </div>
             </td>
@@ -602,6 +616,8 @@ async function submitCreateTool(event) {
         brand: document.getElementById("tool_brand").value.trim(),
         serial_number: document.getElementById("tool_serial").value.trim(),
         current_location: document.getElementById("tool_location").value || "Sede Central Dalor (Guacara)",
+        ownership_type: document.getElementById("tool_ownership")?.value || "propio",
+        external_entity_name: (document.getElementById("tool_entity_name")?.value || "").trim() || null,
         is_exclusive: true,
         quantity: qty
     };

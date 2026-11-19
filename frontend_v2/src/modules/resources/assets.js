@@ -504,6 +504,8 @@ async function submitCreateAsset(e) {
     }
 
     const quantity = parseInt(document.getElementById("nass_quantity")?.value) || 1;
+    const ownershipType = document.getElementById("nass_ownership")?.value || "propio";
+    const entityName = (document.getElementById("nass_entity_name")?.value || "").trim() || null;
 
     const payload = {
         asset_code: code,
@@ -516,6 +518,8 @@ async function submitCreateAsset(e) {
         license_plate: type === 'vehiculo' ? serial : null,
         current_odometer: odometer,
         service_interval_km: type === 'vehiculo' ? 5000 : 250,
+        ownership_type: ownershipType,
+        external_entity_name: entityName,
         current_location: location,
         current_custodian_name: custodian,
         is_exclusive: true,
@@ -625,6 +629,8 @@ async function openEditAssetModal(assetId) {
     if (document.getElementById("edit_asset_plate")) document.getElementById("edit_asset_plate").value = a.license_plate || '';
     if (document.getElementById("edit_asset_odometer")) document.getElementById("edit_asset_odometer").value = a.current_odometer || 0;
     if (document.getElementById("edit_asset_location")) document.getElementById("edit_asset_location").value = a.current_location || '';
+    if (document.getElementById("edit_asset_ownership")) document.getElementById("edit_asset_ownership").value = a.ownership_type || 'propio';
+    if (document.getElementById("edit_asset_entity_name")) document.getElementById("edit_asset_entity_name").value = a.external_entity_name || '';
 
     if (typeof openModal === 'function') {
         openModal("modalEditAsset");
@@ -658,7 +664,9 @@ async function submitEditAsset(e) {
         serial_number: document.getElementById("edit_asset_serial").value.trim(),
         license_plate: document.getElementById("edit_asset_plate").value.trim(),
         current_odometer: parseFloat(document.getElementById("edit_asset_odometer").value) || 0,
-        current_location: document.getElementById("edit_asset_location").value.trim()
+        current_location: document.getElementById("edit_asset_location").value.trim(),
+        ownership_type: document.getElementById("edit_asset_ownership")?.value || "propio",
+        external_entity_name: (document.getElementById("edit_asset_entity_name")?.value || "").trim() || null
     };
     try {
         const res = await authFetch(`${API_BASE}/assets/${id}`, {

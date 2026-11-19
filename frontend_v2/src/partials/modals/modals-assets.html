@@ -74,6 +74,23 @@
 
                 </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Condición de Propiedad</label>
+                        <select id="tool_ownership" class="form-select">
+                            <option value="propio">Propio (Activo Fijo DALOR)</option>
+                            <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
+                            <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
+                            <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
+                            <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Empresa / Propietario / Arrendador</label>
+                        <input type="text" id="tool_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
+                    </div>
+                </div>
+
                 <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px 12px;">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                         <div>
@@ -361,24 +378,26 @@
                     </div>
                 </div>
 
-                <!-- Campos Técnicos Específicos para Vehículos, Maquinaria Pesada o Arrendamiento -->
-                <div id="nass_heavy_fields" style="display: none; border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 4px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
-                        <div>
-                            <label class="form-label">Condición de Propiedad</label>
-                            <select id="nass_ownership" class="form-select">
-                                <option value="propio">Propio (Activo Fijo DALOR)</option>
-                                <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
-                                <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
-                                <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
-                                <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label">Empresa / Propietario / Arrendador</label>
-                            <input type="text" id="nass_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
-                        </div>
+                <!-- Condición de Propiedad y Empresa Propietaria (visible para todos los activos y herramientas) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 4px;">
+                    <div>
+                        <label class="form-label">Condición de Propiedad</label>
+                        <select id="nass_ownership" class="form-select">
+                            <option value="propio">Propio (Activo Fijo DALOR)</option>
+                            <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
+                            <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
+                            <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
+                            <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
+                        </select>
                     </div>
+                    <div>
+                        <label class="form-label">Empresa / Propietario / Arrendador</label>
+                        <input type="text" id="nass_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
+                    </div>
+                </div>
+
+                <!-- Campos Técnicos Específicos para Vehículos, Maquinaria Pesada o Arrendamiento -->
+                <div id="nass_heavy_fields" style="display: none; padding-top: 4px;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div>
                             <label class="form-label" id="nass_serial_label">Serial / Placa</label>
@@ -487,6 +506,22 @@
                     <div>
                         <label class="form-label">Ubicación</label>
                         <input type="text" id="edit_asset_location" class="form-input">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label class="form-label">Condición de Propiedad</label>
+                        <select id="edit_asset_ownership" class="form-select">
+                            <option value="propio">Propio (Activo Fijo DALOR)</option>
+                            <option value="alquilado_a_tercero">Alquilado a Tercero (Dalor paga)</option>
+                            <option value="prestado_de_tercero">Prestado de Tercero / Comodato</option>
+                            <option value="alquilado_a_cliente">Alquilado a Cliente (Dalor cobra)</option>
+                            <option value="prestado_a_cliente">Prestado a Cliente / Aliado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Empresa / Propietario / Arrendador</label>
+                        <input type="text" id="edit_asset_entity_name" placeholder="Ej: Dalor / Arrendadora X" class="form-input">
                     </div>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">

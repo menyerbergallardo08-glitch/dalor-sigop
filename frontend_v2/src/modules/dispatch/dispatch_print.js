@@ -135,11 +135,23 @@ export async function printOfficialDispatchGuide(guideId) {
                 <meta charset="UTF-8">
                 <title>${docTitle}</title>
                 <style>
-                    body { margin: 0; padding: 20px; background: #f8fafc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+                    body { margin: 0; padding: 20px; background: #f8fafc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    table { page-break-inside: auto; }
+                    thead { display: table-header-group; }
+                    tfoot { display: table-footer-group; }
+                    tr { break-inside: avoid; page-break-inside: avoid; }
+                    .dispatch-print-block { break-inside: avoid; page-break-inside: avoid; }
                     @media print {
                         body { background: #fff; padding: 0; }
                         @page { margin: 10mm; }
                         .no-print { display: none !important; }
+                        .dispatch-print-sheet {
+                            box-shadow: none !important;
+                            border-radius: 0 !important;
+                            padding: 0 !important;
+                            overflow: visible !important;
+                            max-width: 100% !important;
+                        }
                     }
                     .watermark-anulada {
                         position: absolute;
@@ -167,7 +179,7 @@ export async function printOfficialDispatchGuide(guideId) {
                     </button>
                 </div>
 
-                <div style="background: white; padding: 25px; border-radius: 8px; font-family: 'Inter', sans-serif; color: #1e293b; max-width: 820px; margin: 0 auto; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; overflow: hidden;">
+                <div class="dispatch-print-sheet" style="background: white; padding: 25px; border-radius: 8px; font-family: 'Inter', sans-serif; color: #1e293b; max-width: 820px; margin: 0 auto; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative;">
                     ${(g.status === 'anulada' || g.status === 'cancelada') ? `
                         <div class="watermark-anulada">ANULADA</div>
                         <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; color: #991b1b;">
@@ -228,23 +240,26 @@ export async function printOfficialDispatchGuide(guideId) {
                         </table>
                     </div>
 
-                    <!-- OBSERVACIONES Y PRECINTOS -->
-                    <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 8px 12px; border-radius: 6px; font-size: 10.5px; color: #92400e; margin-bottom: 16px;">
-                        <b>Observaciones & Precintos:</b> ${g.notes || (isInternal ? 'Equipos verificados e inventariados para custodia interna en sede.' : 'Carga verificada y apta para despacho a obra.')} &bull; <b>Control de Calidad:</b> ${g.quality_inspector || 'DALOR C.A.'}
-                    </div>
-
-                    ${(!isInternal && (g.status === 'entregada' || g.status === 'entregado_conforme')) ? `
-                        <div style="background: #ecfdf5; border: 1.5px solid #86efac; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 11px; color: #065f46;">
-                            <i class="fa-solid fa-circle-check"></i> <b>Constancia de Recepción Conforme:</b> Recibido por <b>${g.received_by_client_name || 'Cliente'}</b> (C.I: ${g.received_by_client_id_doc || 'S/D'}) en fecha <b>${g.reception_date || '-'}</b>.
+                    <!-- OBSERVACIONES, FIRMAS Y COLETILLA (SIN PARTIR ENTRE PÁGINAS) -->
+                    <div class="dispatch-print-block">
+                        <!-- OBSERVACIONES Y PRECINTOS -->
+                        <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 8px 12px; border-radius: 6px; font-size: 10.5px; color: #92400e; margin-bottom: 16px;">
+                            <b>Observaciones & Precintos:</b> ${g.notes || (isInternal ? 'Equipos verificados e inventariados para custodia interna en sede.' : 'Carga verificada y apta para despacho a obra.')} &bull; <b>Control de Calidad:</b> ${g.quality_inspector || 'DALOR C.A.'}
                         </div>
-                    ` : ''}
 
-                    <!-- CAJAS DE FIRMA Y RECEPCIÓN (3 BLOQUES IDÉNTICO A RENTALS) -->
-                    ${signaturesHtml}
+                        ${(!isInternal && (g.status === 'entregada' || g.status === 'entregado_conforme')) ? `
+                            <div style="background: #ecfdf5; border: 1.5px solid #86efac; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 11px; color: #065f46;">
+                                <i class="fa-solid fa-circle-check"></i> <b>Constancia de Recepción Conforme:</b> Recibido por <b>${g.received_by_client_name || 'Cliente'}</b> (C.I: ${g.received_by_client_id_doc || 'S/D'}) en fecha <b>${g.reception_date || '-'}</b>.
+                            </div>
+                        ` : ''}
 
-                    <!-- COLETILLA LEGAL -->
-                    <div style="margin-top: 22px; border-top: 1px dashed #cbd5e1; padding-top: 6px; font-size: 9px; color: #64748b; text-align: justify; line-height: 1.3;">
-                        ${footerNote}
+                        <!-- CAJAS DE FIRMA Y RECEPCIÓN (3 BLOQUES IDÉNTICO A RENTALS) -->
+                        ${signaturesHtml}
+
+                        <!-- COLETILLA LEGAL -->
+                        <div style="margin-top: 22px; border-top: 1px dashed #cbd5e1; padding-top: 6px; font-size: 9px; color: #64748b; text-align: justify; line-height: 1.3;">
+                            ${footerNote}
+                        </div>
                     </div>
                 </div>
             </body>

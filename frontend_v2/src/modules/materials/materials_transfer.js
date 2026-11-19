@@ -132,8 +132,8 @@ function onTransferGuideProjectChanged() {
 
 var transferToolsGrouped = [];
 
-async function ensureToolsLoadedForTransfer() {
-    if (!allAssets || allAssets.length === 0 || !(window.rawToolsList && window.rawToolsList.length > 0)) {
+async function ensureToolsLoadedForTransfer(forceRefresh = true) {
+    if (forceRefresh || !allAssets || allAssets.length === 0 || !(window.rawToolsList && window.rawToolsList.length > 0)) {
         try {
             const res = await authFetch(`${API_BASE}/assets/tools-summary`);
             if (res.ok) {
@@ -485,9 +485,15 @@ async function submitGenerateTransferGuide(event) {
             if (guideData && guideData.guide_number) {
                 guideNumber = guideData.guide_number;
             }
+        } else {
+            const errData = await guideRes.json().catch(() => ({}));
+            alert(`❌ Error al registrar la Guía de Despacho en base de datos: ${errData.detail || guideRes.statusText || 'Error ' + guideRes.status}`);
+            return;
         }
     } catch (errG) {
-        console.warn("Advertencia al persistir guía en backend:", errG);
+        console.warn("Error al persistir guía en backend:", errG);
+        alert(`❌ Error de conexión al guardar la guía de despacho: ${errG.message}`);
+        return;
     }
 
     // 2. Reubicar herramientas en backend para el proyecto
@@ -517,6 +523,9 @@ async function submitGenerateTransferGuide(event) {
 
     await loadInitialMasterData();
 
+    if (typeof window.loadDispatchGuides === "function") {
+        window.loadDispatchGuides();
+    }
     if (document.getElementById("subtab-res-tools") && !document.getElementById("subtab-res-tools").classList.contains("hidden")) {
 
         loadToolsList();

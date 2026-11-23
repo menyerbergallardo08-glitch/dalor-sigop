@@ -182,7 +182,13 @@ class CashFlowService:
         if account_id:
             part_q = part_q.filter(PartnerWithdrawal.financial_account_id == account_id)
         partner_withdrawals = part_q.order_by(PartnerWithdrawal.withdrawal_date.desc()).all()
-        total_partner_withdrawals = sum(pw.amount_usd for pw in partner_withdrawals)
+        def _is_partner_inflow(pw):
+            n_up = (pw.notes or "").upper()
+            return ("[MOV:PRESTAMO_SOCIO]" in n_up) or ("[MOV:APORTE_CAPITAL]" in n_up)
+        total_partner_inflows = sum(float(pw.amount_usd or 0.0) for pw in partner_withdrawals if _is_partner_inflow(pw))
+        total_partner_outflows = sum(float(pw.amount_usd or 0.0) for pw in partner_withdrawals if not _is_partner_inflow(pw))
+        # Egreso neto de socios (positivo = salieron más retiros; negativo = entraron más préstamos/aportes)
+        total_partner_withdrawals = round(total_partner_outflows - total_partner_inflows, 2)
 
         # 4.1 Mesa de Cambio / Arbitraje Cambiario (Diferencial Cambiario Real)
         exch_q = db.query(FinancialPayment).filter(
@@ -731,7 +737,11 @@ class CashFlowService:
         prev_collected_cxc = sum(p.amount_usd for p in all_payments if p.payment_type == "cxc_cobro" and p.payment_date and p.payment_date < start_dt)
         prev_paid_cxp = sum(p.amount_usd for p in all_payments if p.payment_type == "cxp_pago" and p.payment_date and p.payment_date < start_dt)
         prev_expenses = sum(e.amount_usd for e in all_expenses if e.expense_date and e.expense_date < start_dt)
-        prev_withdrawals = sum(w.amount_usd for w in all_withdrawals if w.withdrawal_date and w.withdrawal_date < start_dt)
+        def _signed_pw(w):
+            n_up = (w.notes or "").upper()
+            is_in = ("[MOV:PRESTAMO_SOCIO]" in n_up) or ("[MOV:APORTE_CAPITAL]" in n_up)
+            return -float(w.amount_usd or 0.0) if is_in else float(w.amount_usd or 0.0)
+        prev_withdrawals = sum(_signed_pw(w) for w in all_withdrawals if w.withdrawal_date and w.withdrawal_date < start_dt)
         prev_ex_in = sum(p.amount_usd for p in all_payments if p.payment_type == "cambio_divisa_ingreso" and p.payment_date and p.payment_date < start_dt)
         prev_ex_out = sum(p.amount_usd for p in all_payments if p.payment_type == "cambio_divisa_egreso" and p.payment_date and p.payment_date < start_dt)
 
@@ -811,11 +821,12 @@ class CashFlowService:
             flujo_economico = round(total_ingresos_mes - total_egresos_mes, 2)
 
             # Financiamiento y Socios
-            retiros_socios = round(sum(w.amount_usd for w in m_withdrawals), 2)
+            aportes_prestamos_socios = round(sum(float(w.amount_usd or 0.0) for w in m_withdrawals if ("[MOV:PRESTAMO_SOCIO]" in (w.notes or "").upper() or "[MOV:APORTE_CAPITAL]" in (w.notes or "").upper())), 2)
+            retiros_socios = round(sum(float(w.amount_usd or 0.0) for w in m_withdrawals if not ("[MOV:PRESTAMO_SOCIO]" in (w.notes or "").upper() or "[MOV:APORTE_CAPITAL]" in (w.notes or "").upper())), 2)
             diff_cambiario = round(ing_mesa_cambio - egr_mesa_cambio, 2)
-            total_financiamiento = round(-retiros_socios, 2)
+            total_financiamiento = round(aportes_prestamos_socios - retiros_socios, 2)
 
-            saldo_final_mes = round(saldo_inicial_mes + flujo_economico - retiros_socios, 2)
+            saldo_final_mes = round(saldo_inicial_mes + flujo_economico + total_financiamiento, 2)
             running_balance = saldo_final_mes
 
             tot_ingresos_period += total_ingresos_mes

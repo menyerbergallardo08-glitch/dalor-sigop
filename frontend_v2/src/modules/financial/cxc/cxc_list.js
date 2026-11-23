@@ -215,6 +215,10 @@ function renderReceivablesPaginated() {
         const safeClientName = (r.client_name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const invoiceBtn = `<button type="button" onclick="printOfficialFiscalInvoice(${r.id})" class="btn-primary" style="font-size: 10px; padding: 4px 7px; background: #0284c7; color: white; font-weight: 800; border-radius: 4px;" title="Ver e Imprimir Factura Fiscal Forma Libre SENIAT"><i class="fa-solid fa-file-invoice-dollar"></i> Factura</button>`;
         const bitacoraBtn = `<button type="button" onclick="openCxcHistoryModal(${r.id}, ${r.client_id || 0}, '${invNum}', '${safeClientName}')" class="btn-secondary" style="font-size: 10.5px; padding: 4px 7px; color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; font-weight: 800;" title="Ver Bitácora de Cobranza & Seguimiento"><i class="fa-solid fa-clock-rotate-left"></i> Bitácora</button>`;
+        const isBatchInv = /\[BATCH_INVOICE|Facturación en lote|Facturación individual de abono/i.test(r.notes || '') || /FACTURACIÓN CONSOLIDADA/i.test(r.description || '');
+        const batchFichaBtn = isBatchInv
+            ? ` <button type="button" onclick="openBatchInvoiceSummaryModal(${r.id})" class="btn-secondary" style="font-size: 10px; padding: 4px 7px; color: #6d28d9; border-color: #ddd6fe; background: #f5f3ff; font-weight: 800; border-radius: 4px;" title="Ver Ficha Interna de Abonos y Reversar Lote"><i class="fa-solid fa-clipboard-list"></i> Ficha</button>`
+            : '';
 
         let actionsHtml = '';
         if (isCancelled) {
@@ -242,7 +246,7 @@ function renderReceivablesPaginated() {
             actionsHtml += ` <button onclick="openClientRefundModal(${r.id})" class="btn-secondary" style="font-size: 10.5px; padding: 4px 8px; color: #059669; border-color: #a7f3d0; background: #ecfdf5; font-weight: 800;" title="Emitir Reembolso de Saldo a Favor al Cliente"><i class="fa-solid fa-arrow-rotate-left"></i> Reembolsar</button>`;
         }
 
-        actionsHtml = invoiceBtn + ' ' + bitacoraBtn + ' ' + actionsHtml;
+        actionsHtml = invoiceBtn + ' ' + bitacoraBtn + batchFichaBtn + ' ' + actionsHtml;
 
         return `
 

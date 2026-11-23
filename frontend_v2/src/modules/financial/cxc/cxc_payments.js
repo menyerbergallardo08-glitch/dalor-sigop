@@ -340,12 +340,19 @@ async function openSplitPaymentModal(receivableId) {
     document.getElementById("split_ret_islr_voucher").value = "";
 
     document.getElementById("split_ves_amount").value = "";
+    const vesRateEl = document.getElementById("split_ves_rate");
+    if (vesRateEl) vesRateEl.value = bcvRate.toFixed(2);
     document.getElementById("split_ves_usd").value = "";
     document.getElementById("split_ves_ref").value = "";
 
     document.getElementById("split_usd_amount").value = "";
     document.getElementById("split_usd_ref").value = "";
     document.getElementById("split_notes").value = "";
+
+    const vesExtra = document.getElementById("split_ves_extra_rows");
+    if (vesExtra) vesExtra.innerHTML = "";
+    const usdExtra = document.getElementById("split_usd_extra_rows");
+    if (usdExtra) usdExtra.innerHTML = "";
 
     recalcSplitPayment();
 
@@ -383,8 +390,13 @@ function onSplitToggleRetIslr(checked) {
     recalcSplitPayment();
 }
 
+function getSplitPrimaryVesRate() {
+    const v = parseFloat(document.getElementById("split_ves_rate")?.value);
+    return (Number.isFinite(v) && v > 0) ? v : getLiveBcvRate();
+}
+
 function onSplitVesInput(val) {
-    const rate = getLiveBcvRate();
+    const rate = getSplitPrimaryVesRate();
     const ves = parseFloat(val) || 0.0;
     const usd = rate > 0 ? (ves / rate) : 0.0;
     const usdInput = document.getElementById("split_ves_usd");
@@ -392,13 +404,95 @@ function onSplitVesInput(val) {
     recalcSplitPayment();
 }
 
+function onSplitVesRateInput(val) {
+    const rate = parseFloat(val) || 0.0;
+    const ves = parseFloat(document.getElementById("split_ves_amount")?.value) || 0.0;
+    const usdInput = document.getElementById("split_ves_usd");
+    if (ves > 0 && rate > 0 && usdInput) {
+        usdInput.value = (ves / rate).toFixed(2);
+    } else if (rate > 0 && usdInput && (parseFloat(usdInput.value) || 0) > 0) {
+        const vesInput = document.getElementById("split_ves_amount");
+        if (vesInput) vesInput.value = ((parseFloat(usdInput.value) || 0) * rate).toFixed(2);
+    }
+    recalcSplitPayment();
+}
+
 function onSplitVesUsdInput(val) {
-    const rate = getLiveBcvRate();
+    const rate = getSplitPrimaryVesRate();
     const usd = parseFloat(val) || 0.0;
     const ves = usd * rate;
     const vesInput = document.getElementById("split_ves_amount");
     if (vesInput) vesInput.value = ves > 0 ? ves.toFixed(2) : "";
     recalcSplitPayment();
+}
+
+function addSplitVesRow() {
+    const container = document.getElementById("split_ves_extra_rows");
+    if (!container) return;
+    const bankOpts = document.getElementById("split_ves_bank")?.innerHTML || '<option value="banesco_bs">Banesco (Bs)</option>';
+    const defRate = getSplitPrimaryVesRate().toFixed(2);
+    const row = document.createElement("div");
+    row.className = "split-ves-extra-row";
+    row.style.cssText = "display: grid; grid-template-columns: 1.1fr 0.85fr 0.95fr 1.3fr 1fr 28px; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px dashed #86efac;";
+    row.innerHTML = `
+        <input type="number" step="any" inputmode="decimal" class="form-input split-ves-x-bs" oninput="onSplitExtraVesCalc(this, 'bs')" placeholder="0.00 Bs." style="font-weight: 800; font-size: 12px; color: #166534;">
+        <input type="number" step="any" inputmode="decimal" min="0.01" class="form-input split-ves-x-rate" value="${defRate}" oninput="onSplitExtraVesCalc(this, 'rate')" placeholder="Tasa" style="font-weight: 800; font-size: 12px; color: #1e40af;">
+        <input type="number" step="any" inputmode="decimal" class="form-input split-ves-x-usd" oninput="onSplitExtraVesCalc(this, 'usd')" placeholder="$0.00" style="font-weight: 800; font-size: 12px; color: #0f172a; background: #f8fafc;">
+        <select class="form-select split-ves-x-bank" style="font-size: 11px;">${bankOpts}</select>
+        <input type="text" class="form-input split-ves-x-ref" placeholder="Ref. / N° Op." style="font-size: 11px;">
+        <button type="button" onclick="this.closest('.split-ves-extra-row').remove(); recalcSplitPayment();" title="Quitar fila" style="border: none; background: #fee2e2; color: #dc2626; border-radius: 6px; height: 30px; cursor: pointer; font-weight: 800;">&times;</button>
+    `;
+    container.appendChild(row);
+}
+
+function onSplitExtraVesCalc(el, source) {
+    const row = el?.closest(".split-ves-extra-row");
+    if (!row) return;
+    const bsEl = row.querySelector(".split-ves-x-bs");
+    const rateEl = row.querySelector(".split-ves-x-rate");
+    const usdEl = row.querySelector(".split-ves-x-usd");
+    const rate = parseFloat(rateEl?.value) || getLiveBcvRate();
+    const bs = parseFloat(bsEl?.value) || 0.0;
+    const usd = parseFloat(usdEl?.value) || 0.0;
+
+    if (source === "bs" || (source === "rate" && bs > 0)) {
+        if (usdEl) usdEl.value = (bs > 0 && rate > 0) ? (bs / rate).toFixed(2) : "";
+    } else if (source === "usd" || (source === "rate" && usd > 0)) {
+        if (bsEl) bsEl.value = (usd > 0 && rate > 0) ? (usd * rate).toFixed(2) : "";
+    }
+    recalcSplitPayment();
+}
+
+function addSplitUsdRow() {
+    const container = document.getElementById("split_usd_extra_rows");
+    if (!container) return;
+    const accOpts = document.getElementById("split_usd_account")?.innerHTML || '<option value="zelle">Zelle</option>';
+    const row = document.createElement("div");
+    row.className = "split-usd-extra-row";
+    row.style.cssText = "display: grid; grid-template-columns: 1fr 1.5fr 1.5fr 28px; gap: 10px; align-items: center; padding-top: 6px; border-top: 1px dashed #fde047;";
+    row.innerHTML = `
+        <input type="number" step="any" inputmode="decimal" class="form-input split-usd-x-amt" oninput="recalcSplitPayment(true)" placeholder="$0.00" style="font-weight: 800; font-size: 12px; color: #854d0e;">
+        <select class="form-select split-usd-x-acc" style="font-size: 11px;">${accOpts}</select>
+        <input type="text" class="form-input split-usd-x-ref" placeholder="Ref. / N° Depósito" style="font-size: 11px;">
+        <button type="button" onclick="this.closest('.split-usd-extra-row').remove(); recalcSplitPayment();" title="Quitar fila" style="border: none; background: #fee2e2; color: #dc2626; border-radius: 6px; height: 30px; cursor: pointer; font-weight: 800;">&times;</button>
+    `;
+    container.appendChild(row);
+}
+
+function sumAllSplitVesUsd() {
+    let total = parseFloat(document.getElementById("split_ves_usd")?.value) || 0.0;
+    document.querySelectorAll("#split_ves_extra_rows .split-ves-x-usd").forEach(el => {
+        total += parseFloat(el.value) || 0.0;
+    });
+    return total;
+}
+
+function sumAllSplitUsdExtra() {
+    let total = 0.0;
+    document.querySelectorAll("#split_usd_extra_rows .split-usd-x-amt").forEach(el => {
+        total += parseFloat(el.value) || 0.0;
+    });
+    return total;
 }
 
 function autoFillRemainingToUsd() {
@@ -407,9 +501,10 @@ function autoFillRemainingToUsd() {
     const ivaUsd = chkIva ? (parseFloat(document.getElementById("split_ret_iva_usd")?.value) || 0.0) : 0.0;
     const chkIslr = document.getElementById("split_chk_ret_islr")?.checked;
     const islrUsd = chkIslr ? (parseFloat(document.getElementById("split_ret_islr_usd")?.value) || 0.0) : 0.0;
-    const vesUsd = parseFloat(document.getElementById("split_ves_usd")?.value) || 0.0;
+    const vesUsd = sumAllSplitVesUsd();
+    const extraUsd = sumAllSplitUsdExtra();
 
-    const remaining = Math.max(0, origBalance - (ivaUsd + islrUsd + vesUsd));
+    const remaining = Math.max(0, origBalance - (ivaUsd + islrUsd + vesUsd + extraUsd));
     const usdInput = document.getElementById("split_usd_amount");
     if (usdInput) usdInput.value = remaining > 0 ? remaining.toFixed(2) : "";
     recalcSplitPayment();
@@ -424,8 +519,8 @@ function recalcSplitPayment(isManualUsd = false) {
     const chkIslr = document.getElementById("split_chk_ret_islr")?.checked;
     const islrUsd = chkIslr ? (parseFloat(document.getElementById("split_ret_islr_usd")?.value) || 0.0) : 0.0;
 
-    const vesUsd = parseFloat(document.getElementById("split_ves_usd")?.value) || 0.0;
-    const usdAmount = parseFloat(document.getElementById("split_usd_amount")?.value) || 0.0;
+    const vesUsd = sumAllSplitVesUsd();
+    const usdAmount = (parseFloat(document.getElementById("split_usd_amount")?.value) || 0.0) + sumAllSplitUsdExtra();
 
     const totalImputed = parseFloat((ivaUsd + islrUsd + vesUsd + usdAmount).toFixed(2));
     const diff = parseFloat((origBalance - totalImputed).toFixed(2));
@@ -502,25 +597,46 @@ async function submitSplitPayment(event) {
         }
     }
 
-    // 3. Pago en Bolívares
+    // 3. Pago en Bolívares (fila principal + filas adicionales con tasa individual)
     const vesUsd = parseFloat(document.getElementById("split_ves_usd").value) || 0.0;
     const vesAmount = parseFloat(document.getElementById("split_ves_amount").value) || 0.0;
+    const vesRate = getSplitPrimaryVesRate();
     if (vesUsd > 0) {
         const vesBank = document.getElementById("split_ves_bank").value;
         const vesRef = (document.getElementById("split_ves_ref").value || "").trim();
         items.push({
             payment_type: "bolivares",
             amount_usd: vesUsd,
-            amount_bs: vesAmount,
-            exchange_rate: bcvRate,
-            payment_method: "transferencia_bs",
+            amount_bs: vesAmount > 0 ? vesAmount : roundFinancial(vesUsd * vesRate),
+            exchange_rate: vesRate,
+            payment_method: vesBank === "pago_movil" ? "pago_movil" : "transferencia_bs",
             bank_account: vesBank,
             reference_number: vesRef || `REF-BS-${Date.now().toString().slice(-6)}`,
-            notes: `Pago en Bolívares (${vesAmount.toFixed(2)} Bs @ ${bcvRate.toFixed(2)})`
+            notes: `Pago en Bolívares (${(vesAmount > 0 ? vesAmount : roundFinancial(vesUsd * vesRate)).toFixed(2)} Bs @ ${vesRate.toFixed(2)})`
         });
     }
+    document.querySelectorAll("#split_ves_extra_rows .split-ves-extra-row").forEach((row, idx) => {
+        const xUsd = parseFloat(row.querySelector(".split-ves-x-usd")?.value) || 0.0;
+        const xBs = parseFloat(row.querySelector(".split-ves-x-bs")?.value) || 0.0;
+        const xRate = parseFloat(row.querySelector(".split-ves-x-rate")?.value) || bcvRate;
+        if (xUsd > 0) {
+            const xBank = row.querySelector(".split-ves-x-bank")?.value || "banesco_bs";
+            const xRef = (row.querySelector(".split-ves-x-ref")?.value || "").trim();
+            const finalBs = xBs > 0 ? xBs : roundFinancial(xUsd * xRate);
+            items.push({
+                payment_type: "bolivares",
+                amount_usd: xUsd,
+                amount_bs: finalBs,
+                exchange_rate: xRate,
+                payment_method: xBank === "pago_movil" ? "pago_movil" : "transferencia_bs",
+                bank_account: xBank,
+                reference_number: xRef || `REF-BS-${Date.now().toString().slice(-5)}-${idx + 2}`,
+                notes: `Pago en Bolívares (${finalBs.toFixed(2)} Bs @ ${xRate.toFixed(2)})`
+            });
+        }
+    });
 
-    // 4. Pago en Divisas USD
+    // 4. Pago en Divisas USD (fila principal + filas adicionales)
     const usdAmount = parseFloat(document.getElementById("split_usd_amount").value) || 0.0;
     if (usdAmount > 0) {
         const usdAcc = document.getElementById("split_usd_account").value;
@@ -530,12 +646,29 @@ async function submitSplitPayment(event) {
             amount_usd: usdAmount,
             amount_bs: roundFinancial(usdAmount * bcvRate),
             exchange_rate: bcvRate,
-            payment_method: "divisas",
+            payment_method: usdAcc === "zelle" ? "zelle" : (usdAcc === "efectivo_usd" ? "efectivo_usd" : "divisas"),
             bank_account: usdAcc,
             reference_number: usdRef || `REF-USD-${Date.now().toString().slice(-6)}`,
             notes: `Pago en Divisas USD`
         });
     }
+    document.querySelectorAll("#split_usd_extra_rows .split-usd-extra-row").forEach((row, idx) => {
+        const xAmt = parseFloat(row.querySelector(".split-usd-x-amt")?.value) || 0.0;
+        if (xAmt > 0) {
+            const xAcc = row.querySelector(".split-usd-x-acc")?.value || "banesco_usd";
+            const xRef = (row.querySelector(".split-usd-x-ref")?.value || "").trim();
+            items.push({
+                payment_type: "divisas_usd",
+                amount_usd: xAmt,
+                amount_bs: roundFinancial(xAmt * bcvRate),
+                exchange_rate: bcvRate,
+                payment_method: xAcc === "zelle" ? "zelle" : (xAcc === "efectivo_usd" ? "efectivo_usd" : "divisas"),
+                bank_account: xAcc,
+                reference_number: xRef || `REF-USD-${Date.now().toString().slice(-5)}-${idx + 2}`,
+                notes: `Pago en Divisas USD`
+            });
+        }
+    });
 
     if (items.length === 0) {
         alert("Por favor ingresa al menos un concepto de cobro (Retención, Bolívares o Divisas).");
@@ -853,7 +986,11 @@ if (typeof window !== 'undefined') {
     window.onSplitToggleRetIva = onSplitToggleRetIva;
     window.onSplitToggleRetIslr = onSplitToggleRetIslr;
     window.onSplitVesInput = onSplitVesInput;
+    window.onSplitVesRateInput = onSplitVesRateInput;
     window.onSplitVesUsdInput = onSplitVesUsdInput;
+    window.addSplitVesRow = addSplitVesRow;
+    window.onSplitExtraVesCalc = onSplitExtraVesCalc;
+    window.addSplitUsdRow = addSplitUsdRow;
     window.autoFillRemainingToUsd = autoFillRemainingToUsd;
     window.recalcSplitPayment = recalcSplitPayment;
     window.submitSplitPayment = submitSplitPayment;

@@ -108,9 +108,9 @@
 
                             <div style="font-size: 26px; color: #7c3aed; margin-bottom: 4px;"><i class="fa-solid fa-user-tie"></i></div>
 
-                            <strong style="font-size: 12px; display: block; color: var(--dalor-navy);">3. Retiro Socio</strong>
+                            <strong style="font-size: 12px; display: block; color: var(--dalor-navy);">3. Cuenta Socio</strong>
 
-                            <span style="font-size: 10px; color: #64748b;">Gasto personal / Utilidad</span>
+                            <span style="font-size: 10px; color: #64748b;">Retiro / Préstamo / Capital</span>
 
                         </div>
 
@@ -184,13 +184,22 @@
 
                 <div id="qf_details_socio" class="hidden" style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 12px;">
 
-                    <label class="form-label" style="color: #6b21a8;">Nombre de la Persona / Accionista que retira *</label>
+                    <label class="form-label" style="color: #6b21a8;">Tipo de Movimiento de Socio *</label>
+
+                    <select id="qf_partner_movement_type" class="form-select" style="background: white; margin-bottom: 8px; font-weight: 700;">
+                        <option value="retiro">Retiro a Cuenta de Utilidades (Salida de Caja/Banco)</option>
+                        <option value="prestamo_socio">Préstamo de Socio a la Empresa (Entrada a Banco &rarr; CxP Socio)</option>
+                        <option value="devolucion_prestamo">Devolución / Abono de Préstamo al Socio (Salida &rarr; Reduce CxP Socio)</option>
+                        <option value="aporte_capital">Aporte de Capital Social (Entrada a Banco &rarr; Patrimonio)</option>
+                    </select>
+
+                    <label class="form-label" style="color: #6b21a8;">Nombre del Socio / Accionista *</label>
 
                     <input type="text" id="qf_partner_name" placeholder="Escribe el nombre del accionista o titular" class="form-input" style="background: white; margin-bottom: 8px;">
 
-                    <label class="form-label" style="color: #6b21a8;">Motivo / Detalle del Retiro</label>
+                    <label class="form-label" style="color: #6b21a8;">Motivo / Detalle del Movimiento</label>
 
-                    <input type="text" id="qf_partner_concept" placeholder="Ej: Retiro personal quincenal / Gastos particulares" class="form-input" style="background: white;">
+                    <input type="text" id="qf_partner_concept" placeholder="Ej: Préstamo para capital de trabajo / Aporte / Retiro quincenal" class="form-input" style="background: white;">
 
                     <label class="form-label" style="color: #6b21a8; margin-top: 8px;">Nº Referencia / Comprobante</label>
 

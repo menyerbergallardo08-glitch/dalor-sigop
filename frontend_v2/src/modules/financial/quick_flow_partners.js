@@ -51,7 +51,8 @@ function _getLiveQuickBcvRate() {
 
 function openQuickFlowModal() {
 
-    const role = (currentUser?.role_name || currentUser?.username || '').toLowerCase();
+    const u = (typeof window !== 'undefined' && window.currentUser) || (typeof currentUser !== 'undefined' ? currentUser : null);
+    const role = (u?.role_name || u?.username || '').toLowerCase();
 
     if (role.includes('campo') || role.includes('supervisor')) {
 
@@ -62,14 +63,15 @@ function openQuickFlowModal() {
     }
 
     const pSelect = document.getElementById('qf_project_id');
+    const projs = (typeof window !== 'undefined' && Array.isArray(window.allProjects)) ? window.allProjects : [];
 
-    if (pSelect && allProjects.length > 0) {
+    if (pSelect && projs.length > 0) {
 
-        pSelect.innerHTML = allProjects.map(p => `<option value="${p.id}">${p.code} - ${p.name.substring(0, 30)}</option>`).join('');
+        pSelect.innerHTML = projs.map(p => `<option value="${p.id}">${p.code} - ${(p.name || '').substring(0, 30)}</option>`).join('');
 
     }
 
-    document.getElementById('quickFlowForm').reset();
+    document.getElementById('quickFlowForm')?.reset();
 
     const editIdEl = document.getElementById('qf_edit_withdrawal_id');
     if (editIdEl) editIdEl.value = '';
@@ -87,7 +89,15 @@ function openQuickFlowModal() {
 
     calcQuickBs();
 
-    document.getElementById('modalQuickFlow').classList.remove('hidden');
+    if (typeof window.openModal === 'function') {
+        window.openModal('modalQuickFlow');
+    } else {
+        const m = document.getElementById('modalQuickFlow');
+        if (m) {
+            m.classList.remove('hidden');
+            m.style.removeProperty('display');
+        }
+    }
 
 }
 
@@ -207,6 +217,7 @@ async function submitQuickFlow(event) {
 
             // Registrar o editar como Retiro de Socio
             const editId = document.getElementById('qf_edit_withdrawal_id')?.value?.trim();
+            const movement_type = document.getElementById('qf_partner_movement_type')?.value || 'retiro';
             const partner_name = (document.getElementById('qf_partner_name')?.value || '').trim() || 'Accionista';
             const concept = document.getElementById('qf_partner_concept').value.trim() || description;
             const liveRate = _getEffectiveQuickRate();
@@ -214,6 +225,8 @@ async function submitQuickFlow(event) {
             const exact_amount_bs = (!isNaN(rawBs) && rawBs > 0) ? Math.round(rawBs * 100) / 100 : Math.round(amount_usd * liveRate * 100) / 100;
             const opDate = document.getElementById('qf_operation_date')?.value || null;
             const refNum = document.getElementById('qf_reference_number')?.value?.trim() || null;
+            const finAccRaw = document.getElementById('qf_financial_account_id')?.value || '';
+            const financial_account_id = finAccRaw ? parseInt(finAccRaw, 10) : null;
 
             const isEditing = Boolean(editId);
             const url = isEditing ? `${API_BASE}/financial/partners/withdrawals/${editId}` : `${API_BASE}/financial/partners/withdrawals`;
@@ -221,10 +234,12 @@ async function submitQuickFlow(event) {
 
             const payload = {
                 partner_name,
+                movement_type,
                 concept,
                 amount_usd,
                 amount_bs: exact_amount_bs,
                 payment_method,
+                financial_account_id,
                 exchange_rate: liveRate,
                 reference_number: refNum,
                 notes: `Registrado vía Carga Rápida. Proveedor/Destino: ${vendor}`
@@ -250,7 +265,14 @@ async function submitQuickFlow(event) {
                 throw new Error(errData.detail || 'Error al registrar retiro.');
             }
 
-            alert(`✅ Retiro ${isEditing ? 'actualizado' : 'registrado'} por $${amount_usd.toLocaleString()} (Bs. ${exact_amount_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}) con éxito para ${partner_name}.`);
+            const movLabels = {
+                prestamo_socio: 'Préstamo de socio',
+                aporte_capital: 'Aporte de capital',
+                devolucion_prestamo: 'Devolución de préstamo',
+                retiro: 'Retiro de socio'
+            };
+            const movLabel = movLabels[movement_type] || 'Movimiento de socio';
+            alert(`✅ ${movLabel} ${isEditing ? 'actualizado' : 'registrado'} por $${amount_usd.toLocaleString()} (Bs. ${exact_amount_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}) con éxito para ${partner_name}.`);
 
         } else if (selected_type === 'sede') {
 
@@ -454,49 +476,63 @@ function renderPartnersWithdrawalsPaginated() {
     if (kpiBcv) kpiBcv.innerText = `${Number(liveBcvRate).toFixed(2)} Bs/$`;
 
 
-    // 2. Tarjetas de Resumen por Socio (#partnersSummaryCards)
+    // 2. Tarjetas de Cuenta Corriente por Socio (#partnersSummaryCards)
     const cardsContainer = document.getElementById("partnersSummaryCards");
     if (cardsContainer) {
         const partnerGroups = {};
         list.forEach(w => {
             const name = (w.partner_name || 'Sin Asignar').trim();
             if (!partnerGroups[name]) {
-                partnerGroups[name] = { total_usd: 0, total_bs: 0, count: 0 };
+                partnerGroups[name] = {
+                    capital_usd: 0,
+                    loans_usd: 0,
+                    repayments_usd: 0,
+                    withdrawals_usd: 0,
+                    total_bs: 0,
+                    count: 0
+                };
             }
-            partnerGroups[name].total_usd += Number(w.amount_usd || 0);
+            const mt = (w.movement_type || 'retiro').toLowerCase();
+            const amt = Number(w.amount_usd || 0);
+            if (mt === 'aporte_capital') partnerGroups[name].capital_usd += amt;
+            else if (mt === 'prestamo_socio') partnerGroups[name].loans_usd += amt;
+            else if (mt === 'devolucion_prestamo') partnerGroups[name].repayments_usd += amt;
+            else partnerGroups[name].withdrawals_usd += amt;
             partnerGroups[name].total_bs += Number(w.amount_bs || 0);
             partnerGroups[name].count += 1;
         });
 
-        const sortedPartners = Object.keys(partnerGroups).sort((a, b) => partnerGroups[b].total_usd - partnerGroups[a].total_usd);
+        const sortedPartners = Object.keys(partnerGroups).sort((a, b) => {
+            const totA = partnerGroups[a].withdrawals_usd + partnerGroups[a].loans_usd + partnerGroups[a].capital_usd;
+            const totB = partnerGroups[b].withdrawals_usd + partnerGroups[b].loans_usd + partnerGroups[b].capital_usd;
+            return totB - totA;
+        });
 
         if (sortedPartners.length === 0) {
             cardsContainer.innerHTML = `<div class="card" style="text-align: center; color: #94a3b8; padding: 12px; font-size: 11px;">No hay registros para resumir.</div>`;
         } else {
             cardsContainer.innerHTML = sortedPartners.map(pName => {
                 const grp = partnerGroups[pName];
-                const pct = totalUsdAll > 0 ? ((grp.total_usd / totalUsdAll) * 100).toFixed(1) : 0;
+                const netLoan = Math.round((grp.loans_usd - grp.repayments_usd) * 100) / 100;
                 const isSelected = (partnersSelectedPartnerFilter.toLowerCase() === pName.toLowerCase());
+                const fmt = (n) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 return `
                     <div onclick="selectPartnerSummaryCard('${pName.replace(/'/g, "\\'")}')" class="card" style="margin-bottom: 0; cursor: pointer; border-left: 4px solid ${isSelected ? '#059669' : '#7c3aed'}; padding: 10px 12px; background: ${isSelected ? '#f0fdf4' : '#ffffff'}; transition: all 0.2s;" title="Clic para filtrar por ${pName}">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                            <span style="font-weight: 800; color: #1e293b; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                            <span style="font-weight: 800; color: #1e293b; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 155px;">
                                 <i class="fa-solid fa-user-tie" style="color: ${isSelected ? '#059669' : '#7c3aed'};"></i> ${pName}
                             </span>
                             <span style="background: ${isSelected ? '#dcfce7' : '#ede9fe'}; color: ${isSelected ? '#166534' : '#7c3aed'}; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 10px;">
-                                ${pct}%
+                                ${grp.count} mov.
                             </span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                            <span style="font-size: 15px; font-weight: 900; color: ${isSelected ? '#166534' : '#7c3aed'};">
-                                $${grp.total_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                            <span style="font-size: 10px; color: #64748b; font-weight: 600;">
-                                ${grp.count} retiro(s)
-                            </span>
-                        </div>
-                        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
-                            Bs. ${grp.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10.5px;">
+                            <div><span style="color:#64748b;">Retiros:</span> <b style="color:#7c3aed;">${fmt(grp.withdrawals_usd)}</b></div>
+                            <div><span style="color:#64748b;">Capital:</span> <b style="color:#0284c7;">${fmt(grp.capital_usd)}</b></div>
+                            <div style="grid-column: span 2; margin-top: 2px; padding-top: 4px; border-top: 1px dashed #e2e8f0; display:flex; justify-content:space-between;">
+                                <span style="color:#475569; font-weight:700;">CxP Préstamo Socio:</span>
+                                <b style="color:${netLoan > 0 ? '#059669' : '#475569'};">${fmt(netLoan)}</b>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -545,29 +581,42 @@ function renderPartnersWithdrawalsPaginated() {
         return raw;
     };
 
+    const _movBadge = (mt) => {
+        if (mt === 'prestamo_socio') return '<span style="background:#dcfce7; color:#166534; padding:1px 6px; border-radius:4px; font-size:9.5px; font-weight:800;">+ Préstamo Socio</span>';
+        if (mt === 'aporte_capital') return '<span style="background:#dbeafe; color:#1d4ed8; padding:1px 6px; border-radius:4px; font-size:9.5px; font-weight:800;">+ Aporte Capital</span>';
+        if (mt === 'devolucion_prestamo') return '<span style="background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px; font-size:9.5px; font-weight:800;">- Devolución Préstamo</span>';
+        return '<span style="background:#f3e8ff; color:#6b21a8; padding:1px 6px; border-radius:4px; font-size:9.5px; font-weight:800;">- Retiro Utilidades</span>';
+    };
+
     const pageItems = filtered.slice(startIndex, endIndex);
-    tbody.innerHTML = pageItems.map(w => `
+    tbody.innerHTML = pageItems.map(w => {
+        const mt = (w.movement_type || 'retiro').toLowerCase();
+        const isInflow = mt === 'prestamo_socio' || mt === 'aporte_capital';
+        const sign = isInflow ? '+' : '-';
+        const amtColor = isInflow ? '#059669' : '#7c3aed';
+        return `
         <tr>
             <td style="font-weight: 700; color: #64748b; font-size: 11px; white-space: nowrap;">${_fmtDateTime(w)}</td>
-            <td style="font-weight: 800; color: #7c3aed;">${w.partner_name}</td>
+            <td style="font-weight: 800; color: #7c3aed;">${w.partner_name}<div style="margin-top:2px;">${_movBadge(mt)}</div></td>
             <td style="font-weight: 600;">${w.concept}</td>
             <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px; text-transform: uppercase;">${w.payment_method}</span></td>
             <td style="color: #64748b; font-size: 11px;">${w.reference_number || '-'}</td>
-            <td style="font-weight: 900; color: #7c3aed; font-size: 13px;">$${Number(w.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            <td style="font-weight: 900; color: ${amtColor}; font-size: 13px;">${sign}$${Number(w.amount_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             <td style="color: #475569; font-weight: 700;">
                 Bs. ${Number(w.amount_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                 <div style="font-size: 10px; color: #64748b; font-weight: 600;">Tasa: ${Number(w.exchange_rate || liveBcvRate).toFixed(2)}</div>
             </td>
             <td style="text-align: center; white-space: nowrap;">
-                <button type="button" onclick="openEditPartnerWithdrawalModal(${w.id})" class="btn-secondary" style="padding: 2px 7px; font-size: 11px; color: #0284c7; border-color: #bae6fd; margin-right: 4px;" title="Editar este retiro">
+                <button type="button" onclick="openEditPartnerWithdrawalModal(${w.id})" class="btn-secondary" style="padding: 2px 7px; font-size: 11px; color: #0284c7; border-color: #bae6fd; margin-right: 4px;" title="Editar movimiento">
                     <i class="fa-solid fa-pen"></i> Editar
                 </button>
-                <button type="button" onclick="confirmDeletePartnerWithdrawal(${w.id}, '${(w.partner_name || '').replace(/'/g, "\\'")}', ${w.amount_usd})" class="btn-secondary" style="padding: 2px 7px; font-size: 11px; color: #dc2626; border-color: #fca5a5;" title="Anular este retiro">
+                <button type="button" onclick="confirmDeletePartnerWithdrawal(${w.id}, '${(w.partner_name || '').replace(/'/g, "\\'")}', ${w.amount_usd})" class="btn-secondary" style="padding: 2px 7px; font-size: 11px; color: #dc2626; border-color: #fca5a5;" title="Anular movimiento">
                     <i class="fa-solid fa-trash-can"></i> Anular
                 </button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function goToPartnersPage(page) {
@@ -621,6 +670,9 @@ function openNewPartnerWithdrawalModal() {
 
     selectQuickType('socio');
 
+    const mtEl = document.getElementById('qf_partner_movement_type');
+    if (mtEl) mtEl.value = 'retiro';
+
 }
 
 function openEditPartnerWithdrawalModal(id) {
@@ -656,6 +708,8 @@ function openEditPartnerWithdrawalModal(id) {
     }
 
     if (partnerEl) partnerEl.value = w.partner_name || '';
+    const mtEl = document.getElementById('qf_partner_movement_type');
+    if (mtEl) mtEl.value = (w.movement_type || 'retiro').toLowerCase();
     if (conceptEl) conceptEl.value = w.concept || '';
     if (methodEl && w.payment_method) methodEl.value = w.payment_method;
     if (refEl) refEl.value = w.reference_number || '';

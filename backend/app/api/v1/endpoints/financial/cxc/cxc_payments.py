@@ -524,6 +524,12 @@ def revert_cxc_payment(
     if not p:
         raise HTTPException(status_code=404, detail="Pago no encontrado o no pertenece a esta factura.")
 
+    if "[FACTURADO" in (p.notes or ""):
+        raise HTTPException(
+            status_code=400,
+            detail="Este abono pertenece a una Facturación de Abonos/Lote. Usa 'Ficha Abonos → Reversar Facturación de Lote' en la factura para restaurar los abonos a sus cuentas originales."
+        )
+
     rev_amount = float(p.amount_usd)
 
     if p.payment_type == "retencion_iva":

@@ -186,11 +186,28 @@ def get_project_details(project_id: int, db: Session = Depends(get_db)):
     payables_spent = sum(p.paid_amount_usd for p in payables)
     total_spent = round(expenses_spent + payables_spent, 2)
 
-    # Trazabilidad de Cobros y Cuentas por Cobrar (CxC) de la obra
+    # Trazabilidad de Cobros y Cuentas por Cobrar (CxC) de la obra (Opción B: blindaje USD histórico en facturación de abonos en Bs)
+    import re as _re
+    _orig_usd_re = _re.compile(r"orig_usd=([0-9]+(?:\.[0-9]+)?)")
     receivables = db.query(AccountReceivable).filter(AccountReceivable.project_id == project_id).all()
-    total_billed_cxc = sum(r.amount_usd for r in receivables)
-    total_collected_usd = sum(r.paid_amount_usd for r in receivables)
-    balance_receivable_usd = sum(r.balance_usd for r in receivables)
+    active_receivables = [r for r in receivables if (r.status or "").lower() != "anulada"]
+    total_billed_cxc = 0.0
+    total_collected_usd = 0.0
+    balance_receivable_usd = 0.0
+    for r in active_receivables:
+        bal = float(r.balance_usd or 0.0)
+        balance_receivable_usd += bal
+        pay_sum = sum(float(pm.amount_usd or 0.0) for pm in (r.payments or []))
+        collected_r = max(float(r.paid_amount_usd or 0.0), pay_sum)
+        total_collected_usd += collected_r
+        m_orig = _orig_usd_re.search(r.notes or "")
+        if m_orig and "[BATCH_INVOICE" in (r.notes or ""):
+            total_billed_cxc += float(m_orig.group(1)) + bal
+        else:
+            total_billed_cxc += float(r.amount_usd or 0.0)
+    total_billed_cxc = round(total_billed_cxc, 2)
+    total_collected_usd = round(total_collected_usd, 2)
+    balance_receivable_usd = round(balance_receivable_usd, 2)
 
     # Detalle cronológico de todos los abonos y cobros percibidos
     collections_trace = []

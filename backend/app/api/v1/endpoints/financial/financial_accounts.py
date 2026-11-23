@@ -140,9 +140,15 @@ def list_financial_accounts(db: Session = Depends(get_db), current_user: UserMod
 
     pw_rows = db.query(
         PartnerWithdrawal.financial_account_id,
-        func.coalesce(func.sum(PartnerWithdrawal.amount_usd), 0.0)
-    ).filter(PartnerWithdrawal.financial_account_id.isnot(None)).group_by(PartnerWithdrawal.financial_account_id).all()
-    pw_by_acc = {acc_id: float(total or 0.0) for acc_id, total in pw_rows}
+        PartnerWithdrawal.amount_usd,
+        PartnerWithdrawal.notes,
+    ).filter(PartnerWithdrawal.financial_account_id.isnot(None)).all()
+    pw_by_acc = {}
+    for acc_id, amt, notes in pw_rows:
+        n_up = (notes or "").upper()
+        is_inflow = ("[MOV:PRESTAMO_SOCIO]" in n_up) or ("[MOV:APORTE_CAPITAL]" in n_up)
+        # pw_by_acc representa egresos netos de la cuenta (inflow resta del egreso = suma al saldo)
+        pw_by_acc[acc_id] = pw_by_acc.get(acc_id, 0.0) + (-float(amt or 0.0) if is_inflow else float(amt or 0.0))
 
     # Cargar movimientos relevantes de FinancialPayment en 1 sola consulta ligera
     payments = db.query(

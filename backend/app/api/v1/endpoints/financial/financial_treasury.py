@@ -37,6 +37,7 @@ class DirectCollectionCreate(BaseModel):
 
 class PartnerWithdrawalCreate(BaseModel):
     partner_name: str
+    movement_type: Optional[str] = "retiro"  # retiro | prestamo_socio | devolucion_prestamo | aporte_capital
     concept: Optional[str] = "Retiro a cuenta de utilidades / Gasto personal"
     withdrawal_date: Optional[datetime] = None
     amount_usd: float
@@ -101,12 +102,44 @@ def direct_client_collection(
     )
 
 # ------------------------------------------------------------------------------
-# 3. RETIROS DE SOCIOS
+# 3. CUENTA CORRIENTE DE SOCIOS (RETIROS, PRÉSTAMOS, DEVOLUCIONES, APORTES)
 # ------------------------------------------------------------------------------
+import re as _re
+
+_PARTNER_MOV_TAG_RE = _re.compile(r"\s*\[MOV:(RETIRO|PRESTAMO_SOCIO|DEVOLUCION_PRESTAMO|APORTE_CAPITAL)\]", _re.IGNORECASE)
+_VALID_PARTNER_MOVS = {"retiro", "prestamo_socio", "devolucion_prestamo", "aporte_capital"}
+_INFLOW_PARTNER_MOVS = {"prestamo_socio", "aporte_capital"}
+
+
+def parse_partner_movement_type(notes: Optional[str]) -> str:
+    if not notes:
+        return "retiro"
+    m = _PARTNER_MOV_TAG_RE.search(notes)
+    if not m:
+        return "retiro"
+    val = m.group(1).lower()
+    return val if val in _VALID_PARTNER_MOVS else "retiro"
+
+
+def _apply_partner_movement_tag(notes: Optional[str], movement_type: Optional[str]) -> Optional[str]:
+    mt = (movement_type or "retiro").strip().lower()
+    if mt not in _VALID_PARTNER_MOVS:
+        mt = "retiro"
+    cleaned = _PARTNER_MOV_TAG_RE.sub("", notes or "").strip()
+    if mt == "retiro":
+        return cleaned or None
+    tag = f"[MOV:{mt.upper()}]"
+    return f"{tag} {cleaned}".strip()
+
+
 def _serialize_partner_withdrawal(r: PartnerWithdrawal) -> dict:
+    mt = parse_partner_movement_type(r.notes)
+    clean_notes = _PARTNER_MOV_TAG_RE.sub("", r.notes or "").strip() or None
     return {
         "id": r.id,
         "partner_name": r.partner_name,
+        "movement_type": mt,
+        "direction": "inflow" if mt in _INFLOW_PARTNER_MOVS else "outflow",
         "concept": r.concept,
         "amount_usd": float(r.amount_usd or 0.0),
         "amount_bs": float(r.amount_bs or 0.0),
@@ -114,9 +147,60 @@ def _serialize_partner_withdrawal(r: PartnerWithdrawal) -> dict:
         "payment_method": r.payment_method,
         "financial_account_id": r.financial_account_id,
         "reference_number": r.reference_number,
-        "notes": r.notes,
+        "notes": clean_notes,
         "withdrawal_date": r.withdrawal_date.isoformat() if r.withdrawal_date else None,
         "date": r.withdrawal_date.strftime("%Y-%m-%d %H:%M") if r.withdrawal_date else ""
+    }
+
+
+@router.get("/partners/ledger")
+def get_partners_ledger(db: Session = Depends(get_db)):
+    """Estado de Cuenta Corriente por Socio: Aportes de Capital, Préstamos, Devoluciones, Retiros y Saldos Netos."""
+    rows = db.query(PartnerWithdrawal).order_by(PartnerWithdrawal.withdrawal_date.desc(), PartnerWithdrawal.id.desc()).all()
+    by_partner = {}
+    for r in rows:
+        name = (r.partner_name or "Sin Asignar").strip()
+        if name not in by_partner:
+            by_partner[name] = {
+                "partner_name": name,
+                "capital_contributions_usd": 0.0,
+                "loans_to_company_usd": 0.0,
+                "loan_repayments_usd": 0.0,
+                "withdrawals_usd": 0.0,
+                "movements_count": 0,
+            }
+        mt = parse_partner_movement_type(r.notes)
+        amt = float(r.amount_usd or 0.0)
+        by_partner[name]["movements_count"] += 1
+        if mt == "aporte_capital":
+            by_partner[name]["capital_contributions_usd"] += amt
+        elif mt == "prestamo_socio":
+            by_partner[name]["loans_to_company_usd"] += amt
+        elif mt == "devolucion_prestamo":
+            by_partner[name]["loan_repayments_usd"] += amt
+        else:
+            by_partner[name]["withdrawals_usd"] += amt
+
+    partners = []
+    for p in by_partner.values():
+        p["capital_contributions_usd"] = round(p["capital_contributions_usd"], 2)
+        p["loans_to_company_usd"] = round(p["loans_to_company_usd"], 2)
+        p["loan_repayments_usd"] = round(p["loan_repayments_usd"], 2)
+        p["withdrawals_usd"] = round(p["withdrawals_usd"], 2)
+        p["net_loan_balance_usd"] = round(p["loans_to_company_usd"] - p["loan_repayments_usd"], 2)
+        p["net_account_balance_usd"] = round(p["loans_to_company_usd"] - p["loan_repayments_usd"] - p["withdrawals_usd"], 2)
+        partners.append(p)
+
+    partners.sort(key=lambda x: abs(x["net_loan_balance_usd"]) + x["capital_contributions_usd"] + x["withdrawals_usd"], reverse=True)
+    return {
+        "partners": partners,
+        "totals": {
+            "capital_contributions_usd": round(sum(x["capital_contributions_usd"] for x in partners), 2),
+            "loans_to_company_usd": round(sum(x["loans_to_company_usd"] for x in partners), 2),
+            "loan_repayments_usd": round(sum(x["loan_repayments_usd"] for x in partners), 2),
+            "withdrawals_usd": round(sum(x["withdrawals_usd"] for x in partners), 2),
+            "net_loan_balance_usd": round(sum(x["net_loan_balance_usd"] for x in partners), 2),
+        }
     }
 
 @router.get("/withdrawals")
@@ -152,19 +236,35 @@ def create_partner_withdrawal(
 
     w_dt = w_in.withdrawal_date.replace(tzinfo=None) if (w_in.withdrawal_date and getattr(w_in.withdrawal_date, "tzinfo", None)) else w_in.withdrawal_date
 
+    default_concepts = {
+        "retiro": "Retiro a cuenta de utilidades / Gasto personal",
+        "prestamo_socio": "Préstamo de socio a la compañía",
+        "devolucion_prestamo": "Devolución / abono de préstamo a socio",
+        "aporte_capital": "Aporte de capital social",
+    }
+    mt = (w_in.movement_type or "retiro").strip().lower()
+    if mt not in _VALID_PARTNER_MOVS:
+        mt = "retiro"
+
     withdrawal = PartnerWithdrawal(
         partner_name=w_in.partner_name,
         withdrawal_date=w_dt or datetime.utcnow(),
-        concept=w_in.concept or "Retiro a cuenta de utilidades / Gasto personal",
+        concept=(w_in.concept or "").strip() or default_concepts[mt],
         amount_usd=w_in.amount_usd,
         amount_bs=amount_bs,
         exchange_rate=exchange_rate,
         payment_method=w_in.payment_method or "transferencia",
         financial_account_id=fin_acc_id,
         reference_number=w_in.reference_number,
-        notes=w_in.notes
+        notes=_apply_partner_movement_tag(w_in.notes, mt)
     )
     db.add(withdrawal)
+    db.add(AuditLog(
+        username=current_user.username,
+        module="finanzas_socios",
+        action=f"registrar_{mt}",
+        details=f"Socio '{w_in.partner_name}': {mt.upper()} por ${w_in.amount_usd:.2f} (Bs. {amount_bs:.2f})."
+    ))
     db.commit()
     db.refresh(withdrawal)
     return _serialize_partner_withdrawal(withdrawal)
@@ -206,8 +306,9 @@ def update_partner_withdrawal(
     w.exchange_rate = exchange_rate
     w.payment_method = w_in.payment_method or w.payment_method or "transferencia"
     w.reference_number = w_in.reference_number
-    if w_in.notes is not None:
-        w.notes = w_in.notes
+    eff_mt = (w_in.movement_type or parse_partner_movement_type(w.notes)).strip().lower()
+    base_notes = w_in.notes if w_in.notes is not None else w.notes
+    w.notes = _apply_partner_movement_tag(base_notes, eff_mt)
 
     db.commit()
     db.refresh(w)

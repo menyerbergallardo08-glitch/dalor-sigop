@@ -648,6 +648,11 @@ async function openEditProjectModal(projectId) {
         // Sumar automáticamente el costo total de los materiales asignados
         updateEditProjectMaterialsCost();
 
+        // Cargar vista de Personal Subcontratado y Recursos Opcionales en Edición de Obra
+        if (typeof window.loadEditProjectSubcontractsPreview === 'function') {
+            window.loadEditProjectSubcontractsPreview(p.id);
+        }
+
         if (typeof window.openModal === 'function') {
             window.openModal("modalEditProject");
         } else {

@@ -234,6 +234,30 @@ function closeModal(modalId) {
     }
 }
 
+function normalizeDecimalStepInput(el) {
+    if (!el || el.tagName !== 'INPUT' || el.type !== 'number') return;
+    const step = (el.getAttribute('step') || '').trim();
+    if (/^0\.\d+$/.test(step)) {
+        el.setAttribute('step', 'any');
+        if (!el.getAttribute('inputmode')) el.setAttribute('inputmode', 'decimal');
+    }
+}
+
+function initGlobalNumericInputs() {
+    if (typeof document === 'undefined' || window.__dalorNumericStepInit) return;
+    window.__dalorNumericStepInit = true;
+    const sweep = () => document.querySelectorAll('input[type="number"][step^="0."]').forEach(normalizeDecimalStepInput);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', sweep, { once: true });
+    } else {
+        sweep();
+    }
+    document.addEventListener('mousedown', (e) => normalizeDecimalStepInput(e.target), true);
+    document.addEventListener('focusin', (e) => normalizeDecimalStepInput(e.target), true);
+}
+
+initGlobalNumericInputs();
+
 if (typeof window !== 'undefined') {
     window.openModal = openModal;
     window.closeModal = closeModal;

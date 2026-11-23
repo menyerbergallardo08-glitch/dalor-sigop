@@ -235,6 +235,17 @@ def record_cxc_payment(receivable_id: int, p_in: PaymentCreate, db: Session = De
         else:
             r.status = "abono_parcial"
 
+    db.add(AuditLog(
+        username="sistema_cxc",
+        module="finanzas_cxc",
+        action="registrar_cobro_cxc",
+        details=(
+            f"Cobro registrado en [{r.invoice_number}]: USD=${float(p_in.amount_usd or 0):.2f} | "
+            f"Bs={round(float(p_in.amount_usd or 0) * float(rate or 0), 2):.2f} | Tasa={float(rate or 0):.4f} | "
+            f"Método={p_in.payment_method} | Cuenta={p_in.bank_account or '-'} | "
+            f"Ref={p_in.reference_number or p_in.voucher_number or '-'} | Notas={p_in.notes or '-'}"
+        )
+    ))
     db.commit()
     return {
         "success": True,
@@ -546,13 +557,20 @@ def revert_cxc_payment(
         r.status = "abono_parcial"
 
     p_ref = p.reference_number or p.voucher_number or str(p.id)
+    p_snapshot = (
+        f"Cobro #{payment_id} revertido en Factura [{r.invoice_number}] por {current_user.username}. "
+        f"SNAPSHOT COMPLETO -> USD=${rev_amount:.2f} | Bs={float(p.amount_bs or 0):.2f} | "
+        f"Tasa={float(p.exchange_rate or 0):.4f} | Fecha={p.payment_date.strftime('%Y-%m-%d %H:%M') if p.payment_date else '-'} | "
+        f"Método={p.payment_method or '-'} | Banco={p.bank_account or '-'} | FinAccID={p.financial_account_id or '-'} | "
+        f"Ref={p_ref} | Notas={p.notes or '-'}. Nuevo saldo: ${r.balance_usd:.2f}"
+    )
     db.delete(p)
 
     audit = AuditLog(
         username=current_user.username,
         module="finanzas_cxc",
         action="reversar_cobro_cxc",
-        details=f"Cobro #{payment_id} (${rev_amount:.2f}, Ref: {p_ref}) revertido en Factura [{r.invoice_number}] por {current_user.username}. Nuevo saldo: ${r.balance_usd:.2f}"
+        details=p_snapshot
     )
     db.add(audit)
     db.commit()

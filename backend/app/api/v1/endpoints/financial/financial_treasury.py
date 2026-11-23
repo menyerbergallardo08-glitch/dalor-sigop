@@ -315,16 +315,33 @@ def update_partner_withdrawal(
     return _serialize_partner_withdrawal(w)
 
 @router.delete("/partners/withdrawals/{withdrawal_id}")
-def delete_partner_withdrawal(withdrawal_id: int, db: Session = Depends(get_db)):
+def delete_partner_withdrawal(
+    withdrawal_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
     """
-    Elimina un retiro de socio registrado.
+    Elimina un movimiento de socio dejando snapshot forense completo en AuditLog.
     """
     w = db.query(PartnerWithdrawal).filter(PartnerWithdrawal.id == withdrawal_id).first()
     if not w:
-        raise HTTPException(status_code=404, detail="Retiro no encontrado.")
+        raise HTTPException(status_code=404, detail="Movimiento de socio no encontrado.")
+    mt = parse_partner_movement_type(w.notes)
+    snapshot = (
+        f"Eliminado movimiento de socio #{w.id} ({mt.upper()}) de '{w.partner_name}': "
+        f"USD=${float(w.amount_usd or 0):.2f} | Bs={float(w.amount_bs or 0):.2f} | "
+        f"Tasa={float(w.exchange_rate or 0):.4f} | Fecha={w.withdrawal_date.strftime('%Y-%m-%d %H:%M') if w.withdrawal_date else '-'} | "
+        f"Método={w.payment_method or '-'} | Ref={w.reference_number or '-'} | Concepto={w.concept or '-'} | Notas={w.notes or '-'}"
+    )
     db.delete(w)
+    db.add(AuditLog(
+        username=current_user.username,
+        module="finanzas_socios",
+        action=f"eliminar_{mt}",
+        details=snapshot
+    ))
     db.commit()
-    return {"success": True, "message": "Retiro eliminado exitosamente."}
+    return {"success": True, "message": "Movimiento eliminado exitosamente (traza forense guardada)."}
 
 # ------------------------------------------------------------------------------
 # 4. ARBITRAJE CAMBIARIO Y TRANSFERENCIAS ENTRE CUENTAS
